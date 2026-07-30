@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Pinned to D6's candidate. The engine is pure stdlib by design, so there is
+          # nothing to install and nothing whose version could drift underneath a hash.
+          python-version: "3.11"
+
+      - name: no third-party runtime dependencies
+        run: |
+          # The seed hash must not depend on a linked LAPACK build or a wheel release.
+          # If this ever fails, D6's pinning surface has grown and SEED.lock's toolchain
+          # section needs to grow with it.
+          python - <<'PY'
+          import ast, pathlib, sys
+          stdlib = set(sys.stdlib_module_names)
+          allowed = stdlib | {"engine", "adapters", "tests", "anthropic"}
+          bad = []
+          for path in list(pathlib.Path("engine").rglob("*.py")) + list(pathlib.Path("adapters").rglob("*.py")):
+              tree = ast.parse(path.read_text(encoding="utf-8"))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      names = [a.name.split(".")[0] for a in node.names]
+                  elif isinstance(node, ast.ImportFrom):
+                      names = [(node.module or "").split(".")[0]] if node.level == 0 else []
+                  else:
+                      continue
+                  for name in names:
+                      if name and name not in allowed:
+                          bad.append(f"{path}: {name}")
+          if bad:
+              print("non-stdlib imports outside the gated live-extraction path:")
+              print("\n".join(bad))
+              raise SystemExit(1)
+          print("engine and adapters import stdlib only (anthropic is lazily imported behind the D4 gate)")
+          PY
+
+      - name: unit tests
+        run: python -m unittest discover -s tests -t . -v
+
+      - name: gate 4 — seed hash tripwire
+        run: |
+          if [ -f seed/SEED.lock ]; then
+            python cli.py verify
+          else
+            echo "seed/SEED.lock absent (P0 gate not yet met; D3/D4/D5/D6 unresolved)."
+            echo "Nothing to tripwire until the lock is written — but assert it still refuses:"
+            if python cli.py lock; then
+              echo "::error::seed_lock.build() wrote a lock despite unresolved decisions"
+              exit 1
+            fi
+            echo "lock correctly refused"
+          fi
+
+      - name: null cells i and ii — always runnable, must always be green
+        run: |
+          python - <<'PY'
+          from engine.nulls import cell_i_idempotence, cell_ii_paraphrase
+          from engine.types import NullStatus
+          from engine import seed_lock
+
+          seed = seed_lock.current().seed_hash
+          failed = False
+          for cell in (cell_i_idempotence(seed), cell_ii_paraphrase()):
+              print(f"{cell.cell}: {cell.status.value} — {cell.detail}")
+              if cell.status is not NullStatus.PASS:
+                  failed = True
+          raise SystemExit(1 if failed else 0)
+          PY
+
+      - name: status
+        run: python cli.py status

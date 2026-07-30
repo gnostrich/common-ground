@@ -1,0 +1,59 @@
+{
+  "schema": "common-ground/constants/v0",
+  "lambda": 1.0,
+  "lambda2": 1.0,
+  "eta": 0.1,
+  "settle_grad_tol": 1e-6,
+  "settle_max_iters": 500,
+  "settle_max_backtracks": 20,
+  "fiber_cap": 5,
+  "cast_t2_start": 1.0,
+  "cast_t2_end": 0.1,
+  "cast_t2_decay": 0.9,
+  "hankel_window": 64,
+  "mint_threshold_multiple": 3.0,
+  "mint_enabled": false,
+  "bvalues": ["N", "F", "T", "B"],
+  "charts": ["english", "lean"],
+  "claim_forms": ["assert", "define", "conditional", "normative"],
+  "beta_arms": [1.0, 4.0],
+  "surrogate_trials": 200,
+  "surrogate_quantile": 0.95,
+  "prior_dropout_rate": 0.1,
+  "prior_dropout_trials": 5,
+  "null_fuzz_samples": 500,
+  "fiber": {
+    "note": "Fiber construction is a PRIOR, not addressing. It emits Q edges, which gate 2 confines to energy terms. Its influence on the verdict is exactly what PREREG R4 measures: if dropping 10% of Q edges moves the cold floor beyond surrogate noise, the verdicts are artifacts of this heuristic and the seed design is rejected.",
+    "token_prefix": 4,
+    "intra_chart_jaccard_threshold": 0.6,
+    "cross_chart_jaccard_threshold": 0.4,
+    "stopwords": [
+      "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+      "of", "in", "on", "at", "to", "for", "with", "by", "from", "as",
+      "that", "this", "these", "those", "it", "its", "and", "or", "but",
+      "we", "our", "us", "you", "they", "them", "their", "there", "here",
+      "under", "over", "into", "than", "then", "so", "such", "not", "no",
+      "prop", "type", "theorem", "lemma", "def", "example", "axiom", "forall", "exists"
+    ]
+  },
+  "markers": {
+    "deontic": [
+      "must", "must not", "ought", "ought to", "should", "should not",
+      "shall", "shall not", "may not", "required to", "forbidden",
+      "is obliged to", "it is permitted", "no floor is read"
+    ],
+    "conditional": [
+      "if ", "iff ", "if and only if", "whenever ", "provided that",
+      "assuming that", "given that", "unless ", "implies", "only if"
+    ],
+    "definitional": [
+      "is defined as", "we define", "define ", "denotes", "we call",
+      "is called", "by definition", "means that", "we say that",
+      "let us write", "notation:"
+    ]
+  },
+  "lean_define_heads": [
+    "def", "abbrev", "structure", "class", "instance", "inductive", "notation"
+  ],
+  "lean_claim_heads": ["theorem", "lemma", "example", "axiom"]
+}

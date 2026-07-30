@@ -1,0 +1,145 @@
+# common-ground
+
+Minimal-faithful reconciliation engine, v0. Built to the KICKOFF brief: seven invariants
+(addressing, fibers, certified descent, cast/settle split, warrant tiers, paired loop-side
+meter, nulls-before-floors), mint tape logged, **mint OFF**.
+
+Prime directive: *no floor is read before its null cells pass; no seed change after
+SEED.lock without a logged seed-morphism event and cold re-anneal.*
+
+---
+
+## Current state
+
+**P0 scaffold: complete. P0 seed assembly: blocked. P1–P4: gated.**
+
+`SEED.lock` has not been written, because D3, D5, D6, and D4's spend cap are unresolved
+and KICKOFF §7.1 says to refuse past P0 with any blank. That refusal is mechanical:
+`engine/seed_lock.py:build()` raises rather than emitting a lock.
+
+```
+$ python cli.py status
+D1 resolved   D2 resolved   D3 unresolved   D4 partial
+D5 unresolved D6 unresolved D7 resolved
+```
+
+The null battery runs and reports honestly at the provisional seed hash:
+
+| Cell | Status |
+|---|---|
+| i. normalizer idempotence | **PASS** — `nu(nu(x)) == nu(x)`, 1010 fuzzed samples across both charts |
+| ii. paraphrase suite | **PASS** — 10 known-same pairs collided, 10 known-distinct separated |
+| iii. empty-corpus floor | **BLOCKED** — D5 unresolved, no pre-minted entries to check for self-contest |
+| iv. single-doc null | **BLOCKED** — D3 unresolved, no held-out document |
+| v. duplicate-source null | **BLOCKED** — D3 unresolved, no corpus to duplicate |
+
+`BLOCKED` is not green, so PREREG R1 applies and the run is VOID — but it is recorded as
+"never tested", which is a different finding from "tested and failed" and is reported as
+such. See `reports/P1-null-battery.md`.
+
+## What is needed to proceed
+
+| Decision | Needed for | Why it cannot be defaulted |
+|---|---|---|
+| **D3** corpus manifest + EXCLUSIONS | P2, P3, null cells iv & v | Paths to someone else's data, plus a privacy policy. A guessed path silently changes what the run is about; a defaulted exclusion list is a privacy incident. `adapters/claude_export.py` raises on `exclusions=None` rather than treating "unset" as "nothing excluded". |
+| **D4** spend cap | P3 live extraction | An unset cap is not an unlimited cap. `AnthropicExtractor` refuses to construct without one. |
+| **D5** pre-minted files | `SEED.lock`, null cell iii, PREREG R2 | `BVALUED-AGREED.md`, `STATEMENTS.md`, `REGISTRY.md` are not in this repo. `STATEMENTS.md` carries the "what we do NOT claim" list that R2 turns into the rediscovery test. |
+| **D6** Lean + Python versions | `SEED.lock`, every kernel clamp | Gate 3 makes kernel-accept *under the pinned toolchain* the only proof-side grounding warrant. Read the Lean version from `certified-positivity`'s lake-manifest; do not assume it. |
+
+D1, D2, and D7 are resolved — D1 from the repository as it exists, D2 and D7 from the
+defaults the brief itself states. Details and reasoning in `seed/DECISIONS.md`.
+
+---
+
+## The five gates, and where each is enforced
+
+`seed/GATES.md` holds the constitutional text verbatim. Each is enforced structurally, not
+by convention:
+
+1. **Addressing** — `normalize.slot_id(nu, type)` takes exactly two arguments and reads no
+   engine state. `nu` is chart-indexed and emits the chart as a control-character tag
+   *inside* its own output, so the chart rides along in `nu(surface)` and the hash
+   signature stays `hash(nu(surface), type)` verbatim.
+2. **Priors are energy** — lexicon and equivalence priors appear only as terms in
+   `energy.FreeEnergy`. The clamp set is a separate argument. There is no code path from a
+   prior to a clamp.
+3. **Only top tiers ground** — `Warrant.clamp_eligible` is a derived property on a frozen
+   dataclass, `Clamp.__post_init__` refuses a non-eligible warrant, and `Extractor.extract`
+   stamps `EXTRACTION` on everything it emits with no subclass override.
+4. **Address moves are plastic** — `seed_lock.verify()` recomputes every seed hash; CI runs
+   it on every push and fails on drift.
+5. **Nulls before floors** — `meter.read_floor()` requires a `NullBatteryReport` that
+   passed *on the same seed hash*, and it is the only function that returns a floor.
+
+Try to violate them: `tests/test_gates.py` does, including smuggling a downgraded warrant
+past `Clamp`'s constructor via `object.__setattr__` to check `settle()` still catches it.
+
+## Design decisions worth knowing
+
+**Pure stdlib, no numpy.** A verdict keyed to a seed hash is not reproducible if that hash
+depends on a linked LAPACK build. The engine ships its own one-sided Jacobi SVD, a
+counter-based SHA-256 RNG, and simplex arithmetic. CI asserts no third-party import
+reaches `engine/` or `adapters/`.
+
+**F is convex, and the certificate is a real check.** Linear evidence and prior terms, a
+PSD quadratic coupling, and convex negative entropy. Mirror descent under the entropic map
+converges, so the monotone F-trace certificate tests the implementation rather than
+expressing a hope about the objective. `eta = 0.1` is the nominal step; a logged halving
+safeguard keeps descent monotone and counts every halving into the run log. A step that
+cannot be made descending stamps `violated` — it never silently ascends.
+
+**Holonomy vanishes on agreement.** Transport along a Q edge is a relaxation toward the far
+end's settled state. Compose around a loop and compare to the start: identically zero when
+every state on the loop agrees, positive and path-ordered when they do not. Verified in
+both directions in `tests/test_engine.py`.
+
+**The warm arm reports what it actually was.** With state retained from P3 it is the real
+cross-phase arm; without it, it resumes from the anneal's first rung — a genuinely
+different trajectory. What it must never do is resume from the cold arm's own answer, which
+would report `path_debt = 0` as a tautology. Every measurement carries `warm_source`.
+
+**Re-ingestion is idempotent by construction.** Evidence is keyed on the document's
+*content* hash, not its id or source label, so re-ingesting one corpus under a second
+provenance adds nothing (null cell v) while two genuinely distinct documents asserting the
+same claim still corroborate. See `energy.evidential_identity`.
+
+**Shadow is declared zero.** `seed/shadow.json` declares no closure defect between charts.
+Declaring one larger than the truth would deflate the floor and could manufacture a null
+result, so zero is the conservative setting and raising it is plastic under gate 4,
+requiring a justification string.
+
+**Casting is withheld.** `cast.cast()` raises unless the caller passes `allow=True`, which
+`cast.may_cast()` grants only for blocks whose fiber contains a kernel clamp — KICKOFF §3,
+P3. The withholding is a property of the code, not of the operator remembering.
+
+## Layout
+
+```
+seed/          GATES.md, TYPES.md, DECISIONS.{md,json}, CONSTANTS.json,
+               paraphrase_suite.json, shadow.json, LEXICON/, PROMPTS/  → SEED.lock
+engine/        normalize · extract · energy · settle · cast · meter · nulls
+               mint_tape · blocks · pipeline · audit · seed_lock · logio · linalg · hashing
+adapters/      claude_export · lean_corpus · repo_docs
+registry/      PREREG.md (frozen, D7 as-is) · REGISTRY.jsonl (append-only)
+runs/          JSONL logs; every record carries seed_hash
+reports/       one-pagers
+```
+
+## Usage
+
+```bash
+make status          # decisions, lock state, phase readiness
+make test            # 52 tests, stdlib only
+make demo            # synthetic end-to-end run; reads no corpus, writes no log
+make nulls           # P1 null battery at the current seed hash
+make lock            # refuses while any decision is blank
+make verify          # gate-4 tripwire
+
+python cli.py register P2 --note "..."   # BEFORE running a phase (KICKOFF §7.2)
+```
+
+## Session order
+
+Per KICKOFF §7.3, P0–P2 belong to one session and P3–P4 to a fresh session from a clean
+checkout — *that checkout is the cold arm*. This repository is the P0–P2 session's output.
+P3 and P4 must not be run from it.

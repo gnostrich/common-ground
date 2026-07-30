@@ -1,0 +1,19 @@
+[project]
+name = "common-ground"
+version = "0.0.0"
+description = "Minimal-faithful reconciliation engine, v0"
+requires-python = ">=3.11"
+
+# No runtime dependencies, deliberately. The seed hash keys every verdict, and a hash
+# that depends on a linked LAPACK build or a wheel release is not reproducible. The
+# engine ships its own SVD, RNG, and simplex arithmetic for exactly this reason. CI
+# asserts this stays true.
+dependencies = []
+
+[project.optional-dependencies]
+# Live k=3 extraction only (D4). Gated behind COMMON_GROUND_ENABLE_LLM plus a spend cap;
+# imported lazily so the offline path never touches it.
+live = ["anthropic>=0.60"]
+
+[tool.setuptools]
+packages = ["engine", "adapters"]

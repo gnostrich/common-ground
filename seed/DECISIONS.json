@@ -1,0 +1,52 @@
+{
+  "schema": "common-ground/decisions/v0",
+  "D1": {
+    "status": "resolved",
+    "basis": "fact",
+    "repo": "gnostrich/common-ground",
+    "license": "MIT",
+    "visibility": "as-configured-on-remote"
+  },
+  "D2": {
+    "status": "resolved",
+    "basis": "stated-default",
+    "charts": ["english", "lean"],
+    "code_chart": "deferred-to-v0.5"
+  },
+  "D3": {
+    "status": "unresolved",
+    "claude_export": null,
+    "lean_corpus": null,
+    "repos": ["certified-positivity"],
+    "exclusions": null
+  },
+  "D4": {
+    "status": "partial",
+    "extractors": [
+      { "id": "k0", "model": "claude-opus-5", "prompt": "extract_v1" },
+      { "id": "k1", "model": "claude-opus-5", "prompt": "extract_v2" },
+      { "id": "k2", "model": "claude-sonnet-5", "prompt": "extract_v1" }
+    ],
+    "spend_cap_usd": null,
+    "live_extraction_default": "off"
+  },
+  "D5": {
+    "status": "unresolved",
+    "preminted": ["BVALUED-AGREED.md", "STATEMENTS.md", "REGISTRY.md"],
+    "preminted_present": [],
+    "additional": null
+  },
+  "D6": {
+    "status": "unresolved",
+    "lean": null,
+    "lean_source": "certified-positivity lake-manifest",
+    "python": null,
+    "python_observed": "3.11.15",
+    "third_party_runtime_deps": []
+  },
+  "D7": {
+    "status": "resolved",
+    "prereg": "as-is",
+    "amendments": []
+  }
+}
