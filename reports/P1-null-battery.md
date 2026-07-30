@@ -1,7 +1,14 @@
 # P1 — null battery
 
-Provisional seed hash (`seed/SEED.lock` is not written; D3, D4's spend cap, D5, D6 are
-unresolved and D8 is partial). Registry entry committed before the run, per KICKOFF §7.2.
+Provisional seed hash `d8f330fa4164` (`seed/SEED.lock` is not written; D3, D4's spend cap,
+D5, D6 are unresolved and D8 is partial). Registry entry committed before the run, per
+KICKOFF §7.2.
+
+This is a **cold re-anneal**. PREREG-AMENDMENT-1 added sentence 6 to `seed/GATES.md`, which
+moved the seed hash from `5043231e3f58` to `d8f330fa4164`. Gate 4 makes that plastic: the
+morphism is logged in `registry/REGISTRY.jsonl` with both hashes and an identity slot map —
+no lexicon, prompt, or normalizer surface changed, so no address moved — and the battery
+was re-run from scratch on the new hash rather than carried across.
 
 ## Lexicon imports
 
@@ -99,28 +106,66 @@ reporting PASS since they were written, and neither could have reported anything
 unpinned — so the control could not fire precisely when you would most want to know the cell
 works. It now builds synthetic Mathlib senses and is independent of D8.
 
-**PREREG R3 carries the same defect — reported, not fixed.** Once the pattern was named it
-was worth checking whether anything else compares an observation against a resample of
-itself. R3 does, and R3 is the rule that decides the headline result of the whole run:
+**PREREG R3 carried the same defect — now amended.** Once the pattern was named it was
+worth checking whether anything else compares an observation against a resample of itself.
+R3 did, and R3 is the rule that decides the headline result of the whole run: it read
 `floor <= quantile(surrogate_floor_distribution, 0.95)`, the same bootstrap over the same
-observed floors. A mean floor of 0.45 carried entirely by the cold arm is called `~0` by
-that test — pinned in `tests/test_controls.py:R3CarriesTheSameDefect`.
+observed floors. A mean floor of 0.45 carried entirely by the cold arm was called `~0`.
 
-R3 has **not** been amended. PREREG is frozen under D7, and rewriting a pre-registered
-rule's decision procedure after the fact is precisely what pre-registration exists to
-prevent; it is the operator's call. Nothing has been decided through R3 yet — P3 and P4
-have not run — so this is caught before it mattered, which is the only good time. What was
-done instead: the defect is pinned by a test, and `audit.floor_verdict` now reports
-`second_fdt_floor` in its stats and appends an explicit caveat to the detail line whenever
-the two surrogates disagree, so no reader of an R3 verdict is unaware of it.
+**PREREG-AMENDMENT-1** (authorized 2026-07-30, recorded in full in `registry/PREREG.md`)
+replaces the decisive surrogate:
 
-The non-vacuous alternative already exists and is already computed and logged on every run.
+```
+near_zero = floor <= second_fdt_surrogate_floor      # warm/cold label permutation
+```
+
 `second_fdt_surrogate_floor` permutes the warm/cold *labels* loop by loop: under the null
-that the arms are exchangeable it matches the observed floor, and under real path
-dependence the observed floor exceeds it. It is a null rather than a resample of the
-answer. Adopting it is a one-line amendment (`near_zero = floor <=
-result.surrogate["second_fdt_floor"]`) and needs authorization, a logged amendment, and a
-cold re-anneal.
+that the arms are exchangeable it matches the observed floor, and under real path dependence
+the observed floor exceeds it. It is a null constructed under the no-effect hypothesis
+rather than a resample of the answer.
+
+Three grounds made the amendment admissible. **(a)** The specification always named the
+second-FDT surrogate — the mint threshold in the GATES.md constants table is quoted against
+it — so the bootstrap was a transcription defect, not a design choice; this restores the
+specified procedure rather than choosing a new one. **(b)** No data has passed through R3:
+P3 and P4 have not run, so no verdict is being revised in sight of a result. **(c)** The
+change is strictness-increasing — the label-permutation threshold does not rise to meet the
+floor it is handed, so the `~0` branch becomes harder to obtain, never easier.
+
+R1–R5's text is unchanged and unrewritten; the amendment is appended. The bootstrap band is
+still computed and reported as `stats["surrogate_q95"]`, a legacy diagnostic that decides
+nothing, and `floor_verdict` says so explicitly whenever the two surrogates would disagree.
+`tests/test_controls.py:R3CarriesTheSameDefect` is kept as the historical pin — it exercises
+the superseded computation directly, so it records what the defect was without asserting
+anything about the current rule.
+
+**Constitutional consequence.** `seed/GATES.md` gained sentence 6: *every statistical
+verdict is decided against a null constructed under the no-effect hypothesis (permutation /
+phase-randomization / independent surrogate), never against a resample of the observation.*
+That generalizes the fix past R3. Editing GATES.md moves the seed hash, which is plastic
+under gate 4 — logged as a `seed-morphism` event with before/after hashes, and the battery
+re-run cold on the new hash. No warm state was discarded because none existed.
+
+The amendment authority expires when P3 ingestion begins, and that expiry is mechanical:
+`audit.check_amendment_window()` raises once any P3 phase-run appears in `REGISTRY.jsonl`.
+
+**R4 does not yet conform to gate 6 — flagged, not amended.** Sentence 6 binds every
+statistical verdict, so R4 was checked against it and fails: it compares the floor's
+movement under Q-edge dropout against `baseline.surrogate["q95"]`, the same bootstrap of
+the observed floors. PREREG-AMENDMENT-1 was scoped to R3, so R4 is unchanged.
+
+The failure mode is not R3's and should not be described as the same one. R4 is not
+vacuous; it is **miscalibrated in the permissive direction**. The band scales with the
+observed floor, so a run whose floor is near zero gets a near-zero tolerance and R4 is
+strict, while a run with a large structured floor — the run where dictionary sensitivity
+would matter most — gets a large tolerance and R4 is lax. The rule relaxes as the stakes
+rise. `prior_insensitivity` now reports `decided_by` and `gate6_conforming: false` in its
+stats, and `tests/test_controls.py:R4IsNotYetConformingToGate6` pins the asymmetry.
+
+A conforming reference would be a null under "the dictionary does not matter": movement
+under real Q-edge dropout against movement under dropout from a degree-preserving
+randomization of the Q graph. That is a design choice rather than a transcription fix, so
+it needs its own authorization — and the amendment window closes when P3 begins.
 
 That all of this was found before any floor was read is the battery working as designed.
 That three of the finds were *the project's own tests* — two battery cells and a PREREG

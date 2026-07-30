@@ -1,14 +1,29 @@
 # GATES.md — constitutional
 
-These five sentences are constitutional. They are reproduced verbatim from KICKOFF §2 and
-are frozen under `SEED.lock`. No engine module may weaken them; each is enforced
-structurally in code, and each enforcement point is cited below the sentence it enforces.
+These sentences are constitutional. They are frozen under `SEED.lock`. No engine module may
+weaken them; each is enforced structurally in code, and each enforcement point is cited
+below the sentence it enforces.
+
+**Provenance.** Sentences 1–5 are reproduced verbatim from KICKOFF §2. Sentence 6 is not
+from KICKOFF: it was added by operator authorization on 2026-07-30 as part of
+PREREG-AMENDMENT-1 (`registry/PREREG.md`), and is marked as such so that nobody later reads
+it as original text. It is constitutional on the same terms as the others — frozen, and
+weakenable only by another authorized, logged amendment.
 
 1. Slot identity = hash(nu(surface), type). Addressing is a function of the seed, never of engine state.
 2. Lexicon and equivalence priors enter F only as energy terms. They can never clamp.
 3. Only top-tier warrants ground (clamp-eligible): Lean kernel-accept under pinned toolchain; CI-green test receipts. Extraction provenance never grounds.
 4. Anything that moves addresses (lexicon edit, prompt change, toolchain bump) is plastic: requires seed-morphism log event + cold re-anneal. No silent bumps; toolchain hashes tripwired in CI.
 5. No floor is read before the null battery passes on the same seed hash.
+6. Every statistical verdict is decided against a null constructed under the no-effect hypothesis (permutation / phase-randomization / independent surrogate), never against a resample of the observation. *(Added 2026-07-30 by PREREG-AMENDMENT-1; not KICKOFF text.)*
+
+### Why sentence 6 is numbered 6
+
+The authorization asked for "sentence 7". This file held exactly five sentences, so the
+next number is 6 and that is what was used; leaving a phantom clause 6 in a constitutional
+document would be worse than the renumbering. If the intended numbering was the seven
+KICKOFF invariants rather than this file's clause list, renumbering is a one-line seed
+edit — and, being a seed edit, a plastic one under gate 4.
 
 ---
 
@@ -21,6 +36,7 @@ structurally in code, and each enforcement point is cited below the sentence it 
 | 3 | `engine/types.py:WarrantTier` | `clamp_eligible` is a read-only property derived from the tier, not a settable field. Only `KERNEL` and `CI_RECEIPT` return `True`. Every `Delta` produced by `engine/extract.py` is stamped `EXTRACTION` by the extractor base class, which the concrete extractors cannot override. |
 | 4 | `engine/seed_lock.py:verify` | `verify()` recomputes the hash of every seed file, prompt, and pinned toolchain version and compares against `SEED.lock`. CI runs it on every push (`.github/workflows/ci.yml`). Drift fails the build. Legitimate changes must be accompanied by a `phase: seed-morphism` record in `registry/REGISTRY.jsonl` carrying `cold_anneal_ref`. |
 | 5 | `engine/meter.py:read_floor` | `read_floor()` requires a `NullBatteryReport` argument whose `seed_hash` equals the current seed hash and whose status is `PASS`. Any other value raises `GateViolation`. There is no floor-reading path that bypasses it. |
+| 6 | `engine/audit.py:floor_verdict` + `engine/nulls.py:run_battery` | R3's branch is decided by `floor <= second_fdt_surrogate_floor`, a loop-by-loop permutation of the warm/cold labels — a null built under the no-effect hypothesis (the arms are exchangeable). The bootstrap band is still computed and reported as a legacy diagnostic but decides nothing. On the battery side, every null cell carries a positive control and `NullBatteryReport.status` returns `FAIL` if any control is dead, so no cell can report a verdict it was incapable of failing. `tests/test_controls.py` pins both. |
 
 ## Constants (SEED.lock scope)
 

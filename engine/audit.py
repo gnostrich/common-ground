@@ -1,25 +1,102 @@
 """PREREG R1-R5, evaluated mechanically.
 
 Each rule is a function returning a verdict. No rule is decided by a person reading a
-number: R3's "~0" is `floor <= surrogate q95`, R4's "moves < surrogate noise" is the same
-comparison on the movement, and R5 is enforced by the verdict vocabulary having no
-`pending` member.
+number: R3's "~0" is `floor <= second_fdt_surrogate_floor`, R4's "moves < surrogate noise"
+is a comparison against a prior-dropout null, and R5 is enforced by the verdict vocabulary
+having no `pending` member.
+
+Amendments to the pre-registration live in `AMENDMENTS` below and in `registry/PREREG.md`.
+R1-R5's original text is never rewritten; an amendment is appended and cited from the code
+it changes.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
+from . import GateViolation
 from .blocks import drop_edges
-from .constants import PRIOR_DROPOUT_RATE, PRIOR_DROPOUT_TRIALS, SURROGATE_QUANTILE
+from .constants import PRIOR_DROPOUT_RATE, PRIOR_DROPOUT_TRIALS, REGISTRY_DIR, SURROGATE_QUANTILE
 from .extract import Extractor
 from .hashing import DRNG, quantile
 from .meter import MeterResult
 from .normalize import address, classify
 from .pipeline import Ledger, build_ledger, run_meter
 from .types import Document, NullBatteryReport, NullStatus
+
+#: Authorized, logged amendments to the pre-registration. Append-only.
+AMENDMENTS: tuple[dict[str, object], ...] = (
+    {
+        "id": "PREREG-AMENDMENT-1",
+        "date": "2026-07-30",
+        "rule": "R3",
+        "change": (
+            "near_zero is decided by `floor <= second_fdt_surrogate_floor` "
+            "(warm/cold label permutation) instead of "
+            "`floor <= quantile(surrogate_floor_distribution, 0.95)` (bootstrap of the "
+            "observed floors). The bootstrap band is retained as a legacy diagnostic and "
+            "decides nothing."
+        ),
+        "rationale": (
+            "(a) transcription defect: the specification always named the second-FDT "
+            "surrogate — it is the reference the mint threshold is quoted against in the "
+            "seed/GATES.md constants table — and the bootstrap was a drafting degradation, "
+            "not a design decision. "
+            "(b) no data has passed through R3: P3 and P4 have not run, so no verdict is "
+            "being revised after seeing a result. "
+            "(c) the amendment is strictness-increasing: the label-permutation threshold "
+            "is not centred on the observation, so the `~0` branch — the branch that "
+            "advances no protocol claim but does declare the pipeline self-consistent — "
+            "becomes harder to obtain, never easier."
+        ),
+        "authorized_by": "operator",
+        "expires": "the moment P3 ingestion begins",
+        "also": (
+            "seed/GATES.md sentence 6 added; D7 re-approved over the amended PREREG; "
+            "cold re-anneal under gate 4."
+        ),
+    },
+)
+
+
+def p3_has_begun(registry_path: Path | None = None) -> bool:
+    """True once any P3 phase-run has been registered.
+
+    The amendment authorization is scoped: it expires when P3 ingestion begins. After that
+    point no rule may be amended, because the moment data starts flowing through the rules
+    an amendment stops being a correction and starts being a choice made in sight of a
+    result — which is the thing pre-registration exists to prevent.
+    """
+    path = registry_path or (REGISTRY_DIR / "REGISTRY.jsonl")
+    if not path.exists():
+        return False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if entry.get("entry") == "phase-run" and str(entry.get("phase", "")).upper().startswith("P3"):
+            return True
+    return False
+
+
+def check_amendment_window(registry_path: Path | None = None) -> None:
+    """Refuse a further PREREG amendment once P3 has begun. Mechanical, not remembered."""
+    if p3_has_begun(registry_path):
+        raise GateViolation(
+            4,
+            "the PREREG amendment window closed when P3 ingestion began: "
+            f"{len(AMENDMENTS)} amendment(s) stand as logged and no further amendment is "
+            "authorized. A rule changed after data has flowed through it is a choice made "
+            "in sight of a result.",
+        )
 
 
 class Verdict(str, Enum):
@@ -158,33 +235,42 @@ def _extract_not_claimed(doc: Document | None) -> list[str]:
 def floor_verdict(result: MeterResult, beta: float | None = None) -> RuleResult:
     """R3: cold floor after shadow subtraction is either ~0 or structured.
 
-    "~0" is `floor <= surrogate q95` — never an eyeball reading. The two branches are
-    different findings, not degrees of one: `~0` validates the pipeline and advances no
-    protocol claim; `structured` yields modes reported verbatim with no interpretation
-    beyond listing them.
+    "~0" is `floor <= second_fdt_surrogate_floor` — never an eyeball reading. The two
+    branches are different findings, not degrees of one: `~0` validates the pipeline and
+    advances no protocol claim; `structured` yields modes reported verbatim with no
+    interpretation beyond listing them.
 
-    **Known defect, reported and not silently fixed.** `surrogate_q95` bootstraps the
-    observed loop floors, so the band is centred on the data and moves with whatever floor
-    it is handed — the same vacuity that retired null cells (iv) and (v). A floor of 0.45
-    carried entirely by the cold arm is called `~0` by this rule, which is pinned in
-    `tests/test_controls.py:R3CarriesTheSameDefect`. PREREG is frozen under D7, and
-    swapping a pre-registered rule's decision procedure mid-project is an amendment for the
-    operator to authorize, not a fix to slip in — so the branch logic is untouched.
+    **PREREG-AMENDMENT-1 (2026-07-30).** The decisive surrogate is the second-kind
+    fluctuation-dissipation floor: warm/cold labels permuted loop by loop, which is a null
+    constructed under the no-effect hypothesis that the two arms are exchangeable. Under
+    that null the distribution matches the observed floor; under real path dependence the
+    observed floor exceeds it.
 
-    What is added is transparency: `second_fdt_floor` is reported in `stats` and in the
-    detail line on every R3 verdict. That surrogate permutes the warm/cold labels loop by
-    loop, so it is a null rather than a resample of the answer, and it separates the two
-    branches where the bootstrap does not. Any reader of an R3 verdict sees both numbers.
+    It previously read `floor <= quantile(surrogate_floor_distribution, 0.95)`, a bootstrap
+    of the observed loop floors. That band is centred on the data and moves with whatever
+    floor it is handed, so a mean floor of 0.45 carried entirely by the cold arm was called
+    `~0` — the same vacuity that retired null cells (iv) and (v). The specification always
+    named the second-FDT surrogate (it is the reference the mint threshold is quoted
+    against, `seed/GATES.md` constants table); the bootstrap was a drafting degradation, not
+    a design decision.
+
+    The bootstrap band is still computed and reported as `surrogate_q95`, a **legacy
+    diagnostic**. It decides nothing. Both numbers appear in `stats` on every verdict, and
+    a disagreement between them is called out in the detail line.
+
+    See `registry/PREREG.md` for the amendment record and `seed/GATES.md` sentence 6 for
+    the constitutional rule this now instantiates.
     """
     floor = result.mean_floor(beta)
     band = result.surrogate.get("q95", 0.0)
     fdt = result.surrogate.get("second_fdt_floor", 0.0)
-    near_zero = floor <= band
-    fdt_agrees = floor <= fdt
-    caveat = "" if fdt_agrees == near_zero else (
-        f" NOTE: the label-permutation surrogate disagrees (floor {floor:.6g} vs "
-        f"second_fdt_floor {fdt:.6g}); R3's bootstrap band is centred on the observed "
-        "floors and cannot separate these branches. See audit.floor_verdict."
+    near_zero = floor <= fdt
+    legacy_branch = floor <= band
+    caveat = "" if legacy_branch == near_zero else (
+        f" NOTE: the legacy bootstrap band disagrees (q{int(SURROGATE_QUANTILE * 100)} "
+        f"{band:.6g} would have said "
+        f"{'near_zero' if legacy_branch else 'structured'}). It is centred on the observed "
+        "floors and decides nothing; PREREG-AMENDMENT-1 refers."
     )
 
     modes = [] if near_zero else [
@@ -201,7 +287,9 @@ def floor_verdict(result: MeterResult, beta: float | None = None) -> RuleResult:
             "slots": list(m.slots),
         }
         for m in result.modes(beta)
-        if m.floor > band
+        # Filtered by the decisive threshold, not the legacy one: a mode is a loop whose
+        # floor stands above its own label permutation.
+        if m.floor > fdt
     ]
 
     return RuleResult(
@@ -209,20 +297,21 @@ def floor_verdict(result: MeterResult, beta: float | None = None) -> RuleResult:
         verdict=Verdict.FLOOR_NEAR_ZERO if near_zero else Verdict.FLOOR_STRUCTURED,
         passed=True,  # R3 does not fail; it reports which branch obtains.
         detail=(
-            f"cold floor {floor:.6g} <= surrogate q{int(SURROGATE_QUANTILE * 100)} "
-            f"{band:.6g}: all contest is path-debt; the ledger is self-consistent. "
-            "v0 validation of the pipeline; protocol claims NOT advanced."
+            f"cold floor {floor:.6g} <= second-FDT surrogate floor {fdt:.6g}: all contest "
+            "is path-debt; the ledger is self-consistent. v0 validation of the pipeline; "
+            "protocol claims NOT advanced."
             if near_zero
-            else f"cold floor {floor:.6g} > surrogate q{int(SURROGATE_QUANTILE * 100)} "
-            f"{band:.6g}: structured. {len(modes)} mode(s) reported verbatim; "
+            else f"cold floor {floor:.6g} > second-FDT surrogate floor {fdt:.6g}: "
+            f"structured. {len(modes)} mode(s) reported verbatim; "
             "no interpretation beyond listing."
         ) + caveat,
         stats={
             "floor": floor,
-            "surrogate_q95": band,
-            "second_fdt_floor": fdt,
-            "second_fdt_branch": "near_zero" if fdt_agrees else "structured",
-            "surrogates_agree": fdt_agrees == near_zero,
+            "second_fdt_floor": fdt,          # decisive (PREREG-AMENDMENT-1)
+            "surrogate_q95": band,            # legacy diagnostic; decides nothing
+            "legacy_bootstrap_branch": "near_zero" if legacy_branch else "structured",
+            "surrogates_agree": legacy_branch == near_zero,
+            "decided_by": "second_fdt_surrogate_floor",
             "modes": modes,
         },
     )
@@ -246,6 +335,24 @@ def prior_insensitivity(
     Larger movement means the verdicts are artifacts of the fiber-construction dictionary
     rather than of the ledger, and the rule's consequence is not a warning: the seed
     design is rejected and the run is CLOSED.
+
+    **Non-conforming under GATES.md sentence 6 — flagged, not amended.** "Surrogate noise"
+    here is `baseline.surrogate["q95"]`, the bootstrap of the observed loop floors. That is
+    a resample of the observation, which sentence 6 forbids as a reference for a statistical
+    verdict. PREREG-AMENDMENT-1 authorized this change for R3 only, so R4 is untouched.
+
+    The failure mode differs from R3's and is worth stating precisely: R4 is not vacuous,
+    it is **miscalibrated in the permissive direction**. The band scales with the observed
+    floor, so a run whose floor is near zero gets a near-zero tolerance and R4 is strict,
+    while a run with a large structured floor — exactly the run where dictionary
+    sensitivity would matter most — gets a large tolerance and R4 is lax. The rule relaxes
+    as the stakes rise.
+
+    A conforming reference would be a null under "the dictionary does not matter": the
+    movement under real Q-edge dropout compared against the movement under dropout from a
+    degree-preserving randomization of the Q graph. That is a design choice, not a
+    transcription fix, and it is not authorized. `stats["decided_by"]` records which
+    reference was actually used so no verdict is read without it.
     """
     base_floor = baseline.mean_floor()
     band = baseline.surrogate.get("q95", 0.0)
@@ -283,6 +390,14 @@ def prior_insensitivity(
             "band": band,
             "rate": rate,
             "trials": trials,
+            "decided_by": "bootstrap_surrogate_q95",
+            "gate6_conforming": False,
+            "gate6_note": (
+                "the reference band is a resample of the observed floors, which GATES.md "
+                "sentence 6 forbids; R4 was outside PREREG-AMENDMENT-1's scope and is "
+                "unchanged. The band scales with the floor, so R4 relaxes as the floor "
+                "grows. See audit.prior_insensitivity."
+            ),
         },
     )
 

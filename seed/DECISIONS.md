@@ -79,10 +79,24 @@ Observed in this container (a candidate, not a decision): Python 3.11.15. The en
 pure-stdlib by design — no numpy, no scipy — so that hashes and singular values are
 reproducible across platforms rather than dependent on a linked LAPACK build.
 
-## D7 — PREREG approved as-is / amended — **RESOLVED (as-is)**
+## D7 — PREREG approved as-is / amended — **RESOLVED (re-approved over PREREG-AMENDMENT-1)**
 
-Approved as-is. `registry/PREREG.md` reproduces KICKOFF §5 without amendment; R1–R5 and the
-not-claimed list are verbatim. It is frozen on commit.
+Originally approved as-is: `registry/PREREG.md` reproduced KICKOFF §5 without amendment,
+R1–R5 and the not-claimed list verbatim, frozen on commit.
+
+**Re-approved 2026-07-30 over one amendment.** PREREG-AMENDMENT-1 changes which surrogate
+decides R3's branch — `second_fdt_surrogate_floor` (warm/cold label permutation) replaces
+the bootstrap band, which is retained as a legacy diagnostic that decides nothing. R1–R5's
+text is still verbatim and unrewritten; the amendment is appended, not merged.
+
+The amendment was admissible on three grounds, all recorded in full in `registry/PREREG.md`:
+the specification always named the second-FDT surrogate (the mint threshold in the GATES.md
+constants table is quoted against it), so the bootstrap was a transcription defect rather
+than a design choice; no data had passed through R3, P3 and P4 not having run; and the
+change is strictness-increasing, making the `~0` branch harder to obtain rather than easier.
+
+The authorization to amend expires when P3 ingestion begins, enforced by
+`audit.check_amendment_window()` rather than remembered.
 
 ## D8 — lexicon import pins — **PARTIAL** (policy decided, two artifacts outstanding)
 
@@ -154,5 +168,5 @@ overloads — `chart`, `fiber`, `kernel`.
 | D4 | PARTIAL (spend cap unresolved) | `SEED.lock`, P3 |
 | D5 | **UNRESOLVED** | `SEED.lock`, P1 null cell (iii) |
 | D6 | **UNRESOLVED** | `SEED.lock`, every kernel clamp |
-| D7 | RESOLVED (as-is) | — |
+| D7 | RESOLVED (re-approved over PREREG-AMENDMENT-1) | — |
 | D8 | PARTIAL (policy set, 2 artifacts + 3 digests outstanding) | `SEED.lock`, null cells vi/vii/ix |

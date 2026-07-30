@@ -1,9 +1,18 @@
-# PREREG — frozen on commit (D7: approved as-is)
+# PREREG — frozen on commit (D7: re-approved over PREREG-AMENDMENT-1)
 
-Reproduced from KICKOFF §5 without amendment. D7 was approved as-is; there are no
-amendments. Frozen on commit and hashed nowhere else — this file lives outside `seed/`
-deliberately, because it constrains *interpretation*, not addressing, and amending it
-would not be a seed-morphism.
+R1–R5 and the not-claimed list are reproduced from KICKOFF §5 verbatim and have never been
+rewritten. **One amendment is in force**: PREREG-AMENDMENT-1 (2026-07-30) changes which
+surrogate decides R3's branch. It is recorded in full under **Amendments** at the end of
+this file, appended rather than merged, and cited from the code it changes. D7 was
+re-approved over the amended text.
+
+Frozen on commit and hashed nowhere else — this file lives outside `seed/` deliberately,
+because it constrains *interpretation*, not addressing, so amending it is not by itself a
+seed-morphism. PREREG-AMENDMENT-1 also added a sentence to `seed/GATES.md`, and *that* part
+is a seed-morphism: logged, and cold re-annealed.
+
+The authorization to amend expires when P3 ingestion begins, enforced by
+`audit.check_amendment_window()`.
 
 ---
 
@@ -47,24 +56,8 @@ different findings, and publishing them as the same one would be a false report.
 bootstrap over loops from the same run. Without that, "approximately zero" would be a
 judgement call, and R3 says interpretation is mechanical.
 
-> **Defect notice, added at P1 — R1–R5 above are unchanged.** That bootstrap is centred on
-> the observed floors, so the band moves with whatever floor it is handed. Applying the
-> positive-control rule to R3 (`tests/test_controls.py:R3CarriesTheSameDefect`) shows a
-> mean floor of 0.45, carried entirely by the cold arm, being called `~0`. This is the same
-> vacuity that retired null cells (iv) and (v).
->
-> R3 is **not amended**. PREREG is frozen under D7, and changing a pre-registered rule's
-> decision procedure after the fact is exactly the move pre-registration exists to prevent
-> — it is the operator's call, and P3/P4 have not run, so nothing has been decided through
-> R3 yet. Two things were done instead: the defect is pinned by a test so it cannot be
-> forgotten, and `audit.floor_verdict` now reports `second_fdt_floor` (the label-permutation
-> surrogate, already computed on every run) in its stats and appends an explicit caveat to
-> the detail line whenever the two surrogates disagree. The verdict is unchanged; nobody
-> reading one is left unaware.
->
-> If R3 is to become non-vacuous, the amendment is one line —
-> `near_zero = floor <= result.surrogate["second_fdt_floor"]` — and it needs authorization,
-> a logged amendment, and a cold re-anneal, not a quiet edit.
+> **Superseded by PREREG-AMENDMENT-1.** The paragraph above is the original text and is
+> kept unrewritten. The surrogate it names is no longer decisive; see the amendment below.
 
 **On R3's two branches.** They are not degrees of the same finding. `~0` advances nothing
 about the protocol — it validates the pipeline and stops. `structured` produces a list of
@@ -84,3 +77,79 @@ in-process fallback as a cross-session warm arm.
 
 One page in `reports/`: matrix, verdict sentence, what is NOT claimed. Worktree closed.
 Terminal either way. Per KICKOFF §7.6, no additional rounds are proposed on completion.
+
+---
+
+## Amendments
+
+Amendments are appended, never merged into the rules above. R1–R5's original text and the
+original commentary stand unrewritten; each amendment states what it changes, why, and
+under what authorization, and is cited from the code it changes.
+
+### PREREG-AMENDMENT-1 — R3's decisive surrogate
+
+**Date:** 2026-07-30 · **Authorized by:** operator · **Status:** in force
+**Touches:** `engine/audit.py:floor_verdict`, `seed/GATES.md` sentence 6, D7
+
+**Change.** R3's branch is decided by
+
+```
+near_zero = floor <= second_fdt_surrogate_floor      # label permutation
+```
+
+replacing
+
+```
+near_zero = floor <= quantile(surrogate_floor_distribution, 0.95)   # bootstrap
+```
+
+The bootstrap band is **retained and still reported** on every verdict as
+`stats["surrogate_q95"]`, a legacy diagnostic. It decides nothing. When the two surrogates
+would disagree, `floor_verdict` says so explicitly in its detail line. The mode list is
+filtered by the decisive threshold.
+
+**Rationale.**
+
+**(a) Transcription defect.** The specification always named the second-FDT surrogate — it
+is the reference the mint threshold is quoted against in the `seed/GATES.md` constants
+table ("3× second-FDT surrogate floor"). The bootstrap in R3 was a drafting degradation
+during transcription, not a design decision. This amendment restores the specified
+procedure rather than choosing a new one.
+
+**(b) No data has passed through R3.** P3 and P4 have not run. No verdict is being revised
+after seeing a result, and no result exists that could have motivated the change. The
+defect was found by applying the positive-control rule to a rule rather than to a cell.
+
+**(c) Strictness-increasing.** The label-permutation threshold is not centred on the
+observation, so it does not rise to meet whatever floor it is handed. The `~0` branch —
+which advances no protocol claim but does declare the pipeline self-consistent — becomes
+harder to obtain, never easier. An amendment that could only make a favourable branch
+easier would not be admissible on rationale (b) alone.
+
+**What the old rule did.** A mean floor of 0.45 carried entirely by the cold arm was called
+`~0`, because the bootstrap band was a resample of those same floors. This is the same
+vacuity that retired null cells (iv) and (v) at P1.
+
+**Historical pin.** `tests/test_controls.py:R3CarriesTheSameDefect` is **kept**. It tests
+the superseded computation directly rather than through `floor_verdict`, so it records what
+the defect was and stays green under the amended rule. Deleting it would erase the reason
+the amendment exists.
+
+**Constitutional consequence.** `seed/GATES.md` sentence 6, added under this amendment:
+
+> Every statistical verdict is decided against a null constructed under the no-effect
+> hypothesis (permutation / phase-randomization / independent surrogate), never against a
+> resample of the observation.
+
+That sentence generalizes the fix beyond R3. It is marked in GATES.md as operator-added
+rather than KICKOFF text.
+
+**Seed consequence.** Editing `seed/GATES.md` moves the seed hash. That is plastic under
+gate 4: a `seed-morphism` event is logged in `REGISTRY.jsonl` with the before/after hashes,
+and the null battery is re-run cold on the new hash. No warm state was carried across —
+there was none to carry, the lock being provisional and no phase beyond P1 having run.
+
+**Scope and expiry.** The authorization expires the moment P3 ingestion begins. This is
+enforced mechanically, not remembered: `audit.check_amendment_window()` raises once any
+`P3` phase-run appears in `registry/REGISTRY.jsonl`. After that point a rule changed is a
+choice made in sight of a result.

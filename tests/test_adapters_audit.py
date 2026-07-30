@@ -229,26 +229,43 @@ class PreregRules(unittest.TestCase):
         self.assertIs(r.verdict, Verdict.CLOSED_INCONCLUSIVE)
         self.assertIn("D5", r.detail)
 
+    # PREREG-AMENDMENT-1: the surrogate that decides R3 is `second_fdt_floor` (warm/cold
+    # label permutation), not `q95` (bootstrap of the observed floors). `q95` is still
+    # supplied here so the legacy-diagnostic reporting stays exercised.
+
     def test_R3_near_zero_branch(self):
-        result = MeterResult("s", [self._measurement(0.0)], {"q95": 0.01})
+        result = MeterResult("s", [self._measurement(0.0)],
+                             {"q95": 0.01, "second_fdt_floor": 0.01})
         r = floor_verdict(result)
         self.assertIs(r.verdict, Verdict.FLOOR_NEAR_ZERO)
         self.assertIn("protocol claims NOT advanced", r.detail)
 
     def test_R3_structured_branch_lists_modes_verbatim(self):
         result = MeterResult("s", [self._measurement(0.5, "hot"), self._measurement(0.0, "cold")],
-                             {"q95": 0.01})
+                             {"q95": 0.01, "second_fdt_floor": 0.01})
         r = floor_verdict(result)
         self.assertIs(r.verdict, Verdict.FLOOR_STRUCTURED)
         modes = r.stats["modes"]
         self.assertEqual(len(modes), 1)
         self.assertEqual(modes[0]["loop_id"], "hot")
 
-    def test_R3_reads_near_zero_against_the_band_not_by_eye(self):
-        tight = MeterResult("s", [self._measurement(0.02)], {"q95": 0.01})
-        loose = MeterResult("s", [self._measurement(0.02)], {"q95": 0.5})
+    def test_R3_reads_near_zero_against_the_null_not_by_eye(self):
+        tight = MeterResult("s", [self._measurement(0.02)],
+                            {"q95": 0.01, "second_fdt_floor": 0.01})
+        loose = MeterResult("s", [self._measurement(0.02)],
+                            {"q95": 0.01, "second_fdt_floor": 0.5})
         self.assertIs(floor_verdict(tight).verdict, Verdict.FLOOR_STRUCTURED)
         self.assertIs(floor_verdict(loose).verdict, Verdict.FLOOR_NEAR_ZERO)
+
+    def test_R3_ignores_the_legacy_bootstrap_band(self):
+        """A generous bootstrap band no longer rescues a structured floor."""
+        result = MeterResult("s", [self._measurement(0.4)],
+                             {"q95": 0.9, "second_fdt_floor": 0.01})
+        r = floor_verdict(result)
+        self.assertIs(r.verdict, Verdict.FLOOR_STRUCTURED)
+        self.assertEqual(r.stats["legacy_bootstrap_branch"], "near_zero")
+        self.assertEqual(r.stats["decided_by"], "second_fdt_surrogate_floor")
+        self.assertIn("legacy bootstrap band disagrees", r.detail)
 
     def test_R4_on_a_real_corpus(self):
         docs = [Document("d1", "english",

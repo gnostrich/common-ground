@@ -20,7 +20,8 @@ refusal is mechanical: `engine/seed_lock.py:build()` raises rather than emitting
 ```
 $ python cli.py status
 D1 resolved     D2 resolved     D3 unresolved   D4 partial
-D5 unresolved   D6 unresolved   D7 resolved     D8 partial
+D5 unresolved   D6 unresolved   D7 resolved*    D8 partial
+                                * re-approved over PREREG-AMENDMENT-1
 ```
 
 The null battery runs and reports honestly at the provisional seed hash. Every cell carries
@@ -59,10 +60,11 @@ defaults the brief itself states. Details and reasoning in `seed/DECISIONS.md`.
 
 ---
 
-## The five gates, and where each is enforced
+## The six gates, and where each is enforced
 
-`seed/GATES.md` holds the constitutional text verbatim. Each is enforced structurally, not
-by convention:
+`seed/GATES.md` holds the constitutional text. Sentences 1–5 are KICKOFF §2 verbatim;
+sentence 6 was added by operator authorization under PREREG-AMENDMENT-1 and is marked as
+such in the file. Each is enforced structurally, not by convention:
 
 1. **Addressing** — `normalize.slot_id(nu, type)` takes exactly two arguments and reads no
    engine state. `nu` is chart-indexed and emits the chart as a control-character tag
@@ -78,9 +80,16 @@ by convention:
    it on every push and fails on drift.
 5. **Nulls before floors** — `meter.read_floor()` requires a `NullBatteryReport` that
    passed *on the same seed hash*, and it is the only function that returns a floor.
+6. **Nulls, not resamples** — every statistical verdict is decided against a null built
+   under the no-effect hypothesis, never against a resample of the observation.
+   `audit.floor_verdict` decides R3 by warm/cold label permutation; `run_battery` fails
+   outright if any cell's positive control is dead. This is the generalization of the two
+   vacuous cells and the one vacuous PREREG rule that P1 turned up.
 
 Try to violate them: `tests/test_gates.py` does, including smuggling a downgraded warrant
 past `Clamp`'s constructor via `object.__setattr__` to check `settle()` still catches it.
+`tests/test_controls.py` covers gate 6 from both sides — the live controls, and the
+superseded R3 computation kept as a historical pin.
 
 ## The lexicon layer — hub of faces, not hub of truth
 
@@ -182,7 +191,7 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 167 tests, stdlib only
+make test            # 174 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
 make nulls           # P1 null battery + positive controls at the current seed hash
 make lock            # refuses while any decision is blank

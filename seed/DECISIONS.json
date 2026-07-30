@@ -67,8 +67,12 @@
   },
   "D7": {
     "status": "resolved",
-    "prereg": "as-is",
-    "amendments": []
+    "choice": "re-approved-over-amendment",
+    "note": "Originally approved as-is. Re-approved 2026-07-30 over PREREG-AMENDMENT-1, which changes R3's decisive surrogate to second_fdt_surrogate_floor (label permutation); the bootstrap band is retained as a legacy diagnostic and decides nothing. R1-R5 text remains verbatim and unrewritten - the amendment is appended, not merged. Admissible on three grounds: transcription defect (the spec always named the second-FDT surrogate), no data had passed through R3, and the change is strictness-increasing. Amendment authority expires when P3 ingestion begins.",
+    "amendments": [
+      "PREREG-AMENDMENT-1"
+    ],
+    "prereg_path": "registry/PREREG.md"
   },
   "D8": {
     "status": "partial",

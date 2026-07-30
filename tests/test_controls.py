@@ -212,40 +212,68 @@ class CellVIsNoLongerVacuous(unittest.TestCase):
 
 
 class R3CarriesTheSameDefect(unittest.TestCase):
-    """The positive control applied to PREREG R3, which is not a battery cell.
+    """**Historical pin — kept after PREREG-AMENDMENT-1, deliberately.**
 
-    R3 decides the headline result of the whole run — "the cold floor is ~0" versus "the
-    floor is structured" — and it decides it with `floor <= q95(surrogate_floor_
-    distribution)`. That is the *same* bootstrap-of-the-observed-floors that made cells
-    (iv) and (v) vacuous: the band is centred on the data, so it moves with whatever floor
-    it is handed, and the `~0` branch is taken at a large structured floor as readily as at
-    zero.
+    R3 decides the headline result of the whole run: "the cold floor is ~0" versus "the
+    floor is structured". Until 2026-07-30 it decided that with
+    `floor <= q95(surrogate_floor_distribution)` — the *same* bootstrap-of-the-observed-
+    floors that made null cells (iv) and (v) vacuous. The band is centred on the data, so
+    it rises to meet whatever floor it is handed and the `~0` branch was taken at a large
+    structured floor as readily as at zero.
 
-    These tests pin the defect rather than fix it. PREREG is frozen under D7 (approved
-    as-is), and swapping R3's decision procedure is an amendment to a pre-registered
-    analysis — the operator's call, not something to slip in during P1. Nothing has been
-    read through R3 yet: P3 and P4 have not run, so this is caught before it decided
-    anything, which is the only good time to catch it.
+    PREREG-AMENDMENT-1 replaced that with `floor <= second_fdt_surrogate_floor`, a
+    loop-by-loop permutation of the warm/cold labels — a null built under the no-effect
+    hypothesis rather than a resample of the answer.
 
-    The non-vacuous alternative already exists and is already computed and logged on every
-    run: `second_fdt_surrogate_floor` permutes the warm/cold *labels* loop by loop. Under
-    the null that the arms are exchangeable — no path dependence — its distribution matches
-    the observed floor; under real path dependence the observed floor exceeds it. It is a
-    null, not a resample of the answer. `MeterResult.surrogate["second_fdt_floor"]` is
-    where R3 would read it.
+    These tests exercise the **superseded computation directly**, not through
+    `floor_verdict`, so they keep recording what the defect was without asserting anything
+    about the current rule. Deleting them would erase the reason the amendment exists. The
+    tests below this class check what `floor_verdict` does now.
     """
 
     @staticmethod
-    def _result(floor: float, seed: str = "r3") -> "object":
-        from engine.meter import LoopMeasurement, MeterResult, second_fdt_surrogate_floor, surrogate_floor_distribution
-        from engine.hashing import quantile
+    def _rows(floor: float):
+        from engine.meter import LoopMeasurement
 
         # Every loop's contest is path-dependent: the cold arm sits at `floor`, the warm
         # arm at zero. That is the shape R3 is supposed to call "structured".
-        rows = [
+        return [
             LoopMeasurement(f"loop{i}", "paraphrase", 1.0, 0.0, floor, 0.0, floor, floor, ("a", "b"))
             for i in range(8)
         ]
+
+    def test_the_superseded_bootstrap_would_have_called_any_floor_near_zero(self):
+        from engine.hashing import quantile
+        from engine.meter import surrogate_floor_distribution
+
+        for floor in (0.0, 0.45):
+            rows = self._rows(floor)
+            band = quantile(surrogate_floor_distribution(rows, "r3"), 0.95)
+            observed = sum(m.floor for m in rows) / len(rows)
+            self.assertLessEqual(observed, band + 1e-12,
+                                 f"floor={floor} — the band tracks the data, so `~0` was always taken")
+
+    def test_the_label_permutation_surrogate_separates_what_the_bootstrap_could_not(self):
+        from engine.meter import second_fdt_surrogate_floor
+
+        for floor, expect_structured in ((0.0, False), (0.45, True)):
+            rows = self._rows(floor)
+            observed = sum(m.floor for m in rows) / len(rows)
+            fdt = second_fdt_surrogate_floor(rows, "r3")
+            self.assertEqual(observed > fdt, expect_structured,
+                             f"floor={floor}: a floor carried entirely by the cold arm must "
+                             "beat its own label permutation, and a zero floor must not")
+
+
+class R3AfterTheAmendment(unittest.TestCase):
+    """PREREG-AMENDMENT-1: the second-FDT surrogate decides; the bootstrap is a diagnostic."""
+
+    @staticmethod
+    def _result(floor: float, seed: str = "r3"):
+        from engine.hashing import quantile
+        from engine.meter import MeterResult, second_fdt_surrogate_floor, surrogate_floor_distribution
+
+        rows = R3CarriesTheSameDefect._rows(floor)
         result = MeterResult(seed_hash=seed, measurements=rows)
         result.surrogate = {
             "n": float(len(rows)),
@@ -254,32 +282,95 @@ class R3CarriesTheSameDefect(unittest.TestCase):
         }
         return result
 
-    def test_the_bootstrap_band_calls_a_large_structured_floor_near_zero(self):
+    def test_a_structured_floor_is_now_called_structured(self):
         from engine.audit import Verdict, floor_verdict
 
-        for floor in (0.0, 0.45):
-            verdict = floor_verdict(self._result(floor))
-            self.assertIs(verdict.verdict, Verdict.FLOOR_NEAR_ZERO,
-                          f"floor={floor} — the band tracks the data, so `~0` is always taken")
+        verdict = floor_verdict(self._result(0.45))
+        self.assertIs(verdict.verdict, Verdict.FLOOR_STRUCTURED)
+        self.assertEqual(verdict.stats["decided_by"], "second_fdt_surrogate_floor")
+        self.assertTrue(verdict.stats["modes"], "the structured branch must list its modes")
 
-    def test_the_verdict_reports_the_disagreement_it_cannot_act_on(self):
-        """R3's branch is untouched, but no reader of it is left unaware."""
+    def test_a_genuinely_zero_floor_is_still_called_near_zero(self):
+        """Strictness-increasing, not strictness-maximizing: the `~0` branch still exists."""
+        from engine.audit import Verdict, floor_verdict
+
+        self.assertIs(floor_verdict(self._result(0.0)).verdict, Verdict.FLOOR_NEAR_ZERO)
+
+    def test_the_legacy_bootstrap_is_reported_but_decides_nothing(self):
         from engine.audit import floor_verdict
 
         verdict = floor_verdict(self._result(0.45))
+        self.assertIn("surrogate_q95", verdict.stats)
+        self.assertEqual(verdict.stats["legacy_bootstrap_branch"], "near_zero")
         self.assertFalse(verdict.stats["surrogates_agree"])
-        self.assertEqual(verdict.stats["second_fdt_branch"], "structured")
-        self.assertIn("label-permutation surrogate disagrees", verdict.detail)
+        self.assertIn("legacy bootstrap band disagrees", verdict.detail)
 
-    def test_the_label_permutation_surrogate_separates_the_two(self):
-        """What a live control for R3 would look like, if PREREG were amended to use it."""
-        near_zero = self._result(0.0)
-        structured = self._result(0.45)
+    def test_the_amendment_window_closes_when_P3_begins(self):
+        """The authorization is scoped, and the scope is mechanical rather than remembered."""
+        import json
+        import tempfile
+        from pathlib import Path
 
-        self.assertLessEqual(near_zero.mean_floor(), near_zero.surrogate["second_fdt_floor"] + 1e-12)
-        self.assertGreater(structured.mean_floor(), structured.surrogate["second_fdt_floor"],
-                           "a floor carried entirely by the cold arm must beat its own "
-                           "label permutation, or nothing distinguishes structure from noise")
+        from engine import GateViolation
+        from engine.audit import check_amendment_window, p3_has_begun
+
+        with tempfile.TemporaryDirectory() as tmp:
+            reg = Path(tmp) / "REGISTRY.jsonl"
+            reg.write_text(json.dumps({"entry": "phase-run", "phase": "P1"}) + "\n", encoding="utf-8")
+            self.assertFalse(p3_has_begun(reg))
+            check_amendment_window(reg)  # still open
+
+            with reg.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"entry": "phase-run", "phase": "P3"}) + "\n")
+            self.assertTrue(p3_has_begun(reg))
+            with self.assertRaises(GateViolation):
+                check_amendment_window(reg)
+
+    def test_the_amendment_is_recorded_with_its_rationale(self):
+        from engine.audit import AMENDMENTS
+
+        one = next(a for a in AMENDMENTS if a["id"] == "PREREG-AMENDMENT-1")
+        self.assertEqual(one["rule"], "R3")
+        for clause in ("transcription defect", "no data has passed through R3",
+                       "strictness-increasing"):
+            self.assertIn(clause, one["rationale"])
+
+
+class R4IsNotYetConformingToGate6(unittest.TestCase):
+    """Gate 6 binds every statistical verdict, and R4 does not satisfy it yet.
+
+    R4 compares the floor's movement under Q-edge dropout against
+    `baseline.surrogate["q95"]` — the bootstrap of the observed floors, i.e. a resample of
+    the observation. PREREG-AMENDMENT-1 was scoped to R3, so R4 is flagged rather than
+    changed; amending it is a further authorization.
+
+    R4 is *not* vacuous the way R3 was. It is miscalibrated in the permissive direction:
+    the reference band scales with the observed floor, so the rule is strict on a run whose
+    floor is near zero and lax on a run whose floor is large — relaxing exactly where
+    dictionary sensitivity would matter most. That asymmetry is what these tests pin.
+    """
+
+    def test_the_reference_band_grows_with_the_floor_it_is_meant_to_police(self):
+        from engine.hashing import quantile
+        from engine.meter import surrogate_floor_distribution
+
+        bands = []
+        for floor in (0.0, 0.4):
+            rows = R3CarriesTheSameDefect._rows(floor)
+            bands.append(quantile(surrogate_floor_distribution(rows, "r4"), 0.95))
+        self.assertLess(bands[0], bands[1],
+                        "a larger floor buys a larger movement tolerance — the rule relaxes "
+                        "as the stakes rise")
+
+    def test_the_verdict_declares_its_own_non_conformance(self):
+        """No R4 verdict can be read without seeing which reference decided it."""
+        import inspect
+
+        from engine.audit import prior_insensitivity
+
+        source = inspect.getsource(prior_insensitivity)
+        self.assertIn('"gate6_conforming": False', source)
+        self.assertIn('"decided_by": "bootstrap_surrogate_q95"', source)
 
 
 class BrokenFixtures(unittest.TestCase):
