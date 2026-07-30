@@ -62,16 +62,32 @@ jobs:
             echo "lock correctly refused"
           fi
 
-      - name: null cells i and ii — always runnable, must always be green
+      - name: null cells i, ii and viii — always runnable, must always be green
         run: |
           python - <<'PY'
-          from engine.nulls import cell_i_idempotence, cell_ii_paraphrase
+          from engine.nulls import (
+              cell_i_idempotence, cell_ii_paraphrase, cell_vi_hub_coverage,
+              cell_vii_shadow, cell_viii_no_clamp_grep,
+          )
+          from adapters.lexicon_imports import import_convention_table
+          from engine.lexicon import Registry
           from engine.types import NullStatus
           from engine import seed_lock
 
           seed = seed_lock.current().seed_hash
+          registry = Registry()
+          import_convention_table(registry)
           failed = False
-          for cell in (cell_i_idempotence(seed), cell_ii_paraphrase()):
+          cells = (
+              cell_i_idempotence(seed),
+              cell_ii_paraphrase(),
+              # vi and vii run on the convention table, which is present regardless
+              # of D8; viii reads the engine's own source and is never blocked.
+              cell_vi_hub_coverage(registry),
+              cell_vii_shadow(registry),
+              cell_viii_no_clamp_grep(),
+          )
+          for cell in cells:
               print(f"{cell.cell}: {cell.status.value} — {cell.detail}")
               if cell.status is not NullStatus.PASS:
                   failed = True

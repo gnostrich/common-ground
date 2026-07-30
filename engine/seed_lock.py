@@ -78,12 +78,57 @@ def blank_markers_in_decisions_md() -> list[str]:
     return hits
 
 
+#: Files whose content determines the lexicon registry. Hashed into SEED.lock as
+#: `importer_script_hash` (LEXICON SPEC §3): editing any of them changes what the
+#: importer produces, which moves addresses, which is plastic under gate 4.
+IMPORTER_SCRIPT_FILES: tuple[str, ...] = (
+    "adapters/lexicon_imports.py",
+    "engine/lexicon.py",
+    "engine/rmap.py",
+)
+
+
+def importer_script_hash() -> str:
+    from .constants import REPO_ROOT
+
+    parts = []
+    for rel in IMPORTER_SCRIPT_FILES:
+        path = REPO_ROOT / rel
+        parts.append(sha256_file(path) if path.exists() else "missing")
+    return hash_obj({"files": list(IMPORTER_SCRIPT_FILES), "hashes": parts})
+
+
+def lexicon_pins(decisions: dict[str, Any]) -> dict[str, Any]:
+    """The five pins LEXICON SPEC §3 requires, plus the probe fixture.
+
+    The convention table and shadow probes live under `seed/` and are therefore already
+    hashed file-by-file, but they are named here too so a reader of the lock can see the
+    lexicon's inputs in one place without diffing the file map.
+    """
+    from .constants import CONVENTION_TABLE_PATH, SHADOW_PROBES_PATH
+
+    d8 = decisions.get("D8", {})
+    return {
+        "mathlib_commit": d8.get("mathlib_commit"),
+        "nlab_scrape_date": d8.get("nlab_scrape_date"),
+        "wordnet_version": d8.get("wordnet_version"),
+        "convention_table_sha256": (
+            sha256_file(CONVENTION_TABLE_PATH) if CONVENTION_TABLE_PATH.exists() else None
+        ),
+        "shadow_probes_sha256": (
+            sha256_file(SHADOW_PROBES_PATH) if SHADOW_PROBES_PATH.exists() else None
+        ),
+        "importer_script_hash": importer_script_hash(),
+    }
+
+
 def build_manifest(decisions: dict[str, Any] | None = None, provisional: bool = False) -> dict[str, Any]:
     d = decisions if decisions is not None else load_decisions()
     files = {
         str(p.relative_to(SEED_DIR)).replace("\\", "/"): sha256_file(p) for p in seed_files()
     }
     return {
+        "lexicon_pins": lexicon_pins(d),
         "schema": "common-ground/seed-lock/v0",
         "lock_status": "provisional" if provisional else "locked",
         "files": files,
@@ -186,6 +231,14 @@ def verify() -> tuple[bool, list[str]]:
 
     if locked.manifest.get("constants") != recomputed["constants"]:
         problems.append("CONSTANTS.json drifted from the lock")
+
+    old_pins = locked.manifest.get("lexicon_pins", {})
+    new_pins = recomputed["lexicon_pins"]
+    for key in sorted(set(old_pins) | set(new_pins)):
+        if old_pins.get(key) != new_pins.get(key):
+            problems.append(
+                f"lexicon pin drift: {key} ({old_pins.get(key)} -> {new_pins.get(key)})"
+            )
 
     old_tc = dict(locked.manifest.get("toolchain", {}))
     new_tc = dict(recomputed["toolchain"])

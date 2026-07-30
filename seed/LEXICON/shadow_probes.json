@@ -1,0 +1,51 @@
+{
+  "schema": "common-ground/shadow-probes/v0",
+  "note": "Null cell (vii). Pre-registered and frozen with SEED.lock, on the same footing as the paraphrase suite. Each probe is a context plus the sense it must resolve to. A general-English sense winning in a math-typed context is SHADOWING, and the addendum's consequence is not a warning: seed rejected. The reverse direction is checked too — a technical sense winning in a plainly general context is over-reach, and is reported as a failure rather than quietly tolerated.",
+  "terms": [
+    "ring", "field", "graph", "normal", "compact",
+    "positive", "algebra", "category", "measure", "kernel"
+  ],
+  "probes": [
+    { "lemma": "ring", "kind": "technical", "expect": "ring_unital", "context": "Let R be a commutative ring with identity and let I be an ideal of R.", "frames": ["algebra", "ring_theory"] },
+    { "lemma": "ring", "kind": "technical", "expect": "ring_rng", "context": "A rng is an algebra structure not required to have a multiplicative identity element.", "frames": ["algebra", "ring_theory"] },
+    { "lemma": "ring", "kind": "general", "expect": "ring_general", "context": "She wore a silver ring on her left hand.", "frames": ["general"] },
+
+    { "lemma": "field", "kind": "technical", "expect": "field_algebraic", "context": "Every finite field has prime power order and its multiplicative group is cyclic.", "frames": ["algebra", "field_theory"] },
+    { "lemma": "field", "kind": "technical", "expect": "field_physics", "context": "The electromagnetic field assigns a vector to each point of spacetime.", "frames": ["physics", "geometry"] },
+    { "lemma": "field", "kind": "general", "expect": "field_general", "context": "She is a leading researcher in her field.", "frames": ["general"] },
+
+    { "lemma": "graph", "kind": "technical", "expect": "graph_combinatorial", "context": "Let G be a graph with vertex set V and edge set E, and suppose every vertex has even degree.", "frames": ["combinatorics", "graph_theory"] },
+    { "lemma": "graph", "kind": "technical", "expect": "graph_of_function", "context": "The graph of a continuous function into a Hausdorff space is closed in the product.", "frames": ["set_theory", "analysis", "topology"] },
+    { "lemma": "graph", "kind": "general", "expect": "graph_plot", "context": "The graph shows revenue rising sharply over the last quarter.", "frames": ["general", "data"] },
+
+    { "lemma": "normal", "kind": "technical", "expect": "normal_subgroup", "context": "If N is a normal subgroup of G then the quotient G by N is a group.", "frames": ["group_theory", "algebra"] },
+    { "lemma": "normal", "kind": "technical", "expect": "normal_topology", "context": "In a normal space any two disjoint closed sets have disjoint open neighbourhoods.", "frames": ["topology"] },
+    { "lemma": "normal", "kind": "technical", "expect": "normal_distribution", "context": "The sample mean converges to a normal distribution by the central limit theorem.", "frames": ["probability", "statistics"] },
+    { "lemma": "normal", "kind": "general", "expect": "normal_general", "context": "It was a perfectly normal Tuesday afternoon.", "frames": ["general"] },
+
+    { "lemma": "compact", "kind": "technical", "expect": "compact_Anglo", "context": "A closed subset of a compact topological space is compact, since every open cover admits a finite subcover.", "frames": ["topology"] },
+    { "lemma": "compact", "kind": "technical", "expect": "compact_Bourbaki", "context": "In the Bourbaki convention a compact space is quasi-compact and Hausdorff.", "frames": ["topology", "bourbaki"] },
+    { "lemma": "compact", "kind": "general", "expect": "compact_general", "context": "The camera is compact enough to fit in a coat pocket.", "frames": ["general"] },
+
+    { "lemma": "positive", "kind": "technical", "expect": "positive_strict", "context": "For every positive real number epsilon there exists a natural number N with epsilon greater than one over N.", "frames": ["order", "analysis"] },
+    { "lemma": "positive", "kind": "technical", "expect": "positive_definite", "context": "A symmetric matrix is positive definite if and only if all of its eigenvalues are strictly positive.", "frames": ["linear_algebra", "analysis"] },
+    { "lemma": "positive", "kind": "general", "expect": "positive_general", "context": "She had a positive attitude throughout the negotiation.", "frames": ["general"] },
+
+    { "lemma": "algebra", "kind": "technical", "expect": "algebra_over_ring", "context": "Let A be an associative algebra over a commutative ring R with a bilinear multiplication.", "frames": ["algebra", "ring_theory"] },
+    { "lemma": "algebra", "kind": "technical", "expect": "algebra_sigma", "context": "A measurable space consists of a set together with a sigma-algebra of subsets closed under countable union.", "frames": ["measure_theory", "probability"] },
+    { "lemma": "algebra", "kind": "general", "expect": "algebra_subject", "context": "He struggled with algebra in secondary school but enjoyed geometry.", "frames": ["general", "education"] },
+
+    { "lemma": "category", "kind": "technical", "expect": "category_ct", "context": "A category consists of objects and morphisms with associative composition and identity morphisms.", "frames": ["category_theory"] },
+    { "lemma": "category", "kind": "technical", "expect": "category_baire", "context": "By the Baire category theorem a complete metric space is not meagre in itself.", "frames": ["topology", "analysis"] },
+    { "lemma": "category", "kind": "general", "expect": "category_general", "context": "Entries were sorted into three categories before judging.", "frames": ["general"] },
+
+    { "lemma": "measure", "kind": "technical", "expect": "measure_theory", "context": "Let mu be a countably additive measure defined on the Borel sigma-algebra of the real line.", "frames": ["measure_theory", "probability"] },
+    { "lemma": "measure", "kind": "general", "expect": "measure_metric", "context": "Revenue is a poor measure of long-term product health.", "frames": ["general", "statistics"] },
+    { "lemma": "measure", "kind": "general", "expect": "measure_action", "context": "The committee took measures to prevent a recurrence.", "frames": ["general"] },
+
+    { "lemma": "kernel", "kind": "technical", "expect": "kernel_algebra", "context": "The kernel of a group homomorphism is a normal subgroup of the domain.", "frames": ["algebra", "group_theory"] },
+    { "lemma": "kernel", "kind": "technical", "expect": "kernel_proof", "context": "The proof assistant's trusted kernel independently rechecks every term the elaborator produces.", "frames": ["proof_assistant", "logic"] },
+    { "lemma": "kernel", "kind": "technical", "expect": "kernel_integral", "context": "The operator acts by integrating the input function against the kernel K of two variables.", "frames": ["analysis", "functional_analysis"] },
+    { "lemma": "kernel", "kind": "general", "expect": "kernel_os", "context": "The panic was traced to a null dereference in the operating system kernel.", "frames": ["general", "systems"] }
+  ]
+}

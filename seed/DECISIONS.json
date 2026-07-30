@@ -10,29 +10,50 @@
   "D2": {
     "status": "resolved",
     "basis": "stated-default",
-    "charts": ["english", "lean"],
+    "charts": [
+      "english",
+      "lean"
+    ],
     "code_chart": "deferred-to-v0.5"
   },
   "D3": {
     "status": "unresolved",
     "claude_export": null,
     "lean_corpus": null,
-    "repos": ["certified-positivity"],
+    "repos": [
+      "certified-positivity"
+    ],
     "exclusions": null
   },
   "D4": {
     "status": "partial",
     "extractors": [
-      { "id": "k0", "model": "claude-opus-5", "prompt": "extract_v1" },
-      { "id": "k1", "model": "claude-opus-5", "prompt": "extract_v2" },
-      { "id": "k2", "model": "claude-sonnet-5", "prompt": "extract_v1" }
+      {
+        "id": "k0",
+        "model": "claude-opus-5",
+        "prompt": "extract_v1"
+      },
+      {
+        "id": "k1",
+        "model": "claude-opus-5",
+        "prompt": "extract_v2"
+      },
+      {
+        "id": "k2",
+        "model": "claude-sonnet-5",
+        "prompt": "extract_v1"
+      }
     ],
     "spend_cap_usd": null,
     "live_extraction_default": "off"
   },
   "D5": {
     "status": "unresolved",
-    "preminted": ["BVALUED-AGREED.md", "STATEMENTS.md", "REGISTRY.md"],
+    "preminted": [
+      "BVALUED-AGREED.md",
+      "STATEMENTS.md",
+      "REGISTRY.md"
+    ],
     "preminted_present": [],
     "additional": null
   },
@@ -48,5 +69,17 @@
     "status": "resolved",
     "prereg": "as-is",
     "amendments": []
+  },
+  "D8": {
+    "status": "unresolved",
+    "note": "Lexicon import pins (LEXICON SPEC section 3). Each is a pinned artifact; a live pull is forbidden during a run (KICKOFF 7.5) because it cannot hash cleanly.",
+    "mathlib_dump": null,
+    "mathlib_commit": null,
+    "nlab_scrape": null,
+    "nlab_scrape_date": null,
+    "wordnet_path": null,
+    "wordnet_version": null,
+    "convention_table": "drafted-pending-approval",
+    "convention_table_path": "seed/LEXICON/convention_table.json"
   }
 }

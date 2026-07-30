@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from adapters.lexicon_imports import import_all  # noqa: E402
 from adapters.repo_docs import load_preminted  # noqa: E402
 from engine import GateViolation  # noqa: E402
 from engine.constants import BETA_ARMS, REGISTRY_DIR, decisions  # noqa: E402
@@ -65,7 +66,11 @@ def cmd_status(_: argparse.Namespace) -> int:
     p0_ok = not lock.provisional
     print(f"  P0 scaffold + seed assembly   {'ready' if p0_ok else f'{YELLOW}blocked{RESET}: SEED.lock not written'}")
     print(f"  P1 null battery               {'ready' if p0_ok else f'{DIM}gated on P0{RESET}'}")
-    for phase, needs in (("P2 adapters", ("D3",)), ("P3 ingestion", ("D3", "D4", "D5")), ("P4 audit", ("D3", "D4", "D5", "D6"))):
+    for phase, needs in (
+        ("P2 adapters", ("D3",)),
+        ("P3 ingestion", ("D3", "D4", "D5", "D8")),
+        ("P4 audit", ("D3", "D4", "D5", "D6", "D8")),
+    ):
         missing = [n for n in needs if d.get(n, {}).get("status") != "resolved"]
         print(f"  {phase:<30}{'ready' if not missing else f'{YELLOW}blocked{RESET} on ' + ', '.join(missing)}")
 
@@ -141,8 +146,15 @@ def cmd_p1(args: argparse.Namespace) -> int:
     print(f"P1 — null battery @ seed {lock.seed_hash[:16]}"
           + (f" {YELLOW}(provisional){RESET}" if lock.provisional else ""))
 
-    extractors = build_k_extractors(decisions(), offline=True)
+    d = decisions()
+    extractors = build_k_extractors(d, offline=True)
     preminted = load_preminted()
+    registry, imports = import_all(d.get("D8", {}), preminted_docs=preminted)
+    for result in imports:
+        mark = _mark("pass") if result.status == "imported" else _mark("blocked")
+        print(f"  lexicon:{result.source:<12} {mark}  {result.detail}")
+    print()
+
     report = run_battery(
         seed_hash=lock.seed_hash,
         extractors=extractors,
@@ -151,6 +163,7 @@ def cmd_p1(args: argparse.Namespace) -> int:
         held_out=None,
         corpus=(),
         samples=args.samples,
+        registry=registry,
     )
 
     log = RunLog.open(lock.seed_hash, "P1")

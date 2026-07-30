@@ -1,4 +1,4 @@
-# DECISIONS — D1..D7
+# DECISIONS — D1..D8
 
 Owner: Rohan. `SEED.lock` cannot be written while any decision is `UNRESOLVED`
 (`engine/seed_lock.py` scans this file and refuses). Phases P1 and later are blocked on a
@@ -84,6 +84,32 @@ reproducible across platforms rather than dependent on a linked LAPACK build.
 Approved as-is. `registry/PREREG.md` reproduces KICKOFF §5 without amendment; R1–R5 and the
 not-claimed list are verbatim. It is frozen on commit.
 
+## D8 — lexicon import pins — **UNRESOLVED**
+
+Required by LEXICON SPEC §3. Blocks `SEED.lock`, null cells vi/vii/ix at full coverage,
+and null cell ix entirely.
+
+- Mathlib dump path + **commit hash**: `____`
+- nLab alias/redirect scrape path + **scrape date**: `____`
+- WordNet-grade dump path + **version**: `____`
+- convention table: **DRAFTED, pending approval** — `seed/LEXICON/convention_table.json`,
+  176 senses across 46 lemmas, 17 declared bridges
+- importer script hash: computed, not decided (`engine/seed_lock.py:importer_script_hash`)
+
+Each of the first three is a *pinned artifact*, not a live source. KICKOFF §7.5 forbids a
+live pull during a run, and the reason is mechanical rather than procedural: an unpinned
+source cannot hash cleanly, so a registry built from one is not reproducible and the seed
+hash keying every verdict would be meaningless.
+
+The convention table is the one I could draft rather than ask for. It needs your approval,
+not just your paths — it makes ~176 substantive claims about which senses of which words
+are distinct, and three of its bridges are `declared-none`, recording that two senses share
+a name and nothing else so that nobody later infers a relation. Review at least: `compact`
+(the Bourbaki bridge is written as a checkable Lean statement), `positive` (strict vs
+non-strict, which the certified-positivity corpus will lean on hardest), and the three
+terms this project itself overloads — `chart`, `fiber`, `kernel`.
+
+
 ---
 
 ## Summary
@@ -97,3 +123,4 @@ not-claimed list are verbatim. It is frozen on commit.
 | D5 | **UNRESOLVED** | `SEED.lock`, P1 null cell (iii) |
 | D6 | **UNRESOLVED** | `SEED.lock`, every kernel clamp |
 | D7 | RESOLVED (as-is) | — |
+| D8 | **UNRESOLVED** (convention table drafted) | `SEED.lock`, null cells vi/vii/ix |

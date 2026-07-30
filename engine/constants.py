@@ -65,6 +65,36 @@ PRIOR_DROPOUT_RATE: float = float(C["prior_dropout_rate"])
 PRIOR_DROPOUT_TRIALS: int = int(C["prior_dropout_trials"])
 NULL_FUZZ_SAMPLES: int = int(C["null_fuzz_samples"])
 
+# --- lexicon ----------------------------------------------------------------------
+# NB: `source_beta` is the lexicon source-authority tier, NOT the meter's inverse
+# temperature. KICKOFF calls both "beta"; this codebase keeps them apart by name.
+LEX: dict[str, Any] = C["lexicon"]
+SOURCE_ORDER: tuple[str, ...] = tuple(LEX["source_order"])
+SOURCE_BETA: dict[str, float] = {k: float(v) for k, v in LEX["source_beta"].items()}
+SELECT_W_FRAME: float = float(LEX["select"]["w_frame"])
+SELECT_W_TYPE: float = float(LEX["select"]["w_type"])
+SELECT_W_NEIGHBOUR: float = float(LEX["select"]["w_neighbour"])
+SELECT_W_SOURCE_BETA: float = float(LEX["select"]["w_source_beta"])
+SELECT_W_LEMMA: float = float(LEX["select"]["w_lemma"])
+SELECT_MARGIN: float = float(LEX["select"]["margin"])
+RMAP_ABBREVIATIONS: dict[str, str] = dict(LEX["rmap_abbreviations"])
+FRAME_CUES: dict[str, tuple[str, ...]] = {
+    k: tuple(v) for k, v in LEX["frame_cues"].items()
+}
+
+LEXICON_DIR = SEED_DIR / "LEXICON"
+CONVENTION_TABLE_PATH = LEXICON_DIR / "convention_table.json"
+SHADOW_PROBES_PATH = LEXICON_DIR / "shadow_probes.json"
+
+
+def convention_table() -> dict[str, Any]:
+    return _load(CONVENTION_TABLE_PATH)
+
+
+def shadow_probes() -> dict[str, Any]:
+    return _load(SHADOW_PROBES_PATH)
+
+
 # --- fiber construction (a prior; gate 2 confines it to energy) -------------------
 FIBER_TOKEN_PREFIX: int = int(C["fiber"]["token_prefix"])
 FIBER_INTRA_THRESHOLD: float = float(C["fiber"]["intra_chart_jaccard_threshold"])

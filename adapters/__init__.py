@@ -10,6 +10,7 @@ toolchain rather than a reading of a sentence.
 
 from .claude_export import load_claude_export
 from .lean_corpus import KernelReceipt, load_lean_corpus
+from .lexicon_imports import ImportResult, import_all
 from .repo_docs import load_preminted, load_repo_docs
 
 __all__ = [
@@ -18,4 +19,6 @@ __all__ = [
     "load_preminted",
     "load_repo_docs",
     "KernelReceipt",
+    "import_all",
+    "ImportResult",
 ]

@@ -13,14 +13,14 @@ SEED.lock without a logged seed-morphism event and cold re-anneal.*
 
 **P0 scaffold: complete. P0 seed assembly: blocked. P1–P4: gated.**
 
-`SEED.lock` has not been written, because D3, D5, D6, and D4's spend cap are unresolved
-and KICKOFF §7.1 says to refuse past P0 with any blank. That refusal is mechanical:
-`engine/seed_lock.py:build()` raises rather than emitting a lock.
+`SEED.lock` has not been written, because D3, D5, D6, D8, and D4's spend cap are
+unresolved and KICKOFF §7.1 says to refuse past P0 with any blank. That refusal is
+mechanical: `engine/seed_lock.py:build()` raises rather than emitting a lock.
 
 ```
 $ python cli.py status
-D1 resolved   D2 resolved   D3 unresolved   D4 partial
-D5 unresolved D6 unresolved D7 resolved
+D1 resolved     D2 resolved     D3 unresolved   D4 partial
+D5 unresolved   D6 unresolved   D7 resolved     D8 unresolved
 ```
 
 The null battery runs and reports honestly at the provisional seed hash:
@@ -32,6 +32,10 @@ The null battery runs and reports honestly at the provisional seed hash:
 | iii. empty-corpus floor | **BLOCKED** — D5 unresolved, no pre-minted entries to check for self-contest |
 | iv. single-doc null | **BLOCKED** — D3 unresolved, no held-out document |
 | v. duplicate-source null | **BLOCKED** — D3 unresolved, no corpus to duplicate |
+| vi. hub-coverage | **PASS** — all 176 senses carry an English face (0 rendered, 176 authored) |
+| vii. shadow check | **PASS** — 32 probes; technical contexts resolve technically, general generally |
+| viii. no-clamp grep | **PASS** — no display attribute reachable from 8 F-path modules or 2 F-feeding functions |
+| ix. binding sanity | **BLOCKED** — D8 unresolved, no Mathlib-derived senses to round-trip |
 
 `BLOCKED` is not green, so PREREG R1 applies and the run is VOID — but it is recorded as
 "never tested", which is a different finding from "tested and failed" and is reported as
@@ -45,6 +49,7 @@ such. See `reports/P1-null-battery.md`.
 | **D4** spend cap | P3 live extraction | An unset cap is not an unlimited cap. `AnthropicExtractor` refuses to construct without one. |
 | **D5** pre-minted files | `SEED.lock`, null cell iii, PREREG R2 | `BVALUED-AGREED.md`, `STATEMENTS.md`, `REGISTRY.md` are not in this repo. `STATEMENTS.md` carries the "what we do NOT claim" list that R2 turns into the rediscovery test. |
 | **D6** Lean + Python versions | `SEED.lock`, every kernel clamp | Gate 3 makes kernel-accept *under the pinned toolchain* the only proof-side grounding warrant. Read the Lean version from `certified-positivity`'s lake-manifest; do not assume it. |
+| **D8** lexicon pins + convention-table approval | `SEED.lock`, null cells vi/vii/ix | Mathlib commit, nLab scrape date, WordNet version. A live pull cannot hash cleanly (KICKOFF §7.5). The convention table is **drafted** — 176 senses, 46 lemmas, 17 bridges — and needs approval, not just paths. |
 
 D1, D2, and D7 are resolved — D1 from the repository as it exists, D2 and D7 from the
 defaults the brief itself states. Details and reasoning in `seed/DECISIONS.md`.
@@ -73,6 +78,49 @@ by convention:
 
 Try to violate them: `tests/test_gates.py` does, including smuggling a downgraded warrant
 past `Clamp`'s constructor via `object.__setattr__` to check `settle()` still catches it.
+
+## The lexicon layer — hub of faces, not hub of truth
+
+`seed/LEXICON/SPEC.md` is frozen alongside the gates. One registry, per-chart faces, with
+both halves of the hub invariant enforced separately:
+
+**Every sense has an English face.** No entry may exist only in a formal chart. A bare
+Mathlib name gets one from the R-map (`engine/rmap.py`), marked `warrant="rendered"` and
+counted by cell (vi) as a quality metric rather than a defect.
+
+**Warrant never flows through it.** This is a type boundary, not a convention.
+`SenseCore` — the F-visible projection — carries `english_slot` (the *hash*, which is the
+address) and **has no `english_face` field at all**. The strings live on `SenseDisplay`,
+which nothing on an F path can reach. Cell (viii) is an AST check enforcing it, and it is
+never blocked because it reads the engine's own source.
+
+Sense selection is by typed context — frames and slot neighbourhood — deliberately **not**
+by gloss text, which would route authority back through the hub. When context does not
+decide, `select_sense` returns an honest fiber including `abstain`; a coin flip there is a
+seed bug. Merging is refused at import time: it is plastic and mint-gated, and mint is OFF.
+
+Imports run in the fixed order Mathlib → convention → nLab → pre-minted → WordNet, and
+`import_all` refuses any other sequence. An unresolved pin reports BLOCKED rather than
+faking a result. The registry serializes canonically, so a re-run at the same pins is
+byte-identical — tested, since SPEC §3 says any diff is a bug.
+
+### Three bugs cell (vii) caught
+
+Writing the shadow check found three real defects in the layer it was checking:
+
+1. The importer hardcoded `source="convention"`, ignoring each sense's declared tier — so
+   no sense was ever classified as general English and shadowing detection could not fire.
+2. `candidates_for` scored a sense that merely *mentions* a lemma ("degree of a field
+   extension") equally against one whose lemma *is* the query ("field").
+3. Cue matching was substring-based: `"norm"` fired the `analysis` frame inside the word
+   *"normal"*, and bare `"field"`/`"ring"`/`"measure"` were cues for their own technical
+   frames — the ambiguous word voting for its own disambiguation.
+
+A fourth surfaced while fixing the third: word boundaries strict enough to keep `"norm"`
+out of `"normal"` also kept `"closed set"` out of `"closed sets"`, so the matcher now
+allows exactly one trailing `s`. And `"identity element"` had to come out of the `unital`
+cue list — it appears in the rng probe too ("*not required to have* a multiplicative
+identity element"), and a phrase-cue table cannot see negation.
 
 ## Design decisions worth knowing
 
@@ -116,10 +164,12 @@ P3. The withholding is a property of the code, not of the operator remembering.
 
 ```
 seed/          GATES.md, TYPES.md, DECISIONS.{md,json}, CONSTANTS.json,
-               paraphrase_suite.json, shadow.json, LEXICON/, PROMPTS/  → SEED.lock
-engine/        normalize · extract · energy · settle · cast · meter · nulls
-               mint_tape · blocks · pipeline · audit · seed_lock · logio · linalg · hashing
-adapters/      claude_export · lean_corpus · repo_docs
+               paraphrase_suite.json, shadow.json, PROMPTS/,
+               LEXICON/{SPEC.md, convention_table.json, shadow_probes.json}  → SEED.lock
+engine/        normalize · extract · energy · settle · cast · meter · nulls · mint_tape
+               blocks · pipeline · audit · seed_lock · logio · linalg · hashing
+               lexicon · rmap · static_checks
+adapters/      claude_export · lean_corpus · repo_docs · lexicon_imports
 registry/      PREREG.md (frozen, D7 as-is) · REGISTRY.jsonl (append-only)
 runs/          JSONL logs; every record carries seed_hash
 reports/       one-pagers
@@ -129,7 +179,7 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 52 tests, stdlib only
+make test            # 136 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
 make nulls           # P1 null battery at the current seed hash
 make lock            # refuses while any decision is blank
