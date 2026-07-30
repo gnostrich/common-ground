@@ -1,19 +1,20 @@
 # P1 — null battery
 
-Provisional seed hash `0e7cb5568c17` (`seed/SEED.lock` is not written; D3, D4's spend cap,
+Provisional seed hash `53f709ce82bc` (`seed/SEED.lock` is not written; D3, D4's spend cap,
 D5, D6 are unresolved and D8 is partial). Registry entry committed before the run, per
 KICKOFF §7.2.
 
-This is a **cold re-anneal**, the second of two. Both PREREG amendments touched `seed/`, so
-both were plastic under gate 4 and each is logged in `registry/REGISTRY.jsonl` with
-before/after hashes and an identity slot map — no lexicon, prompt, or normalizer surface
-changed in either, so no address moved:
+This is a **cold re-anneal**, the third of three. All three PREREG amendments touched
+`seed/`, so all three were plastic under gate 4, and each is logged in
+`registry/REGISTRY.jsonl` with before/after hashes and an identity slot map — no lexicon,
+prompt, or normalizer surface changed in any of them, so no address moved:
 
 | Morphism | Cause | Seed hash |
 |---|---|---|
 | — | P1 baseline | `5043231e3f58` |
-| AMENDMENT-1 | `GATES.md` sentence 6 added | `d8f330fa4164` |
-| AMENDMENT-2 | gate-6 enforcement row; `rewire_passes` constant | `0e7cb5568c17` |
+| AMENDMENT-1 (R3) | `GATES.md` sentence 6 added | `d8f330fa4164` |
+| AMENDMENT-2 (R4) | gate-6 enforcement row; `rewire_passes` constant | `0e7cb5568c17` |
+| AMENDMENT-3 (R2) | D7 re-approval recorded in `DECISIONS.*` | `53f709ce82bc` |
 
 The battery was re-run from scratch on each new hash rather than carried across. No warm
 state was discarded because none existed.
@@ -198,6 +199,42 @@ grounded and the sensitivity arm has nothing to perturb. R4 returns `CLOSED-inco
 rather than reporting the insensitivity arm alone — the same distinction R1 draws between
 BLOCKED and FAIL. This is the expected state until D6 resolves.
 
+**PREREG R2 carried it too — now amended as PREREG-AMENDMENT-3.** The sweep found it (see
+below), and the fix is a label-permutation null: a gap counts as flagged iff its loop's cold
+floor exceeds q95 of the null, replacing `floor > bootstrap q95`.
+
+Two things about this amendment differ from the first two and are recorded rather than
+smoothed over.
+
+*Its rationale (c) is calibration-restoring, not strictness-increasing.* The bootstrap band
+rose with the observed floor, so it was punitive on noisy runs — only above-average loops
+flagged, and a genuine gap with a real but below-mean floor was missed. The correction runs
+in **both** directions, and some runs that would have failed R2 will now pass. Calling that
+extra strictness would misdescribe it.
+
+*Its class was determined by checking, not assumed.* The authorization said
+`pre-data-design` unless the drafting history showed the per-loop surrogate was original
+intent. It does not: KICKOFF §5's R2 specifies **no flagging criterion at all** — no
+threshold, no surrogate, no comparison — and the brief's only second-FDT mention is the mint
+threshold, unrelated to R2. `git show` on the P0 scaffold commit has the bootstrap present
+from the first commit, unchanged since. There is nothing to restore, so rationale (a) does
+not apply and the class stands as `pre-data-design`.
+
+**The mandated positive control caught a defect in the authorized rule itself.** Implemented
+literally, "q95 of that loop's own null" is *unsatisfiable*: a `k`-slot loop has `2**k`
+warm/cold assignments, the all-cold assignment **is** the observed floor, and q95 of four or
+eight points is the maximum. Measured on a synthetic contested corpus, **0 of 4 loops could
+flag at any floor** — a 100% miss rate on every run, reproducing the very defect being
+replaced in the same punitive direction. The shipped rule pools the *other* loops' permuted
+floors leave-one-out, which is the smallest change that keeps the reference a permutation of
+observations while giving it usable support. **This deviates from the authorized wording and
+needs confirmation.** Its limitation is stated rather than buried: loops are not exactly
+exchangeable with one another, so one loud loop raises every other loop's threshold.
+
+The control passes in both mandated directions: clean run plus one planted gap → miss rate
+0; an insensitive meter → the planted gap unflagged, miss rate 1.0, `CLOSED-inconclusive`.
+Fewer than two loops returns inconclusive rather than a degenerate self-comparison.
+
 **The sweep, and what it found.** Three of the four sites above were found by hand, by
 noticing that a pattern recurred. That is not a method, so gate 6 now has a codebase-wide
 enforcement layer: `static_checks.check_gate6_classification` AST-walks `engine/` and fails
@@ -206,17 +243,15 @@ reference distribution and role. It classifies rather than forbids — a non-con
 may exist as a *diagnostic*; what may not exist is an unexamined one. Full results in
 `reports/gate6-sweep.md`.
 
-It found a fourth site immediately, one nobody had noticed: **R2**. `ground_truth_rediscovery`
-counts a gap as flagged when its loop's floor exceeds the bootstrap band, so "flagged" means
-"above average for this run" rather than "above what no path dependence would produce". The
-miscalibration runs *opposite* to R4's — a larger floor raises the bar, so fewer gaps clear
-it and the miss rate goes up. R2 gets stricter as the run gets noisier, and on a
-uniformly-zero run nothing clears the band at all and the miss rate is 100%. R2 was outside
-AMENDMENT-2's scope, so it is flagged, reports `gate6_conforming: false` in its own stats,
-and is unchanged. It is BLOCKED on D5 regardless.
+It found a fourth site immediately, one nobody had noticed: **R2**, whose miscalibration ran
+*opposite* to R4's — a larger floor raised the bar, so fewer gaps cleared it and the miss
+rate went up. That finding is what AMENDMENT-3 acts on. The sweep has since caught one more
+thing, this time one of my own: `pooled_loop_nulls` was added and immediately failed the
+check as an unclassified band until it was written into `GATE6_SITES`. That is the mechanism
+working on its author.
 
 That all of this was found before any floor was read is the battery working as designed.
-That four of the finds were *the project's own tests* — two battery cells and two PREREG
+That five of the finds were *the project's own tests* — two battery cells and three PREREG
 rules — is why the control column exists, and why the sweep is a check rather than a
 document.
 
@@ -243,6 +278,50 @@ bytes trips gate 4 instead of passing silently.
 D8 is therefore **partial**, not resolved, and `cli.py status` says so. Writing a plausible
 commit hash to clear the blank would have produced a lock that looks pinned and reproduces
 nothing.
+
+## Gate 6 — closing table
+
+The amendment window is still open (it closes at the first P3 phase-run), and this is its
+closing artifact: every site in the engine that builds or reads a statistical band, and
+what decides on it. Generated by `make gate6`; enforced by
+`static_checks.check_gate6_classification`, which fails CI on any unclassified band.
+
+**Every deciding site conforms.**
+
+| Site | Role | Reference distribution | Gate 6 |
+|---|---|---|---|
+| `engine/meter.py:surrogate_floor_distribution` | diagnostic | bootstrap resample of the observed loop floors | **NON-CONFORMING** |
+| `engine/meter.py:within_noise` | unused | caller-supplied surrogate | n/a |
+| `engine/pipeline.py:_q95` | diagnostic | bootstrap, via surrogate_floor_distribution | **NON-CONFORMING** |
+| `engine/pipeline.py:run_meter` | produces | n/a — computes both surrogates and stores them | n/a |
+| `engine/audit.py:floor_verdict` | decides | second_fdt_surrogate_floor | **conforming** |
+| `engine/audit.py:ground_truth_rediscovery` | decides | per-loop second-FDT label permutation, pooled leave-one-out | **conforming** |
+| `engine/audit.py:prior_insensitivity` | decides | dropout movement on a degree- and weight-marginal-preserving rewire | **conforming** |
+| `engine/meter.py:pooled_loop_nulls` | decides | leave-one-out pool of the other loops' permutation draws | **conforming** |
+| `engine/meter.py:second_fdt_surrogate_floor` | decides | warm/cold label permutation, loop by loop | **conforming** |
+| `engine/nulls.py:cell_iii_empty_corpus` | decides | exact zero | **conforming** |
+| `engine/nulls.py:cell_iv_single_doc` | decides | consensus ledger floor (every block forced to its modal b-value) | **conforming** |
+| `engine/nulls.py:cell_ix_binding_sanity` | decides | fixed 5% failure rate, pre-registered in the LEXICON SPEC | **conforming** |
+| `engine/nulls.py:cell_v_duplicate_source` | decides | DUPLICATE_RESIDUE_TOLERANCE (1e-12), a numerical tolerance | **conforming** |
+| `engine/meter.py:loop_permutation_null` | produces | per-slot warm/cold assignment on one loop, holonomy recomputed | **conforming** |
+| `engine/mint_tape.py:read_tape` | diagnostic | 3x second_fdt_surrogate_floor | **conforming** |
+
+Three sites remain non-conforming and all three are diagnostics. That is deliberate: each
+amendment kept its superseded band reported so a reader can see what the old rule would
+have said. Deleting them would make the amendments unauditable. `within_noise` is dead
+code, listed so that a future caller has to classify itself.
+
+Two conformances are weaker than the rest, and the table should not flatten them:
+
+- `cell_ix_binding_sanity` compares against a fixed 5% failure rate. That satisfies
+  sentence 6 by not being data-derived, but it is not a null either — nothing calibrates
+  5%, so the cell bounds a bug rate rather than testing a hypothesis. Conforming and weak
+  are different properties.
+- `pooled_loop_nulls` pools across loops that are not exactly exchangeable — they differ
+  in slot count and edge weight, so one loud loop raises every other loop's threshold.
+  Leave-one-out removes self-contamination but not heterogeneity.
+
+Full sweep, including what each amendment changed and why: `reports/gate6-sweep.md`.
 
 ## What is NOT claimed
 

@@ -218,6 +218,9 @@ class MeterResult:
     seed_hash: str
     measurements: list[LoopMeasurement] = field(default_factory=list)
     surrogate: dict[str, float] = field(default_factory=dict)
+    #: loop_id -> that loop's own label-permutation draws (PREREG-AMENDMENT-3). R2 pools
+    #: them leave-one-out; kept raw so the pooling is auditable rather than pre-baked.
+    loop_nulls: dict[str, list[float]] = field(default_factory=dict)
 
     def mean_floor(self, beta: float | None = None) -> float:
         rows = [
@@ -244,7 +247,7 @@ def measure(
     seed_hash: str,
     clamps: Sequence[Clamp] = (),
     retained: Mapping[str, Vector] | None = None,
-) -> tuple[list[LoopMeasurement], SettledBlock, SettledBlock]:
+) -> tuple[list[LoopMeasurement], SettledBlock, SettledBlock, dict[str, list[float]]]:
     """Run both arms on one block and measure every loop inside it.
 
     The warm arm's starting state matters, and it is reported rather than assumed. With
@@ -274,12 +277,16 @@ def measure(
     weights = edge_weight_map(block.edges)
     members = set(block.slots)
     out: list[LoopMeasurement] = []
+    nulls: dict[str, list[float]] = {}
     for loop in loops:
         if not set(loop.slots) <= members:
             continue
         h_cold = holonomy(loop, cold.p, weights)
         h_warm = holonomy(loop, warm.p, weights)
         sh = loop_shadow(loop, chart_of, shadow_cfg)
+        nulls[loop.id] = loop_permutation_null(
+            loop, warm.p, cold.p, weights, sh, seed_hash
+        )
         out.append(
             LoopMeasurement(
                 loop_id=loop.id,
@@ -294,7 +301,7 @@ def measure(
                 warm_source=warm_source,
             )
         )
-    return out, warm, cold
+    return out, warm, cold, nulls
 
 
 # --- surrogates -------------------------------------------------------------------
@@ -348,6 +355,72 @@ def second_fdt_surrogate_floor(
             total += max(0.0, value - m.shadow)
         draws.append(total / len(measurements))
     return quantile(draws, SURROGATE_QUANTILE)
+
+
+def loop_permutation_null(
+    loop: LoopSpec,
+    warm_p: Mapping[str, Vector],
+    cold_p: Mapping[str, Vector],
+    weights: Mapping[tuple[str, str], float],
+    shadow: float,
+    seed_hash: str,
+    trials: int = SURROGATE_TRIALS,
+) -> list[float]:
+    """One loop's own second-FDT label-permutation null (PREREG-AMENDMENT-3).
+
+    Per trial, each slot on the loop independently supplies its state from the warm arm or
+    the cold arm, and the holonomy is recomputed from that mixture. Under the no-effect
+    hypothesis — the two arms settled to the same place on this loop, so there is no path
+    dependence — which arm supplies which slot cannot matter and the recomputed floors
+    match the observed one. Under real path dependence the all-cold assignment stands above
+    the mixtures.
+
+    Note the support. A loop with `k` slots has `2**k` distinct assignments, so the null's
+    upper tail is coarse for small loops: a 2-slot loop has four, and no q95 can then sit
+    below the maximum, which the all-cold assignment attains. This is a property of
+    permutation tests at small n — the smallest achievable p-value is one over the number
+    of permutations — and it is why `pooled_loop_null` exists.
+    """
+    rng = DRNG("loop-perm", seed_hash, loop.id)
+    slots = list(loop.slots)
+    draws: list[float] = []
+    for _ in range(trials):
+        mixed: dict[str, Vector] = {}
+        for s in slots:
+            source = cold_p if rng.random() < 0.5 else warm_p
+            state = source.get(s)
+            if state is not None:
+                mixed[s] = state
+        draws.append(max(0.0, holonomy(loop, mixed, weights) - shadow))
+    return draws
+
+
+def pooled_loop_nulls(
+    draws_by_loop: Mapping[str, Sequence[float]],
+    quantile_q: float = SURROGATE_QUANTILE,
+) -> dict[str, float]:
+    """Leave-one-out pooled thresholds from per-loop label-permutation draws.
+
+    `loop_permutation_null` gives each loop its own null, but that null has only `2**k`
+    distinct values and the all-cold assignment — the observed floor — sits at or below the
+    maximum. q95 of four points *is* the maximum, so a loop can never exceed its own null
+    and the criterion flags nothing at any floor. That is measured, not argued: on a
+    synthetic contested corpus, 0 of 4 loops could flag.
+
+    Pooling fixes the support. Each loop's threshold is the q95 of every *other* loop's
+    permuted floors, so the null still consists of nothing but relabelled observations — it
+    is a permutation null, not a resample of the answer — while a loop's own value can no
+    longer inflate the bar it has to clear.
+
+    A single loop has no leave-one-out pool. Rather than fall back to the degenerate
+    self-comparison, the loop is given `inf` and the caller reports the rule as
+    inconclusive: a permutation null needs more than one exchangeable unit.
+    """
+    out: dict[str, float] = {}
+    for loop_id in draws_by_loop:
+        others = [d for lid, ds in draws_by_loop.items() if lid != loop_id for d in ds]
+        out[loop_id] = quantile(others, quantile_q) if others else float("inf")
+    return out
 
 
 def within_noise(observed: float, surrogate: Sequence[float]) -> bool:

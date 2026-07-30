@@ -497,23 +497,22 @@ class Gate6SweepIsExecutableNotProse(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("sneaky", str(result.violations[0]))
 
-    def test_the_sweep_records_the_non_conforming_sites_it_found(self):
+    def test_the_surviving_non_conforming_sites_are_diagnostics_only(self):
+        """The bootstrap is kept on purpose — deleting it would make the amendments
+        unauditable — but nothing may decide on it."""
         from engine.static_checks import GATE6_SITES
 
-        by_site = {str(s["site"]): s for s in GATE6_SITES}
-        r2 = by_site["engine/audit.py:ground_truth_rediscovery"]
-        self.assertIs(r2["conforming"], False)
-        self.assertEqual(r2["role"], "decides",
-                         "R2 still decides on a resample — flagged, out of scope, unchanged")
-
-        for site in ("engine/audit.py:floor_verdict", "engine/audit.py:prior_insensitivity"):
-            self.assertIs(by_site[site]["conforming"], True)
+        for s in GATE6_SITES:
+            if s["conforming"] is False:
+                self.assertNotEqual(s["role"], "decides",
+                                    f"{s['site']} still decides on a resample")
 
     def test_no_amended_rule_still_decides_on_a_resample(self):
         from engine.audit import AMENDMENTS
         from engine.static_checks import GATE6_SITES
 
-        amended = {"R3": "engine/audit.py:floor_verdict",
+        amended = {"R2": "engine/audit.py:ground_truth_rediscovery",
+                   "R3": "engine/audit.py:floor_verdict",
                    "R4": "engine/audit.py:prior_insensitivity"}
         by_site = {str(s["site"]): s for s in GATE6_SITES}
         for a in AMENDMENTS:
@@ -542,3 +541,141 @@ class BrokenFixtures(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class R2AfterTheAmendment(unittest.TestCase):
+    """PREREG-AMENDMENT-3, and the positive control that changed how it was built.
+
+    The authorization specified `q95 of that loop's own second-FDT label-permutation null`.
+    Implemented literally that flags nothing at any floor, which the mandated control is
+    what caught — see `test_a_loops_own_permutation_null_is_degenerate`. The rule as
+    shipped pools the other loops' permuted floors leave-one-out.
+    """
+
+    @staticmethod
+    def _run(docs, seed="r2-test"):
+        from engine.constants import decisions, shadow
+        from engine.extract import build_k_extractors
+        from engine.pipeline import build_ledger, run_meter
+
+        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+        result, _, _ = run_meter(ledger, 1.0, seed, shadow())
+        return ledger, result
+
+    _CLEAN = ("Positivity is preserved under composition. Composition preserves positivity. "
+              "The kernel accepts the statement. The kernel accepts every checked statement.")
+
+    def test_a_loops_own_permutation_null_is_degenerate(self):
+        """Why the shipped rule deviates from the authorized wording.
+
+        A loop with k slots has 2**k assignments of warm/cold per slot. The all-cold
+        assignment IS the observed floor, and q95 of four or eight points is the maximum,
+        so `floor > q95(own null)` is unsatisfiable. Measured, not argued.
+        """
+        from engine.constants import SURROGATE_QUANTILE
+        from engine.hashing import quantile
+
+        _, result = self._run([Document("d", "english",
+                                        "The cone is positive. The cone is not positive. "
+                                        "The kernel accepts. The kernel does not accept.",
+                                        "repo_docs")])
+        self.assertTrue(result.loop_nulls, "no loops measured; the test proves nothing")
+        for m in result.measurements:
+            own = result.loop_nulls[m.loop_id]
+            self.assertLessEqual(len(set(own)), 2 ** len(m.slots),
+                                 "support is bounded by the number of assignments")
+            self.assertLessEqual(m.floor, quantile(own, SURROGATE_QUANTILE) + 1e-15,
+                                 "a loop can never exceed its own permutation null")
+
+    def test_pooled_leave_one_out_excludes_the_loops_own_draws(self):
+        from engine.meter import pooled_loop_nulls
+
+        draws = {"a": [0.0, 0.0, 0.0], "b": [1.0, 1.0, 1.0]}
+        thresholds = pooled_loop_nulls(draws)
+        self.assertAlmostEqual(thresholds["a"], 1.0, msg="a's bar comes from b alone")
+        self.assertAlmostEqual(thresholds["b"], 0.0, msg="b's bar comes from a alone")
+
+    def test_a_single_loop_has_no_pool_and_is_not_silently_compared_to_itself(self):
+        from engine.meter import pooled_loop_nulls
+
+        self.assertEqual(pooled_loop_nulls({"only": [0.1, 0.2]})["only"], float("inf"))
+
+    def test_planted_gap_is_found_miss_rate_zero(self):
+        """The mandated control, direction one."""
+        from engine.audit import ground_truth_rediscovery
+
+        docs = [Document("clean", "english", self._CLEAN, "repo_docs"),
+                Document("gap", "english",
+                         "The cone is positive. The cone is not positive.", "repo_docs")]
+        ledger, result = self._run(docs)
+        r = ground_truth_rediscovery(None, result, ledger,
+                                     not_claimed_spans=["the cone is positive"])
+        self.assertEqual(r.stats["miss_rate"], 0.0, r.detail)
+        self.assertTrue(r.passed)
+        self.assertEqual(r.stats["decided_by"], "loop_permutation_null_pooled_loo")
+        self.assertTrue(r.stats["gate6_conforming"])
+
+    def test_an_insensitive_meter_is_caught(self):
+        """The mandated control, planted-defect direction: R2 must be able to fail.
+
+        Every loop given the same floor and the same null: nothing can clear a pooled
+        threshold equal to itself, so the planted gap goes unflagged and R2 reports the
+        meter insensitive. A rule that could not produce this outcome would be reporting
+        nothing.
+        """
+        from engine.audit import Verdict, ground_truth_rediscovery
+        from engine.meter import LoopMeasurement, MeterResult
+
+        rows = [LoopMeasurement(f"l{i}", "paraphrase", 1.0, 0.2, 0.2, 0.0, 0.2, 0.0,
+                                ("s1", "s2")) for i in range(4)]
+        result = MeterResult("flat", rows, {"q95": 0.2},
+                             {f"l{i}": [0.2] * 8 for i in range(4)})
+        r = ground_truth_rediscovery(None, result, None,
+                                     not_claimed_spans=["the cone is positive"])
+        self.assertEqual(r.stats["miss_rate"], 1.0)
+        self.assertFalse(r.passed)
+        self.assertIs(r.verdict, Verdict.CLOSED_INCONCLUSIVE)
+
+    def test_fewer_than_two_loops_is_inconclusive_not_a_verdict(self):
+        from engine.audit import Verdict, ground_truth_rediscovery
+        from engine.meter import LoopMeasurement, MeterResult
+
+        rows = [LoopMeasurement("only", "paraphrase", 1.0, 0.5, 0.5, 0.0, 0.5, 0.0, ("a", "b"))]
+        result = MeterResult("one", rows, {"q95": 0.1}, {"only": [0.1] * 8})
+        r = ground_truth_rediscovery(None, result, None, not_claimed_spans=["x"])
+        self.assertIs(r.verdict, Verdict.CLOSED_INCONCLUSIVE)
+        self.assertIn("exchangeable unit", r.detail)
+
+    def test_the_legacy_bootstrap_is_reported_and_decides_nothing(self):
+        from engine.audit import ground_truth_rediscovery
+
+        docs = [Document("clean", "english", self._CLEAN, "repo_docs"),
+                Document("gap", "english",
+                         "The cone is positive. The cone is not positive.", "repo_docs")]
+        ledger, result = self._run(docs)
+        r = ground_truth_rediscovery(None, result, ledger,
+                                     not_claimed_spans=["the cone is positive"])
+        self.assertIn("legacy_bootstrap_band", r.stats)
+        self.assertIn("legacy_bootstrap_flagged", r.stats)
+
+    def test_amendment_3_records_the_drafting_history_check(self):
+        from engine.audit import AMENDMENTS
+
+        three = next(a for a in AMENDMENTS if a["id"] == "PREREG-AMENDMENT-3")
+        self.assertEqual(three["class"], "pre-data-design")
+        self.assertEqual(three["rationales"], ["b", "c"])
+        self.assertIs(three["rationale_a_applies"], False)
+        self.assertIn("specifies no flagging criterion", str(three["drafting_history"]))
+        self.assertIn("calibration-restoring", str(three["rationale"]))
+        self.assertIn("deviation", str(three).lower())
+
+
+class EveryDecidingSiteConforms(unittest.TestCase):
+    """The closing artifact of the amendment window."""
+
+    def test_no_deciding_site_is_non_conforming(self):
+        from engine.static_checks import GATE6_SITES
+
+        offenders = [s["site"] for s in GATE6_SITES
+                     if s["role"] == "decides" and s["conforming"] is not True]
+        self.assertEqual(offenders, [], f"still deciding on a resample: {offenders}")

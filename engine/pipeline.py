@@ -195,7 +195,7 @@ def run_meter(
         loops = [l for l in ledger.loops if set(l.slots) <= set(block.slots)]
         if not loops:
             continue
-        rows, warm, cold = measure(
+        rows, warm, cold, nulls = measure(
             block=block,
             loops=loops,
             evidence=ledger.evidence,
@@ -208,6 +208,7 @@ def run_meter(
             retained=(retained or {}).get(block.id),
         )
         result.measurements.extend(rows)
+        result.loop_nulls.update(nulls)
         warm_states[block.id] = warm
         cold_states[block.id] = cold
 

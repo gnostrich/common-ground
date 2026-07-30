@@ -1,7 +1,7 @@
-# PREREG — frozen on commit (D7: re-approved over PREREG-AMENDMENT-1 and -2)
+# PREREG — frozen on commit (D7: re-approved over PREREG-AMENDMENT-1, -2 and -3)
 
 R1–R5 and the not-claimed list are reproduced from KICKOFF §5 verbatim and have never been
-rewritten. **Two amendments are in force**, both dated 2026-07-30, both recorded in full
+rewritten. **Three amendments are in force**, all dated 2026-07-30, all recorded in full
 under **Amendments** at the end of this file, appended rather than merged, and cited from
 the code they change:
 
@@ -9,10 +9,16 @@ the code they change:
 |---|---|---|---|
 | PREREG-AMENDMENT-1 | R3 | transcription-restoration | (a), (b), (c) |
 | PREREG-AMENDMENT-2 | R4 | **pre-data-design** | (b), (c) — **(a) does not apply** |
+| PREREG-AMENDMENT-3 | R2 | **pre-data-design** | (b), (c) — (a) checked against the drafting history and does not apply |
 
 The class distinction is load-bearing. AMENDMENT-1 restored a procedure the specification
-had already named; AMENDMENT-2 is new design, admissible only because no data had passed
-through R4. D7 was re-approved over the twice-amended text.
+had already named; -2 and -3 are new design, admissible only because no data had passed
+through the rules they change. For -3 the classification was determined by reading KICKOFF
+§5 and the P0 commit rather than assumed. D7 was re-approved over the thrice-amended text.
+
+Rationale (c) is not the same claim in each. For -1 and -2 it is *strictness-increasing*.
+For -3 it is **calibration-restoring**: the superseded band was punitive, so the correction
+runs in both directions and some runs that would have failed R2 will now pass.
 
 Frozen on commit and hashed nowhere else — this file lives outside `seed/` deliberately,
 because it constrains *interpretation*, not addressing, so amending it is not by itself a
@@ -63,6 +69,10 @@ different findings, and publishing them as the same one would be a false report.
 dropout movement on a degree- and weight-marginal-preserving rewire of the Q graph, and a
 second arm requires clamp-tier perturbation to move the floor above the same null. The
 paragraph naming the original comparison stands unrewritten in R4 above.
+
+**On R2 and "flag".** Superseded by PREREG-AMENDMENT-3: a gap counts as flagged iff its
+loop's cold floor exceeds q95 of a leave-one-out pooled label-permutation null. R2's
+original text above, which names no criterion, stands unrewritten.
 
 **On R3 and "~0".** "~0" is read against the surrogate band, never by eye:
 `floor <= quantile(surrogate_floor_distribution, 0.95)`. The band is computed by
@@ -255,3 +265,83 @@ BLOCKED on D5 regardless.
 
 **Scope and expiry.** Unchanged from AMENDMENT-1: the authorization expires the moment P3
 ingestion begins, enforced by `audit.check_amendment_window()`.
+
+### PREREG-AMENDMENT-3 — R2's flagging criterion
+
+**Date:** 2026-07-30 · **Authorized by:** operator · **Status:** in force
+**Class:** `pre-data-design` — determined by checking the drafting history, as authorized
+**Touches:** `engine/audit.py:ground_truth_rediscovery`, `engine/meter.py`, D7
+
+**Change.** A gap counts as flagged **iff** its loop's cold floor exceeds q95 of a
+second-FDT label-permutation null: each slot on the loop independently supplies its state
+from the warm or the cold arm, and the holonomy is recomputed from that mixture. Miss rate
+is computed over the pre-registered `STATEMENTS.md` list exactly as before. Replacing
+`m.floor > result.surrogate["q95"]`, which is retained as `legacy_bootstrap_flagged` and
+decides nothing.
+
+The `iff` also retires a claim the code never honoured: the docstring had promised flagging
+on settled mass at `B` as an alternative route, and no version ever implemented it.
+
+**Drafting history — checked, and rationale (a) does not apply.**
+
+KICKOFF §5's R2 reads in full: *"the meter must flag the known claim-vs-proof gaps
+enumerated in STATEMENTS.md 'what we do NOT claim'. Miss rate > 0 on that list => meter
+insensitive at this scale => CLOSED-inconclusive."* It specifies **no flagging criterion at
+all** — no threshold, no surrogate, no comparison. The brief's only mention of the
+second-FDT surrogate is the mint threshold in the constants table, which is unrelated to
+R2. `git show` on the P0 scaffold commit has `band = result.surrogate.get("q95", 0.0)`
+present from the first commit, unchanged since.
+
+So there is nothing to restore. Unlike AMENDMENT-1, where the specification had named the
+second-FDT surrogate and the bootstrap was a degradation of it, R2's criterion was
+*originated* during P0 drafting. The class is `pre-data-design` and rationale (a) is not
+claimed.
+
+**Rationale — (b) and (c).**
+
+**(b) No data has passed through R2.** P3 and P4 have not run, and R2 is BLOCKED on D5
+besides — `STATEMENTS.md` is absent, so there has never been a list to miss.
+
+**(c) Calibration-restoring, not strictness-increasing.** Recorded that way deliberately.
+The bootstrap band rose with the observed floor, so it was punitive on noisy runs: only
+above-average loops flagged, and a genuine gap whose floor was real but below the mean was
+missed. The permutation null corrects in **both** directions — some runs that would have
+failed R2 will now pass. Claiming this as extra strictness would misdescribe it.
+
+**Deviation from the authorized wording — needs confirmation.**
+
+The authorization specified q95 of *that loop's own* null. Implemented literally, that
+criterion is **unsatisfiable**. A loop with `k` slots has `2**k` warm/cold assignments; the
+all-cold assignment *is* the observed floor; and q95 of four or eight points is the
+maximum. So `floor > q95(own null)` is false at any floor. Measured on a synthetic
+contested corpus: **0 of 4 loops could flag**, giving a 100% miss rate on every run — the
+very defect being replaced, in the same punitive direction, and a failure of rationale (c)
+on its own terms.
+
+The mandated positive control is what caught this, which is what the control was for.
+
+The shipped rule pools the **other** loops' permuted floors leave-one-out. That is the
+smallest change that keeps the reference a permutation of observations — no resample of the
+answer, so gate 6 holds — while giving it usable support, and leave-one-out stops a loop
+inflating the bar it must clear.
+
+**Known limitation, stated rather than buried.** Pooling assumes loops are exchangeable
+with one another, and they are not exactly: they differ in slot count and edge weight. One
+loud loop raises every other loop's threshold. Leave-one-out removes self-contamination but
+not heterogeneity.
+
+**Fewer than two loops is inconclusive.** A permutation null needs more than one
+exchangeable unit; rather than fall back to the degenerate self-comparison, R2 returns
+`CLOSED-inconclusive`.
+
+**Positive control, as mandated.** `tests/test_controls.py:R2AfterTheAmendment`.
+Direction one: clean synthetic run plus one planted gap → **miss rate 0**. Planted-defect
+direction: an insensitive meter (every loop the same floor and the same null) → the planted
+gap goes unflagged, **miss rate 1.0**, `CLOSED-inconclusive`. The degeneracy of the literal
+per-loop rule is pinned as its own test.
+
+**Seed consequence.** Logged `seed-morphism`, identity slot map, battery re-run cold.
+
+**Scope and expiry.** Unchanged: the authorization expires the moment P3 ingestion begins.
+With R2 amended, **every deciding site in the engine conforms to gate 6** — the closing
+table is in `reports/P1-null-battery.md` and `reports/gate6-sweep.md`.

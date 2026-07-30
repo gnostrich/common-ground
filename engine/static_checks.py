@@ -177,6 +177,23 @@ GATE6_SITES: tuple[dict[str, object], ...] = (
                 "Decides R3 (PREREG-AMENDMENT-1) and floors the mint threshold.",
     },
     {
+        "site": "engine/meter.py:loop_permutation_null", "role": "produces",
+        "reference": "per-slot warm/cold assignment on one loop, holonomy recomputed",
+        "conforming": True,
+        "note": "A permutation null, but with only 2**k support — the all-cold assignment "
+                "is the observed floor, so a loop can never exceed its own null. Produces "
+                "draws; never thresholds on them directly. See pooled_loop_nulls.",
+    },
+    {
+        "site": "engine/meter.py:pooled_loop_nulls", "role": "decides",
+        "reference": "leave-one-out pool of the other loops' permutation draws",
+        "conforming": True,
+        "note": "The threshold R2 reads (PREREG-AMENDMENT-3). Pooling gives the null usable "
+                "support; leave-one-out keeps a loop from inflating its own bar. Known "
+                "limitation: loops are not exactly exchangeable with one another, so one "
+                "loud loop raises everyone else's threshold.",
+    },
+    {
         "site": "engine/meter.py:within_noise", "role": "unused",
         "reference": "caller-supplied surrogate",
         "conforming": None,
@@ -201,16 +218,13 @@ GATE6_SITES: tuple[dict[str, object], ...] = (
     },
     {
         "site": "engine/audit.py:ground_truth_rediscovery", "role": "decides",
-        "reference": "bootstrap q95 of the observed floors",
-        "conforming": False,
-        "note": "FOUND BY THIS SWEEP, not by hand. R2 counts a gap as flagged when its "
-                "loop's floor exceeds the bootstrap band, so 'flagged' means 'above "
-                "average for this run' rather than 'above what no path dependence would "
-                "produce'. Miscalibrated in the STRICT direction — the opposite of R4's — "
-                "since a larger observed floor raises the bar and flags fewer gaps, and on "
-                "a uniformly-zero run nothing clears it at all and the miss rate is 100%. "
-                "Outside PREREG-AMENDMENT-2's scope (R4 only), so flagged and unchanged. "
-                "R2 is BLOCKED on D5 regardless, so no data has passed through it either.",
+        "reference": "per-loop second-FDT label permutation, pooled leave-one-out",
+        "conforming": True,
+        "note": "Found by this sweep rather than by hand, which is what the sweep is for, "
+                "and amended by PREREG-AMENDMENT-3. It previously flagged at "
+                "`floor > bootstrap q95`, miscalibrated in the STRICT direction — the "
+                "opposite of R4's — since a larger floor raised the bar. The bootstrap "
+                "flagging is retained as a reported diagnostic and decides nothing.",
     },
     {
         "site": "engine/audit.py:floor_verdict", "role": "decides",

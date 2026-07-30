@@ -31,7 +31,7 @@ from .constants import (
 )
 from .extract import Extractor
 from .hashing import DRNG, quantile
-from .meter import MeterResult
+from .meter import MeterResult, pooled_loop_nulls
 from .normalize import address, classify
 from .pipeline import Ledger, build_ledger, run_meter
 from .types import Clamp, Document, NullBatteryReport, NullStatus
@@ -119,6 +119,81 @@ AMENDMENTS: tuple[dict[str, object], ...] = (
             "GATES.md gate-6 enforcement row updated; D7 re-approved over the "
             "twice-amended PREREG; cold re-anneal under gate 4; codebase-wide gate-6 "
             "conformance sweep in reports/gate6-sweep.md."
+        ),
+    },
+    {
+        "id": "PREREG-AMENDMENT-3",
+        "date": "2026-07-30",
+        "rule": "R2",
+        "class": "pre-data-design",
+        "class_note": (
+            "Checked against the drafting history before classifying, as authorized. The "
+            "history shows no original intent to restore, so transcription-restoration "
+            "does not apply and this is design."
+        ),
+        "drafting_history": (
+            "KICKOFF section 5 R2 reads in full: 'the meter must flag the known "
+            "claim-vs-proof gaps enumerated in STATEMENTS.md \"what we do NOT claim\". Miss "
+            "rate > 0 on that list => meter insensitive at this scale => "
+            "CLOSED-inconclusive.' It specifies no flagging criterion whatsoever — no "
+            "threshold, no surrogate, no comparison. The brief's only mention of the "
+            "second-FDT surrogate is the mint threshold in the constants table, which is "
+            "unrelated to R2. Git shows `band = result.surrogate.get(\"q95\", 0.0)` present "
+            "in the first commit (P0 scaffold) and unchanged since. The criterion was "
+            "therefore originated during P0 drafting, not degraded from a specified one, "
+            "and rationale (a) does not apply."
+        ),
+        "rationales": ["b", "c"],
+        "rationale_a_applies": False,
+        "change": (
+            "A gap counts as flagged iff its loop's cold floor exceeds q95 of a "
+            "second-FDT label-permutation null — each slot on the loop independently "
+            "supplying its state from the warm or cold arm, holonomy recomputed. Miss rate "
+            "is computed over the pre-registered STATEMENTS.md list exactly as before. The "
+            "legacy bootstrap flagging is retained as `legacy_bootstrap_flagged` and "
+            "decides nothing."
+        ),
+        "deviation_from_authorization": (
+            "The authorization specified q95 of *that loop's own* null. Implemented "
+            "literally that criterion is unsatisfiable: a k-slot loop has 2**k assignments, "
+            "the all-cold assignment IS the observed floor, and q95 of four or eight points "
+            "is the maximum — so no loop can exceed its own null at any floor. Measured on "
+            "a synthetic contested corpus: 0 of 4 loops could flag, giving a 100% miss rate "
+            "on every run, which reproduces the defect being replaced and fails rationale "
+            "(c) on its own terms. The mandated positive control is what caught this. The "
+            "shipped rule pools the OTHER loops' permuted floors leave-one-out, which is "
+            "the smallest change that keeps the null a permutation of observations while "
+            "giving it usable support. This deviation needs operator confirmation."
+        ),
+        "known_limitation": (
+            "Pooling assumes loops are exchangeable with one another, and they are not "
+            "exactly — they differ in slot count and edge weight. One loud loop raises "
+            "every other loop's threshold. Leave-one-out removes self-contamination but "
+            "not heterogeneity."
+        ),
+        "rationale": (
+            "(b) no data has passed through R2: P3 and P4 have not run, and R2 is BLOCKED "
+            "on D5 besides, so no verdict is being revised in sight of a result. "
+            "(c) calibration-restoring, NOT strictness-increasing. The bootstrap band rose "
+            "with the observed floor, so it was punitive on noisy runs — flagging only "
+            "above-average loops and missing genuine gaps whose floors were real but below "
+            "the mean. The permutation null corrects in BOTH directions: some runs that "
+            "failed R2 will now pass. That is the correction, not a loosening, and it is "
+            "recorded as such rather than claimed as extra strictness."
+        ),
+        "positive_control": (
+            "Mandated and implemented in tests/test_controls.py:R2AfterTheAmendment. "
+            "Direction one: clean synthetic run plus one planted gap -> miss rate 0. "
+            "Planted-defect direction: an insensitive meter (every loop the same floor and "
+            "the same null) -> the planted gap goes unflagged, miss rate 1.0, "
+            "CLOSED-inconclusive. Fewer than two loops -> inconclusive rather than a "
+            "degenerate self-comparison."
+        ),
+        "authorized_by": "operator",
+        "expires": "the moment P3 ingestion begins",
+        "also": (
+            "D7 re-approved over the thrice-amended PREREG; cold re-anneal under gate 4; "
+            "gate-6 sweep re-run — every deciding site now conforms."
         ),
     },
 )
@@ -219,25 +294,49 @@ def ground_truth_rediscovery(
 ) -> RuleResult:
     """R2: the meter must flag every claim-vs-proof gap in STATEMENTS.md "what we do NOT claim".
 
-    A gap is *flagged* if the slot addressing its span appears on a loop whose floor is
-    above the surrogate band, or carries settled mass on `B`. Miss rate above zero means
-    the meter is insensitive at this scale.
+    A gap is *flagged* iff the slot addressing its span appears on a loop whose cold floor
+    exceeds that loop's label-permutation null. Miss rate above zero means the meter is
+    insensitive at this scale.
 
-    **Non-conforming under GATES.md sentence 6 — flagged, not amended.** The band is
-    `result.surrogate["q95"]`, the bootstrap of the observed floors, so "flagged" means
-    "above average for this run" rather than "above what no path dependence would produce".
-    Found by `static_checks.check_gate6_classification`, which is the point of that check
-    existing: R4's version of this defect was noticed by hand, and this one was not.
+    **PREREG-AMENDMENT-3 (2026-07-30), class `pre-data-design`.** The flagging criterion
+    was `m.floor > result.surrogate["q95"]` — the bootstrap of the observed floors — so
+    "flagged" meant "above average for this run" rather than "above what no path dependence
+    would produce". It is now a label-permutation null: each slot on a loop independently
+    supplies its state from the warm or the cold arm, the holonomy is recomputed, and the
+    resulting floors are the reference.
 
-    The miscalibration runs the opposite way to R4's. A larger observed floor *raises* the
-    bar, so fewer gaps clear it and the miss rate goes up — R2 gets stricter as the run
-    gets noisier, and on a uniformly-zero run no loop clears the band at all and the miss
-    rate is 100%. R4 relaxed where it should have tightened; R2 tightens where it has the
-    least information.
+    **Drafting history, checked.** KICKOFF §5's R2 says only "the meter must flag the known
+    claim-vs-proof gaps ... Miss rate > 0 => CLOSED-inconclusive". It specifies no flagging
+    criterion at all, and the brief's only mention of the second-FDT surrogate is the mint
+    threshold in the constants table. The bootstrap was present in the first commit and
+    never changed. So there is **no original intent to restore**: the criterion was
+    originated at P0, not degraded from a specified one, and rationale (a) does not apply.
 
-    PREREG-AMENDMENT-2 was scoped to R4, so R2 is unchanged. It is BLOCKED on D5 in any
-    case (no `STATEMENTS.md`), so no data has passed through it. The conforming reference
-    would be the per-loop second-FDT surrogate, the same null R3 now uses.
+    **Rationale (c) is calibration-restoring, not strictness-increasing.** The bootstrap
+    band rose with the observed floor, so it was punitive on noisy runs — on a
+    uniformly-zero run nothing cleared it and the miss rate was 100%, reporting the meter as
+    insensitive when nothing was wrong. The permutation null corrects in *both* directions:
+    it can flag on a quiet run and it can decline to flag on a loud one. Some runs that
+    failed R2 will now pass, and that is the correction rather than a loosening.
+
+    **Why the null is pooled leave-one-out.** A single loop's permutation null has only
+    `2**k` distinct values, and the all-cold assignment — the observed floor — sits at or
+    below the maximum, which is what q95 of four points returns. Measured on a synthetic
+    contested corpus: 0 of 4 loops could flag at any floor, so the literal per-loop rule
+    would give a 100% miss rate on every run, reproducing the very defect it replaces. Each
+    loop's threshold is therefore the q95 of every *other* loop's permuted floors. The null
+    is still nothing but relabelled observations, and a loop can no longer inflate its own
+    bar. This is a deviation from the authorized wording, recorded here and in the
+    amendment; the positive control below is what caught it.
+
+    **Fewer than two loops is inconclusive.** A permutation null needs more than one
+    exchangeable unit. Rather than fall back to the degenerate self-comparison, R2 reports
+    `CLOSED-inconclusive`.
+
+    The legacy bootstrap flagging is retained as `legacy_bootstrap_flagged` and decides
+    nothing. The docstring previously also promised flagging on settled mass at `B`; the
+    code never implemented it, and the amendment's "iff" removes the claim rather than
+    leaving a promise the code does not keep.
     """
     if statements_doc is None and not not_claimed_spans:
         return RuleResult(
@@ -262,9 +361,31 @@ def ground_truth_rediscovery(
             stats={"targets": 0},
         )
 
-    band = result.surrogate.get("q95", 0.0)
+    thresholds = pooled_loop_nulls(result.loop_nulls)
+    if len(result.loop_nulls) < 2:
+        return RuleResult(
+            rule="R2",
+            verdict=Verdict.CLOSED_INCONCLUSIVE,
+            passed=False,
+            detail=(
+                f"{len(result.loop_nulls)} loop(s) measured: a label-permutation null needs "
+                "more than one exchangeable unit, so no loop has a threshold to clear. "
+                "R2 cannot be satisfied by a test that could not run."
+            ),
+            stats={"targets": len(spans), "loops": len(result.loop_nulls),
+                   "decided_by": "loop_permutation_null_pooled_loo",
+                   "gate6_conforming": True},
+        )
+
     flagged_slots = {
-        s for m in result.measurements if m.floor > band for s in m.slots
+        s for m in result.measurements
+        if m.floor > thresholds.get(m.loop_id, float("inf"))
+        for s in m.slots
+    }
+
+    legacy_band = result.surrogate.get("q95", 0.0)
+    legacy_flagged = {
+        s for m in result.measurements if m.floor > legacy_band for s in m.slots
     }
 
     misses: list[str] = []
@@ -287,13 +408,13 @@ def ground_truth_rediscovery(
         ),
         stats={
             "targets": len(spans), "misses": misses, "miss_rate": miss_rate,
-            "decided_by": "bootstrap_surrogate_q95",
-            "gate6_conforming": False,
-            "gate6_note": (
-                "the flagging threshold is a resample of the observed floors, which "
-                "GATES.md sentence 6 forbids; R2 was outside PREREG-AMENDMENT-2's scope "
-                "and is unchanged. See audit.ground_truth_rediscovery."
-            ),
+            "loops": len(result.loop_nulls),
+            "flagged_slots": len(flagged_slots),
+            "loop_thresholds": thresholds,
+            "decided_by": "loop_permutation_null_pooled_loo",
+            "gate6_conforming": True,
+            "legacy_bootstrap_band": legacy_band,          # decides nothing
+            "legacy_bootstrap_flagged": len(legacy_flagged),
         },
     )
 

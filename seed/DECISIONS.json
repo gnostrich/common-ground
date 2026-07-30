@@ -68,10 +68,11 @@
   "D7": {
     "status": "resolved",
     "choice": "re-approved-over-amendments",
-    "note": "Originally approved as-is. Re-approved 2026-07-30 over two amendments, both with R1-R5 text verbatim and unrewritten. AMENDMENT-1 (R3, class transcription-restoration, rationales a/b/c): second_fdt_surrogate_floor decides in place of the bootstrap band. AMENDMENT-2 (R4, class pre-data-design, rationales b/c only - (a) explicitly does NOT apply, since nothing in the spec named a null-rewire reference or a sensitivity arm): R4 becomes two-sided and both arms are decided against dropout movement on a degree- and weight-marginal-preserving rewire of the Q graph. Both retain the superseded band as a reported diagnostic that decides nothing. Amendment authority expires when P3 ingestion begins.",
+    "note": "Originally approved as-is. Re-approved 2026-07-30 over two amendments, both with R1-R5 text verbatim and unrewritten. AMENDMENT-1 (R3, class transcription-restoration, rationales a/b/c): second_fdt_surrogate_floor decides in place of the bootstrap band. AMENDMENT-2 (R4, class pre-data-design, rationales b/c only - (a) explicitly does NOT apply, since nothing in the spec named a null-rewire reference or a sensitivity arm): R4 becomes two-sided and both arms are decided against dropout movement on a degree- and weight-marginal-preserving rewire of the Q graph. Both retain the superseded band as a reported diagnostic that decides nothing. Amendment authority expires when P3 ingestion begins. AMENDMENT-3 (R2, class pre-data-design, rationales b/c - (a) checked against the drafting history and does not apply: KICKOFF section 5 specifies no flagging criterion and the bootstrap was present from the P0 commit): a gap is flagged iff its loop's cold floor exceeds q95 of a leave-one-out pooled label-permutation null. Rationale (c) here is calibration-restoring, not strictness-increasing. Deviates from the authorized per-loop wording, which is unsatisfiable (2**k support, all-cold assignment is the observed floor); the mandated positive control caught it and the deviation needs operator confirmation.",
     "amendments": [
       "PREREG-AMENDMENT-1",
-      "PREREG-AMENDMENT-2"
+      "PREREG-AMENDMENT-2",
+      "PREREG-AMENDMENT-3"
     ],
     "prereg_path": "registry/PREREG.md"
   },

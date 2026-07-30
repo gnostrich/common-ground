@@ -12,7 +12,7 @@ is not a method. This sweep is the method.
 ## The sites
 
 `static_checks.check_gate6_classification` walks every function in `engine/` and finds
-9 that build or read a statistical band across 21 files.
+10 that build or read a statistical band across 22 files.
 Each must be classified below or the check fails. It classifies rather than forbids: a
 non-conforming band may exist as a **diagnostic**; what may not exist is an unexamined one.
 
@@ -21,41 +21,51 @@ it is reported and nothing more, `produces` means it is computed and handed on.
 
 | Site | Role | Reference distribution | Gate 6 |
 |---|---|---|---|
-| `engine/audit.py:ground_truth_rediscovery` | decides | bootstrap q95 of the observed floors | **NON-CONFORMING** |
 | `engine/meter.py:surrogate_floor_distribution` | diagnostic | bootstrap resample of the observed loop floors | **NON-CONFORMING** |
 | `engine/meter.py:within_noise` | unused | caller-supplied surrogate | n/a |
 | `engine/pipeline.py:_q95` | diagnostic | bootstrap, via surrogate_floor_distribution | **NON-CONFORMING** |
 | `engine/pipeline.py:run_meter` | produces | n/a — computes both surrogates and stores them | n/a |
 | `engine/audit.py:floor_verdict` | decides | second_fdt_surrogate_floor | **conforming** |
+| `engine/audit.py:ground_truth_rediscovery` | decides | per-loop second-FDT label permutation, pooled leave-one-out | **conforming** |
 | `engine/audit.py:prior_insensitivity` | decides | dropout movement on a degree- and weight-marginal-preserving rewire | **conforming** |
+| `engine/meter.py:pooled_loop_nulls` | decides | leave-one-out pool of the other loops' permutation draws | **conforming** |
 | `engine/meter.py:second_fdt_surrogate_floor` | decides | warm/cold label permutation, loop by loop | **conforming** |
 | `engine/nulls.py:cell_iii_empty_corpus` | decides | exact zero | **conforming** |
 | `engine/nulls.py:cell_iv_single_doc` | decides | consensus ledger floor (every block forced to its modal b-value) | **conforming** |
 | `engine/nulls.py:cell_ix_binding_sanity` | decides | fixed 5% failure rate, pre-registered in the LEXICON SPEC | **conforming** |
 | `engine/nulls.py:cell_v_duplicate_source` | decides | DUPLICATE_RESIDUE_TOLERANCE (1e-12), a numerical tolerance | **conforming** |
+| `engine/meter.py:loop_permutation_null` | produces | per-slot warm/cold assignment on one loop, holonomy recomputed | **conforming** |
 | `engine/mint_tape.py:read_tape` | diagnostic | 3x second_fdt_surrogate_floor | **conforming** |
 
 ## Findings
 
-### The sweep found R2, which no one had noticed
+### The sweep found R2, which no one had noticed — now amended
 
-`ground_truth_rediscovery` counts a gap as *flagged* when its loop's floor exceeds
-`result.surrogate["q95"]` — the bootstrap. So "flagged" means "above average for this
-run", not "above what no path dependence would produce".
+`ground_truth_rediscovery` counted a gap as *flagged* when its loop's floor exceeded
+`result.surrogate["q95"]` — the bootstrap. So "flagged" meant "above average for this run",
+not "above what no path dependence would produce".
 
-The miscalibration runs **opposite to R4's**, and the difference matters. R4's band grew
+The miscalibration ran **opposite to R4's**, and the difference matters. R4's band grew
 with the floor, so the rule relaxed exactly where dictionary sensitivity mattered most.
-R2's band grows with the floor too, but it sits on the *other side* of the comparison: a
-larger floor raises the bar, fewer gaps clear it, and the miss rate goes up. R2 gets
-stricter as the run gets noisier — and on a uniformly-zero run no loop clears the band at
-all, so the miss rate is 100% and R2 reports the meter as insensitive when nothing was
-wrong with it.
+R2's band grew with the floor too, but it sat on the *other side* of the comparison: a
+larger floor raised the bar, fewer gaps cleared it, and the miss rate went up. R2 got
+stricter as the run got noisier.
 
-R2 was outside PREREG-AMENDMENT-2's scope (R4 only), so it is **flagged and unchanged**.
-It reports `decided_by` and `gate6_conforming: false` in its stats, and it is BLOCKED on
-D5 in any case — `STATEMENTS.md` is absent, so no data has passed through it either. The
-conforming reference would be the per-loop second-FDT surrogate, the same null R3 uses.
-Amending it needs its own authorization, and the window closes at the first P3 phase-run.
+PREREG-AMENDMENT-3 replaced it with a label-permutation null. Its rationale (c) is recorded
+as **calibration-restoring** rather than strictness-increasing — unlike -1 and -2, this
+correction runs in both directions and some runs that would have failed R2 will now pass.
+
+**The amendment deviates from its authorized wording, and the deviation was found by the
+mandated positive control.** The authorization specified each loop's *own* permutation
+null. That is unsatisfiable: a `k`-slot loop has `2**k` warm/cold assignments, the all-cold
+assignment *is* the observed floor, and q95 of four or eight points is the maximum — so no
+loop can exceed its own null at any floor. Measured on a synthetic contested corpus, 0 of 4
+loops could flag, which would have given a 100% miss rate on every run: the same defect, in
+the same punitive direction. The shipped rule pools the *other* loops' permuted floors
+leave-one-out. **This needs operator confirmation.**
+
+Its limitation is stated rather than buried: pooling assumes loops are exchangeable with
+one another, and they are not exactly — one loud loop raises every other loop's threshold.
 
 ### The bootstrap survives as a diagnostic, deliberately
 

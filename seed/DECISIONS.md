@@ -79,18 +79,19 @@ Observed in this container (a candidate, not a decision): Python 3.11.15. The en
 pure-stdlib by design — no numpy, no scipy — so that hashes and singular values are
 reproducible across platforms rather than dependent on a linked LAPACK build.
 
-## D7 — PREREG approved as-is / amended — **RESOLVED (re-approved over AMENDMENT-1 and -2)**
+## D7 — PREREG approved as-is / amended — **RESOLVED (re-approved over AMENDMENT-1, -2 and -3)**
 
 Originally approved as-is: `registry/PREREG.md` reproduced KICKOFF §5 without amendment,
 R1–R5 and the not-claimed list verbatim, frozen on commit.
 
-**Re-approved 2026-07-30 over two amendments.** R1–R5's text is still verbatim and
-unrewritten in both cases; each amendment is appended, not merged.
+**Re-approved 2026-07-30 over three amendments.** R1–R5's text is still verbatim and
+unrewritten in every case; each amendment is appended, not merged.
 
 | Amendment | Rule | Class | Rationales |
 |---|---|---|---|
 | PREREG-AMENDMENT-1 | R3 | transcription-restoration | (a), (b), (c) |
 | PREREG-AMENDMENT-2 | R4 | **pre-data-design** | (b), (c) — **(a) does not apply** |
+| PREREG-AMENDMENT-3 | R2 | **pre-data-design** | (b), (c) — (a) checked and does not apply |
 
 **AMENDMENT-1** makes `second_fdt_surrogate_floor` (warm/cold label permutation) decide R3's
 branch in place of the bootstrap band. Admissible on all three grounds: the specification
@@ -106,9 +107,23 @@ would misrepresent new design as a correction. That is what the `class` field re
 design amendment carries more weight of judgement than a restoration, and its admissibility
 rests entirely on the pre-data timing.
 
-Both amendments retain their superseded band as a reported diagnostic that decides nothing,
-and both keep their historical pinning test. Full records in `registry/PREREG.md`;
-codebase-wide conformance in `reports/gate6-sweep.md`.
+**AMENDMENT-3** makes R2 flag a gap iff its loop's cold floor exceeds q95 of a
+leave-one-out pooled label-permutation null. Class determined by checking the drafting
+history as authorized: KICKOFF §5's R2 specifies *no* flagging criterion at all, and the
+bootstrap was present in the P0 scaffold commit and never changed — so there is nothing to
+restore and (a) does not apply. Its rationale (c) is **calibration-restoring**, not
+strictness-increasing: the bootstrap was punitive on noisy runs, and the correction runs in
+both directions.
+
+AMENDMENT-3 also deviates from its authorized wording, which specified each loop's *own*
+null. That is unsatisfiable — a k-slot loop has 2**k assignments and the all-cold one is
+the observed floor, so no loop can exceed its own null; measured, 0 of 4 loops could ever
+flag. The mandated positive control caught it. **The deviation needs confirmation.**
+
+All three amendments retain their superseded band as a reported diagnostic that decides
+nothing, and all three keep a historical pinning test. Full records in
+`registry/PREREG.md`; codebase-wide conformance in `reports/gate6-sweep.md`, where every
+deciding site now conforms.
 
 The authorization to amend expires when P3 ingestion begins, enforced by
 `audit.check_amendment_window()` rather than remembered.
