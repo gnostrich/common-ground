@@ -185,13 +185,25 @@ GATE6_SITES: tuple[dict[str, object], ...] = (
                 "draws; never thresholds on them directly. See pooled_loop_nulls.",
     },
     {
+        "site": "engine/meter.py:studentized_loop_thresholds", "role": "rejected",
+        "reference": "leave-one-out pool of other loops' permutation draws, scaled by each "
+                     "loop's own null MAD",
+        "conforming": True,
+        "note": "Gate-6 conforming but REJECTED on its controls and wired to nothing. A "
+                "loop's floor and its null's scale are the same quantity — warm/cold "
+                "disagreement — so studentizing divides out the signal; it inverted the "
+                "planted-gap control. Retained as pinned evidence.",
+    },
+    {
         "site": "engine/meter.py:pooled_loop_nulls", "role": "decides",
         "reference": "leave-one-out pool of the other loops' permutation draws",
         "conforming": True,
         "note": "The threshold R2 reads (PREREG-AMENDMENT-3). Pooling gives the null usable "
                 "support; leave-one-out keeps a loop from inflating its own bar. Known "
-                "limitation: loops are not exactly exchangeable with one another, so one "
-                "loud loop raises everyone else's threshold.",
+                "limitation, OPEN: loops are not exactly exchangeable with one another, so "
+                "one loud loop raises everyone else's threshold. Studentizing was attempted "
+                "once to mitigate this and rejected on its controls — see "
+                "studentized_loop_thresholds.",
     },
     {
         "site": "engine/meter.py:within_noise", "role": "unused",

@@ -198,7 +198,7 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 197 tests, stdlib only
+make test            # 201 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
 make nulls           # P1 null battery + positive controls at the current seed hash
 make lock            # refuses while any decision is blank

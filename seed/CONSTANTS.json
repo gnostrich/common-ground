@@ -604,5 +604,7 @@
   "duplicate_residue_tolerance": 1e-12,
   "duplicate_residue_tolerance_note": "Null cell (v): 'zero cold residue' means zero. The engine is deterministic and a genuine duplicate yields bit-identical evidence, so only float-ordering noise is admissible. Comparing against a bootstrap band of the observed floors made the cell vacuous and was caught by its positive control.",
   "rewire_passes": 10,
-  "rewire_note": "Double-edge-swap passes per edge in the R4 null rewire (PREREG-AMENDMENT-2). 10 passes is well past the mixing point for graphs this size; swaps that would create a self-loop or duplicate are refused, so degree and weight marginals hold exactly."
+  "rewire_note": "Double-edge-swap passes per edge in the R4 null rewire (PREREG-AMENDMENT-2). 10 passes is well past the mixing point for graphs this size; swaps that would create a self-loop or duplicate are refused, so degree and weight marginals hold exactly.",
+  "studentize_min_scale": 1e-12,
+  "studentize_note": "Below this null MAD a loop's permutation scale is treated as degenerate and that loop falls back to raw leave-one-out pooling (PREREG-AMENDMENT-3 studentization repair). Reported per loop."
 }

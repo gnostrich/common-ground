@@ -345,3 +345,51 @@ per-loop rule is pinned as its own test.
 **Scope and expiry.** Unchanged: the authorization expires the moment P3 ingestion begins.
 With R2 amended, **every deciding site in the engine conforms to gate 6** — the closing
 table is in `reports/P1-null-battery.md` and `reports/gate6-sweep.md`.
+
+#### PREREG-AMENDMENT-3.repair-1 — studentization, attempted and rejected
+
+**Date:** 2026-07-30 · **Authorized by:** operator · **Status:** REJECTED on its controls
+**Not a fourth amendment:** same rule, same reference class, scale normalization only.
+
+**Specification defect, acknowledged.** Before the repair: the per-loop-only wording in
+AMENDMENT-3's authorization is the source of the defect the leave-one-out pooling works
+around, not an implementation misreading. `q95 of that loop's own null` is unsatisfiable
+for any loop at any floor. The operator has acknowledged this and accepted the repair; it
+is recorded here so the amendment's history reads correctly.
+
+**Proposal.** Scale each loop's permuted floors by its own null MAD, compare observed
+floors in the same units, pool leave-one-out across loops, and fall back per loop to raw
+pooling where the null scale is degenerate below `studentize_min_scale`. Intended to
+mitigate the exchangeability limitation: loops differ in slot count and edge weight, so one
+loud loop raises every other loop's threshold in absolute units.
+
+**Outcome: rejected.** It did not merely fail its controls — it **inverted** them. On the
+mandated direction-one control (clean synthetic run plus one planted gap):
+
+| loop | floor | null MAD | studentized | flags? | raw LOO flags? |
+|---|---|---|---|---|---|
+| `183f21f7df59` (the planted gap) | 0.217756 | 2.54e-06 | **−0.089** | no | **yes** |
+| `570db9317f29` | 1.36e-07 | 8.60e-09 | −1.000 | no | no |
+| `a8a28caf6de2` | 5.49e-08 | 4.04e-10 | **+4.573** | **yes** | no |
+
+Miss rate 1.0 where raw leave-one-out gives 0.0. The planted gap went unflagged and a
+numerically negligible loop was flagged in its place.
+
+**Why, structurally.** A loop's floor and its permutation null's scale are *the same
+quantity*: both are produced by warm/cold disagreement on that loop. A loop with a real gap
+has a large floor **and** a large null MAD, so the ratio is not distinctive, and what
+survives studentization is loops whose null is nearly degenerate — a tiny absolute
+difference over a tinier scale. Studentizing is the right instinct when scale is a nuisance
+parameter. Here it is the estimand.
+
+**Loud-loop control.** Ran as specified, against raw leave-one-out as shipped: adding a loop
+with a far larger floor changed no shared loop's flag status and left the miss rate stable.
+That is one instance and not a proof of insensitivity, which is why the limitation is
+recorded as open rather than closed by it.
+
+**Disposition.** Raw leave-one-out stands as shipped. The exchangeability limitation stays
+**OPEN, not mitigated**. Per the authorization this was a single attempt and no further
+iteration was made — the window is for repairs, not tuning. The rejected code is retained,
+wired to nothing, classified `rejected` in `GATE6_SITES`, and pinned by
+`tests/test_controls.py:StudentizationWasTriedAndRejected` on the same terms as every other
+superseded computation here.

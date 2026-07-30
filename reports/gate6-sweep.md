@@ -12,7 +12,7 @@ is not a method. This sweep is the method.
 ## The sites
 
 `static_checks.check_gate6_classification` walks every function in `engine/` and finds
-10 that build or read a statistical band across 22 files.
+11 that build or read a statistical band across 22 files.
 Each must be classified below or the check fails. It classifies rather than forbids: a
 non-conforming band may exist as a **diagnostic**; what may not exist is an unexamined one.
 
@@ -35,6 +35,7 @@ it is reported and nothing more, `produces` means it is computed and handed on.
 | `engine/nulls.py:cell_ix_binding_sanity` | decides | fixed 5% failure rate, pre-registered in the LEXICON SPEC | **conforming** |
 | `engine/nulls.py:cell_v_duplicate_source` | decides | DUPLICATE_RESIDUE_TOLERANCE (1e-12), a numerical tolerance | **conforming** |
 | `engine/meter.py:loop_permutation_null` | produces | per-slot warm/cold assignment on one loop, holonomy recomputed | **conforming** |
+| `engine/meter.py:studentized_loop_thresholds` | rejected | leave-one-out pool of other loops' permutation draws, scaled by each loop's own null MAD | **conforming** |
 | `engine/mint_tape.py:read_tape` | diagnostic | 3x second_fdt_surrogate_floor | **conforming** |
 
 ## Findings

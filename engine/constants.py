@@ -66,6 +66,9 @@ PRIOR_DROPOUT_RATE: float = float(C["prior_dropout_rate"])
 PRIOR_DROPOUT_TRIALS: int = int(C["prior_dropout_trials"])
 #: Double-edge-swap passes per edge in the R4 null rewire (PREREG-AMENDMENT-2).
 REWIRE_PASSES: int = int(C["rewire_passes"])
+#: Null MAD below which a loop's permutation scale is degenerate and it falls
+#: back to raw leave-one-out pooling (PREREG-AMENDMENT-3 studentization repair).
+STUDENTIZE_MIN_SCALE: float = float(C["studentize_min_scale"])
 NULL_FUZZ_SAMPLES: int = int(C["null_fuzz_samples"])
 SINGLE_DOC_TOLERANCE: float = float(C["single_doc_tolerance"])
 DUPLICATE_RESIDUE_TOLERANCE: float = float(C["duplicate_residue_tolerance"])

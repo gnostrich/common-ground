@@ -31,7 +31,7 @@ from .constants import (
 )
 from .extract import Extractor
 from .hashing import DRNG, quantile
-from .meter import MeterResult, pooled_loop_nulls
+from .meter import MeterResult, pooled_loop_nulls, studentized_loop_thresholds
 from .normalize import address, classify
 from .pipeline import Ledger, build_ledger, run_meter
 from .types import Clamp, Document, NullBatteryReport, NullStatus
@@ -189,11 +189,49 @@ AMENDMENTS: tuple[dict[str, object], ...] = (
             "CLOSED-inconclusive. Fewer than two loops -> inconclusive rather than a "
             "degenerate self-comparison."
         ),
+        "specification_defect_acknowledged": (
+            "The per-loop-only wording in the authorization is the source of the defect, "
+            "not an implementation misreading. `q95 of that loop's own null` is "
+            "unsatisfiable for any loop at any floor, and the deviation exists solely to "
+            "make the rule capable of firing. The operator has acknowledged this and "
+            "accepted the leave-one-out repair."
+        ),
+        "repair_attempt": {
+            "id": "PREREG-AMENDMENT-3.repair-1",
+            "proposal": "studentize the pooled null — each loop's permuted floors scaled "
+                        "by its own null MAD, observed floors in the same units, per-loop "
+                        "fallback to raw LOO where the scale is degenerate",
+            "intent": "mitigate the exchangeability limitation: loops differ in slot count "
+                      "and edge weight, so one loud loop raises every other loop's "
+                      "threshold in absolute units",
+            "outcome": "REJECTED on its controls, single attempt as authorized",
+            "evidence": "On the mandated direction-one control (clean synthetic run plus "
+                        "one planted gap), the planted gap's loop — floor 0.218 — "
+                        "studentized to -0.089 and did NOT flag, while a numerically "
+                        "negligible loop at floor 5.5e-08 studentized to +4.573 and DID. "
+                        "Miss rate 1.0 where raw leave-one-out gives 0.0. The repair did "
+                        "not merely fail; it inverted the result.",
+            "why": "A loop's floor and its permutation null's scale are the same quantity — "
+                   "both are produced by warm/cold disagreement on that loop. A loop with a "
+                   "real gap has a large floor AND a large null MAD, so the ratio is not "
+                   "distinctive, and what survives studentization is loops whose null is "
+                   "nearly degenerate. Studentizing is right when scale is a nuisance "
+                   "parameter; here it is the estimand.",
+            "loud_loop_control": "Ran as specified against raw LOO as shipped: adding a "
+                                 "loop with a far larger floor changed no shared loop's "
+                                 "flag status and left the miss rate stable. That is one "
+                                 "instance, not a proof of insensitivity.",
+            "disposition": "raw leave-one-out stands as shipped; the exchangeability "
+                           "limitation stays OPEN, not mitigated. The rejected code is "
+                           "retained, wired to nothing, classified `rejected` in "
+                           "GATE6_SITES, and pinned by "
+                           "tests/test_controls.py:StudentizationWasTriedAndRejected.",
+        },
         "authorized_by": "operator",
         "expires": "the moment P3 ingestion begins",
         "also": (
             "D7 re-approved over the thrice-amended PREREG; cold re-anneal under gate 4; "
-            "gate-6 sweep re-run — every deciding site now conforms."
+            "gate-6 sweep re-run — every deciding site conforms."
         ),
     },
 )
@@ -412,6 +450,7 @@ def ground_truth_rediscovery(
             "flagged_slots": len(flagged_slots),
             "loop_thresholds": thresholds,
             "decided_by": "loop_permutation_null_pooled_loo",
+            "studentization": "attempted and rejected; see AMENDMENTS[2].repair_attempt",
             "gate6_conforming": True,
             "legacy_bootstrap_band": legacy_band,          # decides nothing
             "legacy_bootstrap_flagged": len(legacy_flagged),

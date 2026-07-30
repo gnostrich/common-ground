@@ -58,6 +58,7 @@ from .constants import (
     CAST_T2_DECAY,
     CAST_T2_END,
     CAST_T2_START,
+    STUDENTIZE_MIN_SCALE,
     SURROGATE_QUANTILE,
     SURROGATE_TRIALS,
 )
@@ -420,6 +421,146 @@ def pooled_loop_nulls(
     for loop_id in draws_by_loop:
         others = [d for lid, ds in draws_by_loop.items() if lid != loop_id for d in ds]
         out[loop_id] = quantile(others, quantile_q) if others else float("inf")
+    return out
+
+
+def _median(values: Sequence[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[mid]
+    return 0.5 * (ordered[mid - 1] + ordered[mid])
+
+
+def _mad(values: Sequence[float]) -> float:
+    """Median absolute deviation. A scale estimate that a single outlier cannot inflate."""
+    if not values:
+        return 0.0
+    centre = _median(values)
+    return _median([abs(v - centre) for v in values])
+
+
+@dataclass(slots=True)
+class LoopThreshold:
+    """One loop's flagging decision, with the units it was decided in."""
+
+    loop_id: str
+    threshold: float
+    observed: float
+    mode: str            # "studentized" | "raw-loo"
+    centre: float = 0.0
+    scale: float = 1.0
+
+    @property
+    def flags(self) -> bool:
+        return self.observed > self.threshold
+
+    def as_record(self) -> dict[str, object]:
+        return {
+            "loop_id": self.loop_id, "threshold": self.threshold,
+            "observed": self.observed, "mode": self.mode,
+            "centre": self.centre, "scale": self.scale, "flags": self.flags,
+        }
+
+
+def studentized_loop_thresholds(
+    draws_by_loop: Mapping[str, Sequence[float]],
+    floors_by_loop: Mapping[str, float],
+    quantile_q: float = SURROGATE_QUANTILE,
+) -> dict[str, LoopThreshold]:
+    """**REJECTED REPAIR — retained as evidence, decides nothing.**
+
+    Attempted once under PREREG-AMENDMENT-3's repair window and rejected on its controls.
+    `ground_truth_rediscovery` uses `pooled_loop_nulls`; nothing calls this. It is kept so
+    the failure is pinned by a test rather than remembered, on the same terms as every other
+    superseded computation in this repo.
+
+    **Why it failed.** Not merely inconclusive — it *inverted* the result. On the mandated
+    direction-one control (clean synthetic run plus one planted gap), the planted gap's
+    loop, floor 0.218, studentized to **-0.089** and did not flag, while a numerically
+    negligible loop at floor 5.5e-08 studentized to **+4.573** and did. Miss rate 1.0 where
+    raw leave-one-out gives 0.0.
+
+    The reason is structural, not a tuning problem. A loop's floor and its permutation
+    null's scale are *the same quantity*: both are produced by warm/cold disagreement on
+    that loop. A loop with a real gap has a large floor **and** a large null MAD. Dividing
+    the first by the second divides out precisely the signal the rule exists to detect, and
+    what remains is dominated by loops whose null is nearly degenerate — where a tiny
+    absolute difference over a tinier scale yields a large ratio.
+
+    Studentizing is the right instinct when scale is a nuisance parameter. Here it is the
+    estimand.
+
+    Leave-one-out pooling in absolute units keeps the exchangeability limitation it was
+    meant to mitigate: loops differ in slot count and edge weight, so one loud loop raises
+    every other loop's threshold. That limitation **stays open**, recorded as such.
+
+    The mechanics below are as specified, so the record is checkable: each loop's permuted
+    floors centred on their own median and divided by their own null MAD, observed floors
+    put in the same units, leave-one-out pooling across loops, and a per-loop fallback to
+    raw pooling where the null scale is degenerate below `STUDENTIZE_MIN_SCALE`.
+
+    Raw LOO pooling works — it gives the null usable support where a single loop's `2**k`
+    draws cannot — but it assumes loops are exchangeable with one another, and they are
+    not: they differ in slot count and edge weight, so their permutation nulls differ in
+    *scale*. One loud loop therefore raised every other loop's threshold in absolute units.
+
+    Studentizing removes the scale difference. Each loop's permuted floors are centred on
+    their own median and divided by their own null MAD, and its observed floor is put in
+    the same units. What pools is then a set of dimensionless deviations, so a loud loop
+    contributes its *shape*, not its magnitude.
+
+    Gate 6 is unaffected. Centre and scale are computed from the loop's own permutation
+    draws, which are relabelled observations — nothing is resampled and no distribution is
+    borrowed from outside the exchange. Studentizing a permutation statistic is still a
+    permutation test.
+
+    Where a loop's null MAD is degenerate (below `STUDENTIZE_MIN_SCALE` — every permutation
+    landing on the same value, so there is no scale to divide by) that loop falls back to
+    raw leave-one-out pooling and says so in `mode`. The fallback is per loop and reported
+    per loop, never a silent global switch.
+    """
+    stats: dict[str, tuple[float, float]] = {}
+    for loop_id, draws in draws_by_loop.items():
+        stats[loop_id] = (_median(draws), _mad(draws))
+
+    scaled = {
+        loop_id: (
+            [(d - stats[loop_id][0]) / stats[loop_id][1] for d in draws]
+            if stats[loop_id][1] > STUDENTIZE_MIN_SCALE
+            else None
+        )
+        for loop_id, draws in draws_by_loop.items()
+    }
+
+    out: dict[str, LoopThreshold] = {}
+    for loop_id, draws in draws_by_loop.items():
+        centre, scale = stats[loop_id]
+        floor = floors_by_loop.get(loop_id, 0.0)
+        pool = [
+            v for other, vs in scaled.items()
+            if other != loop_id and vs is not None for v in vs
+        ]
+        if scaled[loop_id] is not None and pool:
+            out[loop_id] = LoopThreshold(
+                loop_id=loop_id,
+                threshold=quantile(pool, quantile_q),
+                observed=(floor - centre) / scale,
+                mode="studentized",
+                centre=centre,
+                scale=scale,
+            )
+            continue
+
+        raw_pool = [d for other, ds in draws_by_loop.items() if other != loop_id for d in ds]
+        out[loop_id] = LoopThreshold(
+            loop_id=loop_id,
+            threshold=quantile(raw_pool, quantile_q) if raw_pool else float("inf"),
+            observed=floor,
+            mode="raw-loo",
+        )
     return out
 
 

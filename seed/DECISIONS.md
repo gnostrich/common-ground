@@ -115,10 +115,17 @@ restore and (a) does not apply. Its rationale (c) is **calibration-restoring**, 
 strictness-increasing: the bootstrap was punitive on noisy runs, and the correction runs in
 both directions.
 
-AMENDMENT-3 also deviates from its authorized wording, which specified each loop's *own*
-null. That is unsatisfiable — a k-slot loop has 2**k assignments and the all-cold one is
-the observed floor, so no loop can exceed its own null; measured, 0 of 4 loops could ever
-flag. The mandated positive control caught it. **The deviation needs confirmation.**
+AMENDMENT-3 deviates from its authorized wording, which specified each loop's *own* null.
+That is unsatisfiable — a k-slot loop has 2**k assignments and the all-cold one is the
+observed floor, so no loop can exceed its own null; measured, 0 of 4 loops could ever flag.
+The mandated positive control caught it, the deviation is **confirmed**, and the
+per-loop-only specification is recorded in the amendment as the defect's source.
+
+One repair was attempted inside the window and **rejected**: studentizing the pooled null
+by each loop's own MAD inverted the planted-gap control — the real gap (floor 0.218) went
+unflagged at −0.089 while a 5.5e-08 loop flagged at +4.573. A loop's floor and its null's
+scale are the same quantity, so dividing one by the other divides out the signal. Raw
+leave-one-out stands and the exchangeability limitation stays **open**.
 
 All three amendments retain their superseded band as a reported diagnostic that decides
 nothing, and all three keep a historical pinning test. Full records in

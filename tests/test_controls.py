@@ -679,3 +679,107 @@ class EveryDecidingSiteConforms(unittest.TestCase):
         offenders = [s["site"] for s in GATE6_SITES
                      if s["role"] == "decides" and s["conforming"] is not True]
         self.assertEqual(offenders, [], f"still deciding on a resample: {offenders}")
+
+
+class StudentizationWasTriedAndRejected(unittest.TestCase):
+    """PREREG-AMENDMENT-3's repair window: one attempt, rejected on its controls.
+
+    The exchangeability limitation raw leave-one-out pooling carries — loops differ in
+    slot count and edge weight, so one loud loop raises every other loop's threshold —
+    was to be mitigated by scaling each loop's permuted floors by its own null MAD.
+
+    It failed, and not marginally: it **inverted** the planted-gap control. The limitation
+    therefore stays **open**, and `ground_truth_rediscovery` still uses `pooled_loop_nulls`.
+    These tests pin why, so the attempt is a record rather than a memory.
+    """
+
+    def test_the_rejected_repair_is_wired_to_nothing(self):
+        import inspect
+
+        from engine.audit import ground_truth_rediscovery
+
+        source = inspect.getsource(ground_truth_rediscovery)
+        self.assertIn("pooled_loop_nulls(result.loop_nulls)", source)
+        self.assertNotIn("studentized_loop_thresholds(", source)
+
+    def test_studentizing_divides_out_the_signal(self):
+        """A loop's floor and its null's scale are the same quantity.
+
+        Warm/cold disagreement produces both, so a loop with a real gap has a large floor
+        AND a large null MAD. The ratio is not distinctive; what survives it is loops whose
+        null is nearly degenerate.
+        """
+        from engine.meter import studentized_loop_thresholds
+
+        # A real gap: large floor, correspondingly wide null.
+        # A negligible loop: tiny floor, far tinier null.
+        draws = {"real": [0.0, 0.10, 0.20, 0.30], "negligible": [0.0, 1e-9, 2e-9, 3e-9]}
+        floors = {"real": 0.30, "negligible": 3e-9}
+        out = studentized_loop_thresholds(draws, floors)
+        self.assertAlmostEqual(out["real"].observed, out["negligible"].observed,
+                               msg="studentizing makes a 0.3 floor and a 3e-9 floor "
+                                   "indistinguishable — the scale IS the signal")
+
+    def test_it_inverted_the_planted_gap_control(self):
+        """The measurement that rejected it, pinned."""
+        from engine.audit import ground_truth_rediscovery
+        from engine.constants import decisions, shadow
+        from engine.extract import build_k_extractors
+        from engine.meter import studentized_loop_thresholds
+        from engine.pipeline import build_ledger, run_meter
+
+        docs = [Document("clean", "english", R2AfterTheAmendment._CLEAN, "repo_docs"),
+                Document("gap", "english",
+                         "The cone is positive. The cone is not positive.", "repo_docs")]
+        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+        result, _, _ = run_meter(ledger, 1.0, "r2-test", shadow())
+
+        floors = {m.loop_id: m.floor for m in result.measurements}
+        stud = studentized_loop_thresholds(result.loop_nulls, floors)
+        loudest = max(result.measurements, key=lambda m: m.floor)
+        self.assertGreater(loudest.floor, 0.1, "fixture must contain a real gap")
+        self.assertFalse(stud[loudest.loop_id].flags,
+                         "studentization did not flag the planted gap")
+        self.assertTrue(any(v.flags for k, v in stud.items() if k != loudest.loop_id),
+                        "and it flagged a numerically negligible loop instead")
+
+        # Raw leave-one-out, as shipped, gets it right.
+        r = ground_truth_rediscovery(None, result, ledger,
+                                     not_claimed_spans=["the cone is positive"])
+        self.assertEqual(r.stats["miss_rate"], 0.0)
+        self.assertEqual(r.stats["decided_by"], "loop_permutation_null_pooled_loo")
+
+    def test_the_loud_loop_control_is_recorded_even_though_the_repair_was_rejected(self):
+        """The new control the repair was to be judged on. Raw LOO passes it here.
+
+        Adding a loop with a far larger floor must not change a quiet loop's flag status.
+        Raw pooling is *vulnerable* to this in principle — a loud loop raises everyone's
+        threshold — and on this corpus it does not fire. That is one instance, not a proof,
+        and the limitation stays open on that basis.
+        """
+        from engine.meter import pooled_loop_nulls
+
+        quiet = [Document("quiet", "english",
+                          "The kernel accepts the statement. "
+                          "The kernel does not accept the statement.", "repo_docs"),
+                 Document("calm", "english",
+                          "Positivity is preserved under composition. "
+                          "Composition preserves positivity.", "repo_docs")]
+        loud = Document("loud", "english",
+                        "The cone is positive. The cone is not positive. "
+                        "The cone is not positive under composition. "
+                        "The cone may be positive. The cone is definitely not positive.",
+                        "repo_docs")
+
+        def flags(docs):
+            _, result = R2AfterTheAmendment._run(docs, seed="loud-control")
+            thr = pooled_loop_nulls(result.loop_nulls)
+            return {m.loop_id: m.floor > thr.get(m.loop_id, float("inf"))
+                    for m in result.measurements}
+
+        without, with_loud = flags(quiet), flags(quiet + [loud])
+        shared = set(without) & set(with_loud)
+        self.assertTrue(shared, "the two runs must share loops or this tests nothing")
+        for loop_id in shared:
+            self.assertEqual(without[loop_id], with_loud[loop_id],
+                             f"{loop_id}: a loud loop changed a quiet loop's flag status")
