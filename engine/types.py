@@ -281,12 +281,28 @@ class NullStatus(str, Enum):
     BLOCKED = "blocked"  # cannot run: an input the cell needs is unresolved
 
 
+class ControlState(str, Enum):
+    """Whether a cell's positive control fired.
+
+    A positive control feeds the cell a deliberately broken input that it MUST flag. If
+    the control does not fire, the cell cannot detect what it claims to detect, and its
+    PASS is worthless — so `DEAD` is treated as a battery failure regardless of what the
+    cell said about the real input.
+    """
+
+    LIVE = "live"  # control fired: the cell demonstrably can fail
+    DEAD = "dead"  # control did NOT fire: the cell cannot detect its own failure mode
+    NOT_RUN = "not-run"
+
+
 @dataclass(slots=True)
 class NullCell:
     cell: str
     status: NullStatus
     detail: str
     stats: dict[str, object] = field(default_factory=dict)
+    control: ControlState = ControlState.NOT_RUN
+    control_detail: str = ""
 
 
 @dataclass(slots=True)
@@ -295,13 +311,23 @@ class NullBatteryReport:
     cells: list[NullCell]
 
     @property
-    def status(self) -> NullStatus:
-        """A battery is PASS only if every cell passed.
+    def dead_controls(self) -> list[str]:
+        return [c.cell for c in self.cells if c.control is ControlState.DEAD]
 
-        BLOCKED dominates FAIL in reporting order because a blocked cell means the run
-        was never in a position to be judged, which is a different verdict from a cell
+    @property
+    def status(self) -> NullStatus:
+        """A battery is PASS only if every cell passed *and* every control fired.
+
+        A dead control outranks everything: a cell that cannot fail is not evidence, so
+        its verdict on the real input carries no information and the battery must not be
+        read as green because of it.
+
+        Otherwise BLOCKED dominates FAIL in reporting order, because a blocked cell means
+        the run was never in a position to be judged — a different verdict from a cell
         that ran and failed.
         """
+        if self.dead_controls:
+            return NullStatus.FAIL
         if any(c.status is NullStatus.FAIL for c in self.cells):
             return NullStatus.FAIL
         if any(c.status is NullStatus.BLOCKED for c in self.cells):
@@ -312,8 +338,16 @@ class NullBatteryReport:
         return {
             "seed_hash": self.seed_hash,
             "status": self.status.value,
+            "dead_controls": self.dead_controls,
             "cells": [
-                {"cell": c.cell, "status": c.status.value, "detail": c.detail, "stats": c.stats}
+                {
+                    "cell": c.cell,
+                    "status": c.status.value,
+                    "detail": c.detail,
+                    "control": c.control.value,
+                    "control_detail": c.control_detail,
+                    "stats": c.stats,
+                }
                 for c in self.cells
             ],
         }

@@ -85,9 +85,18 @@ def build_ledger(
     clamps: Sequence[Clamp] = (),
     prior_leaning: Mapping[str, BValue] | None = None,
     edge_filter=None,
+    dedupe: bool = True,
 ) -> Ledger:
-    """Full ingestion path. `edge_filter` is the hook PREREG R4 uses to drop Q edges."""
-    deltas = dedupe_deltas(ingest(documents, extractors))
+    """Full ingestion path.
+
+    `edge_filter` is the hook PREREG R4 uses to drop Q edges. `dedupe=False` exists only
+    for null cell (v)'s positive control: it disables the content-hash deduplication that
+    makes re-ingestion idempotent, so the control can confirm the cell actually detects a
+    double-counted source rather than passing because nothing was ever at risk.
+    """
+    deltas = ingest(documents, extractors)
+    if dedupe:
+        deltas = dedupe_deltas(deltas)
     slots = slots_from_deltas(deltas)
     fibers = build_fibers(slots)
     edges = edges_from_fibers(fibers, slots)
@@ -104,11 +113,64 @@ def build_ledger(
         fibers=fibers,
         edges=edges,
         blocks=blocks,
-        evidence=evidence_from_deltas(deltas),
+        evidence=evidence_from_deltas(deltas, dedupe=dedupe),
         priors=lexicon_prior([s.id for s in slots], prior_leaning),
         chart_of=chart_of,
         loops=loops,
         clamps=list(clamps),
+    )
+
+
+def consensus_ledger(ledger: Ledger) -> Ledger:
+    """The same ledger with every block forced to internal agreement.
+
+    Per block, every delta is rewritten to the block's modal b-value. The result is a
+    ledger that *cannot* disagree with itself, so its floor is the numerical residue of
+    the pipeline and nothing else.
+
+    This is the null null cell (iv) needs. Bootstrapping the observed floors gives a band
+    centred on the observed data, which makes `floor <= band` true at any floor — the test
+    passes at 0.4 as readily as at 0.0 and is therefore vacuous. Comparing against a
+    consensus floor instead tests what the cell claims to test: whether a single document
+    disagrees with itself more than the machinery's own noise.
+    """
+    import dataclasses
+    from collections import Counter
+
+    block_of: dict[str, str] = {}
+    for block in ledger.blocks:
+        for slot in block.slots:
+            block_of[slot] = block.id
+
+    votes: dict[str, Counter] = {}
+    for d in ledger.deltas:
+        bid = block_of.get(d.slot)
+        if bid is not None:
+            votes.setdefault(bid, Counter())[d.value] += d.confidence
+
+    modal = {
+        bid: sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+        for bid, counter in votes.items()
+    }
+
+    rewritten = [
+        dataclasses.replace(d, value=modal[block_of[d.slot]])
+        if block_of.get(d.slot) in modal
+        else d
+        for d in ledger.deltas
+    ]
+
+    return Ledger(
+        deltas=rewritten,
+        slots=ledger.slots,
+        fibers=ledger.fibers,
+        edges=ledger.edges,
+        blocks=ledger.blocks,
+        evidence=evidence_from_deltas(rewritten),
+        priors=ledger.priors,
+        chart_of=ledger.chart_of,
+        loops=ledger.loops,
+        clamps=ledger.clamps,
     )
 
 

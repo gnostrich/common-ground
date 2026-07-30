@@ -47,6 +47,25 @@ different findings, and publishing them as the same one would be a false report.
 bootstrap over loops from the same run. Without that, "approximately zero" would be a
 judgement call, and R3 says interpretation is mechanical.
 
+> **Defect notice, added at P1 — R1–R5 above are unchanged.** That bootstrap is centred on
+> the observed floors, so the band moves with whatever floor it is handed. Applying the
+> positive-control rule to R3 (`tests/test_controls.py:R3CarriesTheSameDefect`) shows a
+> mean floor of 0.45, carried entirely by the cold arm, being called `~0`. This is the same
+> vacuity that retired null cells (iv) and (v).
+>
+> R3 is **not amended**. PREREG is frozen under D7, and changing a pre-registered rule's
+> decision procedure after the fact is exactly the move pre-registration exists to prevent
+> — it is the operator's call, and P3/P4 have not run, so nothing has been decided through
+> R3 yet. Two things were done instead: the defect is pinned by a test so it cannot be
+> forgotten, and `audit.floor_verdict` now reports `second_fdt_floor` (the label-permutation
+> surrogate, already computed on every run) in its stats and appends an explicit caveat to
+> the detail line whenever the two surrogates disagree. The verdict is unchanged; nobody
+> reading one is left unaware.
+>
+> If R3 is to become non-vacuous, the amendment is one line —
+> `near_zero = floor <= result.surrogate["second_fdt_floor"]` — and it needs authorization,
+> a logged amendment, and a cold re-anneal, not a quiet edit.
+
 **On R3's two branches.** They are not degrees of the same finding. `~0` advances nothing
 about the protocol — it validates the pipeline and stops. `structured` produces a list of
 modes reported verbatim, and the rule forbids interpreting them further in this round.

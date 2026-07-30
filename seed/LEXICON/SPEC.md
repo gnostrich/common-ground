@@ -44,9 +44,17 @@ Null cell (viii) is a static AST check that no F-path module reads `.english_fac
 ### On `source_beta`
 
 The addendum calls a sense's source-authority weight `beta`. KICKOFF already uses `beta`
-for the meter's inverse temperature (arms `{1x, 4x}`). They are unrelated quantities. This
-codebase calls the lexicon one **`source_beta`** everywhere, so a log record carrying both
-is unambiguous. Values live in `seed/CONSTANTS.json` under `lexicon.source_beta`.
+for the meter's **verification budget** (arms `{1x, 4x}` — how much checking effort an arm
+spends; not a temperature). They are unrelated quantities. This codebase calls the lexicon
+one **`source_beta`** everywhere, so a log record carrying both is unambiguous. Values live
+in `seed/CONSTANTS.json` under `lexicon.source_beta`.
+
+`source_beta` is **prior energy, not a tie-break.** It is not a term in `select_sense`'s
+score. When selection cannot decide, the fiber is emitted and `fiber_prior_weights` splits
+the mention's delta across its members in proportion to `source_beta`, so the engine
+resolves it inside F where gate 2 applies and evidence can outweigh authority. Letting a
+prior settle a tie inside the selector would fix an address outside F, which is the one
+thing gate 2 exists to forbid.
 
 ## 1. Import order
 
@@ -83,6 +91,14 @@ sequence and refuses to run them in any other.
   version, convention-table hash, **importer script hash**. The last one means editing
   `adapters/lexicon_imports.py`, `engine/lexicon.py`, or `engine/rmap.py` moves the seed
   hash — which is correct, because those files decide addresses.
+- **A label is provenance; a digest is the pin.** D8 fixes a *fetch policy* for the two
+  live sources — latest stable Mathlib, current nLab — and a policy resolves to different
+  bytes on different days. So each external source contributes both: the commit / scrape
+  date / version says where the artifact came from, and `*_sha256` says which artifact it
+  was. Only the digest makes a run replayable, and it is what `check_digest` compares at
+  import time and `verify()` compares against the lock. `cli.py pin <source> --path ...`
+  records both when the artifact lands; it refuses once `SEED.lock` is written, because a
+  pin feeds the seed hash and changing one after the lock is a seed-morphism.
 - **Every import batch is a logged seed event.** Post-lock additions are seed-morphisms
   under gate 4: logged, slot-mapped, cold-annealed.
 - **No silent normalization of source data.** Mathlib names are not case-folded and
@@ -98,6 +114,39 @@ sequence and refuses to run them in any other.
 | vii. shadow check | pre-registered technical terms resolve to technical senses in math-typed contexts and general senses in general contexts | general-English shadowing a technical sense ⇒ **seed rejected** |
 | viii. no-clamp grep | static check: no gloss or `english_face` string is reachable from any F-constraint term | authority is flowing through the hub |
 | ix. binding sanity | for 50 random Mathlib-derived senses, `english_face → nu → slot → binding` returns the originating formal face; **> 5% failures = importer bug** | the R-map or the binding index is not round-tripping |
+
+### The positive-control rule
+
+Every cell in the battery — i–ix, not just the four above — ships with a **positive
+control**: an input engineered to break exactly the property the cell tests. The control
+runs alongside the cell, and a cell whose control does not fire is reported `ctl:DEAD` and
+**fails the battery outright**, whatever the cell itself said about the real input. A test
+that cannot fail is not evidence, and a green row from a dead control is worse than a red
+one because it looks like a result.
+
+This is not a hypothetical guard. Adopting it immediately retired two cells that had been
+reporting PASS since they were written:
+
+- **(iv) single-doc** compared the observed floor against a bootstrap of the observed
+  floors — a band centred on the data. `floor <= q95` held at 0.4 as readily as at 0.0, so
+  the cell was reporting on the resampler and not on the document. It now settles a
+  **consensus ledger** (every block forced to its modal b-value, so it cannot disagree with
+  itself) and reads the real floor against that, within `single_doc_tolerance`.
+- **(v) duplicate-source** used the same kind of band, so a residue of 0.013 "passed" a
+  band of 0.25. Worse, its control's `dedupe=False` switch stopped at `build_ledger` and
+  never reached the accumulator, which deduplicated unconditionally — the control could not
+  disable the thing it was testing. Both are fixed: the switch reaches
+  `evidence_from_deltas`, and the engine being deterministic, the band is now
+  `duplicate_residue_tolerance` (1e-12) rather than a bootstrap. Re-ingesting one corpus
+  under a second label moves the floor by exactly zero, or the cell fails.
+
+Cell (ix)'s control builds **synthetic** Mathlib senses rather than borrowing the real
+registry, which had made it dead precisely when D8 was unpinned — the moment you most want
+to know the cell works.
+
+`cli.py p1` prints the control state beside each cell's verdict, and `run_battery(...,
+controls=False)` marks every cell `ctl:--`: skipping the controls is allowed for speed and
+is never silent.
 
 ## 5. Why this topology
 

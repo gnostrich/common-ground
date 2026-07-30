@@ -71,15 +71,22 @@
     "amendments": []
   },
   "D8": {
-    "status": "unresolved",
-    "note": "Lexicon import pins (LEXICON SPEC section 3). Each is a pinned artifact; a live pull is forbidden during a run (KICKOFF 7.5) because it cannot hash cleanly.",
+    "status": "partial",
+    "note": "Lexicon import pins (LEXICON SPEC section 3). Source POLICY is decided; two of the three artifacts have not landed yet. A pin is a content digest of a fetched dump, not a label: 'latest stable' and 'current' resolve to a different artifact next week, so they name a fetch rule, not an input. KICKOFF 7.5 forbids a live pull during a run for the same mechanical reason - an unpinned source cannot hash cleanly, so the seed hash keying every verdict would mean nothing. Record each artifact with `python cli.py pin <source> --path ...` when it lands.",
+    "mathlib_policy": "latest-stable-at-fetch",
     "mathlib_dump": null,
     "mathlib_commit": null,
+    "mathlib_dump_sha256": null,
+    "nlab_policy": "current-at-fetch",
     "nlab_scrape": null,
     "nlab_scrape_date": null,
+    "nlab_scrape_sha256": null,
+    "wordnet_policy": "pinned-version",
     "wordnet_path": null,
-    "wordnet_version": null,
-    "convention_table": "drafted-pending-approval",
-    "convention_table_path": "seed/LEXICON/convention_table.json"
+    "wordnet_version": "3.1",
+    "wordnet_sha256": null,
+    "convention_table": "approved-with-additions",
+    "convention_table_path": "seed/LEXICON/convention_table.json",
+    "resolved_when": "every *_sha256 recorded; policy fields alone do not resolve D8"
   }
 }

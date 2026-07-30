@@ -162,10 +162,30 @@ def floor_verdict(result: MeterResult, beta: float | None = None) -> RuleResult:
     different findings, not degrees of one: `~0` validates the pipeline and advances no
     protocol claim; `structured` yields modes reported verbatim with no interpretation
     beyond listing them.
+
+    **Known defect, reported and not silently fixed.** `surrogate_q95` bootstraps the
+    observed loop floors, so the band is centred on the data and moves with whatever floor
+    it is handed — the same vacuity that retired null cells (iv) and (v). A floor of 0.45
+    carried entirely by the cold arm is called `~0` by this rule, which is pinned in
+    `tests/test_controls.py:R3CarriesTheSameDefect`. PREREG is frozen under D7, and
+    swapping a pre-registered rule's decision procedure mid-project is an amendment for the
+    operator to authorize, not a fix to slip in — so the branch logic is untouched.
+
+    What is added is transparency: `second_fdt_floor` is reported in `stats` and in the
+    detail line on every R3 verdict. That surrogate permutes the warm/cold labels loop by
+    loop, so it is a null rather than a resample of the answer, and it separates the two
+    branches where the bootstrap does not. Any reader of an R3 verdict sees both numbers.
     """
     floor = result.mean_floor(beta)
     band = result.surrogate.get("q95", 0.0)
+    fdt = result.surrogate.get("second_fdt_floor", 0.0)
     near_zero = floor <= band
+    fdt_agrees = floor <= fdt
+    caveat = "" if fdt_agrees == near_zero else (
+        f" NOTE: the label-permutation surrogate disagrees (floor {floor:.6g} vs "
+        f"second_fdt_floor {fdt:.6g}); R3's bootstrap band is centred on the observed "
+        "floors and cannot separate these branches. See audit.floor_verdict."
+    )
 
     modes = [] if near_zero else [
         {
@@ -196,8 +216,15 @@ def floor_verdict(result: MeterResult, beta: float | None = None) -> RuleResult:
             else f"cold floor {floor:.6g} > surrogate q{int(SURROGATE_QUANTILE * 100)} "
             f"{band:.6g}: structured. {len(modes)} mode(s) reported verbatim; "
             "no interpretation beyond listing."
-        ),
-        stats={"floor": floor, "surrogate_q95": band, "modes": modes},
+        ) + caveat,
+        stats={
+            "floor": floor,
+            "surrogate_q95": band,
+            "second_fdt_floor": fdt,
+            "second_fdt_branch": "near_zero" if fdt_agrees else "structured",
+            "surrogates_agree": fdt_agrees == near_zero,
+            "modes": modes,
+        },
     )
 
 

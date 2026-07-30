@@ -41,7 +41,6 @@ from .constants import (
     SELECT_W_FRAME,
     SELECT_W_LEMMA,
     SELECT_W_NEIGHBOUR,
-    SELECT_W_SOURCE_BETA,
     SELECT_W_TYPE,
     SOURCE_BETA,
     SOURCE_ORDER,
@@ -469,14 +468,15 @@ def select_sense(
 ) -> SenseSelection:
     """Choose a sense by typed context, or return a fiber including `abstain`.
 
-    Scores from `frames`, `type_sig` tokens, slot-neighbourhood bindings, and a small
-    `source_beta` prior — every input F-visible. **The gloss and the English face string
-    are not read**, deliberately: selecting on them would route authority back through
-    the hub, which is the thing the topology exists to prevent.
+    Scores from `frames`, `type_sig` tokens, and slot-neighbourhood bindings — every
+    input F-visible. **The gloss and the English face string are not read**,
+    deliberately: selecting on them would route authority back through the hub, which is
+    the thing the topology exists to prevent.
 
-    The `source_beta` term is weighted so it can break a tie but cannot overturn frame
-    evidence. That is what stops WordNet's general senses — imported last, and lowest
-    beta — from shadowing a technical sense in a technical context (null cell vii).
+    `source_beta` is **not** a term in this score. Authority is a prior, and a prior that
+    settles a tie has decided an address outside F. On a tie the fiber is emitted and
+    `fiber_prior_weights` carries `source_beta` into F as energy, where the engine
+    decides and evidence can outweigh it.
     """
     if not candidates:
         return SenseSelection(lemma, None, (ABSTAIN,), (), "no candidate senses")
@@ -497,7 +497,10 @@ def select_sense(
         # letting "degree of a field extension" outrank "field" for the word "field".
         if core.lemma == lemma:
             score += SELECT_W_LEMMA
-        score += SELECT_W_SOURCE_BETA * core.source_beta
+        # `source_beta` is deliberately NOT a term here. It is a prior, and a prior that
+        # decides a tie has decided an address — outside F, where gate 2 cannot see it.
+        # On a tie the fiber is emitted and `fiber_prior_weights` carries source_beta
+        # into F as energy, so the engine resolves it. See the note on that function.
         scored.append((core.sense_id, score))
 
     scored.sort(key=lambda t: (-t[1], t[0]))
@@ -516,3 +519,32 @@ def select_sense(
         tuple(scored),
         f"undecidable from context: margin {top[1] - second[1]:.4f} < {SELECT_MARGIN}",
     )
+
+
+def fiber_prior_weights(
+    selection: SenseSelection, candidates: Sequence[SenseCore]
+) -> dict[str, float]:
+    """Where `source_beta` lives: prior energy on an emitted fiber, not a tie-break.
+
+    When selection cannot decide, the fiber goes to the engine and a mention's delta is
+    split across its members in proportion to `source_beta`. A higher-authority sense
+    therefore receives more of the mention's evidence *energy* — and settlement, running
+    on F where gate 2 applies, decides which member wins.
+
+    The distinction is not cosmetic. Resolving the tie inside `select_sense` would let a
+    prior fix an address before F ever saw it, which is the one thing gate 2 exists to
+    forbid; it would also mean a heavier lexicon could silently overrule the corpus. Here
+    the prior can be outweighed by evidence, because that is all an energy term can do.
+
+    `abstain` carries no weight: it is the option of assigning the mention nowhere, and
+    weighting it would make "no sense fits" compete with the senses on their own scale.
+    """
+    by_id = {c.sense_id: c for c in candidates}
+    members = [s for s in selection.fiber if s != ABSTAIN and s in by_id]
+    if not members:
+        return {}
+    total = sum(by_id[s].source_beta for s in members)
+    if total <= 0.0:
+        share = 1.0 / len(members)
+        return {s: share for s in members}
+    return {s: by_id[s].source_beta / total for s in members}

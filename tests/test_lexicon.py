@@ -412,13 +412,13 @@ class LexiconNullCells(unittest.TestCase):
         self.assertEqual(cell.stats["shadowing"][0]["chosen"], "shadow_measure")
         self.assertIn("rejects the seed", cell.detail)
 
-    def test_equal_frames_resolve_toward_authority_not_toward_general(self):
-        """The complement: a general sense matching the technical frames exactly still loses.
+    def test_a_tie_abstains_rather_than_shadowing(self):
+        """The complement: equal frames must not be read as shadowing — they abstain.
 
-        `source_beta` is weighted to be unable to overturn frame evidence, but it is the
-        tie-break when frame evidence is equal — and it breaks toward the higher-authority
-        source. So a general-tier twin of `ring_unital` does not shadow it and does not
-        force an abstention; the convention-tier sense simply wins.
+        `source_beta` is not a term in the selection score, so a general-tier twin of
+        `ring_unital` with identical frames ties with it. A tie emits the fiber; the
+        engine then resolves it inside F with `source_beta` as prior energy. Nothing is
+        decided by authority outside F.
         """
         registry = Registry()
         import_convention_table(registry)
@@ -427,10 +427,8 @@ class LexiconNullCells(unittest.TestCase):
             frames=["algebra", "ring_theory", "unital"], sense_id="twin_ring",
         ))
         cell = cell_vii_shadow(registry)
-        self.assertIs(cell.status, NullStatus.PASS)
         self.assertEqual(cell.stats["shadowing"], [])
-        chosen = {(u["lemma"], u.get("chosen")) for u in cell.stats["undecided"]}
-        self.assertNotIn(("ring", "twin_ring"), chosen)
+        self.assertTrue(any(u["lemma"] == "ring" for u in cell.stats["undecided"]))
 
     def test_cell_viii_always_runs(self):
         cell = cell_viii_no_clamp_grep()

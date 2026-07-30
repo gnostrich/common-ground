@@ -15,9 +15,11 @@ semidefinite quadratic, and negative entropy is convex. Mirror descent under the
 map therefore converges, and the monotone certificate in `settle.py` is a real check on
 the implementation rather than a hope about the objective.
 
-beta is the inverse temperature. The PREREG arms are beta in {1x, 4x}: larger beta means
-less entropic smoothing, so the settled state is sharper and contest is less easily
-dissolved into uncertainty.
+beta is the **verification budget** — how much checking effort an arm spends — NOT an
+inverse temperature. The PREREG arms are 1x and 4x. It enters F as the coefficient on the
+entropic term, so a larger budget resolves more of the contest and leaves less mass
+undetermined, while a smaller budget keeps more of it open. The mechanism is unchanged by
+the reading; the reading is what the number means.
 """
 
 from __future__ import annotations
@@ -52,7 +54,7 @@ def dedupe_deltas(deltas: Sequence[Delta]) -> list[Delta]:
     return list(seen.values())
 
 
-def evidence_from_deltas(deltas: Sequence[Delta]) -> dict[str, Vector]:
+def evidence_from_deltas(deltas: Sequence[Delta], dedupe: bool = True) -> dict[str, Vector]:
     """Accumulate per-slot evidence energy from candidate deltas.
 
     Supporting a value *lowers* its energy, weighted by the extractor's confidence and
@@ -62,9 +64,15 @@ def evidence_from_deltas(deltas: Sequence[Delta]) -> dict[str, Vector]:
 
     Deduplication happens here rather than at the call site so that no ingestion path can
     forget it and silently double-count a re-ingested source.
+
+    `dedupe=False` exists solely for null cell (v)'s positive control. It was added after
+    the control found that a `dedupe=False` flag on `build_ledger` alone did nothing: this
+    function deduplicated unconditionally, so the evidence was identical either way and
+    cell (v) could not fail no matter how broken the deduplication was. The switch has to
+    reach the accumulator, or the cell is testing nothing.
     """
     e: dict[str, Vector] = {}
-    for d in dedupe_deltas(deltas):
+    for d in (dedupe_deltas(deltas) if dedupe else deltas):
         vec = e.setdefault(d.slot, [0.0] * NBV)
         vec[BVALUE_INDEX[d.value]] -= d.confidence * d.warrant.weight
     return e

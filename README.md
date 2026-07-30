@@ -13,29 +13,32 @@ SEED.lock without a logged seed-morphism event and cold re-anneal.*
 
 **P0 scaffold: complete. P0 seed assembly: blocked. P1–P4: gated.**
 
-`SEED.lock` has not been written, because D3, D5, D6, D8, and D4's spend cap are
-unresolved and KICKOFF §7.1 says to refuse past P0 with any blank. That refusal is
-mechanical: `engine/seed_lock.py:build()` raises rather than emitting a lock.
+`SEED.lock` has not been written, because D3, D5, D6, D4's spend cap and two of D8's three
+artifacts are outstanding, and KICKOFF §7.1 says to refuse past P0 with any blank. That
+refusal is mechanical: `engine/seed_lock.py:build()` raises rather than emitting a lock.
 
 ```
 $ python cli.py status
 D1 resolved     D2 resolved     D3 unresolved   D4 partial
-D5 unresolved   D6 unresolved   D7 resolved     D8 unresolved
+D5 unresolved   D6 unresolved   D7 resolved     D8 partial
 ```
 
-The null battery runs and reports honestly at the provisional seed hash:
+The null battery runs and reports honestly at the provisional seed hash. Every cell carries
+a **positive control** — an input engineered to break the property that cell tests — and a
+cell whose control does not fire is reported `ctl:DEAD` and fails the battery outright,
+whatever it said about the real input. A test that cannot fail is not evidence:
 
-| Cell | Status |
+| Cell | Status (all controls live) |
 |---|---|
 | i. normalizer idempotence | **PASS** — `nu(nu(x)) == nu(x)`, 1010 fuzzed samples across both charts |
 | ii. paraphrase suite | **PASS** — 10 known-same pairs collided, 10 known-distinct separated |
 | iii. empty-corpus floor | **BLOCKED** — D5 unresolved, no pre-minted entries to check for self-contest |
 | iv. single-doc null | **BLOCKED** — D3 unresolved, no held-out document |
 | v. duplicate-source null | **BLOCKED** — D3 unresolved, no corpus to duplicate |
-| vi. hub-coverage | **PASS** — all 176 senses carry an English face (0 rendered, 176 authored) |
-| vii. shadow check | **PASS** — 32 probes; technical contexts resolve technically, general generally |
+| vi. hub-coverage | **PASS** — all 184 senses carry an English face (0 rendered, 184 authored) |
+| vii. shadow check | **PASS** — 38 probes; technical contexts resolve technically, general generally |
 | viii. no-clamp grep | **PASS** — no display attribute reachable from 8 F-path modules or 2 F-feeding functions |
-| ix. binding sanity | **BLOCKED** — D8 unresolved, no Mathlib-derived senses to round-trip |
+| ix. binding sanity | **BLOCKED** — no Mathlib dump has landed, so nothing to round-trip |
 
 `BLOCKED` is not green, so PREREG R1 applies and the run is VOID — but it is recorded as
 "never tested", which is a different finding from "tested and failed" and is reported as
@@ -49,7 +52,7 @@ such. See `reports/P1-null-battery.md`.
 | **D4** spend cap | P3 live extraction | An unset cap is not an unlimited cap. `AnthropicExtractor` refuses to construct without one. |
 | **D5** pre-minted files | `SEED.lock`, null cell iii, PREREG R2 | `BVALUED-AGREED.md`, `STATEMENTS.md`, `REGISTRY.md` are not in this repo. `STATEMENTS.md` carries the "what we do NOT claim" list that R2 turns into the rediscovery test. |
 | **D6** Lean + Python versions | `SEED.lock`, every kernel clamp | Gate 3 makes kernel-accept *under the pinned toolchain* the only proof-side grounding warrant. Read the Lean version from `certified-positivity`'s lake-manifest; do not assume it. |
-| **D8** lexicon pins + convention-table approval | `SEED.lock`, null cells vi/vii/ix | Mathlib commit, nLab scrape date, WordNet version. A live pull cannot hash cleanly (KICKOFF §7.5). The convention table is **drafted** — 176 senses, 46 lemmas, 17 bridges — and needs approval, not just paths. |
+| **D8** lexicon artifacts | `SEED.lock`, null cells vi/vii/ix | **Policy is set**: latest stable Mathlib, current nLab, WordNet 3.1; the convention table is approved (184 senses, 51 lemmas, 22 bridges). What is missing is the artifacts. "Latest stable" names a fetch rule, not an input — it resolves to different bytes next week — so the pin is the **content digest of the dump that landed**, recorded by `cli.py pin <source> --path ...`. A live pull during a run cannot hash cleanly at all (KICKOFF §7.5). |
 
 D1, D2, and D7 are resolved — D1 from the repository as it exists, D2 and D7 from the
 defaults the brief itself states. Details and reasoning in `seed/DECISIONS.md`.
@@ -179,13 +182,15 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 136 tests, stdlib only
+make test            # 167 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
-make nulls           # P1 null battery at the current seed hash
+make nulls           # P1 null battery + positive controls at the current seed hash
 make lock            # refuses while any decision is blank
 make verify          # gate-4 tripwire
 
-python cli.py register P2 --note "..."   # BEFORE running a phase (KICKOFF §7.2)
+python cli.py register P2 --note "..."           # BEFORE running a phase (KICKOFF §7.2)
+python cli.py pin mathlib --path <dump> \
+                          --commit <sha>         # record a landed D8 artifact's digest
 ```
 
 ## Session order

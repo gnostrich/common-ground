@@ -34,6 +34,30 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def artifact_digest(path: Path) -> str:
+    """Content hash of a pinned import artifact — one file or a whole directory.
+
+    A directory hashes as its sorted map of relative path -> file hash, so the digest
+    depends on the *set of files and their contents* and not on walk order or on where the
+    tree happens to be mounted. Dotfiles are skipped: a `.git` inside a checked-out dump
+    would otherwise make the digest depend on fetch history rather than on content.
+
+    This is the pin that does the work. `mathlib_commit` and `nlab_scrape_date` record
+    where an artifact came from, which is provenance; the digest records what it *is*,
+    which is what makes a run replayable. A label like "latest stable" resolves to a
+    different artifact next week and so pins nothing; a digest cannot.
+    """
+    if path.is_file():
+        return sha256_file(path)
+    files = sorted(
+        p for p in path.rglob("*")
+        if p.is_file() and not any(part.startswith(".") for part in p.relative_to(path).parts)
+    )
+    return hash_obj({
+        str(p.relative_to(path)).replace("\\", "/"): sha256_file(p) for p in files
+    })
+
+
 def canonical_json(obj: Any) -> str:
     """Serialization that is stable across runs, platforms, and dict insertion order."""
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)

@@ -39,7 +39,7 @@
   "prior_dropout_trials": 5,
   "null_fuzz_samples": 500,
   "lexicon": {
-    "note": "source_beta is the lexicon SOURCE-AUTHORITY tier. It is NOT the meter's inverse temperature, which KICKOFF also calls beta. Kept distinct by name so a log record carrying both is unambiguous.",
+    "note": "source_beta is the lexicon SOURCE-AUTHORITY tier, and it reaches F only as prior energy via lexicon.fiber_prior_weights — never as a tie-break inside sense selection. The meter's `beta` (beta_arms) is a different quantity entirely: the VERIFICATION BUDGET, 1x and 4x, not a temperature. Kept distinct by name so a log record carrying both is unambiguous.",
     "source_order": [
       "mathlib",
       "convention",
@@ -347,12 +347,14 @@
         "assigns a vector to each point"
       ],
       "programming": [
+        "caller",
         "compile",
+        "null dereference",
         "operating system",
         "record",
-        "null dereference",
         "runtime",
-        "software"
+        "software",
+        "the function returns"
       ],
       "education": [
         "school",
@@ -385,11 +387,56 @@
         "without an identity"
       ],
       "systems": [],
-      "ledger": [],
-      "common_ground": [],
+      "ledger": [
+        "mirror descent",
+        "contested block",
+        "monotone certificate",
+        "seed hash",
+        "holonomy",
+        "null cell",
+        "shadow subtraction",
+        "settled state",
+        "b-value",
+        "warrant tier",
+        "cold floor",
+        "second-best score",
+        "fiber was emitted",
+        "emitted a fiber",
+        "null battery",
+        "clamp-eligible",
+        "kernel-accept"
+      ],
+      "common_ground": [
+        "mirror descent",
+        "contested block",
+        "monotone certificate",
+        "seed hash",
+        "holonomy",
+        "null cell",
+        "shadow subtraction",
+        "settled state",
+        "b-value",
+        "warrant tier",
+        "cold floor",
+        "second-best score",
+        "fiber was emitted",
+        "emitted a fiber",
+        "null battery",
+        "clamp-eligible",
+        "kernel-accept"
+      ],
       "notation": [],
       "arithmetic": [],
-      "type_theory": [],
+      "type_theory": [
+        "option type",
+        "partiality",
+        "inductive type",
+        "type checker",
+        "binder",
+        "well-typed",
+        "dependent type",
+        "constructor"
+      ],
       "rewriting": [],
       "algebraic_geometry": [],
       "algebraic_topology": [],
@@ -399,8 +446,20 @@
       "differential_equations": [],
       "complex_analysis": [],
       "fractal_geometry": [],
-      "optimization": [],
-      "machine_learning": [],
+      "optimization": [
+        "semidefinite programming",
+        "objective function",
+        "feasible region",
+        "convex program"
+      ],
+      "machine_learning": [
+        "classifier",
+        "training set",
+        "loss function",
+        "gradient descent",
+        "embedding",
+        "max-margin"
+      ],
       "proof_theory": [],
       "graph_theory_general": [],
       "mathlib": [],
@@ -538,5 +597,10 @@
     "lemma",
     "example",
     "axiom"
-  ]
+  ],
+  "beta_arms_note": "Verification budget multipliers, per PREREG. Not temperatures. Enter F as the coefficient on the entropic term.",
+  "single_doc_tolerance": 1e-09,
+  "single_doc_tolerance_note": "Null cell (iv) compares the observed floor against the CONSENSUS floor — the same ledger with every block forced to its modal value, so it cannot disagree with itself. This is the numerical floor beneath that comparison. The earlier bootstrap band was vacuous: centred on the observed floors, it passed at any floor.",
+  "duplicate_residue_tolerance": 1e-12,
+  "duplicate_residue_tolerance_note": "Null cell (v): 'zero cold residue' means zero. The engine is deterministic and a genuine duplicate yields bit-identical evidence, so only float-ordering noise is admissible. Comparing against a bootstrap band of the observed floors made the cell vacuous and was caught by its positive control."
 }

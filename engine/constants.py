@@ -58,22 +58,28 @@ CHARTS: tuple[str, ...] = tuple(C["charts"])
 CLAIM_FORMS: tuple[str, ...] = tuple(C["claim_forms"])
 
 # --- protocol arms ----------------------------------------------------------------
+#: Verification budget multipliers. NOT temperatures.
 BETA_ARMS: tuple[float, ...] = tuple(float(b) for b in C["beta_arms"])
 SURROGATE_TRIALS: int = int(C["surrogate_trials"])
 SURROGATE_QUANTILE: float = float(C["surrogate_quantile"])
 PRIOR_DROPOUT_RATE: float = float(C["prior_dropout_rate"])
 PRIOR_DROPOUT_TRIALS: int = int(C["prior_dropout_trials"])
 NULL_FUZZ_SAMPLES: int = int(C["null_fuzz_samples"])
+SINGLE_DOC_TOLERANCE: float = float(C["single_doc_tolerance"])
+DUPLICATE_RESIDUE_TOLERANCE: float = float(C["duplicate_residue_tolerance"])
 
 # --- lexicon ----------------------------------------------------------------------
-# NB: `source_beta` is the lexicon source-authority tier, NOT the meter's inverse
-# temperature. KICKOFF calls both "beta"; this codebase keeps them apart by name.
+# NB: `source_beta` is the lexicon source-authority tier. The meter's `beta` is the
+# VERIFICATION BUDGET (arms 1x/4x). Two unrelated quantities; KICKOFF and the lexicon
+# addendum both call theirs "beta", so this codebase keeps them apart by name.
 LEX: dict[str, Any] = C["lexicon"]
 SOURCE_ORDER: tuple[str, ...] = tuple(LEX["source_order"])
 SOURCE_BETA: dict[str, float] = {k: float(v) for k, v in LEX["source_beta"].items()}
 SELECT_W_FRAME: float = float(LEX["select"]["w_frame"])
 SELECT_W_TYPE: float = float(LEX["select"]["w_type"])
 SELECT_W_NEIGHBOUR: float = float(LEX["select"]["w_neighbour"])
+#: Retained in CONSTANTS.json for the record; NOT used by `select_sense`.
+#: source_beta reaches F through `lexicon.fiber_prior_weights`, as energy.
 SELECT_W_SOURCE_BETA: float = float(LEX["select"]["w_source_beta"])
 SELECT_W_LEMMA: float = float(LEX["select"]["w_lemma"])
 SELECT_MARGIN: float = float(LEX["select"]["margin"])

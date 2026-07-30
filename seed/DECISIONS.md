@@ -84,30 +84,62 @@ reproducible across platforms rather than dependent on a linked LAPACK build.
 Approved as-is. `registry/PREREG.md` reproduces KICKOFF §5 without amendment; R1–R5 and the
 not-claimed list are verbatim. It is frozen on commit.
 
-## D8 — lexicon import pins — **UNRESOLVED**
+## D8 — lexicon import pins — **PARTIAL** (policy decided, two artifacts outstanding)
 
 Required by LEXICON SPEC §3. Blocks `SEED.lock`, null cells vi/vii/ix at full coverage,
 and null cell ix entirely.
 
-- Mathlib dump path + **commit hash**: `____`
-- nLab alias/redirect scrape path + **scrape date**: `____`
-- WordNet-grade dump path + **version**: `____`
-- convention table: **DRAFTED, pending approval** — `seed/LEXICON/convention_table.json`,
-  176 senses across 46 lemmas, 17 declared bridges
+| source | policy | artifact | digest |
+|---|---|---|---|
+| Mathlib | latest stable at fetch | `____` | `____` |
+| nLab | current at fetch | `____` | `____` |
+| WordNet | **3.1** | `____` | `____` |
+| convention table | — | `seed/LEXICON/convention_table.json` | hashed under `seed/` |
+
+- convention table: **APPROVED with additions** — 184 senses across 51 lemmas, 22 declared
+  bridges of which 7 are `declared-none`
 - importer script hash: computed, not decided (`engine/seed_lock.py:importer_script_hash`)
 
-Each of the first three is a *pinned artifact*, not a live source. KICKOFF §7.5 forbids a
-live pull during a run, and the reason is mechanical rather than procedural: an unpinned
-source cannot hash cleanly, so a registry built from one is not reproducible and the seed
-hash keying every verdict would be meaningless.
+### Why "latest stable" is a policy and not a pin
 
-The convention table is the one I could draft rather than ask for. It needs your approval,
-not just your paths — it makes ~176 substantive claims about which senses of which words
-are distinct, and three of its bridges are `declared-none`, recording that two senses share
-a name and nothing else so that nobody later infers a relation. Review at least: `compact`
-(the Bourbaki bridge is written as a checkable Lean statement), `positive` (strict vs
-non-strict, which the certified-positivity corpus will lean on hardest), and the three
-terms this project itself overloads — `chart`, `fiber`, `kernel`.
+Two of the three answers name a *fetch rule*: latest stable Mathlib, current nLab. Both
+are perfectly good rules, and both are recorded as `mathlib_policy` and `nlab_policy` —
+but neither is a pin, because each resolves to a different artifact next week. Rerunning
+against "latest stable" a month from now reproduces a *procedure*, not a run. WordNet 3.1
+is different: it is a fixed version, so it is taken as stated.
+
+What actually pins an import is the **content digest of the dump that landed**, recorded
+in `*_sha256`. The commit hash and scrape date sit beside it as provenance — they say
+where the bytes came from; the digest says which bytes. `SEED.lock` carries all three, and
+`cli.py verify` fails on drift in any of them.
+
+So the decision is split rather than deferred. The policy is settled now; the digests get
+recorded when the artifacts land:
+
+```
+python cli.py pin mathlib  --path <dump> --commit <sha>
+python cli.py pin nlab     --path <scrape.json> --date <YYYY-MM-DD>
+python cli.py pin wordnet  --path <dump.json> [--version 3.1]
+```
+
+Each records the path, the provenance label, and the digest, and refuses to overwrite an
+existing pin once `SEED.lock` is written — changing a pin after the lock moves addresses,
+which is plastic under gate 4 and needs a logged seed-morphism and a cold re-anneal, not a
+CLI flag. D8 reaches `resolved` when all three digests are present; the policy fields alone
+do not resolve it, and `cli.py status` will keep saying so.
+
+Inventing a plausible commit hash to clear the blank would have been worse than leaving it
+blank: the lock would look pinned and reproduce nothing.
+
+### The convention table
+
+The table is the one I could draft rather than ask for, and it is now approved with the
+requested additions: `positive` split into `definite`/`semidefinite` as their own entries,
+and `option`, `settlement`, `margin` added as double-sense entries whose bridges are
+`declared-none` — recording that two senses share a name and nothing else, so that nobody
+later infers a relation. Worth re-reading on any future edit: `compact` (the Bourbaki
+bridge is written as a checkable Lean statement) and the three terms this project itself
+overloads — `chart`, `fiber`, `kernel`.
 
 
 ---
@@ -123,4 +155,4 @@ terms this project itself overloads — `chart`, `fiber`, `kernel`.
 | D5 | **UNRESOLVED** | `SEED.lock`, P1 null cell (iii) |
 | D6 | **UNRESOLVED** | `SEED.lock`, every kernel clamp |
 | D7 | RESOLVED (as-is) | — |
-| D8 | **UNRESOLVED** (convention table drafted) | `SEED.lock`, null cells vi/vii/ix |
+| D8 | PARTIAL (policy set, 2 artifacts + 3 digests outstanding) | `SEED.lock`, null cells vi/vii/ix |

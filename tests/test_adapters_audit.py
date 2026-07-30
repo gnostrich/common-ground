@@ -308,6 +308,99 @@ class SeedLockRoundTrip(unittest.TestCase):
                 seed_lock.SEED_LOCK_PATH = original
 
 
+class LexiconPins(unittest.TestCase):
+    """D8 fixes a fetch *policy*; `record_pin` records what that policy resolved to.
+
+    "Latest stable Mathlib" and "current nLab" name a rule, not an artifact — they resolve
+    to different bytes next week. The digest recorded here is what makes a run replayable,
+    so these tests care that it reaches SEED.lock and that it cannot be rewritten under a
+    live seed.
+    """
+
+    def setUp(self):
+        self._saved = (seed_lock.DECISIONS_PATH, seed_lock.SEED_DIR, seed_lock.SEED_LOCK_PATH)
+        self._tmp = tempfile.TemporaryDirectory()
+        tmp = Path(self._tmp.name)
+        seed_lock.DECISIONS_PATH = tmp / "DECISIONS.json"
+        seed_lock.SEED_DIR = tmp
+        seed_lock.SEED_LOCK_PATH = tmp / "SEED.lock"
+        seed_lock.DECISIONS_PATH.write_text(json.dumps({"D8": {
+            "status": "partial", "mathlib_policy": "latest-stable-at-fetch",
+            "wordnet_version": "3.1",
+        }}), encoding="utf-8")
+        (tmp / "DECISIONS.md").write_text(
+            "| source | policy | artifact | digest |\n"
+            "| Mathlib | latest stable at fetch | `____` | `____` |\n",
+            encoding="utf-8",
+        )
+        self.dump = tmp / "dump.json"
+        self.dump.write_text('{"declarations": []}', encoding="utf-8")
+
+    def tearDown(self):
+        seed_lock.DECISIONS_PATH, seed_lock.SEED_DIR, seed_lock.SEED_LOCK_PATH = self._saved
+        self._tmp.cleanup()
+
+    def test_pin_records_path_label_and_digest(self):
+        rec = seed_lock.record_pin("mathlib", self.dump, "abc123def456")
+        self.assertEqual(len(rec["digest"]), 64)
+        d8 = json.loads(seed_lock.DECISIONS_PATH.read_text())["D8"]
+        self.assertEqual(d8["mathlib_commit"], "abc123def456")
+        self.assertEqual(d8["mathlib_dump_sha256"], rec["digest"])
+        self.assertEqual(d8["status"], "partial", "one pin of three does not resolve D8")
+        self.assertEqual(rec["still_blank"], ["nlab", "wordnet"])
+
+    def test_pin_updates_the_prose_record_too(self):
+        """Otherwise a `____` survives in DECISIONS.md and blocks the lock it just unblocked."""
+        seed_lock.record_pin("mathlib", self.dump, "abc123def456")
+        md = (seed_lock.SEED_DIR / "DECISIONS.md").read_text()
+        self.assertNotIn("____", md)
+        self.assertIn("dump.json", md)
+
+    def test_a_label_alone_is_not_a_pin(self):
+        """WordNet 3.1 is a real version and D8 carries it — but the artifact still has to land."""
+        d8 = json.loads(seed_lock.DECISIONS_PATH.read_text())["D8"]
+        self.assertEqual(d8["wordnet_version"], "3.1")
+        self.assertIsNone(d8.get("wordnet_sha256"))
+        with self.assertRaises(GateViolation):
+            seed_lock.record_pin("wordnet", seed_lock.SEED_DIR / "absent.json")
+
+    def test_missing_provenance_is_refused(self):
+        with self.assertRaises(GateViolation) as ctx:
+            seed_lock.record_pin("mathlib", self.dump)
+        self.assertIn("commit", str(ctx.exception))
+
+    def test_pinning_under_a_written_lock_is_a_seed_morphism(self):
+        seed_lock.SEED_LOCK_PATH.write_text("{}", encoding="utf-8")
+        with self.assertRaises(GateViolation) as ctx:
+            seed_lock.record_pin("mathlib", self.dump, "abc123def456")
+        self.assertIn("re-anneal", str(ctx.exception))
+
+    def test_digest_reaches_the_lock_manifest(self):
+        pins = seed_lock.lexicon_pins({"D8": {
+            "mathlib_dump_sha256": "a" * 64, "nlab_scrape_sha256": "b" * 64,
+            "wordnet_sha256": "c" * 64, "wordnet_version": "3.1",
+        }})
+        self.assertEqual(pins["mathlib_dump_sha256"], "a" * 64)
+        self.assertEqual(pins["wordnet_sha256"], "c" * 64)
+
+    def test_a_directory_digest_follows_content_not_layout(self):
+        """Mathlib may arrive as a tree. The digest must not depend on the walk or on .git."""
+        from engine.hashing import artifact_digest
+
+        root = seed_lock.SEED_DIR / "tree"
+        (root / "sub").mkdir(parents=True)
+        (root / "a.lean").write_text("theorem a : True := trivial\n", encoding="utf-8")
+        (root / "sub" / "b.lean").write_text("theorem b : True := trivial\n", encoding="utf-8")
+        first = artifact_digest(root)
+
+        (root / ".git").mkdir()
+        (root / ".git" / "HEAD").write_text("ref: refs/heads/master\n", encoding="utf-8")
+        self.assertEqual(first, artifact_digest(root), "fetch history is not content")
+
+        (root / "sub" / "b.lean").write_text("theorem b : False := sorry\n", encoding="utf-8")
+        self.assertNotEqual(first, artifact_digest(root))
+
+
 class TapeOnRealSettlement(unittest.TestCase):
     def test_residual_stream_is_non_negative_and_decaying(self):
         block = Block("b", ("s1", "s2"), (QEdge("s1", "s2", 0.9, "fiber"),))

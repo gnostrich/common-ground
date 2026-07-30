@@ -1,11 +1,12 @@
-.PHONY: help status test lock verify nulls demo p0 p1 clean
+.PHONY: help status test lock verify nulls demo p0 p1 pin clean
 
 help:
-	@echo "status  — decisions, lock state, phase readiness"
+	@echo "status  — decisions, lock state, lexicon pins, phase readiness"
 	@echo "test    — unit tests (stdlib unittest, no dependencies)"
 	@echo "lock    — write seed/SEED.lock (refuses while any decision is blank)"
 	@echo "verify  — gate-4 tripwire: recompute seed hashes, fail on drift"
-	@echo "nulls   — P1 null battery on the current seed hash"
+	@echo "nulls   — P1 null battery + positive controls on the current seed hash"
+	@echo "pin     — record a landed D8 artifact: cli.py pin <source> --path ..."
 	@echo "demo    — synthetic end-to-end smoke run, writes nothing"
 	@echo "p0 / p1 — phase gates"
 

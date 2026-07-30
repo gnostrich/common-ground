@@ -62,7 +62,7 @@ jobs:
             echo "lock correctly refused"
           fi
 
-      - name: null cells i, ii and viii — always runnable, must always be green
+      - name: null cells i, ii, vi, vii, viii — always runnable, must always be green
         run: |
           python - <<'PY'
           from engine.nulls import (
@@ -92,6 +92,46 @@ jobs:
               if cell.status is not NullStatus.PASS:
                   failed = True
           raise SystemExit(1 if failed else 0)
+          PY
+
+      - name: positive controls — every cell must be able to fail
+        run: |
+          # A cell whose control does not fire is decorative, and a green row from a
+          # decorative cell is worse than a red one because it looks like a result. Two
+          # cells (iv and v) were vacuous until this rule was adopted; this step is what
+          # stops a third from going unnoticed.
+          python - <<'PY'
+          from adapters.lexicon_imports import import_convention_table
+          from engine.constants import BETA_ARMS, decisions
+          from engine.extract import build_k_extractors
+          from engine.lexicon import Registry
+          from engine import nulls, seed_lock
+
+          seed = seed_lock.current().seed_hash
+          exts = build_k_extractors(decisions(), offline=True)
+          registry = Registry()
+          import_convention_table(registry)
+
+          controls = (
+              ("i",    lambda: nulls._control_i(seed)),
+              ("ii",   nulls._control_ii),
+              ("iii",  lambda: nulls._control_iii(seed, exts, BETA_ARMS[0])),
+              ("iv",   lambda: nulls._control_iv(seed, exts, BETA_ARMS[0])),
+              ("v",    lambda: nulls._control_v(seed, exts, BETA_ARMS[0])),
+              ("vi",   lambda: nulls._control_vi(registry)),
+              ("vii",  lambda: nulls._control_vii(registry)),
+              ("viii", nulls._control_viii),
+              ("ix",   lambda: nulls._control_ix(None, seed)),
+          )
+          dead = []
+          for name, run in controls:
+              fired, detail = run()
+              print(f"{name}: {'live' if fired else 'DEAD'} — {detail}")
+              if not fired:
+                  dead.append(name)
+          if dead:
+              print(f"::error::dead controls: {', '.join(dead)} — those cells cannot fail")
+          raise SystemExit(1 if dead else 0)
           PY
 
       - name: status

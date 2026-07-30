@@ -2,6 +2,7 @@
 """common-ground CLI.
 
     python cli.py status     # decisions, lock state, phase readiness
+    python cli.py pin        # record a landed lexicon artifact's digest into D8
     python cli.py lock       # write seed/SEED.lock (refuses while any decision is blank)
     python cli.py verify     # gate-4 tripwire: recompute seed hashes, fail on drift
     python cli.py register   # append a REGISTRY.jsonl entry (do this BEFORE a phase run)
@@ -28,7 +29,7 @@ from engine.constants import BETA_ARMS, REGISTRY_DIR, decisions  # noqa: E402
 from engine.extract import build_k_extractors  # noqa: E402
 from engine.logio import RunLog, append_registry  # noqa: E402
 from engine.nulls import run_battery  # noqa: E402
-from engine.types import NullStatus  # noqa: E402
+from engine.types import ControlState, NullStatus  # noqa: E402
 from engine import seed_lock  # noqa: E402
 
 REGISTRY_PATH = REGISTRY_DIR / "REGISTRY.jsonl"
@@ -40,6 +41,19 @@ def _mark(status: str) -> str:
     return {"pass": f"{GREEN}PASS{RESET}", "fail": f"{RED}FAIL{RESET}", "blocked": f"{YELLOW}BLOCKED{RESET}"}.get(
         status, status
     )
+
+
+def _control(state: ControlState) -> str:
+    """The positive control's verdict, printed beside the cell's own.
+
+    A cell reporting PASS with a dead control has not passed anything: nobody has shown it
+    can fail. The two verdicts belong side by side for exactly that reason.
+    """
+    return {
+        ControlState.LIVE: f"{DIM}ctl:live{RESET}",
+        ControlState.DEAD: f"{RED}ctl:DEAD{RESET}",
+        ControlState.NOT_RUN: f"{YELLOW}ctl:--{RESET}",
+    }[state]
 
 
 def cmd_status(_: argparse.Namespace) -> int:
@@ -62,6 +76,18 @@ def cmd_status(_: argparse.Namespace) -> int:
     if blanks:
         print(f"  {YELLOW}{len(blanks)} blank marker(s) remain in seed/DECISIONS.md{RESET}")
 
+    d8 = d.get("D8", {})
+    print("\nlexicon pins (D8)")
+    for source, spec in sorted(seed_lock.PINNABLE.items()):
+        digest = d8.get(spec["digest_key"])
+        label = d8.get(spec["label_key"])
+        if digest:
+            print(f"  {source:<10} {GREEN}pinned{RESET}   {digest[:16]}  ({label})")
+        else:
+            policy = d8.get(f"{source}_policy", "?")
+            note = f"policy {policy!r}" + (f", {spec['label_name']} {label}" if label else "")
+            print(f"  {source:<10} {YELLOW}unpinned{RESET} {note} — run `cli.py pin {source} --path ...`")
+
     print("\nphases")
     p0_ok = not lock.provisional
     print(f"  P0 scaffold + seed assembly   {'ready' if p0_ok else f'{YELLOW}blocked{RESET}: SEED.lock not written'}")
@@ -77,6 +103,32 @@ def cmd_status(_: argparse.Namespace) -> int:
     if pending:
         print(f"\n{YELLOW}Cannot write SEED.lock:{RESET} {', '.join(pending)}")
         print("KICKOFF section 7.1 — refuse to proceed past P0 with any blank.")
+    return 0
+
+
+def cmd_pin(args: argparse.Namespace) -> int:
+    """Record what a D8 fetch policy actually resolved to.
+
+    D8 fixes the *rule* — latest stable Mathlib, current nLab, WordNet 3.1 — and this
+    records the artifact. The digest is the pin; the commit/date/version beside it is
+    provenance.
+    """
+    try:
+        rec = seed_lock.record_pin(args.source, args.path, args.label)
+    except GateViolation as exc:
+        print(f"{RED}{exc}{RESET}", file=sys.stderr)
+        return 1
+
+    print(f"{GREEN}pinned{RESET} {rec['source']}")
+    print(f"  path    {rec['path']}")
+    print(f"  digest  {rec['digest']}")
+    if rec["replaced"] and rec["replaced"] != rec["digest"]:
+        print(f"  {YELLOW}replaced{RESET} {rec['replaced'][:16]} — the artifact changed under the same policy")
+    print(f"\n  D8      {rec['d8_status']}")
+    if rec["still_blank"]:
+        print(f"  {YELLOW}still unpinned:{RESET} {', '.join(rec['still_blank'])}")
+    else:
+        print(f"  {DIM}all three artifacts pinned; `cli.py lock` is unblocked on D8{RESET}")
     return 0
 
 
@@ -168,11 +220,19 @@ def cmd_p1(args: argparse.Namespace) -> int:
 
     log = RunLog.open(lock.seed_hash, "P1")
     for cell in report.cells:
-        print(f"  {cell.cell:<28} {_mark(cell.status.value)}  {cell.detail}")
+        print(f"  {cell.cell:<28} {_mark(cell.status.value)}  {_control(cell.control)}  {cell.detail}")
         log.write(cell=cell.cell, cell_status=cell.status.value, cert="monotone",
-                  provenance="nulls", detail=cell.detail, stats=cell.stats)
+                  provenance="nulls", detail=cell.detail, stats=cell.stats,
+                  control=cell.control.value, control_detail=cell.control_detail)
     log.write(phase="P1", cert="monotone", provenance="nulls",
-              battery_status=report.status.value)
+              battery_status=report.status.value, dead_controls=report.dead_controls)
+
+    if report.dead_controls:
+        print(f"\n  {RED}dead controls:{RESET} {', '.join(report.dead_controls)}")
+        print("  A cell that cannot fail is not evidence. The battery reads FAIL.")
+        for cell in report.cells:
+            if cell.control is ControlState.DEAD:
+                print(f"    {cell.cell}: {cell.control_detail}")
 
     print(f"\n  battery  {_mark(report.status.value)}")
     print(f"  log      {log.path.relative_to(Path.cwd()) if log.path.is_relative_to(Path.cwd()) else log.path}")
@@ -221,6 +281,13 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("status", help="decisions, lock state, phase readiness").set_defaults(fn=cmd_status)
+
+    p_pin = sub.add_parser("pin", help="record a landed lexicon artifact's digest into D8")
+    p_pin.add_argument("source", choices=sorted(seed_lock.PINNABLE))
+    p_pin.add_argument("--path", required=True, help="the dump on disk (file or directory)")
+    p_pin.add_argument("--commit", "--date", "--version", dest="label", default=None,
+                       help="provenance: Mathlib commit, nLab scrape date, or WordNet version")
+    p_pin.set_defaults(fn=cmd_pin)
 
     p_lock = sub.add_parser("lock", help="write seed/SEED.lock")
     p_lock.add_argument("--force", action="store_true",

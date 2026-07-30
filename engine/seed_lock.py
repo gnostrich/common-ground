@@ -104,14 +104,24 @@ def lexicon_pins(decisions: dict[str, Any]) -> dict[str, Any]:
     The convention table and shadow probes live under `seed/` and are therefore already
     hashed file-by-file, but they are named here too so a reader of the lock can see the
     lexicon's inputs in one place without diffing the file map.
+
+    Each external source contributes two entries: a provenance label (commit, scrape date,
+    version) and the **content digest** of the artifact that landed. The digest is the pin
+    that does the work — D8's policy fields say "latest stable at fetch", which identifies
+    a fetch rule rather than an input, and only the digest makes a run replayable. Both are
+    compared by `verify()`, so a re-fetch under the same policy that produces different
+    bytes trips gate 4 instead of passing silently.
     """
     from .constants import CONVENTION_TABLE_PATH, SHADOW_PROBES_PATH
 
     d8 = decisions.get("D8", {})
     return {
         "mathlib_commit": d8.get("mathlib_commit"),
+        "mathlib_dump_sha256": d8.get("mathlib_dump_sha256"),
         "nlab_scrape_date": d8.get("nlab_scrape_date"),
+        "nlab_scrape_sha256": d8.get("nlab_scrape_sha256"),
         "wordnet_version": d8.get("wordnet_version"),
+        "wordnet_sha256": d8.get("wordnet_sha256"),
         "convention_table_sha256": (
             sha256_file(CONVENTION_TABLE_PATH) if CONVENTION_TABLE_PATH.exists() else None
         ),
@@ -120,6 +130,118 @@ def lexicon_pins(decisions: dict[str, Any]) -> dict[str, Any]:
         ),
         "importer_script_hash": importer_script_hash(),
     }
+
+
+#: The three external lexicon artifacts, and where each one's pin lives in D8.
+#: `label_key` is provenance (which commit, which scrape, which version); `digest_key` is
+#: the content hash, which is the pin proper.
+PINNABLE: dict[str, dict[str, str]] = {
+    "mathlib": {
+        "row": "Mathlib",
+        "path_key": "mathlib_dump",
+        "label_key": "mathlib_commit",
+        "digest_key": "mathlib_dump_sha256",
+        "label_name": "commit",
+    },
+    "nlab": {
+        "row": "nLab",
+        "path_key": "nlab_scrape",
+        "label_key": "nlab_scrape_date",
+        "digest_key": "nlab_scrape_sha256",
+        "label_name": "date",
+    },
+    "wordnet": {
+        "row": "WordNet",
+        "path_key": "wordnet_path",
+        "label_key": "wordnet_version",
+        "digest_key": "wordnet_sha256",
+        "label_name": "version",
+    },
+}
+
+
+def record_pin(source: str, path: str | Path, label: str | None = None) -> dict[str, Any]:
+    """Pin one lexicon artifact into D8: its path, its provenance label, and its digest.
+
+    This exists because D8's policy fields ("latest stable at fetch", "current at fetch")
+    name a fetch rule rather than an input. The rule is decided; the pin is whatever it
+    resolved to on the day, and that can only be recorded once the artifact is on disk.
+    Writing a guessed commit hash into the lock instead would produce something that looks
+    pinned and reproduces nothing.
+
+    Refuses once `SEED.lock` is written. A pin feeds the seed hash, so changing one after
+    the lock moves addresses — that is plastic under gate 4 and takes a logged
+    seed-morphism event and a cold re-anneal, not a CLI flag.
+    """
+    spec = PINNABLE.get(source)
+    if spec is None:
+        raise GateViolation(4, f"unknown lexicon source {source!r}; expected one of {', '.join(sorted(PINNABLE))}")
+
+    p = Path(path)
+    if not p.exists():
+        raise GateViolation(4, f"cannot pin what is not on disk: {p}")
+
+    # Read through the module-level path rather than `load_decisions()` so the write and
+    # the read hit the same file — which also lets a test point both at a temp copy.
+    d = json.loads(DECISIONS_PATH.read_text(encoding="utf-8"))
+    d8 = dict(d.get("D8", {}))
+    label = label or d8.get(spec["label_key"])
+    if not label:
+        raise GateViolation(
+            4,
+            f"{source} needs a --{spec['label_name']}: the digest says which bytes, the "
+            f"{spec['label_name']} says where they came from, and a pin wants both.",
+        )
+
+    if SEED_LOCK_PATH.exists():
+        raise GateViolation(
+            4,
+            f"SEED.lock is written; pinning {source} now would move addresses under a live "
+            "seed. Log a seed-morphism event and cold re-anneal.",
+        )
+
+    from .hashing import artifact_digest
+
+    digest = artifact_digest(p)
+    previous = d8.get(spec["digest_key"])
+    d8[spec["path_key"]] = str(p)
+    d8[spec["label_key"]] = label
+    d8[spec["digest_key"]] = digest
+
+    resolved = all(d8.get(s["digest_key"]) for s in PINNABLE.values())
+    d8["status"] = "resolved" if resolved else "partial"
+    d["D8"] = d8
+    DECISIONS_PATH.write_text(
+        json.dumps(d, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    _update_pin_row(spec["row"], str(p), digest)
+
+    return {
+        "source": source, "path": str(p), spec["label_name"]: label,
+        "digest": digest, "replaced": previous, "d8_status": d8["status"],
+        "still_blank": sorted(
+            name for name, s in PINNABLE.items() if not d8.get(s["digest_key"])
+        ),
+    }
+
+
+def _update_pin_row(row: str, path: str, digest: str) -> None:
+    """Fill the matching row of D8's pin table in seed/DECISIONS.md.
+
+    The prose record and the machine record are checked against each other by
+    `blank_markers_in_decisions_md`, so a pin that updated only the JSON would leave a
+    `____` behind and block the lock it was meant to unblock.
+    """
+    md = SEED_DIR / "DECISIONS.md"
+    if not md.exists():
+        return
+    lines = md.read_text(encoding="utf-8").splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) == 6 and cells[1] == row and "____" in line:
+            lines[i] = f"| {cells[1]} | {cells[2]} | `{path}` | `{digest[:16]}` |\n"
+            md.write_text("".join(lines), encoding="utf-8")
+            return
 
 
 def build_manifest(decisions: dict[str, Any] | None = None, provisional: bool = False) -> dict[str, Any]:

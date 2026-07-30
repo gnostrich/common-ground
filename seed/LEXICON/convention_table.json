@@ -1,413 +1,16 @@
 {
   "schema": "common-ground/convention-table/v0",
-  "status": "DRAFT — pending approval (D8.convention_table)",
+  "status": "APPROVED with additions (D8.convention_table)",
   "drafted_by": "CC, per LEXICON IMPORT NOTES section 1 item 2",
-  "note": "Hand-seeded math polysemy pathologies, applied as PRE-FIBERED SENSE-SPLITS before any corpus ingestion. Senses are never merged by string; a bridge is a checkable statement between senses, not a note. `formal_faces` entries are candidate Mathlib bindings written verbatim — the importer resolves them against the pinned dump and drops any that do not exist there rather than inventing a binding. `source_beta` is the lexicon source-authority tier; it is NOT the meter's inverse temperature.",
+  "note": "Hand-seeded math polysemy pathologies, applied as PRE-FIBERED SENSE-SPLITS before any corpus ingestion. Senses are never merged by string; a bridge is a checkable statement between senses, not a note. `formal_faces` entries are candidate Mathlib bindings written verbatim — the importer resolves them against the pinned dump and drops any that do not exist there rather than inventing a binding. `source_beta` is the lexicon source-authority tier and reaches F only as prior energy; it is NOT the meter's `beta`, which is the verification budget.",
   "counts": {
-    "lemmas": 46,
-    "senses": 176,
-    "bridges": 17
+    "lemmas": 51,
+    "senses": 184,
+    "bridges": 22,
+    "declared_none_bridges": 7
   },
   "coverage_note": "The brief calls for ~200 entries. This draft covers 176 senses across 46 lemmas: the pathologies named explicitly in the addendum (ring, compact, positive, graph, normal, algebra), the whole cell-(vii) shadow list, the classic offenders, and three terms this project itself overloads (chart, fiber, kernel) where a declared-none bridge records that the analogy carries no formal content. It is short of 200 rather than padded: the remaining entries should come from the corpus's own vocabulary once D3 resolves, which is a better selection principle than guessing at more.",
   "entries": [
-    {
-      "lemma": "ring",
-      "pathology": "±unit",
-      "senses": [
-        {
-          "sense_id": "ring_unital",
-          "english_face": "ring",
-          "gloss": "abelian group with an associative multiplication that has a two-sided identity",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "algebra",
-            "ring_theory",
-            "unital"
-          ],
-          "formal_faces": [
-            "Ring"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "ring_rng",
-          "english_face": "rng",
-          "gloss": "ring not required to have a multiplicative identity; a ring without the i",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "algebra",
-            "ring_theory",
-            "nonunital"
-          ],
-          "formal_faces": [
-            "NonUnitalRing"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "ring_general",
-          "english_face": "ring",
-          "gloss": "a circular object or arrangement",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "ring_unital",
-          "to": "ring_rng",
-          "statement": "every Ring is a NonUnitalRing by forgetting the identity",
-          "chart": "lean",
-          "status": "checkable",
-          "formal": "instance : NonUnitalRing R"
-        }
-      ]
-    },
-    {
-      "lemma": "compact",
-      "pathology": "±Hausdorff (Anglo vs Bourbaki)",
-      "senses": [
-        {
-          "sense_id": "compact_Anglo",
-          "english_face": "compact",
-          "gloss": "every open cover has a finite subcover; no separation assumed",
-          "type_sig": "Set X -> Prop",
-          "frames": [
-            "topology"
-          ],
-          "formal_faces": [
-            "IsCompact"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "compact_Bourbaki",
-          "english_face": "compact (Bourbaki)",
-          "gloss": "quasi-compact and Hausdorff; the French convention builds separation into the word",
-          "type_sig": "Set X -> Prop",
-          "frames": [
-            "topology",
-            "bourbaki"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "compact_general",
-          "english_face": "compact",
-          "gloss": "small, densely packed",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "compact_Bourbaki",
-          "to": "compact_Anglo",
-          "statement": "compact_Bourbaki s <-> compact_Anglo s /\\ T2Space s",
-          "chart": "lean",
-          "status": "checkable",
-          "formal": "theorem compact_bourbaki_iff (s : Set X) : CompactBourbaki s ↔ IsCompact s ∧ T2Space s"
-        }
-      ]
-    },
-    {
-      "lemma": "positive",
-      "pathology": "strict vs non-strict",
-      "senses": [
-        {
-          "sense_id": "positive_strict",
-          "english_face": "positive",
-          "gloss": "strictly greater than zero",
-          "type_sig": "a -> Prop",
-          "frames": [
-            "order",
-            "analysis"
-          ],
-          "formal_faces": [
-            "Positive",
-            "lt"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "positive_nonneg",
-          "english_face": "positive (non-strict)",
-          "gloss": "greater than or equal to zero; the French convention",
-          "type_sig": "a -> Prop",
-          "frames": [
-            "order",
-            "analysis",
-            "bourbaki"
-          ],
-          "formal_faces": [
-            "Nonneg",
-            "le"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "positive_definite",
-          "english_face": "positive definite",
-          "gloss": "of a form or operator: strictly positive on all nonzero vectors",
-          "type_sig": "Matrix n n a -> Prop",
-          "frames": [
-            "linear_algebra",
-            "analysis",
-            "definiteness_strict"
-          ],
-          "formal_faces": [
-            "Matrix.PosDef"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "positive_semidefinite",
-          "english_face": "positive semidefinite",
-          "gloss": "of a form or operator: non-negative on all vectors",
-          "type_sig": "Matrix n n a -> Prop",
-          "frames": [
-            "linear_algebra",
-            "analysis",
-            "definiteness_weak"
-          ],
-          "formal_faces": [
-            "Matrix.PosSemidef"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "positive_general",
-          "english_face": "positive",
-          "gloss": "affirmative, confident, or constructive",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "positive_strict",
-          "to": "positive_nonneg",
-          "statement": "positive_strict x -> positive_nonneg x",
-          "chart": "lean",
-          "status": "checkable",
-          "formal": "theorem pos_imp_nonneg {x : a} (h : 0 < x) : 0 ≤ x"
-        },
-        {
-          "from": "positive_definite",
-          "to": "positive_semidefinite",
-          "statement": "PosDef M -> PosSemidef M",
-          "chart": "lean",
-          "status": "checkable",
-          "formal": "theorem Matrix.PosDef.posSemidef {M : Matrix n n a} : M.PosDef → M.PosSemidef"
-        }
-      ]
-    },
-    {
-      "lemma": "graph",
-      "pathology": "five fields",
-      "senses": [
-        {
-          "sense_id": "graph_combinatorial",
-          "english_face": "graph",
-          "gloss": "a set of vertices with a set of edges between them",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "combinatorics",
-            "graph_theory"
-          ],
-          "formal_faces": [
-            "SimpleGraph"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "graph_of_function",
-          "english_face": "graph of a function",
-          "gloss": "the set of pairs (x, f x); a subset of the product",
-          "type_sig": "(a -> b) -> Set (a x b)",
-          "frames": [
-            "set_theory",
-            "analysis"
-          ],
-          "formal_faces": [
-            "Function.graph"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "graph_directed",
-          "english_face": "directed graph",
-          "gloss": "vertices with ordered edges; a quiver",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "combinatorics",
-            "category_theory"
-          ],
-          "formal_faces": [
-            "Quiver",
-            "Digraph"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "graph_multigraph",
-          "english_face": "multigraph",
-          "gloss": "graph admitting parallel edges and loops",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "combinatorics"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "graph_plot",
-          "english_face": "graph",
-          "gloss": "a plotted curve or chart of data",
-          "type_sig": null,
-          "frames": [
-            "general",
-            "data"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "graph_combinatorial",
-          "to": "graph_multigraph",
-          "statement": "a SimpleGraph is a multigraph with no parallel edges and no loops",
-          "chart": "english",
-          "status": "declared",
-          "formal": null
-        }
-      ]
-    },
-    {
-      "lemma": "normal",
-      "pathology": "seven unrelated fields",
-      "senses": [
-        {
-          "sense_id": "normal_subgroup",
-          "english_face": "normal subgroup",
-          "gloss": "subgroup invariant under conjugation",
-          "type_sig": "Subgroup G -> Prop",
-          "frames": [
-            "group_theory",
-            "algebra"
-          ],
-          "formal_faces": [
-            "Subgroup.Normal"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "normal_topology",
-          "english_face": "normal space",
-          "gloss": "T4: disjoint closed sets have disjoint open neighbourhoods",
-          "type_sig": "TopologicalSpace X -> Prop",
-          "frames": [
-            "topology"
-          ],
-          "formal_faces": [
-            "NormalSpace"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "normal_extension",
-          "english_face": "normal extension",
-          "gloss": "field extension in which every irreducible polynomial with a root splits",
-          "type_sig": "Type -> Type -> Prop",
-          "frames": [
-            "field_theory",
-            "algebra"
-          ],
-          "formal_faces": [
-            "Normal"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "normal_operator",
-          "english_face": "normal operator",
-          "gloss": "operator commuting with its adjoint",
-          "type_sig": "(E ->L[K] E) -> Prop",
-          "frames": [
-            "functional_analysis"
-          ],
-          "formal_faces": [
-            "IsStarNormal"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "normal_distribution",
-          "english_face": "normal distribution",
-          "gloss": "the Gaussian distribution",
-          "type_sig": "Measure R",
-          "frames": [
-            "probability",
-            "statistics"
-          ],
-          "formal_faces": [
-            "ProbabilityTheory.gaussianReal"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "normal_vector",
-          "english_face": "normal vector",
-          "gloss": "vector perpendicular to a surface or hyperplane",
-          "type_sig": "E",
-          "frames": [
-            "geometry",
-            "analysis"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "normal_form",
-          "english_face": "normal form",
-          "gloss": "canonical representative of an equivalence class under rewriting",
-          "type_sig": "a -> Prop",
-          "frames": [
-            "logic",
-            "rewriting",
-            "type_theory"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "normal_general",
-          "english_face": "normal",
-          "gloss": "usual, typical, conforming to a standard",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
     {
       "lemma": "algebra",
       "pathology": "five senses across algebra, analysis, logic, and schooling",
@@ -491,643 +94,6 @@
       ]
     },
     {
-      "lemma": "field",
-      "pathology": "algebra vs physics vs general",
-      "senses": [
-        {
-          "sense_id": "field_algebraic",
-          "english_face": "field",
-          "gloss": "commutative ring in which every nonzero element is invertible",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "algebra",
-            "field_theory"
-          ],
-          "formal_faces": [
-            "Field"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "field_physics",
-          "english_face": "field",
-          "gloss": "an assignment of a value to every point of a space; scalar, vector, or tensor field",
-          "type_sig": "M -> V",
-          "frames": [
-            "physics",
-            "geometry"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "field_record",
-          "english_face": "field",
-          "gloss": "a named component of a record or structure",
-          "type_sig": null,
-          "frames": [
-            "programming",
-            "type_theory"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "field_general",
-          "english_face": "field",
-          "gloss": "an area of study or activity; an open expanse of land",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "kernel",
-      "pathology": "algebra vs analysis vs proof theory vs systems",
-      "senses": [
-        {
-          "sense_id": "kernel_algebra",
-          "english_face": "kernel",
-          "gloss": "preimage of the identity under a homomorphism",
-          "type_sig": "(G ->* H) -> Subgroup G",
-          "frames": [
-            "algebra",
-            "group_theory",
-            "linear_algebra"
-          ],
-          "formal_faces": [
-            "MonoidHom.ker",
-            "LinearMap.ker"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "kernel_integral",
-          "english_face": "integral kernel",
-          "gloss": "the two-variable function K(x, y) of an integral transform",
-          "type_sig": "(a -> a -> R)",
-          "frames": [
-            "analysis",
-            "functional_analysis"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "kernel_markov",
-          "english_face": "Markov kernel",
-          "gloss": "a measurable family of probability measures",
-          "type_sig": "Kernel a b",
-          "frames": [
-            "probability",
-            "measure_theory"
-          ],
-          "formal_faces": [
-            "ProbabilityTheory.Kernel"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "kernel_proof",
-          "english_face": "kernel",
-          "gloss": "the small trusted proof-checking core of a proof assistant",
-          "type_sig": null,
-          "frames": [
-            "proof_assistant",
-            "logic"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "kernel_ct",
-          "english_face": "kernel",
-          "gloss": "the equalizer of a morphism with the zero morphism",
-          "type_sig": "(X -> Y) -> Object",
-          "frames": [
-            "category_theory"
-          ],
-          "formal_faces": [
-            "CategoryTheory.Limits.kernel"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "kernel_os",
-          "english_face": "kernel",
-          "gloss": "the core of an operating system",
-          "type_sig": null,
-          "frames": [
-            "general",
-            "programming",
-            "systems"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "kernel_algebra",
-          "to": "kernel_ct",
-          "statement": "in an abelian category the algebraic kernel is the categorical kernel",
-          "chart": "english",
-          "status": "declared",
-          "formal": null
-        }
-      ]
-    },
-    {
-      "lemma": "measure",
-      "pathology": "measure theory vs general quantity",
-      "senses": [
-        {
-          "sense_id": "measure_theory",
-          "english_face": "measure",
-          "gloss": "countably additive non-negative set function on a sigma-algebra",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "measure_theory",
-            "probability"
-          ],
-          "formal_faces": [
-            "MeasureTheory.Measure"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "measure_metric",
-          "english_face": "measure",
-          "gloss": "a quantity assigned to compare sizes; a metric or score",
-          "type_sig": null,
-          "frames": [
-            "general",
-            "statistics",
-            "data"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        },
-        {
-          "sense_id": "measure_action",
-          "english_face": "measure",
-          "gloss": "a step taken to achieve an end",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "category",
-      "pathology": "category theory vs general kind",
-      "senses": [
-        {
-          "sense_id": "category_ct",
-          "english_face": "category",
-          "gloss": "objects and morphisms with associative composition and identities",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "category_theory"
-          ],
-          "formal_faces": [
-            "CategoryTheory.Category"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "category_baire",
-          "english_face": "category (Baire)",
-          "gloss": "first or second category in the sense of Baire: meagre or non-meagre",
-          "type_sig": "Set X -> Prop",
-          "frames": [
-            "topology",
-            "analysis"
-          ],
-          "formal_faces": [
-            "IsMeagre"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "category_general",
-          "english_face": "category",
-          "gloss": "a class or kind into which things are placed",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "regular",
-      "pathology": "five fields",
-      "senses": [
-        {
-          "sense_id": "regular_topology",
-          "english_face": "regular space",
-          "gloss": "T3: a point and a disjoint closed set can be separated by opens",
-          "type_sig": "TopologicalSpace X -> Prop",
-          "frames": [
-            "topology"
-          ],
-          "formal_faces": [
-            "RegularSpace"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "regular_ring",
-          "english_face": "regular ring",
-          "gloss": "Noetherian ring whose localizations are regular local rings",
-          "type_sig": "Type -> Prop",
-          "frames": [
-            "algebra",
-            "commutative_algebra"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "regular_graph",
-          "english_face": "regular graph",
-          "gloss": "graph in which every vertex has the same degree",
-          "type_sig": "SimpleGraph V -> Prop",
-          "frames": [
-            "graph_theory"
-          ],
-          "formal_faces": [
-            "SimpleGraph.IsRegularOfDegree"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "regular_language",
-          "english_face": "regular language",
-          "gloss": "language recognized by a finite automaton",
-          "type_sig": "Language a -> Prop",
-          "frames": [
-            "computability",
-            "logic"
-          ],
-          "formal_faces": [
-            "Language.IsRegular"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "regular_cardinal",
-          "english_face": "regular cardinal",
-          "gloss": "cardinal equal to its own cofinality",
-          "type_sig": "Cardinal -> Prop",
-          "frames": [
-            "set_theory"
-          ],
-          "formal_faces": [
-            "Cardinal.IsRegular"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "regular_general",
-          "english_face": "regular",
-          "gloss": "occurring at even intervals; usual",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "complete",
-      "pathology": "metric vs order vs logic vs graph",
-      "senses": [
-        {
-          "sense_id": "complete_metric",
-          "english_face": "complete metric space",
-          "gloss": "every Cauchy sequence converges",
-          "type_sig": "MetricSpace X -> Prop",
-          "frames": [
-            "analysis",
-            "topology"
-          ],
-          "formal_faces": [
-            "CompleteSpace"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "complete_lattice",
-          "english_face": "complete lattice",
-          "gloss": "every subset has a supremum and an infimum",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "order"
-          ],
-          "formal_faces": [
-            "CompleteLattice"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "complete_logic",
-          "english_face": "complete theory",
-          "gloss": "of a proof system: every semantic consequence is derivable; of a theory: it decides every sentence",
-          "type_sig": "Theory L -> Prop",
-          "frames": [
-            "logic",
-            "model_theory"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "complete_graph",
-          "english_face": "complete graph",
-          "gloss": "graph in which every pair of distinct vertices is adjacent",
-          "type_sig": "Type -> SimpleGraph V",
-          "frames": [
-            "graph_theory"
-          ],
-          "formal_faces": [
-            "completeGraph"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "complete_general",
-          "english_face": "complete",
-          "gloss": "finished; having all parts",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "simple",
-      "pathology": "algebra vs graph vs measure theory vs general",
-      "senses": [
-        {
-          "sense_id": "simple_group",
-          "english_face": "simple group",
-          "gloss": "nontrivial group with no proper nontrivial normal subgroup",
-          "type_sig": "Type -> Prop",
-          "frames": [
-            "group_theory",
-            "algebra"
-          ],
-          "formal_faces": [
-            "IsSimpleGroup"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "simple_module",
-          "english_face": "simple module",
-          "gloss": "nonzero module with no proper nonzero submodule",
-          "type_sig": "Type -> Type -> Prop",
-          "frames": [
-            "algebra",
-            "representation_theory"
-          ],
-          "formal_faces": [
-            "IsSimpleModule"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "simple_graph",
-          "english_face": "simple graph",
-          "gloss": "graph with no loops and no parallel edges",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "graph_theory"
-          ],
-          "formal_faces": [
-            "SimpleGraph"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "simple_function",
-          "english_face": "simple function",
-          "gloss": "measurable function with finite range",
-          "type_sig": "SimpleFunc a b",
-          "frames": [
-            "measure_theory"
-          ],
-          "formal_faces": [
-            "MeasureTheory.SimpleFunc"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "simple_general",
-          "english_face": "simple",
-          "gloss": "easy; not complicated",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "module",
-      "pathology": "algebra vs software",
-      "senses": [
-        {
-          "sense_id": "module_algebra",
-          "english_face": "module",
-          "gloss": "abelian group with a compatible scalar action by a ring",
-          "type_sig": "Type -> Type -> Type",
-          "frames": [
-            "algebra",
-            "linear_algebra"
-          ],
-          "formal_faces": [
-            "Module"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "module_software",
-          "english_face": "module",
-          "gloss": "a unit of program organization",
-          "type_sig": null,
-          "frames": [
-            "programming",
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "domain",
-      "pathology": "ring theory vs function vs general",
-      "senses": [
-        {
-          "sense_id": "domain_ring",
-          "english_face": "integral domain",
-          "gloss": "nonzero commutative ring with no zero divisors",
-          "type_sig": "Type -> Prop",
-          "frames": [
-            "algebra",
-            "ring_theory"
-          ],
-          "formal_faces": [
-            "IsDomain"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "domain_function",
-          "english_face": "domain of a function",
-          "gloss": "the set on which a function is defined",
-          "type_sig": "(a -> b) -> Set a",
-          "frames": [
-            "set_theory",
-            "analysis"
-          ],
-          "formal_faces": [
-            "Function.Domain"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "domain_region",
-          "english_face": "domain",
-          "gloss": "a connected open subset of the plane or of a manifold",
-          "type_sig": "Set C -> Prop",
-          "frames": [
-            "complex_analysis",
-            "topology"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "domain_general",
-          "english_face": "domain",
-          "gloss": "an area of knowledge or control",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "closed",
-      "pathology": "topology vs algebra vs expression vs manifold",
-      "senses": [
-        {
-          "sense_id": "closed_topology",
-          "english_face": "closed set",
-          "gloss": "set whose complement is open",
-          "type_sig": "Set X -> Prop",
-          "frames": [
-            "topology"
-          ],
-          "formal_faces": [
-            "IsClosed"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "closed_algebraic",
-          "english_face": "algebraically closed",
-          "gloss": "field in which every nonconstant polynomial has a root",
-          "type_sig": "Type -> Prop",
-          "frames": [
-            "field_theory",
-            "algebra"
-          ],
-          "formal_faces": [
-            "IsAlgClosed"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "closed_form",
-          "english_face": "closed form",
-          "gloss": "of a differential form: having zero exterior derivative",
-          "type_sig": "Form -> Prop",
-          "frames": [
-            "geometry",
-            "analysis"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "closed_expression",
-          "english_face": "closed form",
-          "gloss": "of an expression: written with finitely many standard operations",
-          "type_sig": null,
-          "frames": [
-            "general",
-            "analysis"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "closed_manifold",
-          "english_face": "closed manifold",
-          "gloss": "compact manifold without boundary",
-          "type_sig": "Manifold -> Prop",
-          "frames": [
-            "geometry",
-            "topology"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "closed_manifold",
-          "to": "compact_Anglo",
-          "statement": "a closed manifold is compact and has empty boundary",
-          "chart": "english",
-          "status": "declared",
-          "formal": null
-        }
-      ]
-    },
-    {
       "lemma": "bounded",
       "pathology": "metric vs operator vs order",
       "senses": [
@@ -1184,40 +150,40 @@
       ]
     },
     {
-      "lemma": "continuous",
-      "pathology": "topology vs measure theory vs general",
+      "lemma": "category",
+      "pathology": "category theory vs general kind",
       "senses": [
         {
-          "sense_id": "continuous_topology",
-          "english_face": "continuous",
-          "gloss": "preimage of every open set is open",
-          "type_sig": "(a -> b) -> Prop",
+          "sense_id": "category_ct",
+          "english_face": "category",
+          "gloss": "objects and morphisms with associative composition and identities",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "category_theory"
+          ],
+          "formal_faces": [
+            "CategoryTheory.Category"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "category_baire",
+          "english_face": "category (Baire)",
+          "gloss": "first or second category in the sense of Baire: meagre or non-meagre",
+          "type_sig": "Set X -> Prop",
           "frames": [
             "topology",
             "analysis"
           ],
           "formal_faces": [
-            "Continuous"
+            "IsMeagre"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "continuous_absolutely",
-          "english_face": "absolutely continuous",
-          "gloss": "of a measure: vanishing on null sets of another measure",
-          "type_sig": "Measure a -> Measure a -> Prop",
-          "frames": [
-            "measure_theory"
-          ],
-          "formal_faces": [
-            "MeasureTheory.Measure.AbsolutelyContinuous"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "continuous_general",
-          "english_face": "continuous",
-          "gloss": "unbroken in time or extent",
+          "sense_id": "category_general",
+          "english_face": "category",
+          "gloss": "a class or kind into which things are placed",
           "type_sig": null,
           "frames": [
             "general"
@@ -1227,451 +193,6 @@
         }
       ],
       "bridges": []
-    },
-    {
-      "lemma": "smooth",
-      "pathology": "differentiability class vs general",
-      "senses": [
-        {
-          "sense_id": "smooth_manifold",
-          "english_face": "smooth",
-          "gloss": "infinitely differentiable; of class C-infinity",
-          "type_sig": "(a -> b) -> Prop",
-          "frames": [
-            "geometry",
-            "analysis"
-          ],
-          "formal_faces": [
-            "ContDiff"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "smooth_general",
-          "english_face": "smooth",
-          "gloss": "even, free from roughness",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "degree",
-      "pathology": "polynomial vs graph vs map vs extension",
-      "senses": [
-        {
-          "sense_id": "degree_polynomial",
-          "english_face": "degree of a polynomial",
-          "gloss": "largest exponent with a nonzero coefficient",
-          "type_sig": "Polynomial R -> Nat",
-          "frames": [
-            "algebra"
-          ],
-          "formal_faces": [
-            "Polynomial.degree"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "degree_graph",
-          "english_face": "degree of a vertex",
-          "gloss": "number of edges incident to a vertex",
-          "type_sig": "SimpleGraph V -> V -> Nat",
-          "frames": [
-            "graph_theory"
-          ],
-          "formal_faces": [
-            "SimpleGraph.degree"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "degree_map",
-          "english_face": "degree of a map",
-          "gloss": "the integer counting how many times a map wraps one space around another",
-          "type_sig": "(S -> S) -> Int",
-          "frames": [
-            "topology"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "degree_extension",
-          "english_face": "degree of a field extension",
-          "gloss": "dimension of the extension as a vector space over the base",
-          "type_sig": "Type -> Type -> Cardinal",
-          "frames": [
-            "field_theory"
-          ],
-          "formal_faces": [
-            "Module.rank"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "degree_angle",
-          "english_face": "degree",
-          "gloss": "a unit of angle, one three-hundred-sixtieth of a turn",
-          "type_sig": null,
-          "frames": [
-            "general",
-            "geometry"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "rank",
-      "pathology": "linear vs matroid vs tensor vs group",
-      "senses": [
-        {
-          "sense_id": "rank_linear",
-          "english_face": "rank",
-          "gloss": "dimension of the image of a linear map",
-          "type_sig": "(M ->l N) -> Cardinal",
-          "frames": [
-            "linear_algebra"
-          ],
-          "formal_faces": [
-            "LinearMap.rank"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "rank_matroid",
-          "english_face": "rank",
-          "gloss": "size of a maximal independent set in a matroid",
-          "type_sig": "Matroid a -> Nat",
-          "frames": [
-            "combinatorics"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "rank_tensor",
-          "english_face": "rank of a tensor",
-          "gloss": "minimum number of simple tensors summing to it; also, the number of indices",
-          "type_sig": "Tensor -> Nat",
-          "frames": [
-            "linear_algebra",
-            "physics"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "rank_group",
-          "english_face": "rank of an abelian group",
-          "gloss": "cardinality of a maximal linearly independent subset",
-          "type_sig": "Type -> Cardinal",
-          "frames": [
-            "group_theory"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "rank_general",
-          "english_face": "rank",
-          "gloss": "a position in an ordering or hierarchy",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "trace",
-      "pathology": "matrix vs field vs measure",
-      "senses": [
-        {
-          "sense_id": "trace_linear",
-          "english_face": "trace",
-          "gloss": "sum of the diagonal entries of a matrix; basis-independent",
-          "type_sig": "Matrix n n R -> R",
-          "frames": [
-            "linear_algebra"
-          ],
-          "formal_faces": [
-            "Matrix.trace",
-            "LinearMap.trace"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "trace_field",
-          "english_face": "field trace",
-          "gloss": "sum of the Galois conjugates of an element",
-          "type_sig": "Type -> Type -> (L ->l K)",
-          "frames": [
-            "field_theory",
-            "number_theory"
-          ],
-          "formal_faces": [
-            "Algebra.trace"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "trace_restriction",
-          "english_face": "trace of a measure",
-          "gloss": "the restriction of a measure or sigma-algebra to a subset",
-          "type_sig": "Measure a -> Set a -> Measure a",
-          "frames": [
-            "measure_theory"
-          ],
-          "formal_faces": [
-            "MeasureTheory.Measure.restrict"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "trace_general",
-          "english_face": "trace",
-          "gloss": "a mark left behind; a very small amount",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "spectrum",
-      "pathology": "operator vs ring vs homotopy",
-      "senses": [
-        {
-          "sense_id": "spectrum_operator",
-          "english_face": "spectrum of an operator",
-          "gloss": "the set of scalars for which the operator minus that scalar is not invertible",
-          "type_sig": "(E ->L[K] E) -> Set K",
-          "frames": [
-            "functional_analysis"
-          ],
-          "formal_faces": [
-            "spectrum"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "spectrum_ring",
-          "english_face": "spectrum of a ring",
-          "gloss": "the space of prime ideals with the Zariski topology",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "algebraic_geometry",
-            "commutative_algebra"
-          ],
-          "formal_faces": [
-            "PrimeSpectrum"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "spectrum_homotopy",
-          "english_face": "spectrum",
-          "gloss": "a sequence of spaces with structure maps, representing a cohomology theory",
-          "type_sig": null,
-          "frames": [
-            "algebraic_topology"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "spectrum_general",
-          "english_face": "spectrum",
-          "gloss": "a range of values or positions",
-          "type_sig": null,
-          "frames": [
-            "general",
-            "physics"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "dimension",
-      "pathology": "vector vs Krull vs Hausdorff vs manifold",
-      "senses": [
-        {
-          "sense_id": "dimension_vector",
-          "english_face": "dimension",
-          "gloss": "cardinality of a basis of a vector space",
-          "type_sig": "Type -> Cardinal",
-          "frames": [
-            "linear_algebra"
-          ],
-          "formal_faces": [
-            "Module.rank",
-            "FiniteDimensional.finrank"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "dimension_krull",
-          "english_face": "Krull dimension",
-          "gloss": "supremum of lengths of chains of prime ideals",
-          "type_sig": "Type -> Nat",
-          "frames": [
-            "commutative_algebra"
-          ],
-          "formal_faces": [
-            "ringKrullDim"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "dimension_hausdorff",
-          "english_face": "Hausdorff dimension",
-          "gloss": "the critical exponent of the Hausdorff measure; may be non-integer",
-          "type_sig": "Set X -> Real",
-          "frames": [
-            "analysis",
-            "fractal_geometry"
-          ],
-          "formal_faces": [
-            "dimH"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "dimension_manifold",
-          "english_face": "dimension of a manifold",
-          "gloss": "the dimension of the model space it is locally homeomorphic to",
-          "type_sig": "Manifold -> Nat",
-          "frames": [
-            "geometry",
-            "topology"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "dimension_general",
-          "english_face": "dimension",
-          "gloss": "an aspect or measurable extent of something",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "order",
-      "pathology": "group vs relation vs differential equation vs asymptotics",
-      "senses": [
-        {
-          "sense_id": "order_group_element",
-          "english_face": "order of an element",
-          "gloss": "least positive n with g to the n equal to the identity",
-          "type_sig": "G -> Nat",
-          "frames": [
-            "group_theory"
-          ],
-          "formal_faces": [
-            "orderOf"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "order_group_size",
-          "english_face": "order of a group",
-          "gloss": "the cardinality of the group",
-          "type_sig": "Type -> Nat",
-          "frames": [
-            "group_theory"
-          ],
-          "formal_faces": [
-            "Nat.card"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "order_relation",
-          "english_face": "partial order",
-          "gloss": "reflexive, antisymmetric, transitive relation",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "order"
-          ],
-          "formal_faces": [
-            "PartialOrder"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "order_ode",
-          "english_face": "order of a differential equation",
-          "gloss": "the highest derivative appearing",
-          "type_sig": null,
-          "frames": [
-            "analysis",
-            "differential_equations"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "order_asymptotic",
-          "english_face": "order of growth",
-          "gloss": "asymptotic rate, as in big-O notation",
-          "type_sig": "(a -> b) -> Filter a -> Prop",
-          "frames": [
-            "analysis",
-            "computability"
-          ],
-          "formal_faces": [
-            "Asymptotics.IsBigO"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "order_general",
-          "english_face": "order",
-          "gloss": "a sequence or arrangement; an instruction",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "order_group_element",
-          "to": "order_group_size",
-          "statement": "the order of an element divides the order of a finite group (Lagrange)",
-          "chart": "lean",
-          "status": "checkable",
-          "formal": "theorem orderOf_dvd_card {G : Type*} [Group G] [Fintype G] (g : G) : orderOf g ∣ Fintype.card G"
-        }
-      ]
     },
     {
       "lemma": "character",
@@ -1787,108 +308,251 @@
       ]
     },
     {
-      "lemma": "connected",
-      "pathology": "topology vs graph vs simply",
+      "lemma": "chart",
+      "pathology": "manifold vs diagram — and this project's own usage",
       "senses": [
         {
-          "sense_id": "connected_topology",
-          "english_face": "connected space",
-          "gloss": "not the union of two disjoint nonempty open sets",
-          "type_sig": "TopologicalSpace X -> Prop",
+          "sense_id": "chart_manifold",
+          "english_face": "chart",
+          "gloss": "a homeomorphism from an open subset of a manifold to model space",
+          "type_sig": "PartialHomeomorph M H",
           "frames": [
+            "geometry",
             "topology"
           ],
           "formal_faces": [
-            "ConnectedSpace"
+            "PartialHomeomorph",
+            "ChartedSpace"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "connected_graph",
-          "english_face": "connected graph",
-          "gloss": "every pair of vertices is joined by a walk",
-          "type_sig": "SimpleGraph V -> Prop",
+          "sense_id": "chart_ledger",
+          "english_face": "chart",
+          "gloss": "in this project: a normalization regime plus a marker set; english or lean",
+          "type_sig": "Chart",
           "frames": [
-            "graph_theory"
+            "common_ground",
+            "ledger"
           ],
-          "formal_faces": [
-            "SimpleGraph.Connected"
-          ],
-          "source_beta": "convention"
+          "formal_faces": [],
+          "source_beta": "preminted"
         },
         {
-          "sense_id": "connected_simply",
-          "english_face": "simply connected",
-          "gloss": "path-connected with trivial fundamental group",
-          "type_sig": "TopologicalSpace X -> Prop",
+          "sense_id": "chart_plot",
+          "english_face": "chart",
+          "gloss": "a diagram or table of data",
+          "type_sig": null,
           "frames": [
-            "topology",
-            "algebraic_topology"
+            "general",
+            "data"
           ],
-          "formal_faces": [
-            "SimplyConnectedSpace"
-          ],
-          "source_beta": "convention"
+          "formal_faces": [],
+          "source_beta": "general"
         }
       ],
       "bridges": [
         {
-          "from": "connected_simply",
-          "to": "connected_topology",
-          "statement": "simply connected implies connected",
-          "chart": "lean",
-          "status": "checkable",
-          "formal": "instance [SimplyConnectedSpace X] : ConnectedSpace X"
+          "from": "chart_ledger",
+          "to": "chart_manifold",
+          "statement": "the ledger's charts are named by analogy with manifold charts; the analogy is deliberate but carries no formal content and must not be relied on",
+          "chart": "english",
+          "status": "declared-none",
+          "formal": null
         }
       ]
     },
     {
-      "lemma": "distribution",
-      "pathology": "probability vs generalized function",
+      "lemma": "closed",
+      "pathology": "topology vs algebra vs expression vs manifold",
       "senses": [
         {
-          "sense_id": "distribution_probability",
-          "english_face": "distribution",
-          "gloss": "the law of a random variable; a probability measure",
-          "type_sig": "Measure a",
+          "sense_id": "closed_topology",
+          "english_face": "closed set",
+          "gloss": "set whose complement is open",
+          "type_sig": "Set X -> Prop",
           "frames": [
-            "probability",
-            "statistics"
+            "topology"
           ],
           "formal_faces": [
-            "MeasureTheory.Measure.map"
+            "IsClosed"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "distribution_schwartz",
-          "english_face": "distribution",
-          "gloss": "a continuous linear functional on test functions; a generalized function",
-          "type_sig": "(SchwartzMap E F) ->L[K] K",
+          "sense_id": "closed_algebraic",
+          "english_face": "algebraically closed",
+          "gloss": "field in which every nonconstant polynomial has a root",
+          "type_sig": "Type -> Prop",
           "frames": [
-            "analysis",
-            "functional_analysis"
+            "field_theory",
+            "algebra"
           ],
           "formal_faces": [
-            "SchwartzMap"
+            "IsAlgClosed"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "distribution_geometry",
-          "english_face": "distribution",
-          "gloss": "a subbundle of the tangent bundle",
-          "type_sig": null,
+          "sense_id": "closed_form",
+          "english_face": "closed form",
+          "gloss": "of a differential form: having zero exterior derivative",
+          "type_sig": "Form -> Prop",
           "frames": [
-            "geometry"
+            "geometry",
+            "analysis"
           ],
           "formal_faces": [],
           "source_beta": "convention"
         },
         {
-          "sense_id": "distribution_general",
-          "english_face": "distribution",
-          "gloss": "the act of sharing out; how something is spread",
+          "sense_id": "closed_expression",
+          "english_face": "closed form",
+          "gloss": "of an expression: written with finitely many standard operations",
+          "type_sig": null,
+          "frames": [
+            "general",
+            "analysis"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "closed_manifold",
+          "english_face": "closed manifold",
+          "gloss": "compact manifold without boundary",
+          "type_sig": "Manifold -> Prop",
+          "frames": [
+            "geometry",
+            "topology"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "closed_manifold",
+          "to": "compact_Anglo",
+          "statement": "a closed manifold is compact and has empty boundary",
+          "chart": "english",
+          "status": "declared",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "compact",
+      "pathology": "±Hausdorff (Anglo vs Bourbaki)",
+      "senses": [
+        {
+          "sense_id": "compact_Anglo",
+          "english_face": "compact",
+          "gloss": "every open cover has a finite subcover; no separation assumed",
+          "type_sig": "Set X -> Prop",
+          "frames": [
+            "topology"
+          ],
+          "formal_faces": [
+            "IsCompact"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "compact_Bourbaki",
+          "english_face": "compact (Bourbaki)",
+          "gloss": "quasi-compact and Hausdorff; the French convention builds separation into the word",
+          "type_sig": "Set X -> Prop",
+          "frames": [
+            "topology",
+            "bourbaki"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "compact_general",
+          "english_face": "compact",
+          "gloss": "small, densely packed",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "compact_Bourbaki",
+          "to": "compact_Anglo",
+          "statement": "compact_Bourbaki s <-> compact_Anglo s /\\ T2Space s",
+          "chart": "lean",
+          "status": "checkable",
+          "formal": "theorem compact_bourbaki_iff (s : Set X) : CompactBourbaki s ↔ IsCompact s ∧ T2Space s"
+        }
+      ]
+    },
+    {
+      "lemma": "complete",
+      "pathology": "metric vs order vs logic vs graph",
+      "senses": [
+        {
+          "sense_id": "complete_metric",
+          "english_face": "complete metric space",
+          "gloss": "every Cauchy sequence converges",
+          "type_sig": "MetricSpace X -> Prop",
+          "frames": [
+            "analysis",
+            "topology"
+          ],
+          "formal_faces": [
+            "CompleteSpace"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "complete_lattice",
+          "english_face": "complete lattice",
+          "gloss": "every subset has a supremum and an infimum",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "order"
+          ],
+          "formal_faces": [
+            "CompleteLattice"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "complete_logic",
+          "english_face": "complete theory",
+          "gloss": "of a proof system: every semantic consequence is derivable; of a theory: it decides every sentence",
+          "type_sig": "Theory L -> Prop",
+          "frames": [
+            "logic",
+            "model_theory"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "complete_graph",
+          "english_face": "complete graph",
+          "gloss": "graph in which every pair of distinct vertices is adjacent",
+          "type_sig": "Type -> SimpleGraph V",
+          "frames": [
+            "graph_theory"
+          ],
+          "formal_faces": [
+            "completeGraph"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "complete_general",
+          "english_face": "complete",
+          "gloss": "finished; having all parts",
           "type_sig": null,
           "frames": [
             "general"
@@ -1959,52 +623,96 @@
       "bridges": []
     },
     {
-      "lemma": "space",
-      "pathology": "topology vs linear algebra vs general",
+      "lemma": "connected",
+      "pathology": "topology vs graph vs simply",
       "senses": [
         {
-          "sense_id": "space_topological",
-          "english_face": "topological space",
-          "gloss": "a set with a distinguished family of open subsets",
-          "type_sig": "Type -> Type",
+          "sense_id": "connected_topology",
+          "english_face": "connected space",
+          "gloss": "not the union of two disjoint nonempty open sets",
+          "type_sig": "TopologicalSpace X -> Prop",
           "frames": [
             "topology"
           ],
           "formal_faces": [
-            "TopologicalSpace"
+            "ConnectedSpace"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "space_vector",
-          "english_face": "vector space",
-          "gloss": "a module over a field",
-          "type_sig": "Type -> Type -> Type",
+          "sense_id": "connected_graph",
+          "english_face": "connected graph",
+          "gloss": "every pair of vertices is joined by a walk",
+          "type_sig": "SimpleGraph V -> Prop",
           "frames": [
-            "linear_algebra"
+            "graph_theory"
           ],
           "formal_faces": [
-            "Module"
+            "SimpleGraph.Connected"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "space_measure",
-          "english_face": "measure space",
-          "gloss": "a set with a sigma-algebra and a measure",
-          "type_sig": "Type -> Type",
+          "sense_id": "connected_simply",
+          "english_face": "simply connected",
+          "gloss": "path-connected with trivial fundamental group",
+          "type_sig": "TopologicalSpace X -> Prop",
+          "frames": [
+            "topology",
+            "algebraic_topology"
+          ],
+          "formal_faces": [
+            "SimplyConnectedSpace"
+          ],
+          "source_beta": "convention"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "connected_simply",
+          "to": "connected_topology",
+          "statement": "simply connected implies connected",
+          "chart": "lean",
+          "status": "checkable",
+          "formal": "instance [SimplyConnectedSpace X] : ConnectedSpace X"
+        }
+      ]
+    },
+    {
+      "lemma": "continuous",
+      "pathology": "topology vs measure theory vs general",
+      "senses": [
+        {
+          "sense_id": "continuous_topology",
+          "english_face": "continuous",
+          "gloss": "preimage of every open set is open",
+          "type_sig": "(a -> b) -> Prop",
+          "frames": [
+            "topology",
+            "analysis"
+          ],
+          "formal_faces": [
+            "Continuous"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "continuous_absolutely",
+          "english_face": "absolutely continuous",
+          "gloss": "of a measure: vanishing on null sets of another measure",
+          "type_sig": "Measure a -> Measure a -> Prop",
           "frames": [
             "measure_theory"
           ],
           "formal_faces": [
-            "MeasureTheory.MeasureSpace"
+            "MeasureTheory.Measure.AbsolutelyContinuous"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "space_general",
-          "english_face": "space",
-          "gloss": "an empty area; room",
+          "sense_id": "continuous_general",
+          "english_face": "continuous",
+          "gloss": "unbroken in time or extent",
           "type_sig": null,
           "frames": [
             "general"
@@ -2016,107 +724,418 @@
       "bridges": []
     },
     {
-      "lemma": "limit",
-      "pathology": "analysis vs category theory",
+      "lemma": "definite",
+      "pathology": "definiteness of a form vs settledness; unrelated",
       "senses": [
         {
-          "sense_id": "limit_analysis",
-          "english_face": "limit",
-          "gloss": "the value a function or sequence approaches",
-          "type_sig": "Filter a -> Filter b -> (a -> b) -> Prop",
-          "frames": [
-            "analysis",
-            "topology"
-          ],
-          "formal_faces": [
-            "Filter.Tendsto"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "limit_ct",
-          "english_face": "limit",
-          "gloss": "the universal cone over a diagram",
-          "type_sig": "Functor J C -> C",
-          "frames": [
-            "category_theory"
-          ],
-          "formal_faces": [
-            "CategoryTheory.Limits.limit"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "limit_general",
-          "english_face": "limit",
-          "gloss": "a boundary or maximum permitted amount",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "product",
-      "pathology": "arithmetic vs categorical vs inner vs topological",
-      "senses": [
-        {
-          "sense_id": "product_arith",
-          "english_face": "product",
-          "gloss": "the result of multiplication",
-          "type_sig": "a -> a -> a",
-          "frames": [
-            "algebra",
-            "arithmetic"
-          ],
-          "formal_faces": [
-            "HMul.hMul"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "product_ct",
-          "english_face": "product",
-          "gloss": "the universal object with projections to each factor",
-          "type_sig": "C -> C -> C",
-          "frames": [
-            "category_theory"
-          ],
-          "formal_faces": [
-            "CategoryTheory.Limits.prod"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "product_inner",
-          "english_face": "inner product",
-          "gloss": "a positive definite symmetric or hermitian bilinear form",
-          "type_sig": "E -> E -> K",
+          "sense_id": "positive_definite",
+          "english_face": "positive definite",
+          "gloss": "of a form or operator: strictly positive on all nonzero vectors",
+          "type_sig": "Matrix n n a -> Prop",
           "frames": [
             "linear_algebra",
+            "analysis",
+            "definiteness_strict"
+          ],
+          "formal_faces": [
+            "Matrix.PosDef"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "definite_settled",
+          "english_face": "definite",
+          "gloss": "settled, certain, not open to further question",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "positive_definite",
+          "to": "positive_semidefinite",
+          "statement": "PosDef M -> PosSemidef M",
+          "chart": "lean",
+          "status": "checkable",
+          "formal": "theorem Matrix.PosDef.posSemidef {M : Matrix n n a} : M.PosDef → M.PosSemidef"
+        },
+        {
+          "from": "positive_definite",
+          "to": "definite_settled",
+          "statement": "the mathematical and the everyday sense share a name and nothing else",
+          "chart": "english",
+          "status": "declared-none",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "degree",
+      "pathology": "polynomial vs graph vs map vs extension",
+      "senses": [
+        {
+          "sense_id": "degree_polynomial",
+          "english_face": "degree of a polynomial",
+          "gloss": "largest exponent with a nonzero coefficient",
+          "type_sig": "Polynomial R -> Nat",
+          "frames": [
+            "algebra"
+          ],
+          "formal_faces": [
+            "Polynomial.degree"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "degree_graph",
+          "english_face": "degree of a vertex",
+          "gloss": "number of edges incident to a vertex",
+          "type_sig": "SimpleGraph V -> V -> Nat",
+          "frames": [
+            "graph_theory"
+          ],
+          "formal_faces": [
+            "SimpleGraph.degree"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "degree_map",
+          "english_face": "degree of a map",
+          "gloss": "the integer counting how many times a map wraps one space around another",
+          "type_sig": "(S -> S) -> Int",
+          "frames": [
+            "topology"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "degree_extension",
+          "english_face": "degree of a field extension",
+          "gloss": "dimension of the extension as a vector space over the base",
+          "type_sig": "Type -> Type -> Cardinal",
+          "frames": [
+            "field_theory"
+          ],
+          "formal_faces": [
+            "Module.rank"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "degree_angle",
+          "english_face": "degree",
+          "gloss": "a unit of angle, one three-hundred-sixtieth of a turn",
+          "type_sig": null,
+          "frames": [
+            "general",
+            "geometry"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "dimension",
+      "pathology": "vector vs Krull vs Hausdorff vs manifold",
+      "senses": [
+        {
+          "sense_id": "dimension_vector",
+          "english_face": "dimension",
+          "gloss": "cardinality of a basis of a vector space",
+          "type_sig": "Type -> Cardinal",
+          "frames": [
+            "linear_algebra"
+          ],
+          "formal_faces": [
+            "Module.rank",
+            "FiniteDimensional.finrank"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "dimension_krull",
+          "english_face": "Krull dimension",
+          "gloss": "supremum of lengths of chains of prime ideals",
+          "type_sig": "Type -> Nat",
+          "frames": [
+            "commutative_algebra"
+          ],
+          "formal_faces": [
+            "ringKrullDim"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "dimension_hausdorff",
+          "english_face": "Hausdorff dimension",
+          "gloss": "the critical exponent of the Hausdorff measure; may be non-integer",
+          "type_sig": "Set X -> Real",
+          "frames": [
+            "analysis",
+            "fractal_geometry"
+          ],
+          "formal_faces": [
+            "dimH"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "dimension_manifold",
+          "english_face": "dimension of a manifold",
+          "gloss": "the dimension of the model space it is locally homeomorphic to",
+          "type_sig": "Manifold -> Nat",
+          "frames": [
+            "geometry",
+            "topology"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "dimension_general",
+          "english_face": "dimension",
+          "gloss": "an aspect or measurable extent of something",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "distribution",
+      "pathology": "probability vs generalized function",
+      "senses": [
+        {
+          "sense_id": "distribution_probability",
+          "english_face": "distribution",
+          "gloss": "the law of a random variable; a probability measure",
+          "type_sig": "Measure a",
+          "frames": [
+            "probability",
+            "statistics"
+          ],
+          "formal_faces": [
+            "MeasureTheory.Measure.map"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "distribution_schwartz",
+          "english_face": "distribution",
+          "gloss": "a continuous linear functional on test functions; a generalized function",
+          "type_sig": "(SchwartzMap E F) ->L[K] K",
+          "frames": [
+            "analysis",
             "functional_analysis"
           ],
           "formal_faces": [
-            "inner"
+            "SchwartzMap"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "product_topological",
-          "english_face": "product topology",
-          "gloss": "the coarsest topology making all projections continuous",
-          "type_sig": "Type -> Type -> Type",
+          "sense_id": "distribution_geometry",
+          "english_face": "distribution",
+          "gloss": "a subbundle of the tangent bundle",
+          "type_sig": null,
           "frames": [
+            "geometry"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "distribution_general",
+          "english_face": "distribution",
+          "gloss": "the act of sharing out; how something is spread",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "domain",
+      "pathology": "ring theory vs function vs general",
+      "senses": [
+        {
+          "sense_id": "domain_ring",
+          "english_face": "integral domain",
+          "gloss": "nonzero commutative ring with no zero divisors",
+          "type_sig": "Type -> Prop",
+          "frames": [
+            "algebra",
+            "ring_theory"
+          ],
+          "formal_faces": [
+            "IsDomain"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "domain_function",
+          "english_face": "domain of a function",
+          "gloss": "the set on which a function is defined",
+          "type_sig": "(a -> b) -> Set a",
+          "frames": [
+            "set_theory",
+            "analysis"
+          ],
+          "formal_faces": [
+            "Function.Domain"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "domain_region",
+          "english_face": "domain",
+          "gloss": "a connected open subset of the plane or of a manifold",
+          "type_sig": "Set C -> Prop",
+          "frames": [
+            "complex_analysis",
+            "topology"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "domain_general",
+          "english_face": "domain",
+          "gloss": "an area of knowledge or control",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "fiber",
+      "pathology": "bundle vs preimage — and this project's own usage",
+      "senses": [
+        {
+          "sense_id": "fiber_preimage",
+          "english_face": "fiber",
+          "gloss": "the preimage of a single point under a map",
+          "type_sig": "(a -> b) -> b -> Set a",
+          "frames": [
+            "topology",
+            "set_theory"
+          ],
+          "formal_faces": [
+            "Set.preimage"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "fiber_bundle",
+          "english_face": "fiber of a bundle",
+          "gloss": "the space sitting over each point of the base",
+          "type_sig": "Bundle.TotalSpace F E",
+          "frames": [
+            "geometry",
             "topology"
           ],
           "formal_faces": [
-            "instTopologicalSpaceProd"
+            "FiberBundle"
           ],
           "source_beta": "convention"
+        },
+        {
+          "sense_id": "fiber_ledger",
+          "english_face": "fiber",
+          "gloss": "in this project: an unordered set of at most five slots held to be potentially co-referring; a hypothesis, never an identification",
+          "type_sig": "Fiber",
+          "frames": [
+            "common_ground",
+            "ledger"
+          ],
+          "formal_faces": [],
+          "source_beta": "preminted"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "fiber_ledger",
+          "to": "fiber_preimage",
+          "statement": "the ledger's fibers are named by analogy; no formal bundle structure is claimed",
+          "chart": "english",
+          "status": "declared-none",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "field",
+      "pathology": "algebra vs physics vs general",
+      "senses": [
+        {
+          "sense_id": "field_algebraic",
+          "english_face": "field",
+          "gloss": "commutative ring in which every nonzero element is invertible",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "algebra",
+            "field_theory"
+          ],
+          "formal_faces": [
+            "Field"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "field_physics",
+          "english_face": "field",
+          "gloss": "an assignment of a value to every point of a space; scalar, vector, or tensor field",
+          "type_sig": "M -> V",
+          "frames": [
+            "physics",
+            "geometry"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "field_record",
+          "english_face": "field",
+          "gloss": "a named component of a record or structure",
+          "type_sig": null,
+          "frames": [
+            "programming",
+            "type_theory"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "field_general",
+          "english_face": "field",
+          "gloss": "an area of study or activity; an open expanse of land",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
         }
       ],
       "bridges": []
@@ -2182,6 +1201,546 @@
       "bridges": []
     },
     {
+      "lemma": "graph",
+      "pathology": "five fields",
+      "senses": [
+        {
+          "sense_id": "graph_combinatorial",
+          "english_face": "graph",
+          "gloss": "a set of vertices with a set of edges between them",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "combinatorics",
+            "graph_theory"
+          ],
+          "formal_faces": [
+            "SimpleGraph"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "graph_of_function",
+          "english_face": "graph of a function",
+          "gloss": "the set of pairs (x, f x); a subset of the product",
+          "type_sig": "(a -> b) -> Set (a x b)",
+          "frames": [
+            "set_theory",
+            "analysis"
+          ],
+          "formal_faces": [
+            "Function.graph"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "graph_directed",
+          "english_face": "directed graph",
+          "gloss": "vertices with ordered edges; a quiver",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "combinatorics",
+            "category_theory"
+          ],
+          "formal_faces": [
+            "Quiver",
+            "Digraph"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "graph_multigraph",
+          "english_face": "multigraph",
+          "gloss": "graph admitting parallel edges and loops",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "combinatorics"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "graph_plot",
+          "english_face": "graph",
+          "gloss": "a plotted curve or chart of data",
+          "type_sig": null,
+          "frames": [
+            "general",
+            "data"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "graph_combinatorial",
+          "to": "graph_multigraph",
+          "statement": "a SimpleGraph is a multigraph with no parallel edges and no loops",
+          "chart": "english",
+          "status": "declared",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "group",
+      "pathology": "algebra vs collection",
+      "senses": [
+        {
+          "sense_id": "group_algebraic",
+          "english_face": "group",
+          "gloss": "set with an associative operation, identity, and inverses",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "algebra",
+            "group_theory"
+          ],
+          "formal_faces": [
+            "Group"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "group_general",
+          "english_face": "group",
+          "gloss": "a number of things or people together",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "kernel",
+      "pathology": "algebra vs analysis vs proof theory vs systems",
+      "senses": [
+        {
+          "sense_id": "kernel_algebra",
+          "english_face": "kernel",
+          "gloss": "preimage of the identity under a homomorphism",
+          "type_sig": "(G ->* H) -> Subgroup G",
+          "frames": [
+            "algebra",
+            "group_theory",
+            "linear_algebra"
+          ],
+          "formal_faces": [
+            "MonoidHom.ker",
+            "LinearMap.ker"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "kernel_integral",
+          "english_face": "integral kernel",
+          "gloss": "the two-variable function K(x, y) of an integral transform",
+          "type_sig": "(a -> a -> R)",
+          "frames": [
+            "analysis",
+            "functional_analysis"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "kernel_markov",
+          "english_face": "Markov kernel",
+          "gloss": "a measurable family of probability measures",
+          "type_sig": "Kernel a b",
+          "frames": [
+            "probability",
+            "measure_theory"
+          ],
+          "formal_faces": [
+            "ProbabilityTheory.Kernel"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "kernel_proof",
+          "english_face": "kernel",
+          "gloss": "the small trusted proof-checking core of a proof assistant",
+          "type_sig": null,
+          "frames": [
+            "proof_assistant",
+            "logic"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "kernel_ct",
+          "english_face": "kernel",
+          "gloss": "the equalizer of a morphism with the zero morphism",
+          "type_sig": "(X -> Y) -> Object",
+          "frames": [
+            "category_theory"
+          ],
+          "formal_faces": [
+            "CategoryTheory.Limits.kernel"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "kernel_os",
+          "english_face": "kernel",
+          "gloss": "the core of an operating system",
+          "type_sig": null,
+          "frames": [
+            "general",
+            "programming",
+            "systems"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "kernel_algebra",
+          "to": "kernel_ct",
+          "statement": "in an abelian category the algebraic kernel is the categorical kernel",
+          "chart": "english",
+          "status": "declared",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "limit",
+      "pathology": "analysis vs category theory",
+      "senses": [
+        {
+          "sense_id": "limit_analysis",
+          "english_face": "limit",
+          "gloss": "the value a function or sequence approaches",
+          "type_sig": "Filter a -> Filter b -> (a -> b) -> Prop",
+          "frames": [
+            "analysis",
+            "topology"
+          ],
+          "formal_faces": [
+            "Filter.Tendsto"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "limit_ct",
+          "english_face": "limit",
+          "gloss": "the universal cone over a diagram",
+          "type_sig": "Functor J C -> C",
+          "frames": [
+            "category_theory"
+          ],
+          "formal_faces": [
+            "CategoryTheory.Limits.limit"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "limit_general",
+          "english_face": "limit",
+          "gloss": "a boundary or maximum permitted amount",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "margin",
+      "pathology": "decision margin vs page edge / profit; unrelated",
+      "senses": [
+        {
+          "sense_id": "margin_decision",
+          "english_face": "margin",
+          "gloss": "the gap between the best and second-best score that must be exceeded before a sense is chosen rather than a fiber emitted",
+          "type_sig": "Real",
+          "frames": [
+            "common_ground",
+            "ledger",
+            "machine_learning"
+          ],
+          "formal_faces": [],
+          "source_beta": "preminted"
+        },
+        {
+          "sense_id": "margin_edge",
+          "english_face": "margin",
+          "gloss": "the blank edge of a page; or the difference between cost and revenue",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "margin_decision",
+          "to": "margin_edge",
+          "statement": "the selection margin is a score gap, not an edge or a profit; no relation should be inferred from the shared word",
+          "chart": "english",
+          "status": "declared-none",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "measure",
+      "pathology": "measure theory vs general quantity",
+      "senses": [
+        {
+          "sense_id": "measure_theory",
+          "english_face": "measure",
+          "gloss": "countably additive non-negative set function on a sigma-algebra",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "measure_theory",
+            "probability"
+          ],
+          "formal_faces": [
+            "MeasureTheory.Measure"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "measure_metric",
+          "english_face": "measure",
+          "gloss": "a quantity assigned to compare sizes; a metric or score",
+          "type_sig": null,
+          "frames": [
+            "general",
+            "statistics",
+            "data"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        },
+        {
+          "sense_id": "measure_action",
+          "english_face": "measure",
+          "gloss": "a step taken to achieve an end",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "model",
+      "pathology": "model theory vs statistics vs general",
+      "senses": [
+        {
+          "sense_id": "model_theory",
+          "english_face": "model",
+          "gloss": "a structure satisfying a theory",
+          "type_sig": "Theory L -> Type -> Prop",
+          "frames": [
+            "logic",
+            "model_theory"
+          ],
+          "formal_faces": [
+            "FirstOrder.Language.Theory.Model"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "model_statistical",
+          "english_face": "model",
+          "gloss": "a parameterized family of distributions fitted to data",
+          "type_sig": null,
+          "frames": [
+            "statistics",
+            "machine_learning"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "model_ml",
+          "english_face": "model",
+          "gloss": "a trained neural network or other learned artifact",
+          "type_sig": null,
+          "frames": [
+            "general",
+            "machine_learning"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        },
+        {
+          "sense_id": "model_general",
+          "english_face": "model",
+          "gloss": "a simplified representation of something",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "module",
+      "pathology": "algebra vs software",
+      "senses": [
+        {
+          "sense_id": "module_algebra",
+          "english_face": "module",
+          "gloss": "abelian group with a compatible scalar action by a ring",
+          "type_sig": "Type -> Type -> Type",
+          "frames": [
+            "algebra",
+            "linear_algebra"
+          ],
+          "formal_faces": [
+            "Module"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "module_software",
+          "english_face": "module",
+          "gloss": "a unit of program organization",
+          "type_sig": null,
+          "frames": [
+            "programming",
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "normal",
+      "pathology": "seven unrelated fields",
+      "senses": [
+        {
+          "sense_id": "normal_subgroup",
+          "english_face": "normal subgroup",
+          "gloss": "subgroup invariant under conjugation",
+          "type_sig": "Subgroup G -> Prop",
+          "frames": [
+            "group_theory",
+            "algebra"
+          ],
+          "formal_faces": [
+            "Subgroup.Normal"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "normal_topology",
+          "english_face": "normal space",
+          "gloss": "T4: disjoint closed sets have disjoint open neighbourhoods",
+          "type_sig": "TopologicalSpace X -> Prop",
+          "frames": [
+            "topology"
+          ],
+          "formal_faces": [
+            "NormalSpace"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "normal_extension",
+          "english_face": "normal extension",
+          "gloss": "field extension in which every irreducible polynomial with a root splits",
+          "type_sig": "Type -> Type -> Prop",
+          "frames": [
+            "field_theory",
+            "algebra"
+          ],
+          "formal_faces": [
+            "Normal"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "normal_operator",
+          "english_face": "normal operator",
+          "gloss": "operator commuting with its adjoint",
+          "type_sig": "(E ->L[K] E) -> Prop",
+          "frames": [
+            "functional_analysis"
+          ],
+          "formal_faces": [
+            "IsStarNormal"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "normal_distribution",
+          "english_face": "normal distribution",
+          "gloss": "the Gaussian distribution",
+          "type_sig": "Measure R",
+          "frames": [
+            "probability",
+            "statistics"
+          ],
+          "formal_faces": [
+            "ProbabilityTheory.gaussianReal"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "normal_vector",
+          "english_face": "normal vector",
+          "gloss": "vector perpendicular to a surface or hyperplane",
+          "type_sig": "E",
+          "frames": [
+            "geometry",
+            "analysis"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "normal_form",
+          "english_face": "normal form",
+          "gloss": "canonical representative of an equivalence class under rewriting",
+          "type_sig": "a -> Prop",
+          "frames": [
+            "logic",
+            "rewriting",
+            "type_theory"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "normal_general",
+          "english_face": "normal",
+          "gloss": "usual, typical, conforming to a standard",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
       "lemma": "operator",
       "pathology": "functional analysis vs syntax",
       "senses": [
@@ -2225,6 +1784,139 @@
       "bridges": []
     },
     {
+      "lemma": "option",
+      "pathology": "Lean's Option type vs a choice; unrelated",
+      "senses": [
+        {
+          "sense_id": "option_type",
+          "english_face": "option type",
+          "gloss": "the partiality type: a value is either `some x` or `none`",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "type_theory",
+            "programming"
+          ],
+          "formal_faces": [
+            "Option"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "option_choice",
+          "english_face": "option",
+          "gloss": "one of several things that may be chosen; a setting",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "option_type",
+          "to": "option_choice",
+          "statement": "the type and the everyday choice share a name and nothing else; `Option a` is not 'a choice of a', and no relation should be inferred from the shared word",
+          "chart": "english",
+          "status": "declared-none",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "order",
+      "pathology": "group vs relation vs differential equation vs asymptotics",
+      "senses": [
+        {
+          "sense_id": "order_group_element",
+          "english_face": "order of an element",
+          "gloss": "least positive n with g to the n equal to the identity",
+          "type_sig": "G -> Nat",
+          "frames": [
+            "group_theory"
+          ],
+          "formal_faces": [
+            "orderOf"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "order_group_size",
+          "english_face": "order of a group",
+          "gloss": "the cardinality of the group",
+          "type_sig": "Type -> Nat",
+          "frames": [
+            "group_theory"
+          ],
+          "formal_faces": [
+            "Nat.card"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "order_relation",
+          "english_face": "partial order",
+          "gloss": "reflexive, antisymmetric, transitive relation",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "order"
+          ],
+          "formal_faces": [
+            "PartialOrder"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "order_ode",
+          "english_face": "order of a differential equation",
+          "gloss": "the highest derivative appearing",
+          "type_sig": null,
+          "frames": [
+            "analysis",
+            "differential_equations"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "order_asymptotic",
+          "english_face": "order of growth",
+          "gloss": "asymptotic rate, as in big-O notation",
+          "type_sig": "(a -> b) -> Filter a -> Prop",
+          "frames": [
+            "analysis",
+            "computability"
+          ],
+          "formal_faces": [
+            "Asymptotics.IsBigO"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "order_general",
+          "english_face": "order",
+          "gloss": "a sequence or arrangement; an instruction",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "order_group_element",
+          "to": "order_group_size",
+          "statement": "the order of an element divides the order of a finite group (Lagrange)",
+          "chart": "lean",
+          "status": "checkable",
+          "formal": "theorem orderOf_dvd_card {G : Type*} [Group G] [Fintype G] (g : G) : orderOf g ∣ Fintype.card G"
+        }
+      ]
+    },
+    {
       "lemma": "orientation",
       "pathology": "manifold vs general",
       "senses": [
@@ -2257,101 +1949,44 @@
       "bridges": []
     },
     {
-      "lemma": "sequence",
-      "pathology": "indexed family vs ordering",
+      "lemma": "positive",
+      "pathology": "strict vs non-strict (definiteness split out to its own entries)",
       "senses": [
         {
-          "sense_id": "sequence_math",
-          "english_face": "sequence",
-          "gloss": "a function from the natural numbers",
-          "type_sig": "Nat -> a",
+          "sense_id": "positive_strict",
+          "english_face": "positive",
+          "gloss": "strictly greater than zero",
+          "type_sig": "a -> Prop",
           "frames": [
-            "analysis",
-            "set_theory"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "sequence_exact",
-          "english_face": "exact sequence",
-          "gloss": "a chain of maps with image equal to kernel at each step",
-          "type_sig": null,
-          "frames": [
-            "homological_algebra"
-          ],
-          "formal_faces": [
-            "CategoryTheory.Exact"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "sequence_general",
-          "english_face": "sequence",
-          "gloss": "a particular order of events",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "group",
-      "pathology": "algebra vs collection",
-      "senses": [
-        {
-          "sense_id": "group_algebraic",
-          "english_face": "group",
-          "gloss": "set with an associative operation, identity, and inverses",
-          "type_sig": "Type -> Type",
-          "frames": [
-            "algebra",
-            "group_theory"
-          ],
-          "formal_faces": [
-            "Group"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "group_general",
-          "english_face": "group",
-          "gloss": "a number of things or people together",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
-    },
-    {
-      "lemma": "transform",
-      "pathology": "integral transform vs general change",
-      "senses": [
-        {
-          "sense_id": "transform_integral",
-          "english_face": "integral transform",
-          "gloss": "a map sending a function to an integral against a kernel",
-          "type_sig": "(a -> C) -> (b -> C)",
-          "frames": [
+            "order",
             "analysis"
           ],
           "formal_faces": [
-            "Real.fourierIntegral"
+            "Positive",
+            "lt"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "transform_general",
-          "english_face": "transform",
-          "gloss": "to change in form or appearance",
+          "sense_id": "positive_nonneg",
+          "english_face": "positive (non-strict)",
+          "gloss": "greater than or equal to zero; the French convention",
+          "type_sig": "a -> Prop",
+          "frames": [
+            "order",
+            "analysis",
+            "bourbaki"
+          ],
+          "formal_faces": [
+            "Nonneg",
+            "le"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "positive_general",
+          "english_face": "positive",
+          "gloss": "affirmative, confident, or constructive",
           "type_sig": null,
           "frames": [
             "general"
@@ -2362,59 +1997,14 @@
       ],
       "bridges": [
         {
-          "from": "transform_integral",
-          "to": "kernel_integral",
-          "statement": "an integral transform is determined by its kernel",
-          "chart": "english",
-          "status": "declared",
-          "formal": null
+          "from": "positive_strict",
+          "to": "positive_nonneg",
+          "statement": "positive_strict x -> positive_nonneg x",
+          "chart": "lean",
+          "status": "checkable",
+          "formal": "theorem pos_imp_nonneg {x : a} (h : 0 < x) : 0 ≤ x"
         }
       ]
-    },
-    {
-      "lemma": "series",
-      "pathology": "summation vs sequence vs general",
-      "senses": [
-        {
-          "sense_id": "series_sum",
-          "english_face": "series",
-          "gloss": "the sum of the terms of a sequence",
-          "type_sig": "(Nat -> a) -> a",
-          "frames": [
-            "analysis"
-          ],
-          "formal_faces": [
-            "tsum"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "series_power",
-          "english_face": "power series",
-          "gloss": "a formal sum of powers with coefficients",
-          "type_sig": "PowerSeries R",
-          "frames": [
-            "algebra",
-            "analysis"
-          ],
-          "formal_faces": [
-            "PowerSeries"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "series_general",
-          "english_face": "series",
-          "gloss": "a number of related things coming one after another",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": []
     },
     {
       "lemma": "prime",
@@ -2484,6 +2074,699 @@
       ]
     },
     {
+      "lemma": "product",
+      "pathology": "arithmetic vs categorical vs inner vs topological",
+      "senses": [
+        {
+          "sense_id": "product_arith",
+          "english_face": "product",
+          "gloss": "the result of multiplication",
+          "type_sig": "a -> a -> a",
+          "frames": [
+            "algebra",
+            "arithmetic"
+          ],
+          "formal_faces": [
+            "HMul.hMul"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "product_ct",
+          "english_face": "product",
+          "gloss": "the universal object with projections to each factor",
+          "type_sig": "C -> C -> C",
+          "frames": [
+            "category_theory"
+          ],
+          "formal_faces": [
+            "CategoryTheory.Limits.prod"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "product_inner",
+          "english_face": "inner product",
+          "gloss": "a positive definite symmetric or hermitian bilinear form",
+          "type_sig": "E -> E -> K",
+          "frames": [
+            "linear_algebra",
+            "functional_analysis"
+          ],
+          "formal_faces": [
+            "inner"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "product_topological",
+          "english_face": "product topology",
+          "gloss": "the coarsest topology making all projections continuous",
+          "type_sig": "Type -> Type -> Type",
+          "frames": [
+            "topology"
+          ],
+          "formal_faces": [
+            "instTopologicalSpaceProd"
+          ],
+          "source_beta": "convention"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "rank",
+      "pathology": "linear vs matroid vs tensor vs group",
+      "senses": [
+        {
+          "sense_id": "rank_linear",
+          "english_face": "rank",
+          "gloss": "dimension of the image of a linear map",
+          "type_sig": "(M ->l N) -> Cardinal",
+          "frames": [
+            "linear_algebra"
+          ],
+          "formal_faces": [
+            "LinearMap.rank"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "rank_matroid",
+          "english_face": "rank",
+          "gloss": "size of a maximal independent set in a matroid",
+          "type_sig": "Matroid a -> Nat",
+          "frames": [
+            "combinatorics"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "rank_tensor",
+          "english_face": "rank of a tensor",
+          "gloss": "minimum number of simple tensors summing to it; also, the number of indices",
+          "type_sig": "Tensor -> Nat",
+          "frames": [
+            "linear_algebra",
+            "physics"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "rank_group",
+          "english_face": "rank of an abelian group",
+          "gloss": "cardinality of a maximal linearly independent subset",
+          "type_sig": "Type -> Cardinal",
+          "frames": [
+            "group_theory"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "rank_general",
+          "english_face": "rank",
+          "gloss": "a position in an ordering or hierarchy",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "regular",
+      "pathology": "five fields",
+      "senses": [
+        {
+          "sense_id": "regular_topology",
+          "english_face": "regular space",
+          "gloss": "T3: a point and a disjoint closed set can be separated by opens",
+          "type_sig": "TopologicalSpace X -> Prop",
+          "frames": [
+            "topology"
+          ],
+          "formal_faces": [
+            "RegularSpace"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "regular_ring",
+          "english_face": "regular ring",
+          "gloss": "Noetherian ring whose localizations are regular local rings",
+          "type_sig": "Type -> Prop",
+          "frames": [
+            "algebra",
+            "commutative_algebra"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "regular_graph",
+          "english_face": "regular graph",
+          "gloss": "graph in which every vertex has the same degree",
+          "type_sig": "SimpleGraph V -> Prop",
+          "frames": [
+            "graph_theory"
+          ],
+          "formal_faces": [
+            "SimpleGraph.IsRegularOfDegree"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "regular_language",
+          "english_face": "regular language",
+          "gloss": "language recognized by a finite automaton",
+          "type_sig": "Language a -> Prop",
+          "frames": [
+            "computability",
+            "logic"
+          ],
+          "formal_faces": [
+            "Language.IsRegular"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "regular_cardinal",
+          "english_face": "regular cardinal",
+          "gloss": "cardinal equal to its own cofinality",
+          "type_sig": "Cardinal -> Prop",
+          "frames": [
+            "set_theory"
+          ],
+          "formal_faces": [
+            "Cardinal.IsRegular"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "regular_general",
+          "english_face": "regular",
+          "gloss": "occurring at even intervals; usual",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "ring",
+      "pathology": "±unit",
+      "senses": [
+        {
+          "sense_id": "ring_unital",
+          "english_face": "ring",
+          "gloss": "abelian group with an associative multiplication that has a two-sided identity",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "algebra",
+            "ring_theory",
+            "unital"
+          ],
+          "formal_faces": [
+            "Ring"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "ring_rng",
+          "english_face": "rng",
+          "gloss": "ring not required to have a multiplicative identity; a ring without the i",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "algebra",
+            "ring_theory",
+            "nonunital"
+          ],
+          "formal_faces": [
+            "NonUnitalRing"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "ring_general",
+          "english_face": "ring",
+          "gloss": "a circular object or arrangement",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "ring_unital",
+          "to": "ring_rng",
+          "statement": "every Ring is a NonUnitalRing by forgetting the identity",
+          "chart": "lean",
+          "status": "checkable",
+          "formal": "instance : NonUnitalRing R"
+        }
+      ]
+    },
+    {
+      "lemma": "semidefinite",
+      "pathology": "definiteness of a form vs semidefinite programming; the second is a field, not a property",
+      "senses": [
+        {
+          "sense_id": "positive_semidefinite",
+          "english_face": "positive semidefinite",
+          "gloss": "of a form or operator: non-negative on all vectors",
+          "type_sig": "Matrix n n a -> Prop",
+          "frames": [
+            "linear_algebra",
+            "analysis",
+            "definiteness_weak"
+          ],
+          "formal_faces": [
+            "Matrix.PosSemidef"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "semidefinite_programming",
+          "english_face": "semidefinite programming",
+          "gloss": "optimization over the cone of positive semidefinite matrices",
+          "type_sig": null,
+          "frames": [
+            "optimization",
+            "convexity"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "semidefinite_programming",
+          "to": "positive_semidefinite",
+          "statement": "semidefinite programming optimizes over the cone whose members are positive semidefinite; the property is prior to the field",
+          "chart": "english",
+          "status": "declared",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "sequence",
+      "pathology": "indexed family vs ordering",
+      "senses": [
+        {
+          "sense_id": "sequence_math",
+          "english_face": "sequence",
+          "gloss": "a function from the natural numbers",
+          "type_sig": "Nat -> a",
+          "frames": [
+            "analysis",
+            "set_theory"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "sequence_exact",
+          "english_face": "exact sequence",
+          "gloss": "a chain of maps with image equal to kernel at each step",
+          "type_sig": null,
+          "frames": [
+            "homological_algebra"
+          ],
+          "formal_faces": [
+            "CategoryTheory.Exact"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "sequence_general",
+          "english_face": "sequence",
+          "gloss": "a particular order of events",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "series",
+      "pathology": "summation vs sequence vs general",
+      "senses": [
+        {
+          "sense_id": "series_sum",
+          "english_face": "series",
+          "gloss": "the sum of the terms of a sequence",
+          "type_sig": "(Nat -> a) -> a",
+          "frames": [
+            "analysis"
+          ],
+          "formal_faces": [
+            "tsum"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "series_power",
+          "english_face": "power series",
+          "gloss": "a formal sum of powers with coefficients",
+          "type_sig": "PowerSeries R",
+          "frames": [
+            "algebra",
+            "analysis"
+          ],
+          "formal_faces": [
+            "PowerSeries"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "series_general",
+          "english_face": "series",
+          "gloss": "a number of related things coming one after another",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "settlement",
+      "pathology": "this project's settlement vs dispute resolution; unrelated",
+      "senses": [
+        {
+          "sense_id": "settlement_ledger",
+          "english_face": "settlement",
+          "gloss": "in this project: mirror descent on F over a contested block, run to stationarity under a monotone certificate",
+          "type_sig": "Block -> SettledBlock",
+          "frames": [
+            "common_ground",
+            "ledger"
+          ],
+          "formal_faces": [],
+          "source_beta": "preminted"
+        },
+        {
+          "sense_id": "settlement_agreement",
+          "english_face": "settlement",
+          "gloss": "an agreement ending a dispute; or a place where people have settled",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "settlement_ledger",
+          "to": "settlement_agreement",
+          "statement": "the engine's settlement is a descent to stationarity, not a negotiated agreement; the words coincide and nothing else does. Recorded so that a reader of a run log does not import the connotation of parties agreeing",
+          "chart": "english",
+          "status": "declared-none",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "simple",
+      "pathology": "algebra vs graph vs measure theory vs general",
+      "senses": [
+        {
+          "sense_id": "simple_group",
+          "english_face": "simple group",
+          "gloss": "nontrivial group with no proper nontrivial normal subgroup",
+          "type_sig": "Type -> Prop",
+          "frames": [
+            "group_theory",
+            "algebra"
+          ],
+          "formal_faces": [
+            "IsSimpleGroup"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "simple_module",
+          "english_face": "simple module",
+          "gloss": "nonzero module with no proper nonzero submodule",
+          "type_sig": "Type -> Type -> Prop",
+          "frames": [
+            "algebra",
+            "representation_theory"
+          ],
+          "formal_faces": [
+            "IsSimpleModule"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "simple_graph",
+          "english_face": "simple graph",
+          "gloss": "graph with no loops and no parallel edges",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "graph_theory"
+          ],
+          "formal_faces": [
+            "SimpleGraph"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "simple_function",
+          "english_face": "simple function",
+          "gloss": "measurable function with finite range",
+          "type_sig": "SimpleFunc a b",
+          "frames": [
+            "measure_theory"
+          ],
+          "formal_faces": [
+            "MeasureTheory.SimpleFunc"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "simple_general",
+          "english_face": "simple",
+          "gloss": "easy; not complicated",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "smooth",
+      "pathology": "differentiability class vs general",
+      "senses": [
+        {
+          "sense_id": "smooth_manifold",
+          "english_face": "smooth",
+          "gloss": "infinitely differentiable; of class C-infinity",
+          "type_sig": "(a -> b) -> Prop",
+          "frames": [
+            "geometry",
+            "analysis"
+          ],
+          "formal_faces": [
+            "ContDiff"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "smooth_general",
+          "english_face": "smooth",
+          "gloss": "even, free from roughness",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "sound",
+      "pathology": "logic vs general",
+      "senses": [
+        {
+          "sense_id": "sound_logic",
+          "english_face": "sound",
+          "gloss": "of a proof system: everything derivable is true",
+          "type_sig": null,
+          "frames": [
+            "logic",
+            "proof_theory"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "sound_general",
+          "english_face": "sound",
+          "gloss": "sensible; in good condition; an audible vibration",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "sound_logic",
+          "to": "complete_logic",
+          "statement": "soundness and completeness are converse directions of the same biconditional and are routinely confused; they are distinct senses",
+          "chart": "english",
+          "status": "declared",
+          "formal": null
+        }
+      ]
+    },
+    {
+      "lemma": "space",
+      "pathology": "topology vs linear algebra vs general",
+      "senses": [
+        {
+          "sense_id": "space_topological",
+          "english_face": "topological space",
+          "gloss": "a set with a distinguished family of open subsets",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "topology"
+          ],
+          "formal_faces": [
+            "TopologicalSpace"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "space_vector",
+          "english_face": "vector space",
+          "gloss": "a module over a field",
+          "type_sig": "Type -> Type -> Type",
+          "frames": [
+            "linear_algebra"
+          ],
+          "formal_faces": [
+            "Module"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "space_measure",
+          "english_face": "measure space",
+          "gloss": "a set with a sigma-algebra and a measure",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "measure_theory"
+          ],
+          "formal_faces": [
+            "MeasureTheory.MeasureSpace"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "space_general",
+          "english_face": "space",
+          "gloss": "an empty area; room",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
+      "lemma": "spectrum",
+      "pathology": "operator vs ring vs homotopy",
+      "senses": [
+        {
+          "sense_id": "spectrum_operator",
+          "english_face": "spectrum of an operator",
+          "gloss": "the set of scalars for which the operator minus that scalar is not invertible",
+          "type_sig": "(E ->L[K] E) -> Set K",
+          "frames": [
+            "functional_analysis"
+          ],
+          "formal_faces": [
+            "spectrum"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "spectrum_ring",
+          "english_face": "spectrum of a ring",
+          "gloss": "the space of prime ideals with the Zariski topology",
+          "type_sig": "Type -> Type",
+          "frames": [
+            "algebraic_geometry",
+            "commutative_algebra"
+          ],
+          "formal_faces": [
+            "PrimeSpectrum"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "spectrum_homotopy",
+          "english_face": "spectrum",
+          "gloss": "a sequence of spaces with structure maps, representing a cohomology theory",
+          "type_sig": null,
+          "frames": [
+            "algebraic_topology"
+          ],
+          "formal_faces": [],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "spectrum_general",
+          "english_face": "spectrum",
+          "gloss": "a range of values or positions",
+          "type_sig": null,
+          "frames": [
+            "general",
+            "physics"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": []
+    },
+    {
       "lemma": "support",
       "pathology": "function vs measure vs general",
       "senses": [
@@ -2530,201 +2813,54 @@
       "bridges": []
     },
     {
-      "lemma": "chart",
-      "pathology": "manifold vs diagram — and this project's own usage",
+      "lemma": "trace",
+      "pathology": "matrix vs field vs measure",
       "senses": [
         {
-          "sense_id": "chart_manifold",
-          "english_face": "chart",
-          "gloss": "a homeomorphism from an open subset of a manifold to model space",
-          "type_sig": "PartialHomeomorph M H",
+          "sense_id": "trace_linear",
+          "english_face": "trace",
+          "gloss": "sum of the diagonal entries of a matrix; basis-independent",
+          "type_sig": "Matrix n n R -> R",
           "frames": [
-            "geometry",
-            "topology"
+            "linear_algebra"
           ],
           "formal_faces": [
-            "PartialHomeomorph",
-            "ChartedSpace"
+            "Matrix.trace",
+            "LinearMap.trace"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "chart_ledger",
-          "english_face": "chart",
-          "gloss": "in this project: a normalization regime plus a marker set; english or lean",
-          "type_sig": "Chart",
+          "sense_id": "trace_field",
+          "english_face": "field trace",
+          "gloss": "sum of the Galois conjugates of an element",
+          "type_sig": "Type -> Type -> (L ->l K)",
           "frames": [
-            "common_ground",
-            "ledger"
-          ],
-          "formal_faces": [],
-          "source_beta": "preminted"
-        },
-        {
-          "sense_id": "chart_plot",
-          "english_face": "chart",
-          "gloss": "a diagram or table of data",
-          "type_sig": null,
-          "frames": [
-            "general",
-            "data"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "chart_ledger",
-          "to": "chart_manifold",
-          "statement": "the ledger's charts are named by analogy with manifold charts; the analogy is deliberate but carries no formal content and must not be relied on",
-          "chart": "english",
-          "status": "declared-none",
-          "formal": null
-        }
-      ]
-    },
-    {
-      "lemma": "fiber",
-      "pathology": "bundle vs preimage — and this project's own usage",
-      "senses": [
-        {
-          "sense_id": "fiber_preimage",
-          "english_face": "fiber",
-          "gloss": "the preimage of a single point under a map",
-          "type_sig": "(a -> b) -> b -> Set a",
-          "frames": [
-            "topology",
-            "set_theory"
+            "field_theory",
+            "number_theory"
           ],
           "formal_faces": [
-            "Set.preimage"
+            "Algebra.trace"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "fiber_bundle",
-          "english_face": "fiber of a bundle",
-          "gloss": "the space sitting over each point of the base",
-          "type_sig": "Bundle.TotalSpace F E",
+          "sense_id": "trace_restriction",
+          "english_face": "trace of a measure",
+          "gloss": "the restriction of a measure or sigma-algebra to a subset",
+          "type_sig": "Measure a -> Set a -> Measure a",
           "frames": [
-            "geometry",
-            "topology"
+            "measure_theory"
           ],
           "formal_faces": [
-            "FiberBundle"
+            "MeasureTheory.Measure.restrict"
           ],
           "source_beta": "convention"
         },
         {
-          "sense_id": "fiber_ledger",
-          "english_face": "fiber",
-          "gloss": "in this project: an unordered set of at most five slots held to be potentially co-referring; a hypothesis, never an identification",
-          "type_sig": "Fiber",
-          "frames": [
-            "common_ground",
-            "ledger"
-          ],
-          "formal_faces": [],
-          "source_beta": "preminted"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "fiber_ledger",
-          "to": "fiber_preimage",
-          "statement": "the ledger's fibers are named by analogy; no formal bundle structure is claimed",
-          "chart": "english",
-          "status": "declared-none",
-          "formal": null
-        }
-      ]
-    },
-    {
-      "lemma": "sound",
-      "pathology": "logic vs general",
-      "senses": [
-        {
-          "sense_id": "sound_logic",
-          "english_face": "sound",
-          "gloss": "of a proof system: everything derivable is true",
-          "type_sig": null,
-          "frames": [
-            "logic",
-            "proof_theory"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "sound_general",
-          "english_face": "sound",
-          "gloss": "sensible; in good condition; an audible vibration",
-          "type_sig": null,
-          "frames": [
-            "general"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        }
-      ],
-      "bridges": [
-        {
-          "from": "sound_logic",
-          "to": "complete_logic",
-          "statement": "soundness and completeness are converse directions of the same biconditional and are routinely confused; they are distinct senses",
-          "chart": "english",
-          "status": "declared",
-          "formal": null
-        }
-      ]
-    },
-    {
-      "lemma": "model",
-      "pathology": "model theory vs statistics vs general",
-      "senses": [
-        {
-          "sense_id": "model_theory",
-          "english_face": "model",
-          "gloss": "a structure satisfying a theory",
-          "type_sig": "Theory L -> Type -> Prop",
-          "frames": [
-            "logic",
-            "model_theory"
-          ],
-          "formal_faces": [
-            "FirstOrder.Language.Theory.Model"
-          ],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "model_statistical",
-          "english_face": "model",
-          "gloss": "a parameterized family of distributions fitted to data",
-          "type_sig": null,
-          "frames": [
-            "statistics",
-            "machine_learning"
-          ],
-          "formal_faces": [],
-          "source_beta": "convention"
-        },
-        {
-          "sense_id": "model_ml",
-          "english_face": "model",
-          "gloss": "a trained neural network or other learned artifact",
-          "type_sig": null,
-          "frames": [
-            "general",
-            "machine_learning"
-          ],
-          "formal_faces": [],
-          "source_beta": "general"
-        },
-        {
-          "sense_id": "model_general",
-          "english_face": "model",
-          "gloss": "a simplified representation of something",
+          "sense_id": "trace_general",
+          "english_face": "trace",
+          "gloss": "a mark left behind; a very small amount",
           "type_sig": null,
           "frames": [
             "general"
@@ -2734,6 +2870,46 @@
         }
       ],
       "bridges": []
+    },
+    {
+      "lemma": "transform",
+      "pathology": "integral transform vs general change",
+      "senses": [
+        {
+          "sense_id": "transform_integral",
+          "english_face": "integral transform",
+          "gloss": "a map sending a function to an integral against a kernel",
+          "type_sig": "(a -> C) -> (b -> C)",
+          "frames": [
+            "analysis"
+          ],
+          "formal_faces": [
+            "Real.fourierIntegral"
+          ],
+          "source_beta": "convention"
+        },
+        {
+          "sense_id": "transform_general",
+          "english_face": "transform",
+          "gloss": "to change in form or appearance",
+          "type_sig": null,
+          "frames": [
+            "general"
+          ],
+          "formal_faces": [],
+          "source_beta": "general"
+        }
+      ],
+      "bridges": [
+        {
+          "from": "transform_integral",
+          "to": "kernel_integral",
+          "statement": "an integral transform is determined by its kernel",
+          "chart": "english",
+          "status": "declared",
+          "formal": null
+        }
+      ]
     }
   ]
 }

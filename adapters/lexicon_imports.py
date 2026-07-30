@@ -1,17 +1,24 @@
 """The five lexicon imports, in the order the SPEC fixes.
 
-    1. Mathlib dump        (pinned commit)   pre-bound: formal face + gloss together
-    2. Convention table    (file hash)       pre-fibered sense-splits + bridges
-    3. nLab alias scrape   (scrape date)     synonym edges and aliases, NOT authority
-    4. Repo pre-minted     (D5 file hashes)  domain senses, by authorship provenance
-    5. WordNet general     (version)         LAST, gap-fill
+    1. Mathlib dump        (commit + digest)  pre-bound: formal face + gloss together
+    2. Convention table    (file hash)        pre-fibered sense-splits + bridges
+    3. nLab alias scrape   (date + digest)    synonym edges and aliases, NOT authority
+    4. Repo pre-minted     (D5 file hashes)   domain senses, by authorship provenance
+    5. WordNet general     (version + digest) LAST, gap-fill
 
 Order matters: later imports must not shadow earlier ones. `import_all` runs them in
 `SOURCE_ORDER` and refuses any other sequence, so the ordering is a property of the code
 rather than of the caller remembering.
 
-An unresolved pin does not fake a result. The importer records the source as BLOCKED and
-moves on, and null cell (vi) reports the coverage that produces.
+Each external source carries two identifiers, and they do different jobs. The commit,
+scrape date, or version is *provenance* — it says where the bytes came from. The digest is
+the *pin* — it says which bytes. D8 decides the fetch policy ("latest stable at fetch"),
+which by construction resolves to different artifacts over time, so only the digest makes
+a run replayable; `check_digest` refuses an artifact that no longer matches the one D8
+recorded.
+
+A pin that has not landed does not fake a result. The importer records the source as
+BLOCKED and moves on, and null cell (vi) reports the coverage that produces.
 """
 
 from __future__ import annotations
@@ -67,6 +74,27 @@ class ImportResult:
         }
 
 
+def check_digest(path: Path, expected: str | None, source: str) -> str:
+    """Refuse an artifact whose content no longer matches the digest D8 pinned.
+
+    The Mathlib and nLab policies are "latest stable at fetch" and "current at fetch",
+    which means a second fetch under the same policy is *expected* to differ. Without this
+    check the registry would quietly change while D8 and `SEED.lock` still recorded the
+    old commit — the run would be keyed to a seed hash that no longer describes its own
+    inputs. Re-fetching is fine; re-fetching silently is not.
+    """
+    from engine.hashing import artifact_digest
+
+    actual = artifact_digest(path)
+    if expected and actual != expected:
+        raise EngineError(
+            f"{source} artifact drifted from its D8 pin ({expected[:12]} -> {actual[:12]}). "
+            f"Re-pin with `cli.py pin {source} --path {path}` — and if SEED.lock is written, "
+            "that is a seed-morphism event and a cold re-anneal, not a re-pin."
+        )
+    return actual
+
+
 def lemma_of(english_face: str) -> str:
     """Primary lemma of a rendered face: first content token that is not a function word."""
     toks = [t for t in re.split(r"[^0-9A-Za-z]+", english_face.casefold()) if t]
@@ -79,7 +107,12 @@ def lemma_of(english_face: str) -> str:
 # --- 1. Mathlib -------------------------------------------------------------------
 
 
-def import_mathlib(registry: Registry, dump_path: str | Path | None, commit: str | None) -> ImportResult:
+def import_mathlib(
+    registry: Registry,
+    dump_path: str | Path | None,
+    commit: str | None,
+    digest: str | None = None,
+) -> ImportResult:
     """Names + type signatures + docstrings + namespace-as-taxonomy.
 
     These arrive **pre-bound** — the formal face and its gloss come together — which makes
@@ -92,13 +125,14 @@ def import_mathlib(registry: Registry, dump_path: str | Path | None, commit: str
     if dump_path is None or commit is None:
         return ImportResult(
             "mathlib", "blocked",
-            detail="D8 unresolved: no pinned Mathlib dump path and commit. "
-                   "KICKOFF §7.5 forbids a live pull during a run; only a pinned dump hashes cleanly.",
+            detail="D8 partial: policy is 'latest stable at fetch', but no dump has landed. "
+                   "KICKOFF §7.5 forbids a live pull during a run; only a fetched dump hashes cleanly.",
         )
 
     path = Path(dump_path)
     if not path.exists():
         raise EngineError(f"mathlib dump not found: {path}")
+    digest = check_digest(path, digest, "mathlib")
 
     decls = _read_mathlib(path)
     faces = render_batch([d["name"] for d in decls])
@@ -124,7 +158,8 @@ def import_mathlib(registry: Registry, dump_path: str | Path | None, commit: str
         added += 1
 
     return ImportResult("mathlib", "imported", added=added, pin=commit,
-                        detail=f"{added} declarations at commit {commit[:12]}")
+                        detail=f"{added} declarations at commit {commit[:12]} / dump {digest[:12]}",
+                        stats={"dump_sha256": digest})
 
 
 def _read_mathlib(path: Path) -> list[dict[str, Any]]:
@@ -229,7 +264,12 @@ def import_convention_table(registry: Registry, table: Mapping[str, Any] | None 
 # --- 3. nLab ----------------------------------------------------------------------
 
 
-def import_nlab(registry: Registry, scrape_path: str | Path | None, scrape_date: str | None) -> ImportResult:
+def import_nlab(
+    registry: Registry,
+    scrape_path: str | Path | None,
+    scrape_date: str | None,
+    digest: str | None = None,
+) -> ImportResult:
     """Aliases and redirects as synonym edges, at curated-tier source_beta.
 
     nLab glosses are perspectival, so this imports **edges and aliases, not authority**:
@@ -240,12 +280,13 @@ def import_nlab(registry: Registry, scrape_path: str | Path | None, scrape_date:
     if scrape_path is None or scrape_date is None:
         return ImportResult(
             "nlab", "blocked",
-            detail="D8 unresolved: no pinned nLab scrape path and date.",
+            detail="D8 partial: policy is 'current at fetch', but no scrape has landed.",
         )
 
     path = Path(scrape_path)
     if not path.exists():
         raise EngineError(f"nLab scrape not found: {path}")
+    digest = check_digest(path, digest, "nlab")
 
     payload = json.loads(path.read_text(encoding="utf-8"))
     index = registry.lemma_index()
@@ -285,7 +326,8 @@ def import_nlab(registry: Registry, scrape_path: str | Path | None, scrape_date:
                 edges += 1
 
     return ImportResult("nlab", "imported", added=added, edges=edges, pin=scrape_date,
-                        detail=f"{added} alias senses, {edges} synonym edges @ {scrape_date}")
+                        detail=f"{added} alias senses, {edges} synonym edges @ {scrape_date}",
+                        stats={"scrape_sha256": digest})
 
 
 def _attach_edge(registry: Registry, a: str, b: str, weight: float, source: str) -> None:
@@ -358,7 +400,12 @@ def import_preminted(registry: Registry, documents: Sequence[Document]) -> Impor
 # --- 5. WordNet -------------------------------------------------------------------
 
 
-def import_wordnet(registry: Registry, path: str | Path | None, version: str | None) -> ImportResult:
+def import_wordnet(
+    registry: Registry,
+    path: str | Path | None,
+    version: str | None,
+    digest: str | None = None,
+) -> ImportResult:
     """General English, LAST, gap-fill.
 
     Every WordNet sense is added as a distinct sense — the collision policy never
@@ -370,12 +417,13 @@ def import_wordnet(registry: Registry, path: str | Path | None, version: str | N
     if path is None or version is None:
         return ImportResult(
             "wordnet", "blocked",
-            detail="D8 unresolved: no pinned WordNet path and version.",
+            detail=f"D8 partial: version {version or '(unset)'} is fixed, but no dump has landed.",
         )
 
     p = Path(path)
     if not p.exists():
         raise EngineError(f"WordNet dump not found: {p}")
+    digest = check_digest(p, digest, "wordnet")
 
     payload = json.loads(p.read_text(encoding="utf-8"))
     before = {lemma for lemma in registry.entries}
@@ -403,7 +451,9 @@ def import_wordnet(registry: Registry, path: str | Path | None, version: str | N
     return ImportResult(
         "wordnet", "imported", added=added, pin=version,
         detail=f"{added} general senses ({gap_fill} lemmas previously uncovered) @ {version}",
-        stats={"gap_fill_lemmas": gap_fill, "coexisting_lemmas": len(payload.get("entries", [])) - gap_fill},
+        stats={"gap_fill_lemmas": gap_fill,
+               "coexisting_lemmas": len(payload.get("entries", [])) - gap_fill,
+               "dump_sha256": digest},
     )
 
 
@@ -419,11 +469,14 @@ def import_all(
     results: list[ImportResult] = []
 
     runners = {
-        "mathlib": lambda: import_mathlib(registry, pins.get("mathlib_dump"), pins.get("mathlib_commit")),
+        "mathlib": lambda: import_mathlib(registry, pins.get("mathlib_dump"),
+                                          pins.get("mathlib_commit"), pins.get("mathlib_dump_sha256")),
         "convention": lambda: import_convention_table(registry),
-        "nlab": lambda: import_nlab(registry, pins.get("nlab_scrape"), pins.get("nlab_scrape_date")),
+        "nlab": lambda: import_nlab(registry, pins.get("nlab_scrape"),
+                                    pins.get("nlab_scrape_date"), pins.get("nlab_scrape_sha256")),
         "preminted": lambda: import_preminted(registry, preminted_docs),
-        "general": lambda: import_wordnet(registry, pins.get("wordnet_path"), pins.get("wordnet_version")),
+        "general": lambda: import_wordnet(registry, pins.get("wordnet_path"),
+                                          pins.get("wordnet_version"), pins.get("wordnet_sha256")),
     }
 
     for source in SOURCE_ORDER:

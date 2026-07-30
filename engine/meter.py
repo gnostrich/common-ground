@@ -22,12 +22,17 @@ rather than a summed disagreement.
 ## Warm and cold
 
 The arms differ in their anneal, not their objective. Cold runs the full T2 schedule from
-1.0 down to 0.1, re-annealing from the seed's uniform prior. Warm resumes at the final
-temperature from a retained state. At low temperature the entropic term is small and the
-mirror flow is near-replicator, whose limit depends on where it started — so the two arms
-land in different places exactly when a block is contested, and in the same place when it
-is not. If F were minimized at a fixed temperature the arms would coincide and the paired
-meter would measure nothing; the anneal is what gives the pairing something to measure.
+1.0 down to 0.1, re-annealing from the seed's uniform prior. Warm resumes at the final rung
+from a retained state. At the low rungs the entropic term is small and the mirror flow is
+near-replicator, whose limit depends on where it started — so the two arms land in
+different places exactly when a block is contested, and in the same place when it is not.
+If F were minimized at a single fixed rung the arms would coincide and the paired meter
+would measure nothing; the anneal is what gives the pairing something to measure.
+
+T2 is the anneal's *schedule* parameter and is the only thing here that behaves like a
+temperature. `beta` is not: it is the arm's verification budget (1x and 4x under PREREG),
+and it enters as `beta / T2`, the coefficient on the entropic term. Two different numbers,
+two different jobs.
 
 ## Floor
 
@@ -98,8 +103,10 @@ def anneal(
     warm-starting from the last. `retained` given is the warm arm: resume directly at the
     final temperature from the carried state, skipping the schedule.
 
-    Temperature enters as an effective inverse temperature `beta / T2`, so the schedule
-    sharpens the objective monotonically as it runs.
+    The anneal's T2 divides the verification budget, so the effective coefficient on the
+    entropic term is `beta / T2` and the schedule sharpens the objective monotonically as
+    it runs. T2 is the anneal's own schedule parameter; `beta` is the budget the arm was
+    given.
     """
     if retained is not None:
         return settle(
