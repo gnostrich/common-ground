@@ -145,3 +145,191 @@ def _sense_core_fields(root: Path) -> tuple[str, ...]:
                 if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name)
             )
     return ()
+
+
+# --- gate 6: every statistical verdict is decided against a null ----------------------
+
+#: Every site in the engine that builds or reads a statistical band, with its conformance
+#: under GATES.md sentence 6.
+#:
+#: A band is *conforming* when its reference distribution is constructed under the
+#: no-effect hypothesis the site is testing — a permutation, a rewire, a forced-consensus
+#: ledger, an exact determinism argument. It is *non-conforming* when the reference is a
+#: resample of the observation, because such a band moves with the thing it is supposed to
+#: police.
+#:
+#: `role` is what the number does: `decides` means a verdict turns on it, `diagnostic`
+#: means it is reported and nothing more. A non-conforming site is tolerable only as a
+#: diagnostic.
+GATE6_SITES: tuple[dict[str, object], ...] = (
+    {
+        "site": "engine/meter.py:surrogate_floor_distribution", "role": "diagnostic",
+        "reference": "bootstrap resample of the observed loop floors",
+        "conforming": False,
+        "note": "The original defect. Retained because two amendments kept it as a legacy "
+                "diagnostic for comparability; it decides nothing anywhere.",
+    },
+    {
+        "site": "engine/meter.py:second_fdt_surrogate_floor", "role": "decides",
+        "reference": "warm/cold label permutation, loop by loop",
+        "conforming": True,
+        "note": "Null under the no-effect hypothesis that the two arms are exchangeable. "
+                "Decides R3 (PREREG-AMENDMENT-1) and floors the mint threshold.",
+    },
+    {
+        "site": "engine/meter.py:within_noise", "role": "unused",
+        "reference": "caller-supplied surrogate",
+        "conforming": None,
+        "note": "Dead helper: no call site. Conformance would inherit from whatever "
+                "surrogate a caller passed, which is exactly the ambiguity sentence 6 "
+                "exists to remove. Listed so a future caller has to classify itself.",
+    },
+    {
+        "site": "engine/pipeline.py:_q95", "role": "diagnostic",
+        "reference": "bootstrap, via surrogate_floor_distribution",
+        "conforming": False,
+        "note": "Populates MeterResult.surrogate['q95']. Reported on every run; no live "
+                "decision reads it.",
+    },
+    {
+        "site": "engine/pipeline.py:run_meter", "role": "produces",
+        "reference": "n/a — computes both surrogates and stores them",
+        "conforming": None,
+        "note": "Producer, not a decision site. It populates MeterResult.surrogate with "
+                "both the bootstrap q95 and the second-FDT floor; which of them decides "
+                "anything is settled at the reading site.",
+    },
+    {
+        "site": "engine/audit.py:ground_truth_rediscovery", "role": "decides",
+        "reference": "bootstrap q95 of the observed floors",
+        "conforming": False,
+        "note": "FOUND BY THIS SWEEP, not by hand. R2 counts a gap as flagged when its "
+                "loop's floor exceeds the bootstrap band, so 'flagged' means 'above "
+                "average for this run' rather than 'above what no path dependence would "
+                "produce'. Miscalibrated in the STRICT direction — the opposite of R4's — "
+                "since a larger observed floor raises the bar and flags fewer gaps, and on "
+                "a uniformly-zero run nothing clears it at all and the miss rate is 100%. "
+                "Outside PREREG-AMENDMENT-2's scope (R4 only), so flagged and unchanged. "
+                "R2 is BLOCKED on D5 regardless, so no data has passed through it either.",
+    },
+    {
+        "site": "engine/audit.py:floor_verdict", "role": "decides",
+        "reference": "second_fdt_surrogate_floor",
+        "conforming": True,
+        "note": "R3 after PREREG-AMENDMENT-1. The bootstrap band is read only to report a "
+                "disagreement.",
+    },
+    {
+        "site": "engine/audit.py:prior_insensitivity", "role": "decides",
+        "reference": "dropout movement on a degree- and weight-marginal-preserving rewire",
+        "conforming": True,
+        "note": "R4 after PREREG-AMENDMENT-2, both arms. The superseded self-scaled band "
+                "is reported as legacy_self_scaled_band and decides nothing.",
+    },
+    {
+        "site": "engine/nulls.py:cell_iii_empty_corpus", "role": "decides",
+        "reference": "exact zero",
+        "conforming": True,
+        "note": "No band at all. An empty corpus must produce a floor of exactly 0.0 — the "
+                "degenerate no-effect null, and the strictest available.",
+    },
+    {
+        "site": "engine/nulls.py:cell_iv_single_doc", "role": "decides",
+        "reference": "consensus ledger floor (every block forced to its modal b-value)",
+        "conforming": True,
+        "note": "An intervention null under 'the document does not disagree with itself'. "
+                "Replaced a bootstrap band that made the cell vacuous.",
+    },
+    {
+        "site": "engine/nulls.py:cell_v_duplicate_source", "role": "decides",
+        "reference": "DUPLICATE_RESIDUE_TOLERANCE (1e-12), a numerical tolerance",
+        "conforming": True,
+        "note": "Not a statistical band: the engine is deterministic, so a true duplicate "
+                "moves the floor by exactly zero and the tolerance is float noise only.",
+    },
+    {
+        "site": "engine/nulls.py:cell_ix_binding_sanity", "role": "decides",
+        "reference": "fixed 5% failure rate, pre-registered in the LEXICON SPEC",
+        "conforming": True,
+        "note": "Conforming by not being data-derived rather than by being a null. A fixed "
+                "pre-registered threshold cannot move with the observation, which is what "
+                "sentence 6 forbids — but it is also not calibrated to anything, so it "
+                "bounds a bug rate rather than testing a hypothesis.",
+    },
+    {
+        "site": "engine/mint_tape.py:read_tape", "role": "diagnostic",
+        "reference": "3x second_fdt_surrogate_floor",
+        "conforming": True,
+        "note": "Built on the conforming surrogate. Mint is OFF; the flag is logged and "
+                "never acted on, so this decides nothing regardless.",
+    },
+)
+
+#: Functions exempt from classification: they take a band as an argument or are the
+#: primitive itself, so they have no reference distribution of their own.
+_GATE6_EXEMPT: frozenset[str] = frozenset({"engine/hashing.py:quantile"})
+
+_BAND_CALLS: frozenset[str] = frozenset({"quantile", "surrogate_floor_distribution"})
+
+
+def _reads_a_band(node: ast.AST) -> bool:
+    """True if this function builds a quantile/band or reads a surrogate band entry."""
+    for child in ast.walk(node):
+        if isinstance(child, ast.Call):
+            fn = child.func
+            name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", None)
+            if name in _BAND_CALLS:
+                return True
+            # `.surrogate.get("q95")` and friends.
+            if (isinstance(fn, ast.Attribute) and fn.attr == "get"
+                    and isinstance(fn.value, ast.Attribute) and fn.value.attr == "surrogate"
+                    and child.args and isinstance(child.args[0], ast.Constant)
+                    and child.args[0].value in ("q95", "second_fdt_floor")):
+                return True
+        if (isinstance(child, ast.Subscript) and isinstance(child.slice, ast.Constant)
+                and child.slice.value in ("q95", "second_fdt_floor")
+                and isinstance(child.value, ast.Attribute) and child.value.attr == "surrogate"):
+            return True
+    return False
+
+
+def check_gate6_classification(root: Path | None = None) -> StaticCheckResult:
+    """Every band-building or band-reading function must be classified in GATE6_SITES.
+
+    This is the sweep made permanent. Finding R4's miscalibration took noticing that the
+    pattern behind two vacuous null cells might appear elsewhere — a discovery by accident.
+    A new band added anywhere in `engine/` now fails this check until someone writes down
+    what its reference distribution is and whether that reference is a null or a resample
+    of the observation. The next one gets found by audit.
+
+    It classifies rather than forbids. A non-conforming band is allowed to exist as a
+    `diagnostic`; what is not allowed is an unexamined one.
+    """
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+    classified = {str(s["site"]) for s in GATE6_SITES} | _GATE6_EXEMPT
+
+    for path in sorted((base / "engine").rglob("*.py")):
+        rel = str(path.relative_to(base)).replace("\\", "/")
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
+        result.checked_files += 1
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if not _reads_a_band(node):
+                continue
+            result.checked_functions += 1
+            site = f"{rel}:{node.name}"
+            if site not in classified:
+                result.violations.append(
+                    Violation(rel, node.lineno, "unclassified band", site)
+                )
+    return result
+
+
+def gate6_report() -> list[dict[str, object]]:
+    """GATE6_SITES with the non-conforming ones first. What the sweep prints."""
+    return sorted(
+        (dict(s) for s in GATE6_SITES),
+        key=lambda s: (s["conforming"] is True, s["role"] != "decides", str(s["site"])),
+    )

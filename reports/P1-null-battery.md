@@ -1,14 +1,22 @@
 # P1 — null battery
 
-Provisional seed hash `d8f330fa4164` (`seed/SEED.lock` is not written; D3, D4's spend cap,
+Provisional seed hash `0e7cb5568c17` (`seed/SEED.lock` is not written; D3, D4's spend cap,
 D5, D6 are unresolved and D8 is partial). Registry entry committed before the run, per
 KICKOFF §7.2.
 
-This is a **cold re-anneal**. PREREG-AMENDMENT-1 added sentence 6 to `seed/GATES.md`, which
-moved the seed hash from `5043231e3f58` to `d8f330fa4164`. Gate 4 makes that plastic: the
-morphism is logged in `registry/REGISTRY.jsonl` with both hashes and an identity slot map —
-no lexicon, prompt, or normalizer surface changed, so no address moved — and the battery
-was re-run from scratch on the new hash rather than carried across.
+This is a **cold re-anneal**, the second of two. Both PREREG amendments touched `seed/`, so
+both were plastic under gate 4 and each is logged in `registry/REGISTRY.jsonl` with
+before/after hashes and an identity slot map — no lexicon, prompt, or normalizer surface
+changed in either, so no address moved:
+
+| Morphism | Cause | Seed hash |
+|---|---|---|
+| — | P1 baseline | `5043231e3f58` |
+| AMENDMENT-1 | `GATES.md` sentence 6 added | `d8f330fa4164` |
+| AMENDMENT-2 | gate-6 enforcement row; `rewire_passes` constant | `0e7cb5568c17` |
+
+The battery was re-run from scratch on each new hash rather than carried across. No warm
+state was discarded because none existed.
 
 ## Lexicon imports
 
@@ -149,27 +157,68 @@ re-run cold on the new hash. No warm state was discarded because none existed.
 The amendment authority expires when P3 ingestion begins, and that expiry is mechanical:
 `audit.check_amendment_window()` raises once any P3 phase-run appears in `REGISTRY.jsonl`.
 
-**R4 does not yet conform to gate 6 — flagged, not amended.** Sentence 6 binds every
-statistical verdict, so R4 was checked against it and fails: it compares the floor's
-movement under Q-edge dropout against `baseline.surrogate["q95"]`, the same bootstrap of
-the observed floors. PREREG-AMENDMENT-1 was scoped to R3, so R4 is unchanged.
+**R4 also carried the defect — now amended as PREREG-AMENDMENT-2.** Sentence 6 binds every
+statistical verdict, so R4 was checked against it and failed: it compared the floor's
+movement under Q-edge dropout against `baseline.surrogate["q95"]`, the same bootstrap.
 
-The failure mode is not R3's and should not be described as the same one. R4 is not
-vacuous; it is **miscalibrated in the permissive direction**. The band scales with the
-observed floor, so a run whose floor is near zero gets a near-zero tolerance and R4 is
-strict, while a run with a large structured floor — the run where dictionary sensitivity
-would matter most — gets a large tolerance and R4 is lax. The rule relaxes as the stakes
-rise. `prior_insensitivity` now reports `decided_by` and `gate6_conforming: false` in its
-stats, and `tests/test_controls.py:R4IsNotYetConformingToGate6` pins the asymmetry.
+Its failure mode was **not** R3's and the record should not conflate them. R4 was never
+vacuous; it was **miscalibrated in the permissive direction** — the band scaled with the
+observed floor, so the rule was strict on a run whose floor was near zero and lax on a run
+with a large structured floor, relaxing exactly where dictionary sensitivity would have
+mattered most.
 
-A conforming reference would be a null under "the dictionary does not matter": movement
-under real Q-edge dropout against movement under dropout from a degree-preserving
-randomization of the Q graph. That is a design choice rather than a transcription fix, so
-it needs its own authorization — and the amendment window closes when P3 begins.
+R4 is now two-sided, both arms against the same null:
+
+- **insensitivity (as registered)** — real 10% Q-dropout movement over 5 trials, PASS iff
+  `<= q95` of the movement under the same dropout applied to a degree- and
+  weight-marginal-preserving rewire of the Q graph.
+- **sensitivity (added)** — clamp-tier perturbation must move the floor *above* that null.
+  A rule that only asks "did nothing move?" is satisfied by a meter that cannot move at
+  all; this arm is what makes the first arm's pass mean something.
+
+`blocks.rewire_q_graph` stratifies edges by `(weight, origin)` and permutes endpoints by
+double-edge swaps, refusing any swap that would make a self-loop or a duplicate pair — so
+every node keeps its degree and every stratum keeps its weight and count *exactly*. What
+the randomization destroys is only which slots the dictionary chose to link, which is the
+hypothesis R4 tests. Stratifying matters: an unstratified rewire would move a heavy fiber
+edge onto a pair that never earned one, and a rejection could then be attributed to edge
+strength rather than to the dictionary.
+
+**AMENDMENT-2 is a different class of amendment, and that is recorded explicitly.**
+AMENDMENT-1 restored a procedure the specification had already named, so it could claim
+rationale (a). AMENDMENT-2 cannot: nothing in the spec named a null-rewire reference or a
+sensitivity arm, so there is nothing to restore. It is admissible on **(b) and (c) only** —
+no data has passed through R4, and both arms are strictly harder to pass. Each amendment
+record carries a `class` field (`transcription-restoration` vs `pre-data-design`) so no
+later reader has to reconstruct which kind of change it was. A design amendment rests
+entirely on the pre-data timing, and saying so is the point.
+
+**With no clamps, R4 is inconclusive rather than passed.** D6 is unresolved, so nothing has
+grounded and the sensitivity arm has nothing to perturb. R4 returns `CLOSED-inconclusive`
+rather than reporting the insensitivity arm alone — the same distinction R1 draws between
+BLOCKED and FAIL. This is the expected state until D6 resolves.
+
+**The sweep, and what it found.** Three of the four sites above were found by hand, by
+noticing that a pattern recurred. That is not a method, so gate 6 now has a codebase-wide
+enforcement layer: `static_checks.check_gate6_classification` AST-walks `engine/` and fails
+on any band-building or band-reading function not classified in `GATE6_SITES` with its
+reference distribution and role. It classifies rather than forbids — a non-conforming band
+may exist as a *diagnostic*; what may not exist is an unexamined one. Full results in
+`reports/gate6-sweep.md`.
+
+It found a fourth site immediately, one nobody had noticed: **R2**. `ground_truth_rediscovery`
+counts a gap as flagged when its loop's floor exceeds the bootstrap band, so "flagged" means
+"above average for this run" rather than "above what no path dependence would produce". The
+miscalibration runs *opposite* to R4's — a larger floor raises the bar, so fewer gaps clear
+it and the miss rate goes up. R2 gets stricter as the run gets noisier, and on a
+uniformly-zero run nothing clears the band at all and the miss rate is 100%. R2 was outside
+AMENDMENT-2's scope, so it is flagged, reports `gate6_conforming: false` in its own stats,
+and is unchanged. It is BLOCKED on D5 regardless.
 
 That all of this was found before any floor was read is the battery working as designed.
-That three of the finds were *the project's own tests* — two battery cells and a PREREG
-rule — is why the control column exists.
+That four of the finds were *the project's own tests* — two battery cells and two PREREG
+rules — is why the control column exists, and why the sweep is a check rather than a
+document.
 
 ## D8 — what is pinned and what is not
 

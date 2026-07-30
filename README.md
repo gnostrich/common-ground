@@ -21,7 +21,7 @@ refusal is mechanical: `engine/seed_lock.py:build()` raises rather than emitting
 $ python cli.py status
 D1 resolved     D2 resolved     D3 unresolved   D4 partial
 D5 unresolved   D6 unresolved   D7 resolved*    D8 partial
-                                * re-approved over PREREG-AMENDMENT-1
+                                * re-approved over PREREG-AMENDMENT-1 and -2
 ```
 
 The null battery runs and reports honestly at the provisional seed hash. Every cell carries
@@ -81,10 +81,14 @@ such in the file. Each is enforced structurally, not by convention:
 5. **Nulls before floors** — `meter.read_floor()` requires a `NullBatteryReport` that
    passed *on the same seed hash*, and it is the only function that returns a floor.
 6. **Nulls, not resamples** — every statistical verdict is decided against a null built
-   under the no-effect hypothesis, never against a resample of the observation.
-   `audit.floor_verdict` decides R3 by warm/cold label permutation; `run_battery` fails
-   outright if any cell's positive control is dead. This is the generalization of the two
-   vacuous cells and the one vacuous PREREG rule that P1 turned up.
+   under the no-effect hypothesis, never against a resample of the observation. Three
+   layers: `audit.floor_verdict` decides R3 by warm/cold label permutation and
+   `audit.prior_insensitivity` decides both of R4's arms against a degree- and
+   weight-marginal-preserving rewire of the Q graph; `run_battery` fails outright if any
+   cell's positive control is dead; and `static_checks.check_gate6_classification` fails CI
+   on any band in `engine/` not classified with its reference distribution and role. The
+   third layer exists because the first three defects were found by hand — see
+   `reports/gate6-sweep.md`, which found a fourth (R2) the moment it was written.
 
 Try to violate them: `tests/test_gates.py` does, including smuggling a downgraded warrant
 past `Clamp`'s constructor via `object.__setattr__` to check `settle()` still catches it.
@@ -191,7 +195,7 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 174 tests, stdlib only
+make test            # 188 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
 make nulls           # P1 null battery + positive controls at the current seed hash
 make lock            # refuses while any decision is blank

@@ -276,6 +276,20 @@ class PreregRules(unittest.TestCase):
         r = prior_insensitivity(docs, exts, 1.0, "seed", shadow(), baseline, trials=2)
         self.assertIn("movements", r.stats)
         self.assertEqual(len(r.stats["movements"]), 2)
+        self.assertEqual(len(r.stats["null_movements"]), 2, "the null arm runs the same trials")
+        self.assertTrue(r.stats["gate6_conforming"])
+        self.assertEqual(r.stats["decided_by"], "null_rewire_q95")
+
+    def test_R4_without_clamps_is_inconclusive_not_passed(self):
+        """PREREG-AMENDMENT-2's second arm. No clamps means the arm was never run."""
+        docs = [Document("d1", "english", "The cone is positive.", "repo_docs")]
+        exts = build_k_extractors(decisions(), offline=True)
+        baseline, _, _ = run_meter(build_ledger(docs, exts), 1.0, "seed", shadow())
+        r = prior_insensitivity(docs, exts, 1.0, "seed", shadow(), baseline, trials=1)
+        self.assertIsNone(r.stats["sensitivity_arm"])
+        self.assertFalse(r.passed)
+        self.assertIs(r.verdict, Verdict.CLOSED_INCONCLUSIVE)
+        self.assertIn("not the same as passed", r.detail)
 
     def test_R5_verdict_is_always_terminal(self):
         report = AuditReport("s", [harness(NullBatteryReport("s", [NullCell("i", NullStatus.BLOCKED, "")]))])

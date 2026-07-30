@@ -64,6 +64,8 @@ SURROGATE_TRIALS: int = int(C["surrogate_trials"])
 SURROGATE_QUANTILE: float = float(C["surrogate_quantile"])
 PRIOR_DROPOUT_RATE: float = float(C["prior_dropout_rate"])
 PRIOR_DROPOUT_TRIALS: int = int(C["prior_dropout_trials"])
+#: Double-edge-swap passes per edge in the R4 null rewire (PREREG-AMENDMENT-2).
+REWIRE_PASSES: int = int(C["rewire_passes"])
 NULL_FUZZ_SAMPLES: int = int(C["null_fuzz_samples"])
 SINGLE_DOC_TOLERANCE: float = float(C["single_doc_tolerance"])
 DUPLICATE_RESIDUE_TOLERANCE: float = float(C["duplicate_residue_tolerance"])

@@ -1,4 +1,4 @@
-.PHONY: help status test lock verify nulls demo p0 p1 pin clean
+.PHONY: help status test lock verify nulls demo p0 p1 pin gate6 clean
 
 help:
 	@echo "status  — decisions, lock state, lexicon pins, phase readiness"
@@ -7,6 +7,7 @@ help:
 	@echo "verify  — gate-4 tripwire: recompute seed hashes, fail on drift"
 	@echo "nulls   — P1 null battery + positive controls on the current seed hash"
 	@echo "pin     — record a landed D8 artifact: cli.py pin <source> --path ..."
+	@echo "gate6   — statistical-band conformance sweep (GATES.md sentence 6)"
 	@echo "demo    — synthetic end-to-end smoke run, writes nothing"
 	@echo "p0 / p1 — phase gates"
 
@@ -24,6 +25,9 @@ verify:
 
 nulls p1:
 	@python3 cli.py p1
+
+gate6:
+	@python3 -m engine.gate6_sweep
 
 demo:
 	@python3 cli.py demo

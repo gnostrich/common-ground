@@ -79,21 +79,36 @@ Observed in this container (a candidate, not a decision): Python 3.11.15. The en
 pure-stdlib by design — no numpy, no scipy — so that hashes and singular values are
 reproducible across platforms rather than dependent on a linked LAPACK build.
 
-## D7 — PREREG approved as-is / amended — **RESOLVED (re-approved over PREREG-AMENDMENT-1)**
+## D7 — PREREG approved as-is / amended — **RESOLVED (re-approved over AMENDMENT-1 and -2)**
 
 Originally approved as-is: `registry/PREREG.md` reproduced KICKOFF §5 without amendment,
 R1–R5 and the not-claimed list verbatim, frozen on commit.
 
-**Re-approved 2026-07-30 over one amendment.** PREREG-AMENDMENT-1 changes which surrogate
-decides R3's branch — `second_fdt_surrogate_floor` (warm/cold label permutation) replaces
-the bootstrap band, which is retained as a legacy diagnostic that decides nothing. R1–R5's
-text is still verbatim and unrewritten; the amendment is appended, not merged.
+**Re-approved 2026-07-30 over two amendments.** R1–R5's text is still verbatim and
+unrewritten in both cases; each amendment is appended, not merged.
 
-The amendment was admissible on three grounds, all recorded in full in `registry/PREREG.md`:
-the specification always named the second-FDT surrogate (the mint threshold in the GATES.md
-constants table is quoted against it), so the bootstrap was a transcription defect rather
-than a design choice; no data had passed through R3, P3 and P4 not having run; and the
-change is strictness-increasing, making the `~0` branch harder to obtain rather than easier.
+| Amendment | Rule | Class | Rationales |
+|---|---|---|---|
+| PREREG-AMENDMENT-1 | R3 | transcription-restoration | (a), (b), (c) |
+| PREREG-AMENDMENT-2 | R4 | **pre-data-design** | (b), (c) — **(a) does not apply** |
+
+**AMENDMENT-1** makes `second_fdt_surrogate_floor` (warm/cold label permutation) decide R3's
+branch in place of the bootstrap band. Admissible on all three grounds: the specification
+always named the second-FDT surrogate — the mint threshold in the GATES.md constants table
+is quoted against it — so the bootstrap was a transcription defect rather than a design
+choice; no data had passed through R3; and the change is strictness-increasing.
+
+**AMENDMENT-2** makes R4 two-sided and decides both arms against dropout movement on a
+degree- and weight-marginal-preserving rewire of the Q graph. Admissible on **(b) and (c)
+only**. Rationale (a) explicitly does not apply: nothing in the specification named a
+null-rewire reference or a sensitivity arm, so there is nothing to restore, and claiming (a)
+would misrepresent new design as a correction. That is what the `class` field records — a
+design amendment carries more weight of judgement than a restoration, and its admissibility
+rests entirely on the pre-data timing.
+
+Both amendments retain their superseded band as a reported diagnostic that decides nothing,
+and both keep their historical pinning test. Full records in `registry/PREREG.md`;
+codebase-wide conformance in `reports/gate6-sweep.md`.
 
 The authorization to amend expires when P3 ingestion begins, enforced by
 `audit.check_amendment_window()` rather than remembered.

@@ -602,5 +602,7 @@
   "single_doc_tolerance": 1e-09,
   "single_doc_tolerance_note": "Null cell (iv) compares the observed floor against the CONSENSUS floor — the same ledger with every block forced to its modal value, so it cannot disagree with itself. This is the numerical floor beneath that comparison. The earlier bootstrap band was vacuous: centred on the observed floors, it passed at any floor.",
   "duplicate_residue_tolerance": 1e-12,
-  "duplicate_residue_tolerance_note": "Null cell (v): 'zero cold residue' means zero. The engine is deterministic and a genuine duplicate yields bit-identical evidence, so only float-ordering noise is admissible. Comparing against a bootstrap band of the observed floors made the cell vacuous and was caught by its positive control."
+  "duplicate_residue_tolerance_note": "Null cell (v): 'zero cold residue' means zero. The engine is deterministic and a genuine duplicate yields bit-identical evidence, so only float-ordering noise is admissible. Comparing against a bootstrap band of the observed floors made the cell vacuous and was caught by its positive control.",
+  "rewire_passes": 10,
+  "rewire_note": "Double-edge-swap passes per edge in the R4 null rewire (PREREG-AMENDMENT-2). 10 passes is well past the mixing point for graphs this size; swaps that would create a self-loop or duplicate are refused, so degree and weight marginals hold exactly."
 }

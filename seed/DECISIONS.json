@@ -67,10 +67,11 @@
   },
   "D7": {
     "status": "resolved",
-    "choice": "re-approved-over-amendment",
-    "note": "Originally approved as-is. Re-approved 2026-07-30 over PREREG-AMENDMENT-1, which changes R3's decisive surrogate to second_fdt_surrogate_floor (label permutation); the bootstrap band is retained as a legacy diagnostic and decides nothing. R1-R5 text remains verbatim and unrewritten - the amendment is appended, not merged. Admissible on three grounds: transcription defect (the spec always named the second-FDT surrogate), no data had passed through R3, and the change is strictness-increasing. Amendment authority expires when P3 ingestion begins.",
+    "choice": "re-approved-over-amendments",
+    "note": "Originally approved as-is. Re-approved 2026-07-30 over two amendments, both with R1-R5 text verbatim and unrewritten. AMENDMENT-1 (R3, class transcription-restoration, rationales a/b/c): second_fdt_surrogate_floor decides in place of the bootstrap band. AMENDMENT-2 (R4, class pre-data-design, rationales b/c only - (a) explicitly does NOT apply, since nothing in the spec named a null-rewire reference or a sensitivity arm): R4 becomes two-sided and both arms are decided against dropout movement on a degree- and weight-marginal-preserving rewire of the Q graph. Both retain the superseded band as a reported diagnostic that decides nothing. Amendment authority expires when P3 ingestion begins.",
     "amendments": [
-      "PREREG-AMENDMENT-1"
+      "PREREG-AMENDMENT-1",
+      "PREREG-AMENDMENT-2"
     ],
     "prereg_path": "registry/PREREG.md"
   },

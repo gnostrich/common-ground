@@ -337,20 +337,20 @@ class R3AfterTheAmendment(unittest.TestCase):
 
 
 class R4IsNotYetConformingToGate6(unittest.TestCase):
-    """Gate 6 binds every statistical verdict, and R4 does not satisfy it yet.
+    """**Historical pin — kept after PREREG-AMENDMENT-2, on AMENDMENT-1's terms.**
 
-    R4 compares the floor's movement under Q-edge dropout against
-    `baseline.surrogate["q95"]` — the bootstrap of the observed floors, i.e. a resample of
-    the observation. PREREG-AMENDMENT-1 was scoped to R3, so R4 is flagged rather than
-    changed; amending it is a further authorization.
+    Until 2026-07-30 R4 compared the floor's movement under Q-edge dropout against
+    `baseline.surrogate["q95"]` — the bootstrap of the observed floors, a resample of the
+    observation.
 
-    R4 is *not* vacuous the way R3 was. It is miscalibrated in the permissive direction:
-    the reference band scales with the observed floor, so the rule is strict on a run whose
-    floor is near zero and lax on a run whose floor is large — relaxing exactly where
-    dictionary sensitivity would matter most. That asymmetry is what these tests pin.
+    R4 was never vacuous the way R3 was, and the record should not say it was. It was
+    miscalibrated in the *permissive* direction: the band scales with the observed floor,
+    so the rule was strict on a run whose floor was near zero and lax on a run whose floor
+    was large — relaxing exactly where dictionary sensitivity would have mattered most.
+    That asymmetry is what this test pins, against the superseded computation directly.
     """
 
-    def test_the_reference_band_grows_with_the_floor_it_is_meant_to_police(self):
+    def test_the_superseded_band_grew_with_the_floor_it_was_meant_to_police(self):
         from engine.hashing import quantile
         from engine.meter import surrogate_floor_distribution
 
@@ -359,18 +359,167 @@ class R4IsNotYetConformingToGate6(unittest.TestCase):
             rows = R3CarriesTheSameDefect._rows(floor)
             bands.append(quantile(surrogate_floor_distribution(rows, "r4"), 0.95))
         self.assertLess(bands[0], bands[1],
-                        "a larger floor buys a larger movement tolerance — the rule relaxes "
-                        "as the stakes rise")
+                        "a larger floor bought a larger movement tolerance — the rule "
+                        "relaxed as the stakes rose")
 
-    def test_the_verdict_declares_its_own_non_conformance(self):
-        """No R4 verdict can be read without seeing which reference decided it."""
-        import inspect
 
+class R4AfterTheAmendment(unittest.TestCase):
+    """PREREG-AMENDMENT-2: a rewire null, a second arm, and a class that is not (a)."""
+
+    def _fixture(self):
+        from engine.constants import decisions, shadow
+        from engine.extract import build_k_extractors
+        from engine.pipeline import build_ledger, run_meter
+
+        docs = [Document("d1", "english",
+                         "Positivity is preserved under composition. "
+                         "Composition preserves positivity of cones.", "repo_docs")]
+        exts = build_k_extractors(decisions(), offline=True)
+        baseline, _, _ = run_meter(build_ledger(docs, exts), 1.0, SEED, shadow())
+        return docs, exts, baseline, shadow()
+
+    def test_the_rewire_preserves_degree_and_weight_marginals_exactly(self):
+        """The null must differ from the real graph in pairings and nothing else."""
+        from engine.blocks import degree_map, rewire_q_graph, weight_marginal
+        from engine.hashing import DRNG
+        from engine.types import QEdge
+
+        edges = [QEdge(f"s{i}", f"s{(i * 3 + 1) % 11}", 0.8 if i % 2 else 0.5, "fiber")
+                 for i in range(11)]
+        rewired = rewire_q_graph(edges, DRNG("rewire-test"))
+
+        self.assertEqual(degree_map(edges), degree_map(rewired))
+        self.assertEqual(weight_marginal(edges), weight_marginal(rewired))
+        self.assertNotEqual({(e.u, e.v) for e in edges}, {(e.u, e.v) for e in rewired},
+                            "a rewire that changes no pairing is not a null")
+
+    def test_the_rewire_makes_no_self_loops_and_no_duplicate_pairs(self):
+        from engine.blocks import rewire_q_graph
+        from engine.hashing import DRNG
+        from engine.types import QEdge
+
+        edges = [QEdge(f"s{i}", f"s{(i * 5 + 2) % 13}", 0.7, "fiber") for i in range(13)]
+        rewired = rewire_q_graph(edges, DRNG("rewire-test-2"))
+        pairs = [frozenset((e.u, e.v)) for e in rewired]
+        self.assertTrue(all(len(p) == 2 for p in pairs), "no self-loops")
+        self.assertEqual(len(pairs), len(set(pairs)), "no duplicate pairs")
+
+    def test_the_rewire_keeps_weight_strata_separate(self):
+        """An unstratified rewire would move a heavy edge onto a pair that never earned one."""
+        from engine.blocks import rewire_q_graph
+        from engine.hashing import DRNG
+        from engine.types import QEdge
+
+        heavy = {(f"h{i}", f"h{(i + 1) % 6}") for i in range(6)}
+        light = {(f"l{i}", f"l{(i + 1) % 6}") for i in range(6)}
+        edges = ([QEdge(u, v, 0.9, "fiber") for u, v in sorted(heavy)]
+                 + [QEdge(u, v, 0.2, "fiber") for u, v in sorted(light)])
+        rewired = rewire_q_graph(edges, DRNG("strata"))
+
+        for e in rewired:
+            nodes = {e.u[0], e.v[0]}
+            self.assertEqual(len(nodes), 1, "a swap crossed a weight stratum")
+            self.assertEqual(e.weight, 0.9 if nodes == {"h"} else 0.2)
+
+    def test_R4_is_decided_against_the_rewire_null(self):
         from engine.audit import prior_insensitivity
 
-        source = inspect.getsource(prior_insensitivity)
-        self.assertIn('"gate6_conforming": False', source)
-        self.assertIn('"decided_by": "bootstrap_surrogate_q95"', source)
+        docs, exts, baseline, cfg = self._fixture()
+        r = prior_insensitivity(docs, exts, 1.0, SEED, cfg, baseline, trials=2)
+        self.assertEqual(r.stats["decided_by"], "null_rewire_q95")
+        self.assertTrue(r.stats["gate6_conforming"])
+        self.assertEqual(len(r.stats["null_movements"]), 2)
+        self.assertIn("legacy_self_scaled_band", r.stats)
+
+    def test_the_sensitivity_arm_is_inconclusive_rather_than_absent(self):
+        """Reporting one arm of a two-sided test as if the test had run is a false report."""
+        from engine.audit import Verdict, prior_insensitivity
+
+        docs, exts, baseline, cfg = self._fixture()
+        r = prior_insensitivity(docs, exts, 1.0, SEED, cfg, baseline, trials=1)
+        self.assertIsNone(r.stats["sensitivity_arm"])
+        self.assertIs(r.verdict, Verdict.CLOSED_INCONCLUSIVE)
+        self.assertFalse(r.passed)
+
+    def test_clamp_perturbation_keeps_every_clamp_eligible(self):
+        """The sensitivity arm measures the meter; it is not a route around gate 3."""
+        from engine.audit import _perturb_clamps
+        from engine.types import Clamp, Warrant, WarrantTier
+
+        original = [Clamp("s1", "T", Warrant(WarrantTier.KERNEL, "lean:accept"))]
+        rotated = _perturb_clamps(original)
+        self.assertNotEqual(rotated[0].value, original[0].value)
+        self.assertTrue(rotated[0].warrant.clamp_eligible)
+        self.assertEqual(rotated[0].warrant, original[0].warrant)
+
+    def test_amendment_2_is_recorded_as_design_not_restoration(self):
+        from engine.audit import AMENDMENTS
+
+        one = next(a for a in AMENDMENTS if a["id"] == "PREREG-AMENDMENT-1")
+        two = next(a for a in AMENDMENTS if a["id"] == "PREREG-AMENDMENT-2")
+
+        self.assertEqual(one["class"], "transcription-restoration")
+        self.assertEqual(one["rationales"], ["a", "b", "c"])
+
+        self.assertEqual(two["class"], "pre-data-design")
+        self.assertEqual(two["rationales"], ["b", "c"])
+        self.assertIs(two["rationale_a_applies"], False)
+        self.assertIn("nothing to restore", two["rationale_a_note"])
+
+
+class Gate6SweepIsExecutableNotProse(unittest.TestCase):
+    """The sweep has to keep working, or the next R4 is found by accident again."""
+
+    def test_every_band_in_the_engine_is_classified(self):
+        from engine.static_checks import check_gate6_classification
+
+        result = check_gate6_classification()
+        self.assertTrue(result.ok, [str(v) for v in result.violations])
+        self.assertGreater(result.checked_functions, 5, "the walker found nothing to check")
+
+    def test_an_unclassified_band_is_a_violation(self):
+        """The check's own positive control."""
+        import tempfile
+        from pathlib import Path
+
+        from engine.static_checks import check_gate6_classification
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "engine").mkdir()
+            (root / "engine" / "sneaky.py").write_text(
+                "def new_verdict(rows):\n"
+                "    from .hashing import quantile\n"
+                "    return quantile(rows, 0.95)\n",
+                encoding="utf-8",
+            )
+            result = check_gate6_classification(root)
+            self.assertFalse(result.ok)
+            self.assertIn("sneaky", str(result.violations[0]))
+
+    def test_the_sweep_records_the_non_conforming_sites_it_found(self):
+        from engine.static_checks import GATE6_SITES
+
+        by_site = {str(s["site"]): s for s in GATE6_SITES}
+        r2 = by_site["engine/audit.py:ground_truth_rediscovery"]
+        self.assertIs(r2["conforming"], False)
+        self.assertEqual(r2["role"], "decides",
+                         "R2 still decides on a resample — flagged, out of scope, unchanged")
+
+        for site in ("engine/audit.py:floor_verdict", "engine/audit.py:prior_insensitivity"):
+            self.assertIs(by_site[site]["conforming"], True)
+
+    def test_no_amended_rule_still_decides_on_a_resample(self):
+        from engine.audit import AMENDMENTS
+        from engine.static_checks import GATE6_SITES
+
+        amended = {"R3": "engine/audit.py:floor_verdict",
+                   "R4": "engine/audit.py:prior_insensitivity"}
+        by_site = {str(s["site"]): s for s in GATE6_SITES}
+        for a in AMENDMENTS:
+            site = amended[str(a["rule"])]
+            self.assertIs(by_site[site]["conforming"], True,
+                          f"{a['id']} amended {a['rule']} but its site is still non-conforming")
 
 
 class BrokenFixtures(unittest.TestCase):

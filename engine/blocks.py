@@ -15,6 +15,7 @@ from typing import Iterable, Mapping, Sequence
 
 from .constants import (
     FIBER_CAP,
+    REWIRE_PASSES,
     FIBER_CROSS_THRESHOLD,
     FIBER_INTRA_THRESHOLD,
     FIBER_TOKEN_PREFIX,
@@ -207,3 +208,88 @@ def drop_edges(edges: Sequence[QEdge], rate: float, rng: DRNG) -> list[QEdge]:
     """PREREG R4: drop a fraction of Q edges at random, deterministically per trial."""
     mask = rng.sample_mask(len(edges), rate)
     return [e for e, keep in zip(edges, mask) if keep]
+
+
+def rewire_q_graph(
+    edges: Sequence[QEdge],
+    rng: DRNG,
+    passes: int = REWIRE_PASSES,
+) -> list[QEdge]:
+    """The R4 null: a Q graph with the same shape but no dictionary content.
+
+    PREREG-AMENDMENT-2 needs a reference built under the hypothesis *the dictionary does
+    not matter*. Comparing dropout movement against a resample of the observed floors
+    cannot do that (gate 6), so this constructs a graph that is exchangeable with the real
+    one under that hypothesis: same nodes, same degree per node, same multiset of weights,
+    same edge count per weight stratum — but the *pairings* randomized. Anything the real
+    graph knows that survives here is topology, not semantics.
+
+    Mechanism: edges are stratified by weight, and within each stratum endpoints are
+    permuted by double-edge swaps (Maslov-Sneppen). Swapping `(u1,v1),(u2,v2)` for
+    `(u1,v2),(u2,v1)` leaves every node's degree untouched and, because both edges are
+    drawn from the same stratum, leaves the weight attached to that stratum. Swaps that
+    would create a self-loop or a duplicate pair are refused rather than accepted with a
+    fixup, so the invariants hold exactly rather than approximately.
+
+    Stratifying matters. A rewire that ignored weight would move a heavy fiber edge onto a
+    pair that never earned one, so the null would differ from the observation in edge
+    *strength* as well as in pairing, and a rejection could not be attributed to the
+    dictionary. Within a stratum every edge carries the same weight, so the only thing the
+    randomization destroys is which slots the dictionary chose to link.
+
+    `origin` rides with the stratum key too: a `fiber` edge and a `lexicon` edge of equal
+    weight are different claims about why two slots are alike, and mixing them would let
+    the null borrow structure across provenance.
+    """
+    if len(edges) < 2:
+        return list(edges)
+
+    strata: dict[tuple[float, str], list[QEdge]] = defaultdict(list)
+    for e in edges:
+        strata[(e.weight, e.origin)].append(e)
+
+    out: list[QEdge] = []
+    for key in sorted(strata, key=lambda k: (k[0], k[1])):
+        group = sorted(strata[key], key=lambda e: (e.u, e.v))
+        pairs = [(e.u, e.v) for e in group]
+        present = {frozenset(p) for p in pairs}
+        weight, origin = key
+
+        for _ in range(passes * len(pairs)):
+            if len(pairs) < 2:
+                break
+            i, j = rng.randrange(len(pairs)), rng.randrange(len(pairs))
+            if i == j:
+                continue
+            (u1, v1), (u2, v2) = pairs[i], pairs[j]
+            a, b = frozenset((u1, v2)), frozenset((u2, v1))
+            if u1 == v2 or u2 == v1 or len(a) < 2 or len(b) < 2:
+                continue          # would make a self-loop
+            if a in present or b in present or a == b:
+                continue          # would make a duplicate pair
+            present.discard(frozenset(pairs[i]))
+            present.discard(frozenset(pairs[j]))
+            pairs[i], pairs[j] = (u1, v2), (u2, v1)
+            present.add(a)
+            present.add(b)
+
+        out.extend(QEdge(u=u, v=v, weight=weight, origin=origin) for u, v in pairs)
+
+    return sorted(out, key=lambda e: (e.u, e.v, e.origin))
+
+
+def degree_map(edges: Sequence[QEdge]) -> dict[str, int]:
+    """Node -> degree. What `rewire_q_graph` must leave invariant."""
+    deg: dict[str, int] = defaultdict(int)
+    for e in edges:
+        deg[e.u] += 1
+        deg[e.v] += 1
+    return dict(deg)
+
+
+def weight_marginal(edges: Sequence[QEdge]) -> dict[tuple[float, str], int]:
+    """(weight, origin) -> count. The other invariant."""
+    out: dict[tuple[float, str], int] = defaultdict(int)
+    for e in edges:
+        out[(e.weight, e.origin)] += 1
+    return dict(out)

@@ -134,5 +134,25 @@ jobs:
           raise SystemExit(1 if dead else 0)
           PY
 
+      - name: gate 6 — every statistical band is classified
+        run: |
+          # Sentence 6 says a verdict is decided against a null, never against a resample
+          # of the observation. Two null cells and two PREREG rules broke that; the first
+          # three were found by hand. This is what finds the next one.
+          python - <<'PY'
+          from engine.static_checks import check_gate6_classification, gate6_report
+
+          result = check_gate6_classification()
+          for site in gate6_report():
+              mark = {True: "conforming", False: "NON-CONFORMING", None: "n/a"}[site["conforming"]]
+              print(f"{site['site']:<50} {site['role']:<11} {mark}")
+          print(f"\n{result.checked_functions} band site(s) across {result.checked_files} files")
+          for v in result.violations:
+              print(f"::error::unclassified band: {v}")
+          if not result.ok:
+              print("Add it to GATE6_SITES with its reference distribution and role.")
+          raise SystemExit(0 if result.ok else 1)
+          PY
+
       - name: status
         run: python cli.py status
