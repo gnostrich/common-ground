@@ -1,0 +1,62 @@
+# common-ground spellcheck dictionary — DEMONSTRATION / VALIDATION FIXTURE ONLY.
+#
+# The item-4 spellcheck stage was BUILT and then DROPPED on its own controls: a dictionary
+# this small mangles correctly-spelled common words (and->add, it->is, we->be), so the
+# clean-corpus-bit-identical control fails on any realistic corpus. This word list exists
+# solely to validate the mechanism (see engine/spell.py, tests/test_spell.py); it is NOT a
+# production dictionary and the stage stays OFF. Enabling it needs a comprehensive
+# hunspell-class pinned dictionary — a D8-style artifact not available this round — after
+# which control 2 becomes the gate that must pass first.
+the
+cone
+is
+not
+positive
+positivity
+preserved
+under
+composition
+preserves
+of
+cones
+may
+be
+kernel
+accepts
+statement
+every
+checked
+each
+does
+accept
+theorem
+lemma
+proved
+open
+status
+subject
+claim
+add
+compact
+field
+ring
+measure
+closed
+set
+sets
+normal
+unital
+identity
+element
+degree
+extension
+functor
+exact
+short
+sequences
+sequence
+definite
+semidefinite
+option
+settlement
+margin

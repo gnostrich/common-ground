@@ -24,6 +24,7 @@ from .constants import (
     MARKERS_DEONTIC,
 )
 from .charts import TAG_OPEN, chart_spec, is_chart
+from .constants import SPELLCHECK_ENABLED
 from .hashing import join_hash
 from .types import Chart, ClaimForm
 
@@ -129,6 +130,17 @@ def _nu_english(core: str) -> str:
     s = _LATEX_DELIM_RE.sub("", s)
     s = s.casefold()
     s = _WS_RE.sub(" ", s).strip()
+
+    # Optional non-word normalization (item 4). Runs after casefold+collapse so the
+    # corrector sees the same lowercased tokens the address is built from. Gated by a seed
+    # constant defaulting off, so with it off this line is a no-op and every prose address
+    # is byte-for-byte unchanged. When on, only non-words move, and the seed lexicon and
+    # chart symbols are allow-listed — so a clean corpus is unaffected and domain terms are
+    # never mangled.
+    if SPELLCHECK_ENABLED:
+        from .spell import allow_list_from_seed, spellcheck_prose
+
+        s, _ = spellcheck_prose(s, allow=allow_list_from_seed())
 
     # Fixed point, and not optional. The multiline pass above runs before whitespace
     # collapse, so a marker that only *becomes* line-initial once the collapse removes

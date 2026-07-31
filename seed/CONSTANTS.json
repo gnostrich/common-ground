@@ -612,5 +612,10 @@
     "backtrack_policy": "measured-shadow-channel"
   },
   "loop_constructor_note": "The loop-constructor spec, seeded because it decides what the meter measures. Holonomy is defined only on verified cycles: closed, every edge present in Q, no immediate backtracking, length >= 3. A backtrack walk u->v->u is not a loop; its closure defect is measured per edge and compared against the declared shadow. An open walk raises rather than being silently measured. Tree-null repair, 2026-07-30.",
-  "charts_note": "Chart set moved to seed/CHARTS.json (item-2 plug-in refactor); that manifest is authoritative. Formerly listed here as english/lean."
+  "charts_note": "Chart set moved to seed/CHARTS.json (item-2 plug-in refactor); that manifest is authoritative. Formerly listed here as english/lean.",
+  "spellcheck": {
+    "enabled": false,
+    "chart": "prose",
+    "note": "Optional deterministic non-word normalization stage (item 4). OFF by default; flipping `enabled` to true is a seed edit — plastic under gate 4, needs a seed-morphism and cold re-anneal, because it moves prose addresses. Non-word only, allow-lists the seed lexicon + chart symbols, deterministic edit-1 correction, prose chart only. Dictionary at seed/SPELL/dictionary.txt."
+  }
 }
