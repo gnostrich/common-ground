@@ -61,11 +61,10 @@ PROBES: tuple[Probe, ...] = (
                    "well-formed table settle to identical verdicts.",
         probe="Ingest a claim set twice — once as English prose, once as a markdown table — "
               "and assert the two runs produce the same floors and the same b-values.",
-        status=STUBBED,
-        note="Blocked on the tabular chart, which the plug-in audit "
-             "(engine/chart_plugin_audit.py) shows cannot be added by manifest alone. Until "
-             "there is a tabular chart there is nothing to compare prose against. Declared "
-             "so the gap is on the board.",
+        status=IMPLEMENTED,
+        control="tests/test_probes.py:P1ProseVsTable.test_the_same_claims_settle_the_same_whether_prose_or_table",
+        note="Unblocked by the item-2 chart refactor: the tabular chart now exists, so the "
+             "same claims can be fed both ways and their verdicts compared.",
     ),
     Probe(
         id="P2",
@@ -103,25 +102,26 @@ PROBES: tuple[Probe, ...] = (
     ),
     Probe(
         id="P5",
-        commitment="INFERRED — the brief said 'into existing controls' without naming the "
-                   "commitment. This build reads P5 as: settling is sound — F never ascends "
-                   "and a non-monotone step voids the block.",
+        commitment="Settling is sound: F never ascends, and a non-monotone step voids the "
+                   "block rather than being absorbed.",
         probe="Existing control: DescentCertificate. An objective rigged to rise exhausts "
               "the halving safeguard and stamps `violated`.",
-        status=INFERRED,
+        status=MAPPED,
         control="tests/test_faithfulness.py:DescentCertificate.test_an_injected_non_monotone_step_voids_the_block",
-        note="FLAGGED: mapping inferred, not specified. Confirm P5 is the descent "
-             "certificate, or supply its intended commitment.",
+        note="CONFIRMED as the descent certificate.",
     ),
     Probe(
         id="P6",
-        commitment="INFERRED — as P5. This build reads P6 as: block independence — disjoint "
-                   "contests settle without influencing each other.",
-        probe="Existing control: BlocksAreConnectedComponents. Perturbing one component "
-              "moves another by exactly zero.",
-        status=INFERRED,
-        control="tests/test_faithfulness.py:BlocksAreConnectedComponents.test_two_disjoint_contests_settle_independently",
-        note="FLAGGED: mapping inferred, not specified. Confirm P6 is block independence.",
+        commitment="Abstain stability: a block whose evidence is symmetric between "
+                   "competing values casts abstain/coexist (mass on B, no spurious winner) "
+                   "stably across seeds and anneal schedules.",
+        probe="A block with equal-and-opposite evidence must settle with its largest mass "
+              "on B and must NOT pick a winner; and it must do so across several seeds and "
+              "both a 1x and 4x budget.",
+        status=IMPLEMENTED,
+        control="tests/test_probes.py:P6AbstainStability.test_symmetric_evidence_coexists_stably_across_seeds_and_schedules",
+        note="CORRECTED: P6 is abstain-stability, not block-independence. Built its own "
+             "control per the ruling.",
     ),
     Probe(
         id="P7",
@@ -148,13 +148,13 @@ PROBES: tuple[Probe, ...] = (
     ),
     Probe(
         id="P9",
-        commitment="INFERRED — as P5. This build reads P9 as: statistical verdicts are "
-                   "decided against a null, never a resample of the observation (gate 6).",
-        probe="Existing sweep: check_gate6_classification. Every deciding band site is "
-              "conforming.",
-        status=INFERRED,
+        commitment="Statistical verdicts are decided against a null, never a resample of "
+                   "the observation (gate 6), and the run is order-deterministic.",
+        probe="Existing sweep: check_gate6_classification — every deciding band site "
+              "conforms — plus P2's reorder invariance for the ordering half.",
+        status=MAPPED,
         control="tests/test_controls.py:EveryDecidingSiteConforms.test_no_deciding_site_is_non_conforming",
-        note="FLAGGED: mapping inferred, not specified. Confirm P9 is gate 6.",
+        note="CONFIRMED as gate-6 / ordering.",
     ),
 )
 

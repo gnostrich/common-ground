@@ -12,9 +12,12 @@
     "basis": "stated-default",
     "charts": [
       "english",
-      "lean"
+      "lean",
+      "tabular"
     ],
-    "code_chart": "deferred-to-v0.5"
+    "code_chart": "deferred-to-v0.5",
+    "note": "english + lean per KICKOFF default; tabular added 2026-07-31 by the item-2 chart plug-in refactor (operator-authorized). Charts are now a seed manifest (seed/CHARTS.json), not a compile-time Literal, so a fourth chart is a manifest row plus behavior registration, no engine dispatch edit. code chart still deferred to v0.5.",
+    "manifest": "seed/CHARTS.json"
   },
   "D3": {
     "status": "unresolved",

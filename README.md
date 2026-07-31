@@ -21,6 +21,7 @@ refusal is mechanical: `engine/seed_lock.py:build()` raises rather than emitting
 $ python cli.py status
 D1 resolved     D2 resolved     D3 unresolved   D4 partial
 D5 unresolved   D6 unresolved   D7 resolved*    D8 partial
+D2 now: english, lean, tabular (charts are a seed manifest)
                                 * re-approved over PREREG-AMENDMENT-1, -2 and -3
 ```
 
@@ -223,7 +224,7 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 254 tests, stdlib only
+make test            # 265 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
 make nulls           # P1 null battery + positive controls at the current seed hash
 make lock            # refuses while any decision is blank

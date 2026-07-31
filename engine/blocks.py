@@ -25,6 +25,7 @@ from .constants import (
 from .hashing import DRNG, join_hash
 from .types import Block, Chart, Delta, Fiber, LoopSpec, QEdge, Slot
 
+_CHART_TAG_RE = re.compile(r"^\x01[a-z]+\x01")
 _CAMEL_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 _SPLIT_RE = re.compile(r"[^0-9A-Za-zÀ-ɏ]+")
 
@@ -38,9 +39,11 @@ def content_tokens(nu: str) -> frozenset[str]:
     purpose, since a real stemmer would be a lexicon and would need to be seeded and
     hashed like one.
     """
-    body = nu.lstrip("\x01")
-    if body[:4] in ("en\x01", "lean"):  # tolerate either tag having been stripped
-        body = body.split("\x01", 1)[-1] if "\x01" in body else body
+    # Strip the chart tag generically: nu wraps the body in `\x01<tag>\x01`, so a single
+    # regex removes whatever tag any chart declared, without this function knowing the
+    # chart set. Hardcoding "en"/"lean" here was one of the sites the chart plug-in audit
+    # flagged.
+    body = _CHART_TAG_RE.sub("", nu, count=1)
     spaced = _CAMEL_RE.sub(" ", body)
     raw = _SPLIT_RE.split(spaced)
     out: set[str] = set()

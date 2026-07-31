@@ -4,13 +4,15 @@ Item 2 of the pre-P3 instructions asks for a tabular chart stood up "via the dec
 manifest path — manifest + battery only, zero engine edits", and rules that "if that's
 impossible, the plug-in audit has failed: report before proceeding."
 
-It is impossible, and this module is the evidence. There is no declarative manifest path:
-charts are hardcoded in at least six engine sites, one of which (`Chart`) is a `Literal`
-type, so a third chart cannot even be *named* without editing `engine/types.py`.
+It *was* impossible, and this module was the evidence: charts were hardcoded at five engine
+sites, one of which (`Chart`) was a `Literal`, so a third chart could not even be named.
+The item-2 refactor relocated english and lean behind the `engine/charts.py` registry, and
+**this audit now PASSes** — which is the completion criterion, the audit that caught the
+gap proving the fix.
 
-`audit()` returns the blocking sites, each with what it hardcodes and what a manifest would
-have to replace it with. `attempt_manifest_only()` tries the manifest route on a synthetic
-third chart and reports where it stops.
+`BLOCKING_SITES` records what *was* blocking; `audit()` re-verifies each against the live
+source and returns only those that still hardcode a chart — now none.
+`attempt_manifest_only()` confirms a manifest-declared chart (tabular) is accepted by `nu`.
 """
 
 from __future__ import annotations
@@ -107,17 +109,45 @@ def audit(root: Path | None = None) -> list[BlockingSite]:
         name = symbol.split(".")[-1]
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
-                body = ast.get_source_segment(text, node) or ""
-                if '"lean"' in body or "'lean'" in body or "lean\\x01" in body:
+                if _hardcodes_a_chart(node):
                     still_blocking.append(site)
                 break
     return still_blocking
 
 
-def attempt_manifest_only(chart: str = "tabular") -> tuple[bool, str]:
-    """Try to introduce a third chart without touching engine code. Report where it stops.
+#: Chart names and tag bodies that, appearing as *code* (a string literal or a comparison),
+#: mean a function is dispatching on a specific chart rather than through the registry.
+_CHART_LITERALS = frozenset({"lean", "english", "en\x01", "lean\x01"})
 
-    Returns `(succeeded, first_obstruction)`. It does not succeed.
+
+def _hardcodes_a_chart(node: ast.AST) -> bool:
+    """True if the function body contains a chart name as an actual string constant.
+
+    Walks the AST, so a chart named in a comment or docstring does not count — only real
+    code does. This is what lets the audit flip to PASS once the dispatch is gone even
+    though the module still *describes* what it used to hardcode.
+    """
+    for child in ast.walk(node):
+        if isinstance(child, ast.Constant) and isinstance(child.value, str):
+            if child.value in _CHART_LITERALS or child.value.strip("\x01") in ("lean", "en"):
+                # A docstring is an Expr-statement Constant; exclude the function's own.
+                if child is not _docstring_node(node):
+                    return True
+    return False
+
+
+def _docstring_node(node: ast.AST) -> ast.AST | None:
+    body = getattr(node, "body", None)
+    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+        return body[0].value
+    return None
+
+
+def attempt_manifest_only(chart: str = "tabular") -> tuple[bool, str]:
+    """Introduce a third chart without touching engine code. Report where it stops.
+
+    Returns `(succeeded, first_obstruction)`. Since the item-2 refactor it succeeds: a
+    manifest-declared chart (tabular) is accepted by `nu`.
     """
     from .normalize import nu
 

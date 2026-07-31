@@ -12,9 +12,12 @@ from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from typing import Literal, Sequence
 
-from .constants import BVALUES, CHARTS, CLAIM_FORMS, FIBER_CAP
+from .constants import BVALUES, CLAIM_FORMS, FIBER_CAP
 
-Chart = Literal["english", "lean"]
+#: A chart is a value declared in seed/CHARTS.json, not a closed type. The seam that
+#: made a third chart addable by manifest (item 2 refactor) lives in engine/charts.py;
+#: this is `str` rather than a Literal so a new chart is a manifest row, not a type edit.
+Chart = str
 ClaimForm = Literal["assert", "define", "conditional", "normative"]
 BValue = Literal["N", "F", "T", "B"]
 
@@ -121,7 +124,9 @@ class Delta:
             raise ValueError(f"unknown b-value {self.value!r}; expected one of {BVALUES}")
         if self.type not in CLAIM_FORMS:
             raise ValueError(f"unknown claim-form {self.type!r}")
-        if self.chart not in CHARTS:
+        from .charts import is_chart
+
+        if not is_chart(self.chart):
             raise ValueError(f"unknown chart {self.chart!r}")
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError(f"confidence {self.confidence} outside [0, 1]")

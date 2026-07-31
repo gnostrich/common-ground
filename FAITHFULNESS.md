@@ -241,15 +241,15 @@ makes to a reader of its verdicts — each one made falsifiable by a probe. Enfo
 
 | Probe | Commitment | Status | Control |
 |---|---|---|---|
-| P1 | Chart-invariance of meaning: the same claims stated as prose and as a  | ⏸ **stub** | — |
+| P1 | Chart-invariance of meaning: the same claims stated as prose and as a  | ✅ live | `P1ProseVsTable.test_the_same_claims_settle_the_same_whether_prose_or_table` |
 | P2 | Gauge invariance: verdicts depend on content, never on document labels | ✅ live | `P2RelabelAndReorderInvariance.test_relabel_and_reorder_is_bit_identical` |
 | P3 | Idempotent re-ingestion: a duplicated corpus adds no structure — no ne | ✅ live | `P3DuplicationGrowsNoStructure.test_a_relabelled_duplicate_adds_no_structure` |
 | P4 | Clamp screening: a value is grounded only by a clamp-eligible warrant  | ✅ live | `P4ClampScreening.test_only_eligible_warrants_ground` |
-| P5 | the brief said 'into existing controls' without naming the commitment. | ⚠ **infer?** | `DescentCertificate.test_an_injected_non_monotone_step_voids_the_block` |
-| P6 | as P5. This build reads P6 as: block independence — disjoint contests  | ⚠ **infer?** | `BlocksAreConnectedComponents.test_two_disjoint_contests_settle_independently` |
+| P5 | Settling is sound: F never ascends, and a non-monotone step voids the  | ✅ mapped | `DescentCertificate.test_an_injected_non_monotone_step_voids_the_block` |
+| P6 | Abstain stability: a block whose evidence is symmetric between competi | ✅ live | `P6AbstainStability.test_symmetric_evidence_coexists_stably_across_seeds_and_schedules` |
 | P7 | Lean round-trip: an elaborating Lean statement and its English restate | ⏸ **stub** | — |
 | P8 | Provenance completeness: every delta is traceable to its source, and e | ✅ live | `P8ProvenanceWalker.test_every_delta_is_fully_provenanced_and_no_key_is_identity_keyed` |
-| P9 | as P5. This build reads P9 as: statistical verdicts are decided agains | ⚠ **infer?** | `EveryDecidingSiteConforms.test_no_deciding_site_is_non_conforming` |
+| P9 | Statistical verdicts are decided against a null, never a resample of t | ✅ mapped | `EveryDecidingSiteConforms.test_no_deciding_site_is_non_conforming` |
 
 **Flagged rows** (no committed probe yet, reported rather than silently counted as
 covered):
@@ -263,29 +263,32 @@ covered):
   confirmation. This build reads them as descent-certificate, block-independence, and gate-6
   respectively. Confirm or correct.
 
-## Chart plug-in audit — FAILED (item 2 gate)
+## Chart plug-in audit — PASSED (item 2 landed)
 
-The tabular chart was to be stood up 'via the declarative manifest path — manifest + battery
-only, zero engine edits', with the ruling that if that is impossible the plug-in audit has
-failed and must be reported before proceeding. **It is impossible.**
+The tabular chart was to be stood up "via the declarative manifest path", with the ruling
+that if that was impossible the plug-in audit had failed and must be reported before
+proceeding. It was impossible, it was reported, the registry refactor was authorized, and
+**the audit now PASSes** — the audit that caught the gap proving the fix, which was the
+stated completion criterion.
 
-`engine/chart_plugin_audit.py` finds the two-chart assumption compiled into the engine at
-multiple sites. A third chart cannot even be *named* without editing a `Literal` type:
+Charts are now a **seed manifest** (`seed/CHARTS.json`):
 
-| Site | Severity | Hardcodes |
-|---|---|---|
-| `engine/types.py:Chart` | type | `Chart = Literal["english", "lean"]` |
-| `engine/normalize.py:_TAGS` | data | the per-chart control-character tag table |
-| `engine/normalize.py:nu` | dispatch | `_nu_english(...) if chart=='english' else _nu_lean(...)` |
-| `engine/normalize.py:classify` | dispatch | chart-branched claim-form rules |
-| `engine/extract.py:_candidate_spans` | dispatch | `if doc.chart=='lean'` span segmenter |
-| `engine/blocks.py:content_tokens` | data | hardcoded tag-stripping prefixes |
+```json
+{"name": "tabular", "tag": "tab", "behavior": "tabular"}
+```
 
-`nu()` rejects an unknown chart outright, and because the tag rides inside `nu(surface)` and
-therefore inside every address, there is nowhere for a manifest to declare a third chart's
-tag. **Charts are a compile-time binary, not a plug-in point.** Standing up the tabular
-chart is real engine work with a seed consequence — a decision to make, not a manifest to
-write — and per the item-2 ruling this is reported before proceeding.
+`nu`, `classify`, and the extractor's segmenter dispatch through the manifest's `behavior`
+id — there is **no `if chart == ...` anywhere in the engine**, which is the property
+`engine/chart_plugin_audit.py` verifies. Adding a chart is a manifest row plus (if the
+behavior is new) a normalizer, a classifier, and a segmenter registered under the behavior
+id. The tag rides inside every address, so it is declared in the manifest and hashed into
+`SEED.lock` (gate 4); english and lean keep their old tags, so no existing address moved and
+the morphism is purely additive.
+
+The five sites the audit had flagged — `Chart` (was a `Literal`), the tag table, `nu`,
+`classify`, and the extractor segmenter, plus `content_tokens` — all now dispatch through
+the registry or strip the tag generically. `chart_plugin_audit.verdict()` returns
+`manifest_only_possible: true`, zero blocking sites.
 
 ## Why this is a check and not a document
 

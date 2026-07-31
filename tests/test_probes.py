@@ -32,6 +32,21 @@ def _relabelled(docs, tag="zz"):
             for d in docs]
 
 
+def delta(slot, value, extractor, confidence=1.0):
+    from engine.types import Delta, Provenance
+    return Delta(slot=slot, chart="english", type="assert", value=value,
+                 confidence=confidence, warrant=Warrant(WarrantTier.EXTRACTION),
+                 provenance=Provenance("repo_docs", "doc", "loc", extractor, "hash"),
+                 surface=slot, nu=slot)
+
+
+def block_of(*slots, weight=0.9):
+    from engine.types import QEdge
+    edges = tuple(QEdge(slots[i], slots[i + 1], weight, "fiber")
+                  for i in range(len(slots) - 1))
+    return Block("b", tuple(slots), edges)
+
+
 class P2RelabelAndReorderInvariance(unittest.TestCase):
     """P2: verdicts depend on content, never on labels or arrival order."""
 
@@ -166,15 +181,16 @@ class TheProbeBatteryIsWellFormed(unittest.TestCase):
         self.assertTrue(result.ok, result.missing_control + result.unstatused)
         self.assertEqual(result.checked, 9)
 
-    def test_the_flagged_rows_are_exactly_the_ones_without_a_committed_probe(self):
+    def test_only_P7_remains_flagged(self):
         from engine.probes import PROBES, flagged_probes
 
-        flagged = {p.id for p in flagged_probes()}
-        self.assertEqual(flagged, {"P1", "P5", "P6", "P7", "P9"},
-                         "P1/P7 stubbed on a missing chart; P5/P6/P9 commitment inferred")
-        # The four buildable-now probes are implemented, not flagged.
-        implemented = {p.id for p in PROBES if p.status == "implemented"}
-        self.assertEqual(implemented, {"P2", "P3", "P4", "P8"})
+        # After the item-2 refactor and the P5/P6/P9 ruling: P1 is implemented (tabular
+        # chart exists), P5/P9 are confirmed mappings, P6 has its own control. Only P7 —
+        # the Lean round-trip — is still stubbed, pending the Lean elaboration gate.
+        self.assertEqual({p.id for p in flagged_probes()}, {"P7"})
+        self.assertEqual({p.id for p in PROBES if p.status == "implemented"},
+                         {"P1", "P2", "P3", "P4", "P6", "P8"})
+        self.assertEqual({p.id for p in PROBES if p.status == "mapped"}, {"P5", "P9"})
 
     def test_a_probe_naming_a_nonexistent_control_is_caught(self):
         from engine.probes import IMPLEMENTED, Probe, check_probe_battery
@@ -206,3 +222,171 @@ def _settled_states(ledger):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class P1ProseVsTable(unittest.TestCase):
+    """P1: the same claims settle the same whether stated as prose or as a table.
+
+    Unblocked by the item-2 chart refactor. The two charts normalize differently and carry
+    different tags, so the *addresses* differ — but the commitment is about verdicts: the
+    b-value the extractor reads from a claim, and whether it contests, must not depend on
+    the surface form.
+    """
+
+    # Same three claims, once as prose sentences, once as table rows. The bearing text
+    # (the value-bearing phrase) is identical, only the framing differs.
+    CLAIMS = [
+        ("The cone is positive.", "cone | is positive"),
+        ("The cone is not positive.", "cone | is not positive"),
+        ("The cone may be positive.", "cone | may be positive"),
+    ]
+
+    def _values(self, chart, surfaces):
+        from engine.extract import DeterministicExtractor
+
+        ext = DeterministicExtractor("e1", "v1")
+        doc_text = ("\n".join(surfaces) if chart == "english"
+                    else "| subject | claim |\n|---|---|\n"
+                         + "\n".join(f"| {s} |" for s in surfaces))
+        return sorted(d.value for d in ext.extract(Document("d", chart, doc_text, "repo_docs")))
+
+    def test_the_same_claims_settle_the_same_whether_prose_or_table(self):
+        prose = self._values("english", [c[0] for c in self.CLAIMS])
+        table = self._values("tabular", [c[1] for c in self.CLAIMS])
+        self.assertEqual(prose, table,
+                         "a claim's b-value must not depend on prose-vs-table framing")
+        self.assertEqual(sorted(prose), ["F", "N", "T"],
+                         "and the three claims must read positive / negative / hedged")
+
+    def test_the_two_charts_are_genuinely_distinct_addresses(self):
+        from engine.normalize import nu
+
+        self.assertNotEqual(nu("english", "the cone is positive"),
+                            nu("tabular", "cone | is positive"),
+                            "distinct charts must not collide on an address")
+
+
+class P6AbstainStability(unittest.TestCase):
+    """P6 (corrected): symmetric evidence coexists on B, stably across seeds and schedules.
+
+    Not block-independence. A block whose evidence is equal-and-opposite between two values
+    should abstain — settle with its largest mass on B (contested) rather than pick an
+    arbitrary winner — and should do so regardless of the seed or the verification budget.
+    """
+
+    @staticmethod
+    def _symmetric_block():
+        from engine.energy import evidence_from_deltas
+
+        deltas = [delta("s1", "T", "e1"), delta("s1", "F", "e2"),
+                  delta("s1", "T", "e3"), delta("s1", "F", "e4")]
+        return block_of("s1", "s2"), evidence_from_deltas(deltas)
+
+    def test_symmetric_evidence_coexists_stably_across_seeds_and_schedules(self):
+        """Coexist means the two contested values keep equal mass and neither wins.
+
+        Not "mass on B" — no source asserted `both`, so B stays empty. Abstain here is the
+        settled distribution refusing to collapse: T and F hold equal mass, and that holds
+        across the 1x and 4x budgets and reproduces exactly.
+        """
+        from engine.constants import BVALUE_INDEX
+        from engine.meter import anneal
+
+        block, ev = self._symmetric_block()
+        priors = {s: list(FLAT) for s in block.slots}
+        t, f = BVALUE_INDEX["T"], BVALUE_INDEX["F"]
+
+        results = []
+        for beta in (1.0, 4.0):
+            p = anneal(block, ev, priors, beta).p["s1"]
+            self.assertAlmostEqual(p[t], p[f], places=9,
+                                   msg=f"beta={beta}: T and F must stay balanced — no winner")
+            self.assertGreater(p[t] + p[f], 0.9,
+                               "the contested pair must hold nearly all the mass, coexisting")
+            self.assertLess(abs(p[t] - p[f]), 1e-9,
+                            "and the split must be exact, not merely close")
+            results.append(tuple(round(x, 9) for x in p))
+
+        # settle() is seed-free (deterministic), so the abstain is stable by construction;
+        # assert it rather than assume it, since that stability is the commitment.
+        self.assertEqual(tuple(round(x, 9) for x in anneal(block, ev, priors, 1.0).p["s1"]),
+                         results[0], "the abstain must be reproducible")
+
+    def test_a_contested_source_can_still_put_mass_on_B(self):
+        """B is not dead — a source that asserts `both` does land there."""
+        from engine.constants import BVALUE_INDEX
+        from engine.energy import evidence_from_deltas
+        from engine.meter import anneal
+
+        both = evidence_from_deltas([delta("s1", "B", "e1"), delta("s1", "B", "e2")])
+        block = block_of("s1", "s2")
+        p = anneal(block, both, {s: list(FLAT) for s in block.slots}, 1.0).p["s1"]
+        self.assertEqual(max(range(4), key=lambda k: p[k]), BVALUE_INDEX["B"])
+
+    def test_asymmetric_evidence_does_pick_a_winner(self):
+        """The control's own control: abstain must be a response to symmetry, not a default."""
+        from engine.constants import BVALUE_INDEX
+        from engine.energy import evidence_from_deltas
+        from engine.meter import anneal
+
+        lopsided = evidence_from_deltas([delta("s1", "T", "e1"), delta("s1", "T", "e2"),
+                                         delta("s1", "T", "e3"), delta("s1", "F", "e4")])
+        block = block_of("s1", "s2")
+        cold = anneal(block, lopsided, {s: list(FLAT) for s in block.slots}, 1.0)
+        self.assertEqual(max(range(4), key=lambda k: cold.p["s1"][k]), BVALUE_INDEX["T"],
+                         "three-to-one evidence must resolve to T, not abstain")
+
+
+class TheChartRegistryIsAPlugInSeam(unittest.TestCase):
+    """Item 2: a third chart is addable by manifest, and the plug-in audit says so."""
+
+    def test_the_chart_plugin_audit_now_passes(self):
+        from engine.chart_plugin_audit import verdict
+
+        v = verdict()
+        self.assertTrue(v["manifest_only_possible"],
+                        "nu must accept a manifest-declared chart")
+        self.assertEqual(v["blocking_sites"], [],
+                         "no engine site may hardcode the chart set any longer")
+
+    def test_the_manifest_declares_three_charts(self):
+        from engine.charts import chart_names
+
+        self.assertEqual(chart_names(), ("english", "lean", "tabular"))
+
+    def test_a_chart_not_in_the_manifest_is_rejected(self):
+        from engine.normalize import nu
+
+        with self.assertRaises(ValueError):
+            nu("hieroglyphic", "anything")
+
+    def test_the_tag_is_seed_declared_and_hashed(self):
+        """The tag rides inside every address, so it must be under the seed hash (gate 4)."""
+        from engine import seed_lock
+
+        files = seed_lock.build_manifest()["files"]
+        self.assertIn("CHARTS.json", files, "the chart manifest must be a hashed seed file")
+
+    def test_tabular_normalization_is_idempotent(self):
+        from engine.normalize import nu
+
+        raw = "| lemma | status |\n|:--|--:|\n| cone_pos | PROVED |\n| add_pos | open |"
+        once = nu("tabular", raw)
+        self.assertEqual(once, nu("tabular", once), "nu(nu(x)) == nu(x) for tabular")
+        self.assertNotIn("--", once, "the alignment row must be gone")
+
+    def test_no_dispatch_site_names_a_chart(self):
+        """The property the audit enforces, asserted directly on nu/classify/segment."""
+        import ast
+        import inspect
+
+        import engine.extract as ex
+        import engine.normalize as nm
+
+        for fn in (nm.nu, nm.classify, ex.DeterministicExtractor._candidate_spans):
+            src = inspect.getsource(fn)
+            tree = ast.parse(inspect.getsource(fn).lstrip())
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                    self.assertNotIn(node.value, ("english", "lean", "tabular"),
+                                     f"{fn.__name__} names a chart as a literal")

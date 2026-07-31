@@ -18,10 +18,18 @@ present here appears there with the same status.
 
 Resolved from the repository as it exists; no decision was required.
 
-## D2 — charts — **RESOLVED (stated default)**
+## D2 — charts — **RESOLVED** (english, lean, tabular)
 
-`{english, lean}`. The code chart is deferred to v0.5, per the default stated in KICKOFF
-§0 D2 ("code chart deferred to v0.5 unless overridden"). No override was given.
+`{english, lean}` per the KICKOFF default, plus **tabular** added 2026-07-31 by the item-2
+chart plug-in refactor (operator-authorized). The code chart is still deferred to v0.5.
+
+Charts are now a **seed manifest** (`seed/CHARTS.json`), not a compile-time `Literal`. The
+plug-in audit (`engine/chart_plugin_audit.py`) had found the two-chart assumption hardcoded
+at five sites and failed; the refactor relocated english and lean behind a registry keyed by
+a declared `behavior` id, and the audit now PASSes. A fourth chart is a manifest row plus a
+normalizer/classifier/segmenter registered under its behavior id — **no dispatch edit**. The
+chart tag rides inside every address, so it is declared in the manifest and hashed into
+`SEED.lock` (gate 4).
 
 ## D3 — corpus manifest — **UNRESOLVED**
 

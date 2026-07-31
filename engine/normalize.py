@@ -23,11 +23,10 @@ from .constants import (
     MARKERS_DEFINITIONAL,
     MARKERS_DEONTIC,
 )
+from .charts import TAG_OPEN, chart_spec, is_chart
 from .hashing import join_hash
 from .types import Chart, ClaimForm
 
-TAG_OPEN = "\x01"
-_TAGS: dict[str, str] = {"english": "\x01en\x01", "lean": "\x01lean\x01"}
 _TAG_RE = re.compile(r"^\x01[a-z]+\x01")
 
 # C0 and C1 control characters, which the tag is drawn from and which no legitimate
@@ -160,13 +159,76 @@ def _nu_lean(core: str) -> str:
     return s
 
 
+_TABLE_SEP_CELL_RE = re.compile(r"^:?-+:?$")
+_ROW_SEP = " ‖ "   # canonical row separator, printable so it survives a re-parse
+_CELL_SEP = " | "
+
+
+def _table_rows(core: str) -> list[list[str]]:
+    """Parse a markdown table, or the canonical form, into rows of normalized cells.
+
+    Accepts both `| a | b |\\n|---|---|\\n| c | d |` and the canonical
+    `a | b ‖ c | d`, and returns the same rows for either — which is what makes the
+    normal form a fixed point. Alignment/separator rows (cells all `:?-+:?`) are dropped;
+    empty cells are dropped; each surviving cell is casefolded and whitespace-collapsed.
+    """
+    control_free = _CONTROL_RE.sub("", core)
+    unified = unicodedata.normalize("NFKC", control_free)
+    for src, dst in _TYPOGRAPHIC.items():
+        unified = unified.replace(src, dst)
+
+    raw_rows: list[str]
+    if "‖" in unified:                      # already canonical
+        raw_rows = unified.split("‖")
+    else:
+        raw_rows = re.split(r"[\r\n]+", unified)
+
+    rows: list[list[str]] = []
+    for raw in raw_rows:
+        cells = [c.strip() for c in raw.split("|")]
+        cells = [_WS_RE.sub(" ", c).casefold() for c in cells if c.strip()]
+        if not cells:
+            continue
+        if all(_TABLE_SEP_CELL_RE.match(c) for c in cells):
+            continue                             # alignment row
+        rows.append(cells)
+    return rows
+
+
+def _canonical_table(rows: list[list[str]]) -> str:
+    return _ROW_SEP.join(_CELL_SEP.join(r) for r in rows)
+
+
+def _nu_tabular(core: str) -> str:
+    """Normalize a well-formed markdown table to a canonical, idempotent string.
+
+    A table's meaning is its rows and cells, not its pipes and dashes, so the normal form
+    keeps the former and discards the latter. Feeding the canonical form back through
+    `_table_rows` yields the same rows, so `nu(nu(x)) == nu(x)` holds — checked by null
+    cell (i) across every chart, tabular included.
+    """
+    return _canonical_table(_table_rows(core))
+
+
+#: Per-chart normalizer bodies, keyed by the manifest's `behavior` id. Adding a chart with
+#: a new behavior registers a function here; it never edits `nu` itself. `nu` has no
+#: `if chart == ...` — that is the plug-in property the chart audit checks for.
+_NORMALIZERS: dict[str, "callable[[str], str]"] = {}
+
+
 def nu(chart: Chart, surface: str) -> str:
-    """Normalize a surface for the given chart. Idempotent, total, pure."""
-    if chart not in _TAGS:
+    """Normalize a surface for the given chart. Idempotent, total, pure.
+
+    Dispatches through the seed chart registry: the tag comes from `seed/CHARTS.json`
+    (hashed into SEED.lock, so it rides inside every address under gate 4) and the body
+    normalizer from `_NORMALIZERS`, keyed by the chart's declared behavior. No chart is
+    named in this function.
+    """
+    if not is_chart(chart):
         raise ValueError(f"unknown chart {chart!r}")
-    core = _strip_tag(surface)
-    body = _nu_english(core) if chart == "english" else _nu_lean(core)
-    return _TAGS[chart] + body
+    spec = chart_spec(chart)
+    normalize_body = _NORMALIZERS[spec.behavior]
+    return spec.tag + normalize_body(_strip_tag(surface))
 
 
 def slot_id(normalized: str, type_: ClaimForm) -> str:
@@ -184,26 +246,24 @@ def _contains_any(haystack: str, needles: Iterable[str]) -> bool:
     return any(needle in haystack for needle in needles)
 
 
+#: Per-chart claim-form classifiers, keyed by behavior id. Same seam as `_NORMALIZERS`.
+_CLASSIFIERS: dict[str, "callable[[str], ClaimForm]"] = {}
+
+
 def classify(chart: Chart, surface: str) -> ClaimForm:
     """Assign a claim-form. Ordered rules, first match wins (seed/TYPES.md).
 
     Operates on the normalized surface so that classification and addressing cannot
     disagree — a pair that collides on `nu` must also collide on `type`, or the
     paraphrase suite's known-same pairs would fail for a reason that has nothing to do
-    with normalization.
+    with normalization. Dispatches through the chart registry; no chart is named here.
     """
-    n = nu(chart, surface)
-    body = n[len(_TAGS[chart]) :]
+    spec = chart_spec(chart)
+    body = nu(chart, surface)[len(spec.tag):]
+    return _CLASSIFIERS[spec.behavior](body)
 
-    if chart == "lean":
-        head = _lean_head(body)
-        if head in LEAN_DEFINE_HEADS:
-            return "define"
-        if head in LEAN_CLAIM_HEADS:
-            return "conditional" if _has_explicit_binder(body) else "assert"
-        # A Lean fragment with no recognised head is still a claim about the code.
-        return "assert"
 
+def _classify_prose(body: str) -> ClaimForm:
     if _contains_any(body, MARKERS_DEONTIC):
         return "normative"
     if _contains_any(body, MARKERS_CONDITIONAL):
@@ -211,6 +271,30 @@ def classify(chart: Chart, surface: str) -> ClaimForm:
     if _contains_any(body, MARKERS_DEFINITIONAL):
         return "define"
     return "assert"
+
+
+def _classify_lean(body: str) -> ClaimForm:
+    head = _lean_head(body)
+    if head in LEAN_DEFINE_HEADS:
+        return "define"
+    if head in LEAN_CLAIM_HEADS:
+        return "conditional" if _has_explicit_binder(body) else "assert"
+    # A Lean fragment with no recognised head is still a claim about the code.
+    return "assert"
+
+
+def _classify_tabular(body: str) -> ClaimForm:
+    # A table row asserts its contents; the same prose markers apply within a row, so a row
+    # whose text carries a conditional or definitional cue is classified accordingly.
+    return _classify_prose(body)
+
+
+# The plug-in seam, wired once. `nu` and `classify` dispatch through these by the chart's
+# declared behavior id; adding a chart adds a manifest row and (if the behavior is new) an
+# entry here, and touches no dispatch logic.
+_NORMALIZERS.update({"prose": _nu_english, "lean": _nu_lean, "tabular": _nu_tabular})
+_CLASSIFIERS.update({"prose": _classify_prose, "lean": _classify_lean,
+                     "tabular": _classify_tabular})
 
 
 def _has_explicit_binder(body: str) -> bool:

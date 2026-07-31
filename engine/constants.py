@@ -54,7 +54,16 @@ MINT_ENABLED: bool = bool(C["mint_enabled"])
 BVALUES: tuple[str, ...] = tuple(C["bvalues"])
 NBV: int = len(BVALUES)
 BVALUE_INDEX: dict[str, int] = {v: i for i, v in enumerate(BVALUES)}
-CHARTS: tuple[str, ...] = tuple(C["charts"])
+#: The chart set is declared in seed/CHARTS.json (the manifest) — the single source of
+#: truth since the item-2 plug-in refactor. This is kept as a convenience re-export, read
+#: from the manifest rather than from CONSTANTS.json so the two cannot drift.
+def _chart_names() -> tuple[str, ...]:
+    import json
+    payload = json.loads((SEED_DIR / "CHARTS.json").read_text(encoding="utf-8"))
+    return tuple(row["name"] for row in payload["charts"])
+
+
+CHARTS: tuple[str, ...] = _chart_names()
 CLAIM_FORMS: tuple[str, ...] = tuple(C["claim_forms"])
 
 # --- protocol arms ----------------------------------------------------------------

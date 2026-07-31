@@ -19,10 +19,6 @@
     "T",
     "B"
   ],
-  "charts": [
-    "english",
-    "lean"
-  ],
   "claim_forms": [
     "assert",
     "define",
@@ -615,5 +611,6 @@
     "open_walk_policy": "raise",
     "backtrack_policy": "measured-shadow-channel"
   },
-  "loop_constructor_note": "The loop-constructor spec, seeded because it decides what the meter measures. Holonomy is defined only on verified cycles: closed, every edge present in Q, no immediate backtracking, length >= 3. A backtrack walk u->v->u is not a loop; its closure defect is measured per edge and compared against the declared shadow. An open walk raises rather than being silently measured. Tree-null repair, 2026-07-30."
+  "loop_constructor_note": "The loop-constructor spec, seeded because it decides what the meter measures. Holonomy is defined only on verified cycles: closed, every edge present in Q, no immediate backtracking, length >= 3. A backtrack walk u->v->u is not a loop; its closure defect is measured per edge and compared against the declared shadow. An open walk raises rather than being silently measured. Tree-null repair, 2026-07-30.",
+  "charts_note": "Chart set moved to seed/CHARTS.json (item-2 plug-in refactor); that manifest is authoritative. Formerly listed here as english/lean."
 }

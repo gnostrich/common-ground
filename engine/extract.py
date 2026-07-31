@@ -21,11 +21,12 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import Callable, Iterable, Sequence
 
 from . import EngineError
 from .constants import BVALUES
 from .hashing import DRNG
+from .charts import chart_spec
 from .normalize import address, classify
 from .types import BValue, ClaimForm, Delta, Document, Provenance, Warrant, WarrantTier
 
@@ -45,6 +46,53 @@ _LEAN_DECL_RE = re.compile(
     r"(?:theorem|lemma|example|axiom|def|abbrev|structure|class|instance|inductive|notation)\b",
     re.MULTILINE,
 )
+
+def _segment_prose(text: str) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    for i, raw in enumerate(_SENTENCE_RE.split(text)):
+        span = raw.strip()
+        if len(span.split()) >= 3:
+            out.append((span, f"sent:{i}"))
+    return out
+
+
+def _segment_lean(text: str) -> list[tuple[str, str]]:
+    matches = list(_LEAN_DECL_RE.finditer(text))
+    out: list[tuple[str, str]] = []
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        chunk = text[m.start():end].strip()
+        if chunk:
+            out.append((chunk, f"decl:{i}"))
+    return out
+
+
+def _segment_tabular(text: str) -> list[tuple[str, str]]:
+    """One candidate span per data row. Alignment rows and the header are skipped.
+
+    A markdown table's first non-separator row is its header — column names, not a claim —
+    so it is dropped; every subsequent row is a candidate. The raw row text is the span, so
+    nu-for-tabular canonicalizes it downstream and raw bytes stay the provenance target.
+    """
+    rows = [ln for ln in re.split(r"[\r\n]+", text) if ln.strip()]
+    data_rows = [r for r in rows if not _TABLE_SEP_ROW_RE.match(r)]
+    out: list[tuple[str, str]] = []
+    for i, raw in enumerate(data_rows[1:], start=1):   # [1:] drops the header row
+        span = raw.strip()
+        if span:
+            out.append((span, f"row:{i}"))
+    return out
+
+
+#: Per-chart span segmenters, keyed by the manifest's behavior id — the third leg of the
+#: chart plug-in seam (normalizer and classifier are the other two, in engine/normalize.py).
+_SEGMENTERS: dict[str, "Callable[[str], list[tuple[str, str]]]"] = {
+    "prose": _segment_prose,
+    "lean": _segment_lean,
+    "tabular": _segment_tabular,
+}
+
+_TABLE_SEP_ROW_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")
 
 _NEGATION = ("is not", "are not", "does not", "do not", "cannot", "never", "no ", "fails to")
 _HEDGE = ("may ", "might ", "possibly", "we believe", "appears to", "conjecture", "unclear", "open question")
@@ -109,22 +157,7 @@ class DeterministicExtractor(Extractor):
         self.selectivity = selectivity
 
     def _candidate_spans(self, doc: Document) -> list[tuple[str, str]]:
-        if doc.chart == "lean":
-            matches = list(_LEAN_DECL_RE.finditer(doc.text))
-            out: list[tuple[str, str]] = []
-            for i, m in enumerate(matches):
-                end = matches[i + 1].start() if i + 1 < len(matches) else len(doc.text)
-                chunk = doc.text[m.start() : end].strip()
-                if chunk:
-                    out.append((chunk, f"decl:{i}"))
-            return out
-
-        out = []
-        for i, raw in enumerate(_SENTENCE_RE.split(doc.text)):
-            span = raw.strip()
-            if len(span.split()) >= 3:
-                out.append((span, f"sent:{i}"))
-        return out
+        return _SEGMENTERS[chart_spec(doc.chart).behavior](doc.text)
 
     def _value_for(self, lowered: str) -> tuple[BValue, float]:
         if any(m in lowered for m in _CONTESTED):

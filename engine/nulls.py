@@ -23,8 +23,8 @@ from __future__ import annotations
 
 from typing import Callable, Mapping, Sequence
 
+from .charts import chart_names
 from .constants import (
-    CHARTS,
     DUPLICATE_RESIDUE_TOLERANCE,
     NULL_FUZZ_SAMPLES,
     SINGLE_DOC_TOLERANCE,
@@ -86,7 +86,7 @@ def cell_i_idempotence(
     failures: list[dict[str, str]] = []
     checked = 0
 
-    for chart in CHARTS:
+    for chart in chart_names():
         for _ in range(samples):
             s = _fuzz(rng)
             once = normalizer(chart, s)  # type: ignore[arg-type]
@@ -98,7 +98,7 @@ def cell_i_idempotence(
 
     # Fixed adversarial cases alongside the fuzz: a bare tag, empty input, and a surface
     # that already looks normalized.
-    for chart in CHARTS:
+    for chart in chart_names():
         for s in ("", " ", "\x01en\x01", "\x01lean\x01", "\x01en\x01already normalized"):
             once = normalizer(chart, s)  # type: ignore[arg-type]
             checked += 1
@@ -110,7 +110,7 @@ def cell_i_idempotence(
         cell="i.normalizer-idempotence",
         status=NullStatus.PASS if not failures else NullStatus.FAIL,
         detail=(
-            f"nu(nu(x)) == nu(x) on {checked} samples across {len(CHARTS)} charts"
+            f"nu(nu(x)) == nu(x) on {checked} samples across {len(chart_names())} charts"
             if not failures
             else f"{len(failures)} idempotence failure(s); first: {failures[0]}"
         ),
