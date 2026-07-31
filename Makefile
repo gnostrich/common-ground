@@ -1,4 +1,4 @@
-.PHONY: help status test lock verify nulls demo p0 p1 pin gate6 gate7 faithfulness clean
+.PHONY: help status test lock verify nulls demo p0 p1 pin gate6 gate7 faithfulness probes clean
 
 help:
 	@echo "status  — decisions, lock state, lexicon pins, phase readiness"
@@ -10,6 +10,7 @@ help:
 	@echo "gate6   — statistical-band conformance sweep (GATES.md sentence 6)"
 	@echo "gate7   — generative-key sweep (GATES.md sentence 7)"
 	@echo "faithfulness — theory object -> code site -> control audit"
+	@echo "probes  — commitment -> probe -> status battery + chart plug-in audit"
 	@echo "demo    — synthetic end-to-end smoke run, writes nothing"
 	@echo "p0 / p1 — phase gates"
 
@@ -36,6 +37,9 @@ gate7:
 
 faithfulness:
 	@python3 -m engine.faithfulness_report
+
+probes:
+	@python3 -m engine.probe_report
 
 demo:
 	@python3 cli.py demo

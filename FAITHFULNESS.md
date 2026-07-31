@@ -232,6 +232,61 @@ measured, not asserted.
 halving safeguard and stamps the block `violated`, with the backtrack count non-zero. The
 certificate is a real check on the implementation rather than a label.
 
+
+## The probe battery (commitment → probe → status)
+
+The table above maps theory *objects* to code. This maps the *commitments* the engine
+makes to a reader of its verdicts — each one made falsifiable by a probe. Enforced by
+`engine/probes.py:check_probe_battery` and `make probes`.
+
+| Probe | Commitment | Status | Control |
+|---|---|---|---|
+| P1 | Chart-invariance of meaning: the same claims stated as prose and as a  | ⏸ **stub** | — |
+| P2 | Gauge invariance: verdicts depend on content, never on document labels | ✅ live | `P2RelabelAndReorderInvariance.test_relabel_and_reorder_is_bit_identical` |
+| P3 | Idempotent re-ingestion: a duplicated corpus adds no structure — no ne | ✅ live | `P3DuplicationGrowsNoStructure.test_a_relabelled_duplicate_adds_no_structure` |
+| P4 | Clamp screening: a value is grounded only by a clamp-eligible warrant  | ✅ live | `P4ClampScreening.test_only_eligible_warrants_ground` |
+| P5 | the brief said 'into existing controls' without naming the commitment. | ⚠ **infer?** | `DescentCertificate.test_an_injected_non_monotone_step_voids_the_block` |
+| P6 | as P5. This build reads P6 as: block independence — disjoint contests  | ⚠ **infer?** | `BlocksAreConnectedComponents.test_two_disjoint_contests_settle_independently` |
+| P7 | Lean round-trip: an elaborating Lean statement and its English restate | ⏸ **stub** | — |
+| P8 | Provenance completeness: every delta is traceable to its source, and e | ✅ live | `P8ProvenanceWalker.test_every_delta_is_fully_provenanced_and_no_key_is_identity_keyed` |
+| P9 | as P5. This build reads P9 as: statistical verdicts are decided agains | ⚠ **infer?** | `EveryDecidingSiteConforms.test_no_deciding_site_is_non_conforming` |
+
+**Flagged rows** (no committed probe yet, reported rather than silently counted as
+covered):
+
+- **P1** and **P7** are `stub`bed on a missing chart. P1 (prose-vs-table verdict equality)
+  needs the tabular chart, which the plug-in audit below shows cannot be added by manifest
+  alone. P7 (Lean round-trip) needs the Lean chart's elaboration gate, which routing item 3
+  has not yet built.
+- **P5**, **P6**, **P9** are `infer?` — the brief said 'into existing controls' without
+  naming the commitment, so each is mapped to the nearest existing control and flagged for
+  confirmation. This build reads them as descent-certificate, block-independence, and gate-6
+  respectively. Confirm or correct.
+
+## Chart plug-in audit — FAILED (item 2 gate)
+
+The tabular chart was to be stood up 'via the declarative manifest path — manifest + battery
+only, zero engine edits', with the ruling that if that is impossible the plug-in audit has
+failed and must be reported before proceeding. **It is impossible.**
+
+`engine/chart_plugin_audit.py` finds the two-chart assumption compiled into the engine at
+multiple sites. A third chart cannot even be *named* without editing a `Literal` type:
+
+| Site | Severity | Hardcodes |
+|---|---|---|
+| `engine/types.py:Chart` | type | `Chart = Literal["english", "lean"]` |
+| `engine/normalize.py:_TAGS` | data | the per-chart control-character tag table |
+| `engine/normalize.py:nu` | dispatch | `_nu_english(...) if chart=='english' else _nu_lean(...)` |
+| `engine/normalize.py:classify` | dispatch | chart-branched claim-form rules |
+| `engine/extract.py:_candidate_spans` | dispatch | `if doc.chart=='lean'` span segmenter |
+| `engine/blocks.py:content_tokens` | data | hardcoded tag-stripping prefixes |
+
+`nu()` rejects an unknown chart outright, and because the tag rides inside `nu(surface)` and
+therefore inside every address, there is nowhere for a manifest to declare a third chart's
+tag. **Charts are a compile-time binary, not a plug-in point.** Standing up the tabular
+chart is real engine work with a seed consequence — a decision to make, not a manifest to
+write — and per the item-2 ruling this is reported before proceeding.
+
 ## Why this is a check and not a document
 
 The gate-6 sweep found R2 the moment it was made executable, and then caught one of its

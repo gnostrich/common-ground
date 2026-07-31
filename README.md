@@ -223,7 +223,7 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 242 tests, stdlib only
+make test            # 254 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
 make nulls           # P1 null battery + positive controls at the current seed hash
 make lock            # refuses while any decision is blank
@@ -231,6 +231,7 @@ make verify          # gate-4 tripwire
 make gate6           # statistical-band conformance sweep (GATES.md sentence 6)
 make gate7           # generative-key sweep (GATES.md sentence 7)
 make faithfulness    # theory object -> code site -> control audit
+make probes          # commitment -> probe -> status battery + chart audit
 
 python cli.py register P2 --note "..."           # BEFORE running a phase (KICKOFF §7.2)
 python cli.py pin mathlib --path <dump> \

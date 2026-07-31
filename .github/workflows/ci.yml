@@ -169,5 +169,13 @@ jobs:
           # are findings, listed for P3.
           python -m engine.faithfulness_report
 
+      - name: probe battery + chart plug-in audit
+        run: |
+          # The commitment -> probe -> status battery. A stubbed or inferred probe is a
+          # reported finding, not a failure; a live probe whose control vanished is a
+          # failure. The chart plug-in audit is printed for the record — it FAILED (a third
+          # chart is not addable by manifest alone), which is an open item-2 ruling.
+          python -m engine.probe_report
+
       - name: status
         run: python cli.py status
