@@ -98,6 +98,20 @@ past `Clamp`'s constructor via `object.__setattr__` to check `settle()` still ca
 `tests/test_controls.py` covers gate 6 from both sides — the live controls, and the
 superseded R3 computation kept as a historical pin.
 
+## Is the engine the theory?
+
+The gates say what the engine may not do. `FAITHFULNESS.md` says what it **is**: every
+theory object, its code site, and a control that fails if that site stops implementing it —
+enforced by `make faithfulness`, which fails on any unmapped or uncontrolled row.
+
+Three simplifications are deliberate and cite the ruling that permits them; the largest is
+that **inter-chart correspondence is pairwise-collapsed** — `QEdge` has two endpoints and
+there is no k-ary factor type, so no ternary-correspondence claim may be advanced from this
+build. One row is an **open gap**: the tree-null. A contest graph with no cycles should have
+cold floor exactly zero, and it does not, because a two-member fiber yields a backtracking
+walk and because a loop spec can name a closing edge that is absent from Q. Both are
+measured and pinned. Details and the decision they need in `FAITHFULNESS.md`.
+
 ## The lexicon layer — hub of faces, not hub of truth
 
 `seed/LEXICON/SPEC.md` is frozen alongside the gates. One registry, per-chart faces, with
@@ -198,11 +212,13 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 201 tests, stdlib only
+make test            # 223 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
 make nulls           # P1 null battery + positive controls at the current seed hash
 make lock            # refuses while any decision is blank
 make verify          # gate-4 tripwire
+make gate6           # statistical-band conformance sweep (GATES.md sentence 6)
+make faithfulness    # theory object -> code site -> control audit
 
 python cli.py register P2 --note "..."           # BEFORE running a phase (KICKOFF §7.2)
 python cli.py pin mathlib --path <dump> \

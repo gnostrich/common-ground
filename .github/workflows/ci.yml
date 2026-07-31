@@ -154,5 +154,13 @@ jobs:
           raise SystemExit(0 if result.ok else 1)
           PY
 
+      - name: faithfulness — every theory object mapped and controlled
+        run: |
+          # Gate 6 asks whether a verdict is decided against a null. This asks the prior
+          # question: is the object the theory names actually in the code, and is there a
+          # control that fails if it stops being there. Classified gaps do not fail — they
+          # are findings, listed for P3.
+          python -m engine.faithfulness_report
+
       - name: status
         run: python cli.py status
