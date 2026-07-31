@@ -131,9 +131,11 @@ PROBES: tuple[Probe, ...] = (
         probe="Ingest an Eng/Lean/Eng triangle over a kernel-checked theorem; assert the "
               "restatement loop is a verified cycle and its floor tracks agreement.",
         status=STUBBED,
-        note="Stubbed pending the Lean chart's elaboration path (routing item 3: elaborating "
-             ".lean -> Lean chart, non-elaborating -> shelf). The chart tag exists; the "
-             "elaboration gate that decides what reaches it does not yet.",
+        note="Still stubbed, but the seam now exists: routing item 3 built the elaboration "
+             "gate (router.route keys .lean on an injected `lean_elaborates` predicate; the "
+             "default shelves with 'no pinned Lean toolchain (D6)'). P7 needs a REAL "
+             "elaborator, which needs D6's Lean toolchain — so it stays stubbed on D6, not "
+             "on missing routing.",
     ),
     Probe(
         id="P8",
