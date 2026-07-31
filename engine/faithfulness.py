@@ -268,6 +268,18 @@ FAITHFULNESS_ROWS: tuple[Row, ...] = (
         ),
     ),
     Row(
+        object="chart plug-in seam (charts are a seed manifest, not a literal)",
+        family="structure",
+        site="engine/charts.py:chart_spec",
+        role="charts declared in seed/CHARTS.json; nu/classify/segment dispatch by behavior "
+             "id with no `if chart == ...` anywhere; a new chart is a manifest row plus "
+             "registered behaviors, and admission is gated by chart_plugin_audit",
+        control="tests/test_probes.py:TheChartAuditCanDetectAReintroducedDefect.test_the_audit_goes_red_end_to_end_when_a_dispatch_is_planted",
+        control_claim="the shipped tree audits clean (0 blocking sites, manifest-only "
+                      "possible), AND a planted `if chart == ...` dispatch turns the audit "
+                      "red both at the detector and end-to-end — so the gate can fail",
+    ),
+    Row(
         object="planted-cycle (frustration is real and persistent)",
         family="theory",
         site="engine/meter.py:measure",

@@ -390,3 +390,68 @@ class TheChartRegistryIsAPlugInSeam(unittest.TestCase):
                 if isinstance(node, ast.Constant) and isinstance(node.value, str):
                     self.assertNotIn(node.value, ("english", "lean", "tabular"),
                                      f"{fn.__name__} names a chart as a literal")
+
+
+class TheChartAuditCanDetectAReintroducedDefect(unittest.TestCase):
+    """The audit gates all future chart admission, so it must be able to FAIL.
+
+    A gate that cannot detect its own breach is decorative — the same positive-control rule
+    the null battery follows. `test_the_chart_plugin_audit_now_passes` shows the audit is
+    green on clean source; these show it goes RED the moment a hardcoded dispatch is
+    reintroduced, at both the detector and the end-to-end level.
+    """
+
+    def test_the_detector_flags_an_injected_dispatch_and_clears_a_clean_function(self):
+        import ast
+
+        from engine.chart_plugin_audit import _hardcodes_a_chart
+
+        rigged = ast.parse(
+            "def nu(chart, surface):\n"
+            "    if chart == 'lean':\n"
+            "        return _lean(surface)\n"
+            "    return _prose(surface)\n"
+        ).body[0]
+        self.assertTrue(_hardcodes_a_chart(rigged),
+                        "an `if chart == 'lean'` dispatch must be detected")
+
+        clean = ast.parse(
+            "def nu(chart, surface):\n"
+            "    '''dispatches through the registry; mentions lean and english in prose'''\n"
+            "    return _NORMALIZERS[chart_spec(chart).behavior](surface)\n"
+        ).body[0]
+        self.assertFalse(_hardcodes_a_chart(clean),
+                         "a registry dispatch — even one naming charts in its docstring — "
+                         "must NOT be flagged")
+
+    def test_the_audit_goes_red_end_to_end_when_a_dispatch_is_planted(self):
+        """Copy the real nu into a temp root, plant a dispatch, and audit that root."""
+        import tempfile
+        from pathlib import Path
+
+        import engine.normalize as nm
+        from engine.chart_plugin_audit import audit
+
+        real = Path(nm.__file__).read_text(encoding="utf-8")
+        # Plant a chart dispatch at the top of nu's body.
+        planted = real.replace(
+            'def nu(chart: Chart, surface: str) -> str:\n',
+            'def nu(chart: Chart, surface: str) -> str:\n'
+            '    if chart == "lean":\n        pass\n',
+            1,
+        )
+        self.assertNotEqual(planted, real, "the injection must actually change nu")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "engine").mkdir()
+            (root / "engine" / "normalize.py").write_text(planted, encoding="utf-8")
+            flagged = {s.site for s in audit(root)}
+            self.assertIn("engine/normalize.py:nu", flagged,
+                          "a reintroduced dispatch in nu must reappear as a blocking site")
+
+    def test_the_clean_root_has_no_blocking_sites(self):
+        """The other half of the control: the real tree audits clean."""
+        from engine.chart_plugin_audit import audit
+
+        self.assertEqual(audit(), [], "the shipped engine must hardcode no chart")

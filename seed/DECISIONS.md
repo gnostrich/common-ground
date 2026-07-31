@@ -31,6 +31,18 @@ normalizer/classifier/segmenter registered under its behavior id — **no dispat
 chart tag rides inside every address, so it is declared in the manifest and hashed into
 `SEED.lock` (gate 4).
 
+**The morphism was additive, and that shape is the template for v0.5 code-chart admission.**
+English and Lean kept their tags (`\x01en\x01`, `\x01lean\x01`) and their normalizers, so
+no existing address moved; tabular added a *new* address space (`\x01tab\x01`) that nothing
+maps onto. An additive chart admission is therefore a manifest row + three behavior
+functions + a purely-additive seed-morphism (new tag, no remap) + a cold re-anneal, with the
+`chart_plugin_audit` PASS as the gate. The v0.5 code chart is admitted the same way: give it
+a fresh tag, register its behaviors, do not touch the english/lean tags, and the morphism
+stays additive rather than a remap. The audit gates the admission — and it has its own
+planted-defect control (`tests/test_probes.py:TheChartAuditCanDetectAReintroducedDefect`), so
+a reintroduced `if chart == ...` dispatch turns it red before any new chart can slip in
+around it.
+
 ## D3 — corpus manifest — **UNRESOLVED**
 
 Required before P3 (full ingestion). Blocks `SEED.lock`.
