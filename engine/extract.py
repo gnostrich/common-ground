@@ -136,7 +136,17 @@ class DeterministicExtractor(Extractor):
         return "T", 0.8
 
     def _spans(self, doc: Document) -> Iterable[Span]:
-        rng = DRNG("extract", self.extractor_id, self.prompt_id, doc.doc_id)
+        # Seeded on CONTENT, never on identity. Keying the inclusion draw to `doc.doc_id`
+        # made extraction a function of what a document was *called*: the same text
+        # re-ingested under a second provenance label drew a different sample and produced
+        # deltas the original never did, which no deduplication can collapse. KICKOFF
+        # section 4 requires re-ingestion to leave zero cold residue, and null cell (v)
+        # correctly failed until this changed.
+        #
+        # The per-extractor stream that makes k=3 informative is untouched: `extractor_id`
+        # and `prompt_id` still separate the three readers. What is removed is the one
+        # component that let a label change what was read.
+        rng = DRNG("extract", self.extractor_id, self.prompt_id, doc.content_hash)
         for surface, locator in self._candidate_spans(doc):
             keep_draw = rng.random()
             jitter = rng.uniform(-0.12, 0.12)
@@ -236,8 +246,15 @@ class AnthropicExtractor(Extractor):
             messages=[
                 {
                     "role": "user",
+                    # The document's *identity* is deliberately not in the prompt. A
+                    # doc_id here would let the model's reading depend on what the file
+                    # was called, so the same text under two labels could extract
+                    # differently — the live-path form of the defect the offline seeding
+                    # carried. Identity labels evidence in `Provenance`; it never reaches
+                    # anything that generates.
                     "content": (
-                        f"chart: {doc.chart}\ndoc_id: {doc.doc_id}\n\n---\n{doc.text}"
+                        f"chart: {doc.chart}\ncontent: {doc.content_hash[:16]}"
+                        f"\n\n---\n{doc.text}"
                     ),
                 }
             ],

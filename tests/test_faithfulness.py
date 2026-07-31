@@ -588,21 +588,19 @@ class TheAuditIsComplete(unittest.TestCase):
         finally:
             mod.FAITHFULNESS_ROWS = original
 
-    def test_the_gap_list_is_exactly_what_remains_open(self):
-        """Tree-null closed; extraction determinism opened in its place.
+    def test_no_gaps_remain_open(self):
+        """Both gaps this audit opened were ruled implementation defects and repaired.
 
-        Emptiness is a claim about the build, not a default. The tree-null repair's own
-        fixture change exposed a second defect — extraction seeded on `doc_id` rather than
-        content — so the list is not empty and this asserts precisely what is on it.
+        Emptiness is a claim about the build, not a default, and it has to be re-earned
+        every time. Tree-null was repaired first; the fixture change that required exposed
+        extraction determinism, which was repaired in turn. Every remaining deviation is
+        deliberate and cites the ruling that permits it.
         """
         from engine.faithfulness import by_design, check_faithfulness, gaps_before_p3
 
-        self.assertEqual(
-            [g.object for g in gaps_before_p3()],
-            ["extraction determinism (re-ingestion adds no evidence)"],
-        )
-        self.assertEqual(len(by_design()), 3,
-                         "three deliberate simplifications remain, each citing its ruling")
+        self.assertEqual([g.object for g in gaps_before_p3()], [])
+        self.assertTrue(all(r.deviation.ruling.strip() for r in by_design()),
+                        "every by-design deviation must cite its ruling")
         self.assertTrue(check_faithfulness().ok)
 
     def test_a_classified_gap_would_still_be_reported_rather_than_suppressed(self):
@@ -627,3 +625,91 @@ class TheAuditIsComplete(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GenerativeKeysAreContentAndSeedOnly(unittest.TestCase):
+    """GATES.md sentence 7. Identity may label evidence; it may never generate it."""
+
+    def test_a_relabelled_copy_extracts_bit_identically(self):
+        """The repair's control. Was: one extra evidential identity the original never had."""
+        from engine.energy import evidential_identity
+        from engine.nulls import _contradictory_docs
+        from engine.pipeline import ingest
+
+        docs = _contradictory_docs("c")
+        dup = [Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate")
+               for d in docs]
+        exts = build_k_extractors(decisions(), offline=True)
+
+        self.assertEqual(
+            sorted(evidential_identity(d) for d in ingest(docs, exts)),
+            sorted(evidential_identity(d) for d in ingest(dup, exts)),
+            "identical text under a new doc_id and a new source label must extract "
+            "bit-identically",
+        )
+
+    def test_cell_v_is_green_on_the_standard_fixture(self):
+        from engine.constants import BETA_ARMS
+        from engine.nulls import _contradictory_docs, cell_v_duplicate_source
+        from engine.types import NullStatus
+
+        cell = cell_v_duplicate_source(
+            "gate7", _contradictory_docs("c"),
+            build_k_extractors(decisions(), offline=True), BETA_ARMS[0],
+        )
+        self.assertIs(cell.status, NullStatus.PASS, cell.detail)
+        self.assertEqual(cell.stats["residue"], 0.0, "determinism means exactly zero")
+
+    def test_extraction_is_seeded_on_content_not_identity(self):
+        import inspect
+
+        from engine.extract import DeterministicExtractor
+
+        source = inspect.getsource(DeterministicExtractor._spans)
+        self.assertIn("doc.content_hash", source)
+        self.assertNotIn("DRNG(\"extract\", self.extractor_id, self.prompt_id, doc.doc_id)",
+                         source)
+
+    def test_the_live_prompt_carries_no_document_identity(self):
+        import inspect
+
+        from engine.extract import AnthropicExtractor
+
+        source = inspect.getsource(AnthropicExtractor._spans)
+        prompt = source.split('"content": (')[1].split(")")[0]
+        self.assertNotIn("doc.doc_id", prompt,
+                         "a doc_id in the prompt lets the model read the label")
+        self.assertIn("content_hash", prompt)
+
+    def test_every_generative_key_is_classified_and_none_is_identity_keyed(self):
+        from engine.static_checks import GENERATIVE_KEY_SITES, check_generative_keys
+
+        result = check_generative_keys()
+        self.assertTrue(result.ok, [str(v) for v in result.violations])
+        self.assertGreaterEqual(result.checked_functions, 8)
+        self.assertEqual([s["site"] for s in GENERATIVE_KEY_SITES
+                          if s["keying"] == "identity"], [])
+        for site in GENERATIVE_KEY_SITES:
+            if site["keying"] == "design":
+                self.assertTrue(str(site.get("ruling", "")).strip(),
+                                f"{site['site']}: design keying must cite its ruling")
+
+    def test_an_unclassified_random_stream_is_caught(self):
+        """The sweep's own positive control."""
+        import tempfile
+        from pathlib import Path
+
+        from engine.static_checks import check_generative_keys
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "engine").mkdir()
+            (root / "engine" / "sneaky.py").write_text(
+                "from .hashing import DRNG\n"
+                "def new_stream(doc):\n"
+                "    return DRNG('x', doc.doc_id)\n",
+                encoding="utf-8",
+            )
+            result = check_generative_keys(root)
+            self.assertFalse(result.ok)
+            self.assertTrue(any("sneaky" in str(v) for v in result.violations))

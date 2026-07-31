@@ -359,3 +359,216 @@ def gate6_report() -> list[dict[str, object]]:
         (dict(s) for s in GATE6_SITES),
         key=lambda s: (s["conforming"] is True, s["role"] != "decides", str(s["site"])),
     )
+
+
+# --- gate 7: generative keys are content-and-seed only --------------------------------
+
+#: Every site in ingestion or settlement that keys a *generative* operation — a random
+#: stream, an address, a cache, a dedup identity. Sentence 7 says these may depend on
+#: content and on the seed, never on what an artifact happens to be called.
+#:
+#: `keying` is one of:
+#:   ``content``   — derived from the artifact's bytes, or from addresses that are
+#:   ``seed``      — a seed-scope constant or the seed hash itself
+#:   ``design``    — identity-derived ON PURPOSE, with the ruling that requires it
+#:   ``identity``  — identity-derived with no justification. A defect; fails the check.
+GENERATIVE_KEY_SITES: tuple[dict[str, object], ...] = (
+    {
+        "site": "engine/extract.py:DeterministicExtractor._spans",
+        "key": "DRNG('extract', extractor_id, prompt_id, doc.content_hash)",
+        "keying": "content",
+        "note": "Repaired. Was seeded on `doc.doc_id`, which made the inclusion draw a "
+                "function of what a document was called; a relabelled copy extracted "
+                "differently and null cell (v) failed. `extractor_id`/`prompt_id` still "
+                "separate the three readers, so k=3 keeps its variance.",
+    },
+    {
+        "site": "engine/extract.py:AnthropicExtractor._spans",
+        "key": "prompt carries chart + content hash, never doc_id",
+        "keying": "content",
+        "note": "Repaired alongside. The prompt used to state `doc_id`, so the model's "
+                "reading could depend on the label — the live-path form of the same defect.",
+    },
+    {
+        "site": "engine/cast.py:cast",
+        "key": "DRNG('cast', seed_hash, block.id)",
+        "keying": "content",
+        "note": "`block.id` is a hash over its slot ids, and a slot id is "
+                "`hash(nu(surface), type)`. Content all the way down.",
+    },
+    {
+        "site": "engine/meter.py:surrogate_floor_distribution",
+        "key": "DRNG('surrogate', seed_hash)", "keying": "seed",
+        "note": "Seed only.",
+    },
+    {
+        "site": "engine/meter.py:second_fdt_surrogate_floor",
+        "key": "DRNG('fdt2', seed_hash)", "keying": "seed",
+        "note": "Seed only.",
+    },
+    {
+        "site": "engine/meter.py:loop_permutation_null",
+        "key": "DRNG('loop-perm', seed_hash, loop.id)", "keying": "content",
+        "note": "`loop.id` hashes the cycle's slot ids.",
+    },
+    {
+        "site": "engine/nulls.py:cell_i_idempotence",
+        "key": "DRNG('null-i', seed_hash)", "keying": "seed", "note": "Seed only.",
+    },
+    {
+        "site": "engine/nulls.py:cell_ix_binding_sanity",
+        "key": "DRNG('null-ix', seed_hash)", "keying": "seed", "note": "Seed only.",
+    },
+    {
+        "site": "engine/audit.py:_floor_movements",
+        "key": "DRNG('R4'|'R4-rewire', seed_hash, arm_label, trial_index)",
+        "keying": "seed",
+        "note": "`arm_label` is 'real'/'null'/'clamp' and the trial index counts trials — "
+                "both are constants of the experimental design, fixed by PREREG-AMENDMENT-2 "
+                "and identical on every run. Neither is an artifact identity.",
+    },
+    {
+        "site": "engine/normalize.py:slot_id",
+        "key": "join_hash(nu, type)", "keying": "content",
+        "note": "Gate 1 itself.",
+    },
+    {
+        "site": "engine/types.py:Document.content_hash",
+        "key": "sha256_text(self.text)", "keying": "content",
+        "note": "Text alone, independent of doc_id and source label. This is the property "
+                "everything else leans on.",
+    },
+    {
+        "site": "engine/energy.py:evidential_identity",
+        "key": "(slot, value, extractor_id, content_hash)", "keying": "content",
+        "note": "The dedup key. Deliberately excludes doc_id and source: re-ingesting one "
+                "corpus under a second label must add no evidence.",
+    },
+    {
+        "site": "engine/blocks.py:build_fibers",
+        "key": "join_hash(*member_slot_ids)", "keying": "content", "note": "Slot ids.",
+    },
+    {
+        "site": "engine/blocks.py:build_blocks",
+        "key": "join_hash(*member_slot_ids)", "keying": "content", "note": "Slot ids.",
+    },
+    {
+        "site": "engine/blocks.py:loops_from_fibers",
+        "key": "join_hash('loop', *cycle_slot_ids)", "keying": "content",
+        "note": "Slot ids in the verified cycle order.",
+    },
+    {
+        "site": "engine/lexicon.py:sense_id",
+        "key": "join_hash('sense', lemma, type_sig, source, primary_formal)",
+        "keying": "design",
+        "note": "Includes `source`, which is a provenance tier and therefore identity. This "
+                "is required, not tolerated: the collision policy forbids auto-merging, so "
+                "the same lemma arriving from Mathlib and from WordNet must occupy two "
+                "addresses rather than one. Identity here does not change *what* is read "
+                "from a source; it keeps two readings from silently becoming one.",
+        "ruling": "LEXICON SPEC section 2 — 'Never auto-merge. Senses keyed by (lemma, "
+                  "type_sig, source).' Merging is plastic and mint-gated.",
+    },
+    {
+        "site": "engine/lexicon.py:Registry.digest",
+        "key": "hash_obj(self.as_record())", "keying": "content",
+        "note": "The registry's own content.",
+    },
+    {
+        "site": "engine/seed_lock.py:build_manifest",
+        "key": "hash_obj({relative_path: file_hash, ...})", "keying": "design",
+        "note": "Keys on repo-relative paths as well as content, so renaming a seed file "
+                "moves the seed hash even when its bytes are unchanged. That is the "
+                "intended behaviour: a rename moves what the seed *is*, and gate 4 wants it "
+                "visible rather than absorbed.",
+        "ruling": "GATES.md sentence 4 — 'Anything that moves addresses ... is plastic: "
+                  "requires seed-morphism log event + cold re-anneal. No silent bumps.'",
+    },
+    {
+        "site": "engine/seed_lock.py:importer_script_hash",
+        "key": "hash_obj({files: [...paths...], hashes: [...]})", "keying": "design",
+        "note": "Same reasoning, for the three files that decide lexicon addresses.",
+        "ruling": "LEXICON SPEC section 3 — the importer script hash is a pin.",
+    },
+    {
+        "site": "adapters/lexicon_imports.py:import_convention_table",
+        "key": "sha256_text(canonical json of the table)", "keying": "content",
+        "note": "The table's bytes.",
+    },
+)
+
+_VALID_KEYING = frozenset({"content", "seed", "design", "identity"})
+
+
+def _top_level_functions(tree: ast.Module) -> list[tuple[str, ast.AST]]:
+    """`(qualified_name, node)` for module functions and class methods.
+
+    Nested closures are not yielded separately: a `DRNG` inside one is keyed by whatever
+    its enclosing function chose, so it belongs to that function's row. Methods come out as
+    `Class.method`, which is how a reader would cite them.
+    """
+    out: list[tuple[str, ast.AST]] = []
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            out.append((node.name, node))
+        elif isinstance(node, ast.ClassDef):
+            for sub in node.body:
+                if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    out.append((f"{node.name}.{sub.name}", sub))
+    return out
+
+
+def check_generative_keys(root: Path | None = None) -> StaticCheckResult:
+    """Sentence 7: no generative key may be identity-derived without a ruling.
+
+    Fails on an unclassified `DRNG(...)` call site, on any row marked `identity`, and on a
+    `design` row that cites no ruling. Same instrument as the gate-6 sweep: a new random
+    stream cannot be added anywhere in `engine/` without someone writing down what it is
+    keyed on.
+    """
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+    classified = {str(s["site"]) for s in GENERATIVE_KEY_SITES}
+
+    for row in GENERATIVE_KEY_SITES:
+        keying = str(row.get("keying", ""))
+        if keying not in _VALID_KEYING:
+            result.violations.append(
+                Violation(str(row["site"]), 0, "bad keying", str(row.get("keying")))
+            )
+        if keying == "identity":
+            result.violations.append(
+                Violation(str(row["site"]), 0, "identity-keyed", "generates from a label")
+            )
+        if keying == "design" and not str(row.get("ruling", "")).strip():
+            result.violations.append(
+                Violation(str(row["site"]), 0, "unjustified", "design keying needs a ruling")
+            )
+
+    for path in sorted((base / "engine").rglob("*.py")):
+        rel = str(path.relative_to(base)).replace("\\", "/")
+        if rel in ("engine/static_checks.py", "engine/faithfulness.py"):
+            continue  # they only ever mention DRNG in prose
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
+        result.checked_files += 1
+        for qualname, node in _top_level_functions(tree):
+            if not any(
+                isinstance(c, ast.Call) and getattr(c.func, "id", None) == "DRNG"
+                for c in ast.walk(node)
+            ):
+                continue
+            result.checked_functions += 1
+            if f"{rel}:{qualname}" not in classified:
+                result.violations.append(
+                    Violation(rel, node.lineno, "unclassified generative key",
+                              f"{rel}:{qualname}")
+                )
+    return result
+
+
+def generative_key_report() -> list[dict[str, object]]:
+    order = {"identity": 0, "design": 1, "seed": 2, "content": 3}
+    return sorted(
+        (dict(s) for s in GENERATIVE_KEY_SITES),
+        key=lambda s: (order.get(str(s["keying"]), 9), str(s["site"])),
+    )

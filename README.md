@@ -60,11 +60,11 @@ defaults the brief itself states. Details and reasoning in `seed/DECISIONS.md`.
 
 ---
 
-## The six gates, and where each is enforced
+## The seven gates, and where each is enforced
 
 `seed/GATES.md` holds the constitutional text. Sentences 1–5 are KICKOFF §2 verbatim;
-sentence 6 was added by operator authorization under PREREG-AMENDMENT-1 and is marked as
-such in the file. Each is enforced structurally, not by convention:
+sentences 6 and 7 were added by operator authorization and are marked as such in the file.
+Each is enforced structurally, not by convention:
 
 1. **Addressing** — `normalize.slot_id(nu, type)` takes exactly two arguments and reads no
    engine state. `nu` is chart-indexed and emits the chart as a control-character tag
@@ -92,6 +92,11 @@ such in the file. Each is enforced structurally, not by convention:
    `reports/gate6-sweep.md`, which found a fourth (R2) the moment it was written. **Every
    deciding site now conforms**; the three that do not are diagnostics, kept so the
    amendments stay auditable.
+7. **Generative keys are content-and-seed only** — identity may label evidence, never
+   generate it. `static_checks.check_generative_keys` classifies every random stream,
+   address, and dedup key in `engine/` and fails on any that is unclassified or keyed on an
+   artifact's label. Written after extraction was found seeded on `doc_id`, which made the
+   same text read differently under a second name.
 
 Try to violate them: `tests/test_gates.py` does, including smuggling a downgraded warrant
 past `Clamp`'s constructor via `object.__setattr__` to check `settle()` still catches it.
@@ -109,14 +114,14 @@ that **inter-chart correspondence is pairwise-collapsed** — `QEdge` has two en
 there is no k-ary factor type, so no ternary-correspondence claim may be advanced from this
 build.
 
-The audit's first gap — **tree-null**, holonomy computed over backtracking and open walks —
-was ruled an implementation defect and repaired: holonomy is now defined only on verified
-cycles, backtracking became a per-edge measured-shadow channel, and open walks raise instead
-of being silently measured. Repairing it produced a free calibration output (measured vs
-declared closure defect, and translator drift) and exposed a second gap: **extraction is
-seeded on `doc_id` rather than content**, so a relabelled copy extracts differently and null
-cell (v) correctly fails. That one is measured, pinned, and awaiting a ruling —
-`FAITHFULNESS.md`.
+The audit opened two gaps and both were ruled implementation defects and repaired.
+**Tree-null**: holonomy is now defined only on verified cycles, backtracking became a
+per-edge measured-shadow channel, and open walks raise instead of being silently measured —
+which produced a free calibration output. **Extraction determinism**: seeding moved from
+`doc_id` to the content hash, so a relabelled copy now extracts bit-identically and cell (v)
+is green at exactly zero. That second repair became gate 7.
+
+`gaps_before_p3()` is empty. Every remaining deviation is deliberate and cites its ruling.
 
 ## The lexicon layer — hub of faces, not hub of truth
 
@@ -218,12 +223,13 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 235 tests, stdlib only
+make test            # 242 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
 make nulls           # P1 null battery + positive controls at the current seed hash
 make lock            # refuses while any decision is blank
 make verify          # gate-4 tripwire
 make gate6           # statistical-band conformance sweep (GATES.md sentence 6)
+make gate7           # generative-key sweep (GATES.md sentence 7)
 make faithfulness    # theory object -> code site -> control audit
 
 python cli.py register P2 --note "..."           # BEFORE running a phase (KICKOFF §7.2)

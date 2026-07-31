@@ -14,7 +14,7 @@ A deviation is not automatically a defect — this is a *minimal*-faithful build
 simplifications are deliberate. An **unrecorded** deviation is the problem, because it is
 indistinguishable from a mistake, and after P3 the difference is unrecoverable.
 
-`make faithfulness` · 12 rows · 3 deliberate simplifications · **1 open gap**
+`make faithfulness` · 13 rows · 4 deliberate simplifications · **0 open gaps**
 
 ## The table
 
@@ -30,7 +30,8 @@ indistinguishable from a mistake, and after P3 the difference is unrecoverable.
 | **descent certificate** | `engine/settle.py:settle` | an objective rigged to rise on every step exhausts the halving safeguard and stamps the block `violated` — the certificate is a real check on the implementation, not a label | — |
 | **tree-null (all tree contest is path-debt)** | `engine/meter.py:verify_cycle` | a cycle-free corpus settles to cold floor exactly 0.0 and is flagged `no_cycle_support`; a backtrack walk and an open walk both raise `OpenWalkError`; a restatement fiber yields the genuine triangle Eng_1 -> Lean -> Eng_2 -> Eng_1 | — |
 | **measured shadow (per-edge closure defect)** | `engine/meter.py:measured_shadow` | every Q edge contributes a calibration row with `eps_measured`, the seed's `declared`, and their drift; `translator_drift()` names only cross-chart edges; and the floor still subtracts the DECLARED shadow, never the measured one | — |
-| **extraction determinism (re-ingestion adds no evidence)** | `engine/extract.py:DeterministicExtractor` | identical text under a new `doc_id` yields at least one evidential identity the original never produced — measured — while the content hashes are identical, so deduplication is not the culprit | **GAP — before P3** |
+| **extraction determinism (re-ingestion adds no evidence)** | `engine/extract.py:DeterministicExtractor` | identical text under a new `doc_id` AND a new source label yields a bit-identical set of evidential identities; null cell (v) is green on the standard fixture with residue exactly 0.0; and the live extractor's prompt carries a content hash rather than a doc_id | — |
+| **generative keys are content-and-seed only (gate 7)** | `engine/static_checks.py:check_generative_keys` | every `DRNG(...)` site in `engine/` is classified in `GENERATIVE_KEY_SITES`, no row is `identity`-keyed, every `design` row cites the ruling that requires it, and an unclassified new stream fails the check | by design |
 | **planted-cycle (frustration is real and persistent)** | `engine/meter.py:measure` | a triangle en1 -> lean -> en2 -> en1 with en1 clamped T and en2 clamped F yields holonomy 0.3224, twenty times the 0.0166 of the same topology with compatible ends, and re-anneal reproduces it exactly | — |
 
 ## The six factor families
@@ -130,33 +131,89 @@ Nothing subtracts the measured defect from a floor. Shadow subtraction still use
 declared value, and a control asserts it: a measured defect that deflated its own floor would
 be exactly the resample-of-the-observation pattern gate 6 forbids.
 
-## The open gap: extraction determinism
+## extraction determinism: repaired, and generalized into gate 7
 
-Found by this repair, not by design. Widening the standard fixture from two documents to
-three — required once a cycle needed three slots — exposed a second implementation defect
-that the old fixture had been too narrow to reach.
+`DeterministicExtractor._spans` seeded its RNG on `doc.doc_id`, so the inclusion draw
+deciding whether a marginal span was kept depended on what a document was **called**. A
+relabelled copy extracted differently and produced evidence the original never did, which
+no deduplication can collapse. KICKOFF §4 requires re-ingestion under a second provenance
+label to leave zero cold residue; it did not, and null cell (v) failed correctly.
 
-`DeterministicExtractor._spans` seeds its RNG with
+Ruled an implementation defect under gate 1 — nothing registered specified seeding, and the
+registered texts jointly entail content-keying. Seeding is now
 
 ```
-DRNG("extract", extractor_id, prompt_id, doc.doc_id)
+DRNG("extract", extractor_id, prompt_id, doc.content_hash)
 ```
 
-so the inclusion draw deciding whether a marginal span is kept depends on the document's
-**identity**, not its **content**. Re-ingesting identical text under a new id draws a
-different sample and can produce a delta the original never produced — and no deduplication
-can collapse evidence that did not exist the first time.
+The per-extractor variance that makes k=3 informative is untouched; what is removed is the
+one component that let a label change what was read. A relabelled copy now extracts
+**bit-identically**, and cell (v) is green at residue exactly 0.0.
 
-KICKOFF §4 requires re-ingestion under a second provenance label to leave zero cold residue.
-It does not. **Null cell (v) now fails on the standard fixture, which is the cell working
-rather than the cell breaking** — the content hashes match exactly, so content-hash
-provenance is correct and deduplication is not the culprit.
+### The sweep found one more, in the live path
 
-The conforming seeding is `DRNG("extract", extractor_id, prompt_id, content_hash)`, which
-keeps the per-extractor variance that makes k=3 informative while making extraction a pure
-function of content. It is a one-line change with a large consequence — every confidence
-jitter moves, so every floor moves — and that is a ruling to make rather than a fixture to
-adjust. Not made here.
+`AnthropicExtractor` put `doc_id` in its prompt, so the model could read the label. Same
+defect, same repair class, fixed alongside: the prompt now carries a content hash.
+
+### GATES.md sentence 7
+
+> All generative keys are content-and-seed only; artifact identity lives in provenance
+> exclusively.
+
+Identity may *label* evidence; it may never *generate* it. Every random stream, address,
+cache, and dedup key in ingestion and settlement was swept and classified, and
+`check_generative_keys` fails on any unclassified `DRNG(...)` site, any `identity` row, and
+any `design` row that cites no ruling. `make gate7`.
+
+| Site | Key material | Keying |
+|---|---|---|
+| `engine/lexicon.py:sense_id` | `join_hash('sense', lemma, type_sig, source, primary_formal)` | identity-by-design |
+| `engine/seed_lock.py:build_manifest` | `hash_obj({relative_path: file_hash, ...})` | identity-by-design |
+| `engine/seed_lock.py:importer_script_hash` | `hash_obj({files: [...paths...], hashes: [...]})` | identity-by-design |
+| `engine/audit.py:_floor_movements` | `DRNG('R4'|'R4-rewire', seed_hash, arm_label, trial_index)` | seed-keyed |
+| `engine/meter.py:second_fdt_surrogate_floor` | `DRNG('fdt2', seed_hash)` | seed-keyed |
+| `engine/meter.py:surrogate_floor_distribution` | `DRNG('surrogate', seed_hash)` | seed-keyed |
+| `engine/nulls.py:cell_i_idempotence` | `DRNG('null-i', seed_hash)` | seed-keyed |
+| `engine/nulls.py:cell_ix_binding_sanity` | `DRNG('null-ix', seed_hash)` | seed-keyed |
+| `adapters/lexicon_imports.py:import_convention_table` | `sha256_text(canonical json of the table)` | content-keyed |
+| `engine/blocks.py:build_blocks` | `join_hash(*member_slot_ids)` | content-keyed |
+| `engine/blocks.py:build_fibers` | `join_hash(*member_slot_ids)` | content-keyed |
+| `engine/blocks.py:loops_from_fibers` | `join_hash('loop', *cycle_slot_ids)` | content-keyed |
+| `engine/cast.py:cast` | `DRNG('cast', seed_hash, block.id)` | content-keyed |
+| `engine/energy.py:evidential_identity` | `(slot, value, extractor_id, content_hash)` | content-keyed |
+| `engine/extract.py:AnthropicExtractor._spans` | `prompt carries chart + content hash, never doc_id` | content-keyed |
+| `engine/extract.py:DeterministicExtractor._spans` | `DRNG('extract', extractor_id, prompt_id, doc.content_hash)` | content-keyed |
+| `engine/lexicon.py:Registry.digest` | `hash_obj(self.as_record())` | content-keyed |
+| `engine/meter.py:loop_permutation_null` | `DRNG('loop-perm', seed_hash, loop.id)` | content-keyed |
+| `engine/normalize.py:slot_id` | `join_hash(nu, type)` | content-keyed |
+| `engine/types.py:Document.content_hash` | `sha256_text(self.text)` | content-keyed |
+
+Three rows are identity-derived **on purpose** and each cites its ruling. `sense_id`
+includes the source tier because the collision policy forbids auto-merging — the same lemma
+from Mathlib and from WordNet must occupy two addresses, so identity here stops two readings
+silently becoming one rather than changing what either says. The two seed-manifest hashes
+key on repo-relative paths as well as content, because gate 4 wants a rename visible rather
+than absorbed. **No row is `identity`-keyed.**
+
+### Translator drift, re-measured
+
+The measured-vs-declared shadow channel was a gauge-variant reading before this repair: it
+depended on document labels, so its number meant nothing. After the fix it is
+**gauge-invariant** — the full per-edge calibration is bit-identical when every document is
+relabelled, which is the property that makes it a measurement at all.
+
+| | max translator drift |
+|---|---|
+| before the repair (gauge-variant) | 0.160 |
+| after (gauge-invariant) | **0.1068** |
+
+**The declared shadow was not changed**, for two reasons. The 0.160 band did not persist —
+it fell by a third — so the stated trigger was not met. And independently: this reading comes
+from a two-document synthetic corpus, and the declared shadow is subtracted from *every*
+floor. Declaring it would deflate real-corpus floors by a number derived from toy data, and
+`seed/shadow.json`'s zero is the conservative setting precisely because it cannot deflate
+anything. A shadow declaration worth making would be measured on the corpus it will be
+applied to, which needs D3.
 
 ## What holds
 

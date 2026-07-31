@@ -27,10 +27,11 @@ So every deviation carries a `kind`:
 Deviations of the second kind do not fail the check. They are findings, and hiding them
 behind a red build would defeat the point of writing them down.
 
-**As of the tree-null repair there are none.** The one gap this audit opened —
-holonomy computed over backtracking and open walks — was ruled an implementation defect
-rather than a theory change, repaired, and its row now records the repaired behaviour. The
-three remaining deviations are all `minimal-faithful-by-design`, each citing its ruling.
+**As of the DRNG repair there are none.** Two gaps were opened by this audit and both were
+ruled implementation defects rather than theory changes: holonomy computed over backtracking
+and open walks, and extraction seeded on document identity rather than content. Both are
+repaired and their rows now record the repaired behaviour. Every remaining deviation is
+`minimal-faithful-by-design` and cites its ruling.
 """
 
 from __future__ import annotations
@@ -233,33 +234,37 @@ FAITHFULNESS_ROWS: tuple[Row, ...] = (
         family="theory",
         site="engine/extract.py:DeterministicExtractor",
         role="KICKOFF section 4: re-ingesting one corpus under a second provenance label "
-             "must leave zero cold residue and no rank growth",
-        control="tests/test_controls.py:ExtractionIsNotContentDetermined.test_a_relabelled_copy_produces_evidence_the_original_did_not",
-        control_claim="identical text under a new `doc_id` yields at least one evidential "
-                      "identity the original never produced — measured — while the "
-                      "content hashes are identical, so deduplication is not the culprit",
+             "leaves zero cold residue and no rank growth. Extraction is seeded on the "
+             "document's content hash, never on its id.",
+        control="tests/test_faithfulness.py:GenerativeKeysAreContentAndSeedOnly.test_a_relabelled_copy_extracts_bit_identically",
+        control_claim="identical text under a new `doc_id` AND a new source label yields a "
+                      "bit-identical set of evidential identities; null cell (v) is green "
+                      "on the standard fixture with residue exactly 0.0; and the live "
+                      "extractor's prompt carries a content hash rather than a doc_id",
+    ),
+    Row(
+        object="generative keys are content-and-seed only (gate 7)",
+        family="structure",
+        site="engine/static_checks.py:check_generative_keys",
+        role="every random stream, address, cache and dedup key in ingestion and settlement "
+             "is keyed on content or on the seed; artifact identity lives in provenance",
+        control="tests/test_faithfulness.py:GenerativeKeysAreContentAndSeedOnly.test_every_generative_key_is_classified_and_none_is_identity_keyed",
+        control_claim="every `DRNG(...)` site in `engine/` is classified in "
+                      "`GENERATIVE_KEY_SITES`, no row is `identity`-keyed, every `design` "
+                      "row cites the ruling that requires it, and an unclassified new "
+                      "stream fails the check",
         deviation=Deviation(
-            kind=GAP,
-            note="`DeterministicExtractor._spans` seeds its RNG with "
-                 "`DRNG('extract', extractor_id, prompt_id, doc.doc_id)`. The inclusion "
-                 "draw that decides whether a marginal span is kept therefore depends on "
-                 "the document's **identity**, not its **content**. Re-ingesting the same "
-                 "text under a new id draws a different sample and can produce a delta the "
-                 "original did not — and no deduplication can collapse evidence that was "
-                 "never produced the first time.\n\n"
-                 "Content-hash provenance is correct and is not the problem: the hashes "
-                 "match exactly. Cell (v) now FAILS on the standard fixture, which is the "
-                 "cell working rather than the cell breaking.\n\n"
-                 "The defect was latent. The old two-document fixture happened to place no "
-                 "span near the selectivity threshold; widening it to three documents — "
-                 "required once a cycle needed three slots — exposed it.",
-            ruling="No ruling covers it. The conforming seeding is "
-                   "`DRNG('extract', extractor_id, prompt_id, content_hash)`, which keeps "
-                   "the per-extractor variance that makes k=3 informative while making "
-                   "extraction a pure function of content. It is a one-line change with a "
-                   "large consequence: every confidence jitter moves, so every floor moves. "
-                   "That is a ruling to make, not a fixture to adjust, and it is not made "
-                   "here.",
+            kind=MINIMAL_FAITHFUL,
+            note="Three sites are identity-derived on purpose. `lexicon.sense_id` includes "
+                 "the source tier, so the same lemma from Mathlib and from WordNet occupies "
+                 "two addresses rather than one. `seed_lock.build_manifest` and "
+                 "`importer_script_hash` key on repo-relative paths as well as content, so "
+                 "renaming a seed file moves the seed hash even when its bytes do not. "
+                 "Neither lets identity change *what* is read; the first stops two readings "
+                 "silently becoming one, the second stops a rename passing unseen.",
+            ruling="LEXICON SPEC section 2 ('Never auto-merge. Senses keyed by (lemma, "
+                   "type_sig, source)') for the first; GATES.md sentence 4 ('Anything that "
+                   "moves addresses is plastic ... No silent bumps') for the other two.",
         ),
     ),
     Row(

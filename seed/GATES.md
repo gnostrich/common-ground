@@ -4,10 +4,11 @@ These sentences are constitutional. They are frozen under `SEED.lock`. No engine
 weaken them; each is enforced structurally in code, and each enforcement point is cited
 below the sentence it enforces.
 
-**Provenance.** Sentences 1–5 are reproduced verbatim from KICKOFF §2. Sentence 6 is not
-from KICKOFF: it was added by operator authorization on 2026-07-30 as part of
-PREREG-AMENDMENT-1 (`registry/PREREG.md`), and is marked as such so that nobody later reads
-it as original text. It is constitutional on the same terms as the others — frozen, and
+**Provenance.** Sentences 1–5 are reproduced verbatim from KICKOFF §2. Sentences 6 and 7
+are not from KICKOFF: both were added by operator authorization on 2026-07-30 — sentence 6
+as part of PREREG-AMENDMENT-1 (`registry/PREREG.md`), sentence 7 alongside the DRNG
+implementation-defect repair — and both are marked as such so that nobody later reads them
+as original text. They are constitutional on the same terms as the others: frozen, and
 weakenable only by another authorized, logged amendment.
 
 1. Slot identity = hash(nu(surface), type). Addressing is a function of the seed, never of engine state.
@@ -16,6 +17,25 @@ weakenable only by another authorized, logged amendment.
 4. Anything that moves addresses (lexicon edit, prompt change, toolchain bump) is plastic: requires seed-morphism log event + cold re-anneal. No silent bumps; toolchain hashes tripwired in CI.
 5. No floor is read before the null battery passes on the same seed hash.
 6. Every statistical verdict is decided against a null constructed under the no-effect hypothesis (permutation / phase-randomization / independent surrogate), never against a resample of the observation. *(Added 2026-07-30 by PREREG-AMENDMENT-1; not KICKOFF text.)*
+7. All generative keys are content-and-seed only; artifact identity lives in provenance exclusively. *(Added 2026-07-30 with the DRNG repair; not KICKOFF text.)*
+
+### On sentence 7
+
+Identity may *label* evidence; it may never *generate* it. A document's id, its source
+label, its path, and the order it arrived in are all facts about the artifact rather than
+about its content, and none of them may reach a random stream, an address, a cache, or a
+dedup key. They belong in `Provenance` and nowhere else.
+
+The sentence was written because two defects of exactly this shape were found in one
+afternoon: the offline extractor seeded its inclusion draw on `doc.doc_id`, and the live
+extractor put `doc_id` in its prompt. Both made the same text read differently under a
+second label, and both defeated KICKOFF §4's requirement that re-ingestion leave zero cold
+residue.
+
+`design` keying — identity-derived on purpose — is permitted where a ruling requires it, and
+there are three: sense ids include their source tier because the collision policy forbids
+auto-merging, and the two seed-manifest hashes include file paths because gate 4 wants a
+rename to be visible. Each cites its ruling in `GENERATIVE_KEY_SITES`.
 
 ### Why sentence 6 is numbered 6
 
@@ -37,6 +57,7 @@ edit — and, being a seed edit, a plastic one under gate 4.
 | 4 | `engine/seed_lock.py:verify` | `verify()` recomputes the hash of every seed file, prompt, and pinned toolchain version and compares against `SEED.lock`. CI runs it on every push (`.github/workflows/ci.yml`). Drift fails the build. Legitimate changes must be accompanied by a `phase: seed-morphism` record in `registry/REGISTRY.jsonl` carrying `cold_anneal_ref`. |
 | 5 | `engine/meter.py:read_floor` | `read_floor()` requires a `NullBatteryReport` argument whose `seed_hash` equals the current seed hash and whose status is `PASS`. Any other value raises `GateViolation`. There is no floor-reading path that bypasses it. |
 | 6 | `engine/static_checks.py:check_gate6_classification` (+ `audit.floor_verdict`, `audit.prior_insensitivity`, `nulls.run_battery`) | Three enforcement layers. **Per rule:** R3's branch is decided by `floor <= second_fdt_surrogate_floor`, a loop-by-loop permutation of the warm/cold labels; R4's two arms are decided against dropout movement on a degree- and weight-marginal-preserving rewire of the Q graph. Both are nulls built under the no-effect hypothesis the rule tests. Superseded bootstrap bands are still computed and reported as legacy diagnostics but decide nothing. **Per cell:** every null cell carries a positive control and `NullBatteryReport.status` returns `FAIL` if any control is dead, so no cell can report a verdict it was incapable of failing. **Codebase-wide:** `check_gate6_classification` AST-walks `engine/` and fails on any band-building or band-reading function not classified in `GATE6_SITES` with its reference distribution and role, so a new band cannot be added unexamined. Current conformance: `reports/gate6-sweep.md`. `tests/test_controls.py` covers all three. |
+| 7 | `engine/static_checks.py:check_generative_keys` | AST-walks `engine/` for every `DRNG(...)` call site and fails on any not classified in `GENERATIVE_KEY_SITES`, on any row keyed `identity`, and on any `design` row that cites no ruling. The per-site table records what each stream is keyed on. `make gate7`. |
 
 ## Constants (SEED.lock scope)
 

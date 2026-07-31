@@ -154,6 +154,13 @@ jobs:
           raise SystemExit(0 if result.ok else 1)
           PY
 
+      - name: gate 7 — every generative key is content-and-seed only
+        run: |
+          # Identity may label evidence; it may never generate it. Two defects of this
+          # shape were found in one afternoon (extraction seeded on doc_id, and doc_id in
+          # the live prompt), so a new random stream now has to declare what it is keyed on.
+          python -m engine.gate7_sweep
+
       - name: faithfulness — every theory object mapped and controlled
         run: |
           # Gate 6 asks whether a verdict is decided against a null. This asks the prior

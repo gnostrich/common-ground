@@ -201,18 +201,17 @@ class CellVIsNoLongerVacuous(unittest.TestCase):
         self.assertNotEqual(evidence_from_deltas(doubled, dedupe=False),
                             evidence_from_deltas(deltas, dedupe=False))
 
-    def test_a_true_duplicate_does_move_the_floor_which_is_the_new_gap(self):
-        """Cell (v) FAILS on this corpus, and it is right to.
+    def test_true_duplicate_leaves_the_floor_bit_identical(self):
+        """Green again, and for the right reason.
 
-        KICKOFF section 4 says re-ingesting one corpus under a second provenance label
-        must leave zero cold residue. It does not, because extraction is seeded on
-        `doc.doc_id` rather than on content — see `ExtractionIsNotContentDetermined`. The
-        cell is detecting a real defect, so this asserts the failure rather than papering
-        over it.
+        This failed between the tree-null repair and the DRNG repair, because the widened
+        fixture reached a real defect: extraction was seeded on `doc.doc_id`, so a
+        relabelled copy read differently. The cell was correct to fail. With seeding keyed
+        on content it passes at exactly zero.
         """
         cell = cell_v_duplicate_source(SEED, _contradictory_docs("c"), _extractors(), BETA_ARMS[0])
-        self.assertIs(cell.status, NullStatus.FAIL, cell.detail)
-        self.assertGreater(cell.stats["residue"], 0.0)
+        self.assertIs(cell.status, NullStatus.PASS, cell.detail)
+        self.assertEqual(cell.stats["residue"], 0.0, "determinism means exactly zero")
 
     def test_deduplication_itself_still_works(self):
         """The mechanism cell (v) guards is sound; its input is not."""
@@ -822,8 +821,8 @@ class StudentizationWasTriedAndRejected(unittest.TestCase):
                              f"{loop_id}: a loud loop changed a quiet loop's flag status")
 
 
-class ExtractionIsNotContentDetermined(unittest.TestCase):
-    """A second implementation defect, found by the tree-null repair's fixture change.
+class ExtractionWasNotContentDetermined(unittest.TestCase):
+    """**Historical pin — the defect is repaired.** Kept on the usual terms.
 
     `DeterministicExtractor._spans` seeds its RNG with
 
@@ -839,12 +838,12 @@ class ExtractionIsNotContentDetermined(unittest.TestCase):
     put no span near the selectivity threshold. Widening it to three — required once a cycle
     needed three slots — exposed it.
 
-    Recorded as a `gap-before-P3` row in the faithfulness audit rather than repaired here:
-    changing the seed material changes every confidence jitter, hence every floor, and that
-    is a ruling to make rather than a fixture to adjust.
+    It was ruled an implementation defect under gate 1 and repaired: seeding is now
+    `DRNG("extract", extractor_id, prompt_id, doc.content_hash)`, and GATES.md sentence 7
+    generalizes the rule. These tests record what the defect was and assert it is gone.
     """
 
-    def test_a_relabelled_copy_produces_evidence_the_original_did_not(self):
+    def test_the_defect_is_gone_and_a_relabelled_copy_is_bit_identical(self):
         from engine.energy import evidential_identity
         from engine.pipeline import ingest
 
@@ -853,14 +852,29 @@ class ExtractionIsNotContentDetermined(unittest.TestCase):
                for d in docs]
         exts = _extractors()
 
-        original = {evidential_identity(d) for d in ingest(docs, exts)}
-        relabelled = {evidential_identity(d) for d in ingest(dup, exts)}
-        self.assertNotEqual(original, relabelled,
-                            "identical text under a new doc_id must not change what is "
-                            "extracted — but it does")
-        self.assertTrue(relabelled - original,
-                        "the copy yields at least one evidential identity the original "
-                        "never produced, which no deduplication can remove")
+        self.assertEqual(
+            sorted(evidential_identity(d) for d in ingest(docs, exts)),
+            sorted(evidential_identity(d) for d in ingest(dup, exts)),
+            "identical text under a new doc_id and source label must extract identically",
+        )
+
+    def test_the_shape_of_the_defect_reproduces_under_the_old_seeding(self):
+        """What went wrong, kept runnable so the record is checkable rather than asserted."""
+        from engine.hashing import DRNG
+
+        docs = _contradictory_docs("c")
+        dup = [Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate")
+               for d in docs]
+
+        by_id = [DRNG("extract", "k1", "v1", d.doc_id).random() for d in docs]
+        by_id_dup = [DRNG("extract", "k1", "v1", d.doc_id).random() for d in dup]
+        self.assertNotEqual(by_id, by_id_dup,
+                            "keyed on identity, the inclusion draw changes with the label")
+
+        by_content = [DRNG("extract", "k1", "v1", d.content_hash).random() for d in docs]
+        by_content_dup = [DRNG("extract", "k1", "v1", d.content_hash).random() for d in dup]
+        self.assertEqual(by_content, by_content_dup,
+                         "keyed on content, it does not")
 
     def test_the_content_hash_is_the_same_so_dedup_is_not_the_problem(self):
         from engine.pipeline import ingest
@@ -873,12 +887,13 @@ class ExtractionIsNotContentDetermined(unittest.TestCase):
                          {d.provenance.content_hash for d in ingest(dup, exts)},
                          "provenance hashing is content-based and correct; the seeding is not")
 
-    def test_the_seed_material_is_the_document_id(self):
+    def test_the_seed_material_is_now_the_content_hash(self):
         import inspect
 
         from engine.extract import DeterministicExtractor
 
         source = inspect.getsource(DeterministicExtractor._spans)
-        self.assertIn("doc.doc_id", source)
-        self.assertNotIn("content_hash", source,
-                         "the conforming seeding would key on content, not identity")
+        self.assertIn("doc.content_hash", source)
+        self.assertNotIn(
+            'DRNG("extract", self.extractor_id, self.prompt_id, doc.doc_id)', source
+        )
