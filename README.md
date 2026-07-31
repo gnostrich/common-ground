@@ -107,10 +107,16 @@ enforced by `make faithfulness`, which fails on any unmapped or uncontrolled row
 Three simplifications are deliberate and cite the ruling that permits them; the largest is
 that **inter-chart correspondence is pairwise-collapsed** — `QEdge` has two endpoints and
 there is no k-ary factor type, so no ternary-correspondence claim may be advanced from this
-build. One row is an **open gap**: the tree-null. A contest graph with no cycles should have
-cold floor exactly zero, and it does not, because a two-member fiber yields a backtracking
-walk and because a loop spec can name a closing edge that is absent from Q. Both are
-measured and pinned. Details and the decision they need in `FAITHFULNESS.md`.
+build.
+
+The audit's first gap — **tree-null**, holonomy computed over backtracking and open walks —
+was ruled an implementation defect and repaired: holonomy is now defined only on verified
+cycles, backtracking became a per-edge measured-shadow channel, and open walks raise instead
+of being silently measured. Repairing it produced a free calibration output (measured vs
+declared closure defect, and translator drift) and exposed a second gap: **extraction is
+seeded on `doc_id` rather than content**, so a relabelled copy extracts differently and null
+cell (v) correctly fails. That one is measured, pinned, and awaiting a ruling —
+`FAITHFULNESS.md`.
 
 ## The lexicon layer — hub of faces, not hub of truth
 
@@ -212,7 +218,7 @@ reports/       one-pagers
 
 ```bash
 make status          # decisions, lock state, phase readiness
-make test            # 223 tests, stdlib only
+make test            # 235 tests, stdlib only
 make demo            # synthetic end-to-end run; reads no corpus, writes no log
 make nulls           # P1 null battery + positive controls at the current seed hash
 make lock            # refuses while any decision is blank

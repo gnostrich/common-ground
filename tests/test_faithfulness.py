@@ -16,16 +16,28 @@ from __future__ import annotations
 import unittest
 
 from engine import GateViolation
-from engine.blocks import build_blocks, edges_from_fibers, loops_from_fibers
+from engine.blocks import build_blocks, edges_from_fibers, loops_from_fibers, order_cycle
+from engine.constants import decisions, shadow
+from engine.extract import build_k_extractors
 from engine.energy import FreeEnergy, evidence_from_deltas, lexicon_prior
 from engine.linalg import normalize_simplex
-from engine.meter import anneal, edge_weight_map, holonomy
+from engine.meter import (
+    OpenWalkError,
+    anneal,
+    edge_weight_map,
+    holonomy,
+    measured_shadow,
+    path_transport_disagreement,
+    verify_cycle,
+)
 from engine.normalize import address, classify, nu, slot_id
+from engine.pipeline import build_ledger, run_meter
 from engine.settle import settle
 from engine.types import (
     Block,
     Clamp,
     Delta,
+    Document,
     Fiber,
     LoopSpec,
     Provenance,
@@ -314,15 +326,15 @@ class DescentCertificate(unittest.TestCase):
 
 
 class TreeNull(unittest.TestCase):
-    """Row: tree-null — **PINS A GAP**.
+    """Row: tree-null — **REPAIRED**, and these are the controls the ruling mandated.
 
     Theory: a contest graph with no cycles has a unique path between any two slots, so
     transport is path-independent and the cold floor is exactly zero — all tree contest is
     path-debt.
 
-    The engine does not do this. These tests assert what it *actually* does, so the gap is
-    recorded rather than remembered, and so that closing it turns these tests red and forces
-    the record to be updated with it.
+    Before the repair the engine returned 0.1496 on a single-edge tree and 0.4338 on an open
+    three-slot walk. Both came from treating a walk as a cycle. Holonomy is now defined only
+    on verified cycles, and backtracking became the measured-shadow channel.
     """
 
     @staticmethod
@@ -331,49 +343,139 @@ class TreeNull(unittest.TestCase):
                 "v": normalize_simplex([0.1, 0.1, 0.1, 0.7]),
                 "x": normalize_simplex([0.1, 0.7, 0.1, 0.1])}
 
-    def test_a_tree_contest_graph_does_not_yield_zero_floor(self):
-        """(A) A backtracking walk on a single-edge tree has nonzero holonomy."""
-        p = self._states()
+    def test_a_backtrack_walk_is_refused_as_a_loop(self):
+        """Control 1a: the backtracking walk is no longer holonomy."""
         weights = edge_weight_map([QEdge("u", "v", 0.9, "fiber")])
         walk = LoopSpec(id="two", kind="paraphrase", slots=("u", "v"))
+        with self.assertRaises(OpenWalkError) as ctx:
+            holonomy(walk, self._states(), weights)
+        self.assertIn("measured-shadow channel", str(ctx.exception))
 
-        self.assertEqual(walk.edges(), [("u", "v"), ("v", "u")],
-                         "a two-member fiber yields a backtracking walk, not a cycle")
-        h = holonomy(walk, p, weights)
-        self.assertGreater(h, 0.1,
-                           "GAP: theory says a tree has zero holonomy; the engine returns "
-                           "a residual because transport is a contraction, not a reversible "
-                           "parallel transport")
-        self.assertAlmostEqual(h, 0.14958448753462605, places=12,
-                               msg="pinned so the gap cannot drift silently")
+    def test_a_backtrack_walk_is_classified_shadow_and_excluded_from_floor_support(self):
+        """Control 1b: it is measured, as shadow, and it is not a loop."""
+        weights = edge_weight_map([QEdge("u", "v", 0.9, "fiber")])
+        eps = measured_shadow("u", "v", self._states(), weights)
+        self.assertGreater(eps, 0.0, "the round trip does lose something — that is shadow")
+        self.assertAlmostEqual(eps, 0.14958448753462605, places=12,
+                               msg="the same number the old code called holonomy")
 
-    def test_two_member_fibers_are_the_common_case_so_the_gap_is_load_bearing(self):
-        loops = loops_from_fibers([Fiber(id="f", slots=("u", "v"))],
-                                  {"u": "english", "v": "english"})
-        self.assertEqual(len(loops), 1)
-        self.assertEqual(loops[0].edges(), [("u", "v"), ("v", "u")])
+        # And it contributes no loop, so it cannot enter the floor.
+        loops = loops_from_fibers(
+            [Fiber(id="f", slots=("u", "v"))], {"u": "english", "v": "english"},
+            edges=[QEdge("u", "v", 0.9, "fiber")],
+        )
+        self.assertEqual(loops, [], "a two-member fiber yields no loop at all")
 
-    def test_a_loop_spec_may_name_a_closing_edge_that_does_not_exist(self):
-        """(B) Holonomy silently measures an open walk as if it were closed."""
-        p = self._states()
+    def test_an_open_walk_raises_rather_than_being_silently_measured(self):
+        """Control 2: refuse, never skip."""
         path = edge_weight_map([QEdge("u", "v", 0.9, "fiber"),
                                 QEdge("v", "x", 0.9, "fiber")])
-        triangle = edge_weight_map([QEdge("u", "v", 0.9, "fiber"),
-                                    QEdge("v", "x", 0.9, "fiber"),
-                                    QEdge("u", "x", 0.9, "fiber")])
         loop = LoopSpec(id="tri", kind="paraphrase", slots=("u", "v", "x"))
+        with self.assertRaises(OpenWalkError) as ctx:
+            holonomy(loop, self._states(), path)
+        self.assertIn("not in Q", str(ctx.exception))
 
-        self.assertEqual(path.get(("x", "u"), 0.0) or path.get(("u", "x"), 0.0), 0.0,
-                         "the closing edge is absent from the Q graph")
-        open_walk = holonomy(loop, p, path)
-        closed = holonomy(loop, p, triangle)
+        # The constructor never emits such a spec in the first place.
+        self.assertEqual(
+            loops_from_fibers([Fiber(id="f", slots=("u", "v", "x"))],
+                              {s: "english" for s in "uvx"},
+                              edges=[QEdge("u", "v", 0.9, "fiber"),
+                                     QEdge("v", "x", 0.9, "fiber")]),
+            [], "no cycle in Q means no loop spec",
+        )
 
-        self.assertGreater(open_walk, closed,
-                           "GAP: the open walk reports MORE holonomy than the genuine "
-                           "cycle, because the start state is compared against a state "
-                           "transported somewhere else entirely")
-        self.assertAlmostEqual(open_walk, 0.4337950138504155, places=12)
-        self.assertAlmostEqual(closed, 0.22831316518442923, places=12)
+    def test_the_open_walk_quantity_survives_only_as_a_named_diagnostic(self):
+        path = edge_weight_map([QEdge("u", "v", 0.9, "fiber"),
+                                QEdge("v", "x", 0.9, "fiber")])
+        walk = LoopSpec(id="tri", kind="paraphrase", slots=("u", "v", "x"))
+        d = path_transport_disagreement(walk, self._states(), path)
+        self.assertAlmostEqual(d, 0.4337950138504155, places=12,
+                               msg="the identical number the old code returned as holonomy — "
+                                   "the quantity is retained and renamed, not recomputed. "
+                                   "What changed is that nothing reads it as a floor.")
+
+    def test_tree_null_passes_with_floor_zero(self):
+        """Control 4: a cycle-free contest graph yields floor exactly 0."""
+        docs = [Document("a", "english", "The cone is positive.", "repo_docs"),
+                Document("b", "english", "The cone is not positive.", "repo_docs")]
+        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+        self.assertEqual(ledger.loops, [], "two fibered surfaces close no cycle")
+        result, _, _ = run_meter(ledger, 1.0, "tree-null", shadow())
+        self.assertEqual(result.mean_floor(), 0.0,
+                         "all tree contest is path-debt — the floor is exactly zero")
+
+    def test_a_cycle_free_corpus_is_flagged_no_cycle_support(self):
+        """Control 5: floor 0 with a reason, never a silent zero."""
+        docs = [Document("a", "english", "The cone is positive.", "repo_docs"),
+                Document("b", "english", "The cone is not positive.", "repo_docs")]
+        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+        result, _, _ = run_meter(ledger, 1.0, "tree-null", shadow())
+        self.assertTrue(result.no_cycle_support,
+                        "a zero floor for want of a cycle must say so")
+        self.assertEqual(result.measurements, [])
+
+    def test_the_restatement_loop_is_a_genuine_triangle(self):
+        """Eng_1 -> Lean -> Eng_2 -> Eng_1, as PREREG's matrix always named it."""
+        chart_of = {"en1": "english", "ln": "lean", "en2": "english"}
+        edges = [QEdge("en1", "ln", 0.9, "fiber"), QEdge("ln", "en2", 0.9, "fiber"),
+                 QEdge("en1", "en2", 0.9, "fiber")]
+        loops = loops_from_fibers([Fiber(id="f", slots=("en1", "ln", "en2"))],
+                                  chart_of, edges=edges)
+        self.assertEqual(len(loops), 1)
+        loop = loops[0]
+        self.assertEqual(loop.kind, "restatement")
+        self.assertEqual(loop.slots, ("en1", "ln", "en2"),
+                         "the crossing is traversed first, so the cycle reads Eng->Lean->Eng")
+        self.assertEqual(loop.edges(), [("en1", "ln"), ("ln", "en2"), ("en2", "en1")])
+        verify_cycle(loop, edge_weight_map(edges))
+
+
+class MeasuredShadowChannel(unittest.TestCase):
+    """The calibration channel the repair produced. Standard meter output."""
+
+    def test_measured_defect_is_reported_beside_the_seed_declaration(self):
+        docs = [Document("d", "english",
+                         "The cone is positive. The cone is not positive. "
+                         "The cone may be positive.", "repo_docs"),
+                Document("l", "lean", "theorem cone_pos : IsPositive c := by simp",
+                         "lean_corpus")]
+        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+        result, _, _ = run_meter(ledger, 1.0, "calib", shadow())
+
+        self.assertTrue(result.shadow_calibration, "every Q edge contributes a row")
+        for row in result.shadow_calibration:
+            self.assertGreaterEqual(row.eps_measured, 0.0)
+            self.assertEqual(row.declared, 0.0, "the seed declares zero defect")
+            self.assertAlmostEqual(row.drift, row.eps_measured - row.declared)
+
+        summary = result.shadow_summary()
+        self.assertIn("max_translator_drift", summary)
+        self.assertEqual(summary["edges"], float(len(result.shadow_calibration)))
+
+    def test_translator_drift_names_cross_chart_edges_only(self):
+        docs = [Document("d", "english",
+                         "The cone is positive. The cone is not positive. "
+                         "The cone may be positive.", "repo_docs"),
+                Document("l", "lean", "theorem cone_pos : IsPositive c := by simp",
+                         "lean_corpus")]
+        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+        result, _, _ = run_meter(ledger, 1.0, "calib", shadow())
+        for row in result.translator_drift():
+            self.assertTrue(row.crosses_charts)
+            self.assertGreater(row.drift, 0.0)
+
+    def test_the_measured_defect_never_deflates_a_floor(self):
+        """It is calibration, not subtraction — a measured defect that reduced its own
+        floor would be the resample-of-the-observation pattern gate 6 forbids."""
+        import inspect
+
+        import engine.meter as meter_mod
+
+        source = inspect.getsource(meter_mod.measure).replace(" ", "")
+        self.assertIn("floor=max(0.0,h_cold-sh)", source,
+                      "the floor still subtracts the DECLARED shadow")
+        self.assertNotIn("eps_measured", source.split("floor=")[1][:300],
+                         "and never the measured one")
 
 
 class PlantedCycle(unittest.TestCase):
@@ -411,7 +513,13 @@ class PlantedCycle(unittest.TestCase):
                          "and it must survive re-anneal bit-identically")
 
     def test_the_frustration_runs_through_the_correspondence_edge(self):
-        """Drop the cross-chart edge and the cycle is gone, so the floor must collapse."""
+        """Drop the cross-chart edge and there is no cycle left to measure.
+
+        Before the tree-null repair this silently returned a number for the open walk. Now
+        it refuses, which is the stronger and more honest statement: the frustration was
+        never a property of the three slots, it was a property of the cycle through the
+        correspondence.
+        """
         block = self._block()
         broken = Block("b", block.slots, tuple(e for e in block.edges
                                                if not (e.u == "en1" and e.v == "ln1")))
@@ -419,9 +527,8 @@ class PlantedCycle(unittest.TestCase):
         cold = anneal(broken, flat, flat, 1.0,
                       clamps=[Clamp("en1", "T", KERNEL), Clamp("en2", "F", KERNEL)])
         loop = LoopSpec("l", "restatement", ("en1", "ln1", "en2"))
-        opened = holonomy(loop, cold.p, edge_weight_map(broken.edges))
-        frustrated, _ = self._floor([Clamp("en1", "T", KERNEL), Clamp("en2", "F", KERNEL)])
-        self.assertNotEqual(opened, frustrated)
+        with self.assertRaises(OpenWalkError):
+            holonomy(loop, cold.p, edge_weight_map(broken.edges))
 
 
 class TheAuditIsComplete(unittest.TestCase):
@@ -481,15 +588,41 @@ class TheAuditIsComplete(unittest.TestCase):
         finally:
             mod.FAITHFULNESS_ROWS = original
 
-    def test_the_open_gap_is_reported_rather_than_suppressed(self):
-        from engine.faithfulness import check_faithfulness, gaps_before_p3
+    def test_the_gap_list_is_exactly_what_remains_open(self):
+        """Tree-null closed; extraction determinism opened in its place.
 
-        gaps = gaps_before_p3()
-        self.assertEqual([g.object for g in gaps],
-                         ["tree-null (all tree contest is path-debt)"])
-        self.assertTrue(check_faithfulness().ok,
-                        "a classified gap is a finding, not a build failure — a finding "
-                        "behind a red build is a finding nobody reads")
+        Emptiness is a claim about the build, not a default. The tree-null repair's own
+        fixture change exposed a second defect — extraction seeded on `doc_id` rather than
+        content — so the list is not empty and this asserts precisely what is on it.
+        """
+        from engine.faithfulness import by_design, check_faithfulness, gaps_before_p3
+
+        self.assertEqual(
+            [g.object for g in gaps_before_p3()],
+            ["extraction determinism (re-ingestion adds no evidence)"],
+        )
+        self.assertEqual(len(by_design()), 3,
+                         "three deliberate simplifications remain, each citing its ruling")
+        self.assertTrue(check_faithfulness().ok)
+
+    def test_a_classified_gap_would_still_be_reported_rather_than_suppressed(self):
+        """The mechanism, exercised now that no real gap remains to exercise it."""
+        from engine.faithfulness import GAP, Deviation, Row, check_faithfulness, gaps_before_p3
+        import engine.faithfulness as mod
+
+        original = mod.FAITHFULNESS_ROWS
+        mod.FAITHFULNESS_ROWS = original + (
+            Row(object="phantom", family="theory", site="engine/energy.py:FreeEnergy",
+                role="-", control=original[0].control, control_claim="x",
+                deviation=Deviation(kind=GAP, note="the build does not do this")),
+        )
+        try:
+            self.assertIn("phantom", [g.object for g in gaps_before_p3()])
+            self.assertTrue(check_faithfulness().ok,
+                            "a classified gap is a finding, not a build failure — a finding "
+                            "behind a red build is a finding nobody reads")
+        finally:
+            mod.FAITHFULNESS_ROWS = original
 
 
 if __name__ == "__main__":

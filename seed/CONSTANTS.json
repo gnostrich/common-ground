@@ -606,5 +606,14 @@
   "rewire_passes": 10,
   "rewire_note": "Double-edge-swap passes per edge in the R4 null rewire (PREREG-AMENDMENT-2). 10 passes is well past the mixing point for graphs this size; swaps that would create a self-loop or duplicate are refused, so degree and weight marginals hold exactly.",
   "studentize_min_scale": 1e-12,
-  "studentize_note": "Below this null MAD a loop's permutation scale is treated as degenerate and that loop falls back to raw leave-one-out pooling (PREREG-AMENDMENT-3 studentization repair). Reported per loop."
+  "studentize_note": "Below this null MAD a loop's permutation scale is treated as degenerate and that loop falls back to raw leave-one-out pooling (PREREG-AMENDMENT-3 studentization repair). Reported per loop.",
+  "loop_constructor": {
+    "min_cycle_length": 3,
+    "require_closure_in_q": true,
+    "allow_immediate_backtracking": false,
+    "prefer_chart_alternating_order": true,
+    "open_walk_policy": "raise",
+    "backtrack_policy": "measured-shadow-channel"
+  },
+  "loop_constructor_note": "The loop-constructor spec, seeded because it decides what the meter measures. Holonomy is defined only on verified cycles: closed, every edge present in Q, no immediate backtracking, length >= 3. A backtrack walk u->v->u is not a loop; its closure defect is measured per edge and compared against the declared shadow. An open walk raises rather than being silently measured. Tree-null repair, 2026-07-30."
 }

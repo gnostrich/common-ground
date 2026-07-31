@@ -14,7 +14,7 @@ A deviation is not automatically a defect — this is a *minimal*-faithful build
 simplifications are deliberate. An **unrecorded** deviation is the problem, because it is
 indistinguishable from a mistake, and after P3 the difference is unrecoverable.
 
-`make faithfulness` · 10 rows · 3 deliberate simplifications · **1 open gap**
+`make faithfulness` · 12 rows · 3 deliberate simplifications · **1 open gap**
 
 ## The table
 
@@ -28,7 +28,9 @@ indistinguishable from a mistake, and after P3 the difference is unrecoverable.
 | **type-consistency** | `engine/normalize.py:slot_id` | one surface read as `assert` and as `define` produces two distinct slots that never share a block, so a type mismatch cannot become a contest | by design |
 | **blocks as connected components of Q** | `engine/blocks.py:build_blocks` | two contests sharing no Q edge land in two blocks, and perturbing one block's evidence moves the other block's settled state by exactly zero — measured, not asserted | — |
 | **descent certificate** | `engine/settle.py:settle` | an objective rigged to rise on every step exhausts the halving safeguard and stamps the block `violated` — the certificate is a real check on the implementation, not a label | — |
-| **tree-null (all tree contest is path-debt)** | `engine/meter.py:holonomy` | FAILS AS THEORY PREDICTS IT SHOULD NOT. A single-edge tree yields holonomy 0.1496, and a 3-slot walk over a path yields 0.4338 — larger than the genuine triangle it should be dominated by. The control pins both, so the gap cannot be closed by accident. | **GAP — before P3** |
+| **tree-null (all tree contest is path-debt)** | `engine/meter.py:verify_cycle` | a cycle-free corpus settles to cold floor exactly 0.0 and is flagged `no_cycle_support`; a backtrack walk and an open walk both raise `OpenWalkError`; a restatement fiber yields the genuine triangle Eng_1 -> Lean -> Eng_2 -> Eng_1 | — |
+| **measured shadow (per-edge closure defect)** | `engine/meter.py:measured_shadow` | every Q edge contributes a calibration row with `eps_measured`, the seed's `declared`, and their drift; `translator_drift()` names only cross-chart edges; and the floor still subtracts the DECLARED shadow, never the measured one | — |
+| **extraction determinism (re-ingestion adds no evidence)** | `engine/extract.py:DeterministicExtractor` | identical text under a new `doc_id` yields at least one evidential identity the original never produced — measured — while the content hashes are identical, so deduplication is not the culprit | **GAP — before P3** |
 | **planted-cycle (frustration is real and persistent)** | `engine/meter.py:measure` | a triangle en1 -> lean -> en2 -> en1 with en1 clamped T and en2 clamped F yields holonomy 0.3224, twenty times the 0.0166 of the same topology with compatible ends, and re-anneal reproduces it exactly | — |
 
 ## The six factor families
@@ -77,57 +79,84 @@ Nothing this round measures needs a joint 3-way factor.
 the theory wants one, it needs a k-ary factor type, and that is a new object rather than a
 parameter change.
 
-## The open gap: tree-null
+## tree-null: repaired
 
 > A contest graph with no cycles has a unique path between any two slots, so transport is
 > path-independent and the cold floor is exactly zero. All tree contest is path-debt.
 
-**The engine does not do this.** Two distinct defects, both measured, both pinned by
-`tests/test_faithfulness.py:TreeNull` so they cannot drift or be closed by accident.
+The engine now does this. The gap was ruled an **implementation defect** — "loop" always
+meant cycle, and the build was measuring walks — so no PREREG text changed and no amendment
+was needed.
 
-### (A) Backtracking walks are not cycles
+### (A) Backtracking is shadow, not holonomy
 
-`loops_from_fibers` gives a two-member fiber the walk `u -> v -> u`. On a tree that is a
-closed walk containing no cycle, so theory says zero holonomy. The engine returns
-**0.1496**.
+`loops_from_fibers` used to give a two-member fiber the walk `u -> v -> u` and count its
+residual as holonomy. On a single-edge tree that returned **0.1496** where theory says zero.
+The residual is a property of the transport operator — `T(q) = (1-a)q + a*p_v` is a
+contraction toward its target, so `T_{v->u} . T_{u->v} != id` — not of the ledger.
 
-The cause is the transport operator. `T(q) = (1-a)q + a*p_v` is a contraction *toward* the
-target, not a reversible parallel transport, so `T_{v->u} . T_{u->v} != id` whenever
-`p_u != p_v`. The residual is a property of the operator, not of the ledger.
+A two-member fiber now yields **no loop at all**. The same round trip is measured instead by
+`meter.measured_shadow` as the edge's per-edge closure defect `eps_e`, which is the quantity
+it always was. Holonomy is defined only on **verified cycles**: closed, every edge present in
+Q, no immediate backtracking, length >= 3, enforced by `meter.verify_cycle`.
 
-This is not a corner case: a two-member fiber is the commonest fiber the engine builds, and
-`Eng->Lean->Eng` with a single English slot is exactly this shape.
+### (B) Open walks raise; they are never skipped
 
-### (B) A loop spec may name a closing edge that does not exist
+`holonomy` used to skip zero-weight edges, so a loop spec whose closing edge was absent from
+Q silently measured an **open** walk — reporting **0.4338** against **0.2283** for the
+genuine triangle over the same slots. `order_cycle` now returns `None` unless Q actually
+closes, so no such spec is emitted, and `holonomy` raises `OpenWalkError` rather than
+skipping. The old quantity survives as `path_transport_disagreement`: same number, honest
+name, diagnostic only, and nothing reads it as a floor.
 
-`loops_from_fibers` builds its cycle from fiber **membership**, and `holonomy` skips any
-edge whose weight is zero (`if w <= 0.0: continue`). So a three-member fiber whose Q graph
-is the path `u-v-x` yields the loop spec `(u,v,x)` whose closing edge `(x,u)` is absent —
-and holonomy then silently measures the **open** walk `u -> v -> x`, reporting
-`TV(p_u, transported)`: the start state compared against a state transported somewhere else
-entirely.
+### Restatement loops are now genuine triangles
 
-| walk | closing edge in Q? | holonomy |
-|---|---|---|
-| `u -> v -> x` over the path `u-v-x` | **no** | **0.4338** |
-| `u -> v -> x -> u` over the triangle | yes | 0.2283 |
+`Eng_1 -> Lean -> Eng_2 -> Eng_1`. PREREG's matrix always named this; the constructor now
+instantiates it, preferring cyclic orderings with the most chart alternations and, among
+those, the one that opens on the correspondence leg. Both directions are enumerated rather
+than filtered to a lexicographic canonical form — they share an edge set but holonomy starts
+at `slots[0]`, so the direction decides which leg is traversed first.
 
-The open walk reports *more* holonomy than the genuine cycle. The meter's central quantity
-is being computed over walks that are not cycles in the contest graph.
+### The calibration channel this produced
 
-### No ruling covers this
+Backtracking had to go somewhere, and where it went is useful. `MeterResult.shadow_calibration`
+now carries, for every Q edge, the measured closure defect beside the defect the seed
+declared a priori. `seed/shadow.json` declares zero, so any measured defect is drift — and on
+a cross-chart edge that is **translator drift**: the round trip through the correspondence
+loses something the seed said it would not. `translator_drift()` and `shadow_summary()` are
+standard meter output on every run.
 
-KICKOFF's paired loop-side meter presumes loops are cycles. Nothing in `GATES.md`, PREREG,
-or any of the three amendments licenses measuring holonomy over a backtracking or open walk.
-Closing it needs a decision on both halves:
+Nothing subtracts the measured defect from a floor. Shadow subtraction still uses the
+declared value, and a control asserts it: a measured defect that deflated its own floor would
+be exactly the resample-of-the-observation pattern gate 6 forbids.
 
-1. whether a two-member fiber yields a loop at all, and if so what its holonomy means; and
-2. whether `loops_from_fibers` must verify closure against the Q graph before emitting a
-   spec — or `holonomy` must refuse a spec whose closing edge is missing rather than
-   skipping it.
+## The open gap: extraction determinism
 
-Both are engine changes with a seed consequence. Neither is proposed here; this document
-reports.
+Found by this repair, not by design. Widening the standard fixture from two documents to
+three — required once a cycle needed three slots — exposed a second implementation defect
+that the old fixture had been too narrow to reach.
+
+`DeterministicExtractor._spans` seeds its RNG with
+
+```
+DRNG("extract", extractor_id, prompt_id, doc.doc_id)
+```
+
+so the inclusion draw deciding whether a marginal span is kept depends on the document's
+**identity**, not its **content**. Re-ingesting identical text under a new id draws a
+different sample and can produce a delta the original never produced — and no deduplication
+can collapse evidence that did not exist the first time.
+
+KICKOFF §4 requires re-ingestion under a second provenance label to leave zero cold residue.
+It does not. **Null cell (v) now fails on the standard fixture, which is the cell working
+rather than the cell breaking** — the content hashes match exactly, so content-hash
+provenance is correct and deduplication is not the culprit.
+
+The conforming seeding is `DRNG("extract", extractor_id, prompt_id, content_hash)`, which
+keeps the per-extractor variance that makes k=3 informative while making extraction a pure
+function of content. It is a one-line change with a large consequence — every confidence
+jitter moves, so every floor moves — and that is a ruling to make rather than a fixture to
+adjust. Not made here.
 
 ## What holds
 

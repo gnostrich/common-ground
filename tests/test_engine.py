@@ -133,25 +133,32 @@ class Holonomy(unittest.TestCase):
         ])
         self.assertEqual(holonomy(loop, p, weights), 0.0)
 
-    def test_disagreement_produces_positive_holonomy(self):
-        loop = LoopSpec("l", "paraphrase", ("s1", "s2"))
-        p = {"s1": [0.97, 0.01, 0.01, 0.01], "s2": [0.01, 0.97, 0.01, 0.01]}
-        weights = edge_weight_map([QEdge("s1", "s2", 1.0, "fiber")])
-        self.assertGreater(holonomy(loop, p, weights), 0.0)
+    @staticmethod
+    def _triangle():
+        return edge_weight_map([
+            QEdge("s1", "s2", 1.0, "fiber"),
+            QEdge("s2", "s3", 1.0, "fiber"),
+            QEdge("s3", "s1", 1.0, "fiber"),
+        ])
 
-    def test_holonomy_is_bounded_by_total_variation(self):
-        loop = LoopSpec("l", "paraphrase", ("s1", "s2"))
-        p = {"s1": [0.97, 0.01, 0.01, 0.01], "s2": [0.01, 0.97, 0.01, 0.01]}
-        weights = edge_weight_map([QEdge("s1", "s2", 1.0, "fiber")])
-        self.assertLessEqual(
-            holonomy(loop, p, weights), total_variation(p["s1"], p["s2"]) + 1e-12
-        )
+    def test_disagreement_produces_positive_holonomy(self):
+        loop = LoopSpec("l", "paraphrase", ("s1", "s2", "s3"))
+        p = {"s1": [0.97, 0.01, 0.01, 0.01], "s2": [0.01, 0.97, 0.01, 0.01],
+             "s3": [0.01, 0.01, 0.97, 0.01]}
+        self.assertGreater(holonomy(loop, p, self._triangle()), 0.0)
+
+    def test_holonomy_is_bounded_by_the_widest_disagreement_on_the_cycle(self):
+        loop = LoopSpec("l", "paraphrase", ("s1", "s2", "s3"))
+        p = {"s1": [0.97, 0.01, 0.01, 0.01], "s2": [0.01, 0.97, 0.01, 0.01],
+             "s3": [0.01, 0.01, 0.97, 0.01]}
+        widest = max(total_variation(p["s1"], p[s]) for s in ("s2", "s3"))
+        self.assertLessEqual(holonomy(loop, p, self._triangle()), widest + 1e-12)
 
     def test_declared_shadow_is_zero_and_cannot_deflate_the_floor(self):
         from engine.constants import shadow
 
-        loop = LoopSpec("l", "restatement", ("s1", "s2"))
-        chart_of = {"s1": "english", "s2": "lean"}
+        loop = LoopSpec("l", "restatement", ("s1", "s2", "s3"))
+        chart_of = {"s1": "english", "s2": "lean", "s3": "english"}
         self.assertEqual(loop_shadow(loop, chart_of, shadow()), 0.0)
 
 

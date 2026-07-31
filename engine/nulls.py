@@ -628,14 +628,19 @@ _BROKEN_SUITE = {
 
 
 def _contradictory_docs(source: str) -> list[Document]:
-    """Two surfaces that fiber together and carry opposite values.
+    """THREE surfaces that fiber together and disagree, so Q closes a genuine cycle.
 
-    Same content tokens, so `build_fibers` links them; opposite b-values, so their settled
-    states differ and the loop through them fails to close.
+    Two surfaces used to be enough, because a two-member fiber emitted the backtracking
+    walk `u -> v -> u` and that was counted as holonomy. The tree-null repair ended that: a
+    cycle needs at least three slots, all of whose edges are present in Q. A fixture built
+    on two surfaces would now produce no loop at all, and every control resting on it would
+    go quietly dead — which is exactly the failure mode the positive-control rule exists to
+    catch, so the fixture is fixed rather than the controls weakened.
     """
     return [
         Document(f"{source}:pos", "english", "The cone is positive.", source),
         Document(f"{source}:neg", "english", "The cone is not positive.", source),
+        Document(f"{source}:mod", "english", "The cone may be positive.", source),
     ]
 
 

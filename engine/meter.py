@@ -53,7 +53,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Mapping, Sequence
 
-from . import GateViolation
+from . import EngineError, GateViolation
 from .constants import (
     CAST_T2_DECAY,
     CAST_T2_END,
@@ -141,12 +141,65 @@ def _alpha(weight: float) -> float:
     return weight / (1.0 + weight)
 
 
+class OpenWalkError(EngineError):
+    """A holonomy was requested over something that is not a cycle in Q."""
+
+
+def verify_cycle(
+    loop: LoopSpec,
+    edge_weight: Mapping[tuple[str, str], float],
+) -> None:
+    """Raise unless `loop` is a genuine cycle in the Q graph.
+
+    Four conditions, all of them load-bearing (the tree-null repair):
+
+    1. **length >= 3.** A two-slot "loop" is the backtracking walk `u -> v -> u`. That is a
+       closed walk containing no cycle, and on a tree theory says its holonomy is zero.
+       Backtracking is now handled by `measured_shadow` instead, where its residual is a
+       property of the translation rather than of the ledger.
+    2. **no immediate backtracking** anywhere in the walk, for the same reason.
+    3. **every edge present in Q**, closing edge included. A loop spec built from fiber
+       membership can name an edge the graph does not have.
+    4. **closed** — guaranteed by `LoopSpec.edges()` wrapping, checked here anyway.
+
+    It raises rather than skipping. Skipping a missing edge is what let the meter report
+    `TV(start, transported)` for an OPEN walk — the start state compared against a state
+    transported somewhere else entirely, which measured more "holonomy" than the genuine
+    cycle it should have been dominated by.
+    """
+    slots = loop.slots
+    if len(slots) < 3:
+        raise OpenWalkError(
+            f"loop {loop.id}: {len(slots)} slots. Holonomy is defined on cycles of length "
+            ">= 3; a two-slot walk backtracks and is a measured-shadow channel, not a loop."
+        )
+    if len(set(slots)) != len(slots):
+        raise OpenWalkError(f"loop {loop.id}: repeats a slot, so the walk is not a cycle")
+
+    edges = loop.edges()
+    for i, (u, v) in enumerate(edges):
+        if u == v:
+            raise OpenWalkError(f"loop {loop.id}: self-loop at {u}")
+        nxt = edges[(i + 1) % len(edges)]
+        if nxt == (v, u):
+            raise OpenWalkError(
+                f"loop {loop.id}: immediate backtracking {u} -> {v} -> {u}"
+            )
+        w = edge_weight.get((u, v)) or edge_weight.get((v, u)) or 0.0
+        if w <= 0.0:
+            raise OpenWalkError(
+                f"loop {loop.id}: edge ({u}, {v}) is not in Q, so the walk is open. "
+                "Refusing rather than skipping it."
+            )
+
+
 def holonomy(
     loop: LoopSpec,
     p: Mapping[str, Vector],
     edge_weight: Mapping[tuple[str, str], float],
 ) -> float:
-    """Transport the start state once around the loop and measure the residual."""
+    """Transport the start state once around a verified cycle and measure the residual."""
+    verify_cycle(loop, edge_weight)
     start = p.get(loop.slots[0])
     if start is None:
         return 0.0
@@ -154,12 +207,70 @@ def holonomy(
     for u, v in loop.edges():
         target = p.get(v)
         if target is None:
-            continue
+            raise OpenWalkError(
+                f"loop {loop.id}: no settled state for {v}; the walk cannot be closed"
+            )
         w = edge_weight.get((u, v)) or edge_weight.get((v, u)) or 0.0
-        if w <= 0.0:
-            continue
         carried = mix(carried, target, _alpha(w))
     return total_variation(start, carried)
+
+
+def path_transport_disagreement(
+    walk: LoopSpec,
+    p: Mapping[str, Vector],
+    edge_weight: Mapping[tuple[str, str], float],
+) -> float:
+    """`TV(start, transported)` along an OPEN walk. **Diagnostic only — never a floor.**
+
+    This is the quantity `holonomy` used to return when it silently skipped a missing
+    closing edge. It is retained under an honest name because it is occasionally useful to
+    see how far a chain of transports moves a state, but it is not a holonomy: the start and
+    end points are different slots, so the number says nothing about path dependence and
+    nothing may be read from it about the ledger.
+    """
+    start = p.get(walk.slots[0])
+    if start is None:
+        return 0.0
+    carried: Vector = list(start)
+    for u, v in walk.edges()[: len(walk.slots) - 1]:
+        target = p.get(v)
+        if target is None:
+            continue
+        w = edge_weight.get((u, v)) or edge_weight.get((v, u)) or 0.0
+        if w > 0.0:
+            carried = mix(carried, target, _alpha(w))
+    return total_variation(start, carried)
+
+
+def measured_shadow(
+    u: str,
+    v: str,
+    p: Mapping[str, Vector],
+    edge_weight: Mapping[tuple[str, str], float],
+) -> float:
+    """Per-edge closure defect `eps_e`: the residual of the backtrack walk `u -> v -> u`.
+
+    This is what the tree-null repair does with backtracking instead of counting it as
+    holonomy. Going out along an edge and back is not a cycle, so it cannot carry path
+    dependence — but it is not nothing either. Transport is a contraction toward its target,
+    so `T_{v->u} . T_{u->v} != id` whenever the two settled states differ, and the residual
+    measures how much the round trip through this correspondence loses.
+
+    That is exactly what shadow is supposed to declare. `seed/shadow.json` states a closure
+    defect per chart pair *a priori*; this measures the same quantity *a posteriori*. The
+    two are compared in `shadow_calibration`, and a cross-chart edge where the measured
+    defect exceeds what the seed declared is translator drift.
+    """
+    pu, pv = p.get(u), p.get(v)
+    if pu is None or pv is None:
+        return 0.0
+    w = edge_weight.get((u, v)) or edge_weight.get((v, u)) or 0.0
+    if w <= 0.0:
+        return 0.0
+    a = _alpha(w)
+    out = mix(list(pu), pv, a)
+    back = mix(out, pu, a)
+    return total_variation(pu, back)
 
 
 def edge_weight_map(edges: Sequence[QEdge]) -> dict[tuple[str, str], float]:
@@ -171,6 +282,21 @@ def edge_weight_map(edges: Sequence[QEdge]) -> dict[tuple[str, str], float]:
 
 
 # --- shadow -----------------------------------------------------------------------
+
+
+def _declared_defect(
+    cu: Chart | None, cv: Chart | None, shadow_cfg: Mapping[str, object]
+) -> float:
+    """The seed's a-priori closure defect for one chart pair."""
+    if cu is None or cv is None:
+        return 0.0
+    if cu == cv:
+        return float(shadow_cfg.get("intra_chart", {}).get("declared_defect", 0.0))  # type: ignore[union-attr]
+    pairs = {
+        frozenset(entry["charts"]): float(entry["declared_defect"])  # type: ignore[index]
+        for entry in shadow_cfg.get("pairs", [])  # type: ignore[union-attr]
+    }
+    return pairs.get(frozenset((cu, cv)), 0.0)
 
 
 def loop_shadow(
@@ -215,10 +341,48 @@ class LoopMeasurement:
 
 
 @dataclass(slots=True)
+class ShadowCalibration:
+    """Measured closure defect against the seed's declared shadow, per edge.
+
+    The tree-null repair turned backtracking from a bogus holonomy into this. `eps_measured`
+    is the residual of the round trip `u -> v -> u`; `declared` is what `seed/shadow.json`
+    says the closure defect for that chart pair is, a priori. The seed declares zero, so any
+    measured defect is drift — and on a cross-chart edge that is **translator drift**: the
+    round trip through the correspondence loses something the seed said it would not.
+
+    This is a calibration channel, not a verdict. Nothing subtracts `eps_measured` from a
+    floor; shadow subtraction still uses the declared value, because a measured defect that
+    deflated its own floor would be exactly the resample-of-the-observation pattern gate 6
+    forbids.
+    """
+
+    u: str
+    v: str
+    crosses_charts: bool
+    eps_measured: float
+    declared: float
+
+    @property
+    def drift(self) -> float:
+        return self.eps_measured - self.declared
+
+    def as_record(self) -> dict[str, object]:
+        return {
+            "u": self.u, "v": self.v, "crosses_charts": self.crosses_charts,
+            "eps_measured": self.eps_measured, "declared": self.declared,
+            "drift": self.drift,
+        }
+
+
+@dataclass(slots=True)
 class MeterResult:
     seed_hash: str
     measurements: list[LoopMeasurement] = field(default_factory=list)
     surrogate: dict[str, float] = field(default_factory=dict)
+    #: Per-edge measured-vs-declared closure defect. Standard output, every run.
+    shadow_calibration: list[ShadowCalibration] = field(default_factory=list)
+    #: Blocks that carry no verified cycle, so no holonomy is defined on them.
+    no_cycle_support: list[str] = field(default_factory=list)
     #: loop_id -> that loop's own label-permutation draws (PREREG-AMENDMENT-3). R2 pools
     #: them leave-one-out; kept raw so the pooling is auditable rather than pre-baked.
     loop_nulls: dict[str, list[float]] = field(default_factory=dict)
@@ -230,6 +394,31 @@ class MeterResult:
         if not rows:
             return 0.0
         return sum(m.floor for m in rows) / len(rows)
+
+    def translator_drift(self) -> list[ShadowCalibration]:
+        """Cross-chart edges whose measured closure defect exceeds what the seed declared.
+
+        Sorted worst first. An empty list means every correspondence closed as well as the
+        seed said it would; a long one means the translation is losing something the seed
+        did not account for, and the shadow declaration is the thing to revisit.
+        """
+        return sorted(
+            (c for c in self.shadow_calibration if c.crosses_charts and c.drift > 0.0),
+            key=lambda c: (-c.drift, c.u, c.v),
+        )
+
+    def shadow_summary(self) -> dict[str, float]:
+        rows = self.shadow_calibration
+        cross = [c for c in rows if c.crosses_charts]
+        return {
+            "edges": float(len(rows)),
+            "cross_chart_edges": float(len(cross)),
+            "max_drift": max((c.drift for c in rows), default=0.0),
+            "max_translator_drift": max((c.drift for c in cross), default=0.0),
+            "mean_eps_measured": (
+                sum(c.eps_measured for c in rows) / len(rows) if rows else 0.0
+            ),
+        }
 
     def modes(self, beta: float | None = None) -> list[LoopMeasurement]:
         """Loops sorted by floor, descending. PREREG R3 reports these verbatim."""
@@ -248,7 +437,8 @@ def measure(
     seed_hash: str,
     clamps: Sequence[Clamp] = (),
     retained: Mapping[str, Vector] | None = None,
-) -> tuple[list[LoopMeasurement], SettledBlock, SettledBlock, dict[str, list[float]]]:
+) -> tuple[list[LoopMeasurement], SettledBlock, SettledBlock, dict[str, list[float]],
+           list[ShadowCalibration]]:
     """Run both arms on one block and measure every loop inside it.
 
     The warm arm's starting state matters, and it is reported rather than assumed. With
@@ -279,9 +469,27 @@ def measure(
     members = set(block.slots)
     out: list[LoopMeasurement] = []
     nulls: dict[str, list[float]] = {}
+
+    # The measured-shadow channel. Every Q edge in the block contributes its round-trip
+    # closure defect, compared against what the seed declared for that chart pair. This is
+    # what backtracking became once it stopped being counted as holonomy.
+    calibration: list[ShadowCalibration] = []
+    for edge in sorted(block.edges, key=lambda e: (e.u, e.v)):
+        cu, cv = chart_of.get(edge.u), chart_of.get(edge.v)
+        crosses = cu != cv
+        declared = _declared_defect(cu, cv, shadow_cfg)
+        calibration.append(ShadowCalibration(
+            u=edge.u, v=edge.v, crosses_charts=crosses,
+            eps_measured=measured_shadow(edge.u, edge.v, cold.p, weights),
+            declared=declared,
+        ))
+
     for loop in loops:
         if not set(loop.slots) <= members:
             continue
+        # A spec that is not a verified cycle never reaches the meter: the constructor
+        # refuses to emit one, and this is the second line of defence.
+        verify_cycle(loop, weights)
         h_cold = holonomy(loop, cold.p, weights)
         h_warm = holonomy(loop, warm.p, weights)
         sh = loop_shadow(loop, chart_of, shadow_cfg)
@@ -302,7 +510,7 @@ def measure(
                 warm_source=warm_source,
             )
         )
-    return out, warm, cold, nulls
+    return out, warm, cold, nulls, calibration
 
 
 # --- surrogates -------------------------------------------------------------------

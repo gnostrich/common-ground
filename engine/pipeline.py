@@ -105,7 +105,7 @@ def build_ledger(
     blocks = build_blocks(slots, edges, deltas)
     chart_of = {s.id: s.chart for s in slots}
     active = {s.id for s in slots}
-    loops = loops_from_fibers(fibers, chart_of, restrict_to=active)
+    loops = loops_from_fibers(fibers, chart_of, restrict_to=active, edges=edges)
 
     return Ledger(
         deltas=deltas,
@@ -193,9 +193,9 @@ def run_meter(
 
     for block in ledger.blocks:
         loops = [l for l in ledger.loops if set(l.slots) <= set(block.slots)]
-        if not loops:
+        if not loops and not block.edges:
             continue
-        rows, warm, cold, nulls = measure(
+        rows, warm, cold, nulls, calib = measure(
             block=block,
             loops=loops,
             evidence=ledger.evidence,
@@ -209,6 +209,11 @@ def run_meter(
         )
         result.measurements.extend(rows)
         result.loop_nulls.update(nulls)
+        result.shadow_calibration.extend(calib)
+        if not rows:
+            # The block has slots and edges but no verified cycle in Q, so no holonomy is
+            # defined on it. Reported, never silently treated as a zero floor.
+            result.no_cycle_support.append(block.id)
         warm_states[block.id] = warm
         cold_states[block.id] = cold
 

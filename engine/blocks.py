@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from itertools import permutations
 from typing import Iterable, Mapping, Sequence
 
 from .constants import (
@@ -175,33 +176,151 @@ def is_contested(block: Block, deltas: Sequence[Delta]) -> bool:
     return len(values) > 1
 
 
+def _adjacency(edges: Sequence[QEdge]) -> dict[str, set[str]]:
+    adj: dict[str, set[str]] = defaultdict(set)
+    for e in edges:
+        if e.weight > 0.0:
+            adj[e.u].add(e.v)
+            adj[e.v].add(e.u)
+    return adj
+
+
+def _alternations(order: Sequence[str], chart_of: Mapping[str, Chart]) -> int:
+    """How many consecutive pairs of the cycle cross charts."""
+    n = len(order)
+    return sum(
+        1 for i in range(n)
+        if chart_of.get(order[i]) != chart_of.get(order[(i + 1) % n])
+    )
+
+
+def order_cycle(
+    members: Sequence[str],
+    chart_of: Mapping[str, Chart],
+    adj: Mapping[str, set[str]],
+) -> tuple[str, ...] | None:
+    """A cyclic ordering of `members` in which every consecutive pair is a Q edge.
+
+    Returns `None` when no such ordering exists — the members are in one fiber but Q does
+    not connect them in a cycle, so there is nothing to measure a holonomy around. That is
+    the tree case, and it now yields no loop at all rather than a spec whose closing edge
+    is missing.
+
+    Among valid orderings it prefers the one with the most chart alternations, which is
+    what makes a restatement loop come out as the genuine triangle
+    `Eng_1 -> Lean -> Eng_2 -> Eng_1` rather than `Eng_1 -> Eng_2 -> Lean -> Eng_1`. Both
+    are cycles over the same three slots, but only the first traverses the correspondence
+    twice and the paraphrase once, which is the shape PREREG's matrix names. Ties break
+    lexicographically so the choice is deterministic and replayable from the seed.
+
+    `FIBER_CAP` bounds a fiber at five members, so the search is over at most 4!/2 = 12
+    distinct cycles and brute force is both exact and cheap.
+    """
+    if len(members) < 3:
+        return None
+
+    first, rest = members[0], list(members[1:])
+    best: tuple[str, ...] | None = None
+    best_key: tuple[int, bool, tuple[str, ...]] | None = None
+
+    for perm in permutations(rest):
+        order = (first, *perm)
+        # Both traversal directions are enumerated rather than filtered to a canonical one.
+        # They are the same edge set, but holonomy starts at `slots[0]` and walks forward,
+        # so the direction decides whether a restatement cycle opens on the correspondence
+        # leg or on the paraphrase leg. The key below picks; its lexicographic tail keeps
+        # the choice deterministic.
+        n = len(order)
+        if any(order[(i + 1) % n] not in adj.get(order[i], ()) for i in range(n)):
+            continue
+        # Prefer, in order: most chart alternations; then a crossing on the very first
+        # step, so a restatement cycle reads literally `Eng_1 -> Lean -> Eng_2 -> Eng_1`
+        # rather than starting on the paraphrase leg; then lexicographic, for determinism.
+        opens_on_a_crossing = chart_of.get(order[0]) != chart_of.get(order[1])
+        key = (-_alternations(order, chart_of), not opens_on_a_crossing, order)
+        if best_key is None or key < best_key:
+            best, best_key = order, key
+
+    return best
+
+
 def loops_from_fibers(
     fibers: Sequence[Fiber],
     chart_of: Mapping[str, Chart],
     restrict_to: Iterable[str] | None = None,
+    edges: Sequence[QEdge] = (),
 ) -> list[LoopSpec]:
-    """One canonical cycle per fiber with at least two members.
+    """One verified cycle per fiber that has one. **Cycles only — never walks.**
 
-    A two-member fiber yields a 2-cycle `u -> v -> u`. That is a genuine holonomy, not a
-    degenerate one: the transport operators in `meter.py` are composed in path order and
-    the round trip is not the identity unless the two settled states already agree.
+    A loop is a cycle in the Q graph, and always was: `hol(loop) = TV(p_start,
+    T_loop(p_start))` only means path dependence if the transport genuinely returns to
+    where it started. This constructor now enforces that rather than assuming it.
 
-    `kind` is `restatement` when the cycle crosses charts (an Eng -> Lean -> Eng loop) and
-    `paraphrase` when it stays inside one (an intra-English loop over REGISTRY claims) —
-    the two loop families PREREG names.
+    Two things changed in the tree-null repair, and both were defects rather than choices:
+
+    - **A two-member fiber yields no loop.** It used to yield the backtracking walk
+      `u -> v -> u`, whose residual is nonzero on a tree — where theory says all contest is
+      path-debt and the floor is exactly zero. That residual is a property of the transport
+      operator (a contraction, not a reversible transport), not of the ledger. It is now
+      collected by `meter.measured_shadow` as the edge's closure defect, which is the
+      quantity it always was.
+    - **Closure is verified against Q.** The cycle used to be built from fiber *membership*,
+      so a three-member fiber over the path `u-v-x` produced the spec `(u,v,x)` whose
+      closing edge `(x,u)` did not exist; `holonomy` skipped it and silently measured an
+      open walk. `order_cycle` now returns `None` unless Q actually closes, and `holonomy`
+      raises rather than skipping.
+
+    `kind` is `restatement` when the cycle crosses charts and `paraphrase` when it stays
+    inside one — the two loop families PREREG names, unchanged, and now correctly
+    instantiated.
     """
     allowed = set(restrict_to) if restrict_to is not None else None
+    adj = _adjacency(edges)
     loops: list[LoopSpec] = []
+    seen: set[frozenset[str]] = set()
+
     for fiber in fibers:
         members = [s for s in sorted(fiber.slots) if allowed is None or s in allowed]
-        if len(members) < 2:
+        if len(members) < 3:
             continue
-        charts = {chart_of.get(s) for s in members}
-        kind = "restatement" if len(charts) > 1 else "paraphrase"
+        key = frozenset(members)
+        if key in seen:
+            continue
+        order = order_cycle(members, chart_of, adj)
+        if order is None:
+            continue
+        seen.add(key)
+        kind = "restatement" if _alternations(order, chart_of) else "paraphrase"
         loops.append(
-            LoopSpec(id=join_hash("loop", *members)[:16], kind=kind, slots=tuple(members))
+            LoopSpec(id=join_hash("loop", *order)[:16], kind=kind, slots=order)
         )
     return loops
+
+
+def backtrack_edges(
+    fibers: Sequence[Fiber],
+    restrict_to: Iterable[str] | None = None,
+    edges: Sequence[QEdge] = (),
+) -> list[tuple[str, str]]:
+    """The `u -> v` pairs whose round trip is a measured-shadow channel, not a loop.
+
+    Every Q edge inside a fiber contributes one. These used to be counted as holonomy when
+    the fiber had exactly two members; now their closure defect is measured and compared
+    against the shadow the seed declared.
+    """
+    allowed = set(restrict_to) if restrict_to is not None else None
+    present = {
+        (e.u, e.v) if e.u <= e.v else (e.v, e.u) for e in edges if e.weight > 0.0
+    }
+    out: set[tuple[str, str]] = set()
+    for fiber in fibers:
+        members = [s for s in sorted(fiber.slots) if allowed is None or s in allowed]
+        for i in range(len(members)):
+            for j in range(i + 1, len(members)):
+                pair = (members[i], members[j])
+                if pair in present:
+                    out.add(pair)
+    return sorted(out)
 
 
 def drop_edges(edges: Sequence[QEdge], rate: float, rng: DRNG) -> list[QEdge]:

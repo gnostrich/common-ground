@@ -26,6 +26,11 @@ So every deviation carries a `kind`:
 
 Deviations of the second kind do not fail the check. They are findings, and hiding them
 behind a red build would defeat the point of writing them down.
+
+**As of the tree-null repair there are none.** The one gap this audit opened —
+holonomy computed over backtracking and open walks — was ruled an implementation defect
+rather than a theory change, repaired, and its row now records the repaired behaviour. The
+three remaining deviations are all `minimal-faithful-by-design`, each citing its ruling.
 """
 
 from __future__ import annotations
@@ -201,41 +206,60 @@ FAITHFULNESS_ROWS: tuple[Row, ...] = (
     Row(
         object="tree-null (all tree contest is path-debt)",
         family="theory",
-        site="engine/meter.py:holonomy",
-        role="a contest graph with no cycles must produce cold floor exactly zero: with a "
-             "unique path between any two slots, transport is path-independent",
-        control="tests/test_faithfulness.py:TreeNull.test_a_tree_contest_graph_does_not_yield_zero_floor",
-        control_claim="FAILS AS THEORY PREDICTS IT SHOULD NOT. A single-edge tree yields "
-                      "holonomy 0.1496, and a 3-slot walk over a path yields 0.4338 — larger "
-                      "than the genuine triangle it should be dominated by. The control pins "
-                      "both, so the gap cannot be closed by accident.",
+        site="engine/meter.py:verify_cycle",
+        role="a contest graph with no cycles yields cold floor exactly zero: holonomy is "
+             "defined only on verified cycles — closed, every edge in Q, no immediate "
+             "backtracking, length >= 3",
+        control="tests/test_faithfulness.py:TreeNull.test_tree_null_passes_with_floor_zero",
+        control_claim="a cycle-free corpus settles to cold floor exactly 0.0 and is flagged "
+                      "`no_cycle_support`; a backtrack walk and an open walk both raise "
+                      "`OpenWalkError`; a restatement fiber yields the genuine triangle "
+                      "Eng_1 -> Lean -> Eng_2 -> Eng_1",
+    ),
+    Row(
+        object="measured shadow (per-edge closure defect)",
+        family="theory",
+        site="engine/meter.py:measured_shadow",
+        role="the residual of the backtrack walk `u -> v -> u`, reported per edge beside "
+             "the seed's declared shadow; cross-chart excess is translator drift",
+        control="tests/test_faithfulness.py:MeasuredShadowChannel.test_measured_defect_is_reported_beside_the_seed_declaration",
+        control_claim="every Q edge contributes a calibration row with `eps_measured`, the "
+                      "seed's `declared`, and their drift; `translator_drift()` names only "
+                      "cross-chart edges; and the floor still subtracts the DECLARED shadow, "
+                      "never the measured one",
+    ),
+    Row(
+        object="extraction determinism (re-ingestion adds no evidence)",
+        family="theory",
+        site="engine/extract.py:DeterministicExtractor",
+        role="KICKOFF section 4: re-ingesting one corpus under a second provenance label "
+             "must leave zero cold residue and no rank growth",
+        control="tests/test_controls.py:ExtractionIsNotContentDetermined.test_a_relabelled_copy_produces_evidence_the_original_did_not",
+        control_claim="identical text under a new `doc_id` yields at least one evidential "
+                      "identity the original never produced — measured — while the "
+                      "content hashes are identical, so deduplication is not the culprit",
         deviation=Deviation(
             kind=GAP,
-            note="Two distinct defects, both measured.\n\n"
-                 "**(A) Backtracking walks are not cycles.** `loops_from_fibers` gives a "
-                 "two-member fiber the walk `u -> v -> u`. On a tree that is a closed walk "
-                 "with no cycle, so theory says zero holonomy. The engine returns 0.1496, "
-                 "because transport `T(q) = (1-a)q + a p_v` is a contraction toward the "
-                 "target rather than a reversible parallel transport: `T_{v->u} . T_{u->v} "
-                 "!= id` whenever `p_u != p_v`. The residual is a property of the operator, "
-                 "not of the ledger. This is not a corner case — a two-member fiber is the "
-                 "commonest fiber the engine builds.\n\n"
-                 "**(B) Loops are specified without checking their closing edge exists.** "
-                 "`loops_from_fibers` builds the cycle from fiber *membership*, and "
-                 "`holonomy` skips any edge whose weight is zero (`if w <= 0.0: continue`). "
-                 "A three-member fiber whose Q graph is the path u-v-x therefore yields the "
-                 "loop spec (u,v,x) whose closing edge (x,u) does not exist; holonomy then "
-                 "silently measures the OPEN walk u->v->x and reports `TV(p_u, transported)` "
-                 "— comparing the start state against a state transported somewhere else "
-                 "entirely. Measured 0.4338, against 0.2283 for the same slots with the "
-                 "closing edge actually present. The meter's central quantity is being "
-                 "computed over walks that are not cycles in the contest graph.",
-            ruling="No ruling covers this. KICKOFF's paired loop-side meter presumes loops "
-                   "are cycles; nothing in GATES.md, PREREG, or any amendment licenses "
-                   "measuring holonomy over a backtracking or open walk. Closing it needs a "
-                   "decision on both halves: whether a two-member fiber yields a loop at all, "
-                   "and whether `loops_from_fibers` must verify closure against the Q graph "
-                   "before emitting a spec.",
+            note="`DeterministicExtractor._spans` seeds its RNG with "
+                 "`DRNG('extract', extractor_id, prompt_id, doc.doc_id)`. The inclusion "
+                 "draw that decides whether a marginal span is kept therefore depends on "
+                 "the document's **identity**, not its **content**. Re-ingesting the same "
+                 "text under a new id draws a different sample and can produce a delta the "
+                 "original did not — and no deduplication can collapse evidence that was "
+                 "never produced the first time.\n\n"
+                 "Content-hash provenance is correct and is not the problem: the hashes "
+                 "match exactly. Cell (v) now FAILS on the standard fixture, which is the "
+                 "cell working rather than the cell breaking.\n\n"
+                 "The defect was latent. The old two-document fixture happened to place no "
+                 "span near the selectivity threshold; widening it to three documents — "
+                 "required once a cycle needed three slots — exposed it.",
+            ruling="No ruling covers it. The conforming seeding is "
+                   "`DRNG('extract', extractor_id, prompt_id, content_hash)`, which keeps "
+                   "the per-extractor variance that makes k=3 informative while making "
+                   "extraction a pure function of content. It is a one-line change with a "
+                   "large consequence: every confidence jitter moves, so every floor moves. "
+                   "That is a ruling to make, not a fixture to adjust, and it is not made "
+                   "here.",
         ),
     ),
     Row(

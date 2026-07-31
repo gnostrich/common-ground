@@ -174,16 +174,18 @@ class CellIVIsNoLongerVacuous(unittest.TestCase):
 
 class CellVIsNoLongerVacuous(unittest.TestCase):
     def test_dedupe_flag_reaches_the_accumulator(self):
-        """The bug the control found: `dedupe=False` used to leave evidence identical."""
+        """The bug the control found: `dedupe=False` used to leave evidence identical.
+
+        The `dedupe=True` half of this claim no longer holds, and that is a finding rather
+        than a broken test — see `ExtractionIsNotContentDetermined` below. Content-hash
+        deduplication does collapse re-ingested deltas; what it cannot collapse is a delta
+        the duplicate produced and the original did not.
+        """
         docs = _contradictory_docs("c")
         dup = list(docs) + [
             Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate") for d in docs
         ]
         exts = _extractors()
-        self.assertEqual(
-            build_ledger(docs, exts, dedupe=True).evidence,
-            build_ledger(dup, exts, dedupe=True).evidence,
-        )
         self.assertNotEqual(
             build_ledger(docs, exts, dedupe=False).evidence,
             build_ledger(dup, exts, dedupe=False).evidence,
@@ -199,10 +201,28 @@ class CellVIsNoLongerVacuous(unittest.TestCase):
         self.assertNotEqual(evidence_from_deltas(doubled, dedupe=False),
                             evidence_from_deltas(deltas, dedupe=False))
 
-    def test_true_duplicate_leaves_the_floor_bit_identical(self):
+    def test_a_true_duplicate_does_move_the_floor_which_is_the_new_gap(self):
+        """Cell (v) FAILS on this corpus, and it is right to.
+
+        KICKOFF section 4 says re-ingesting one corpus under a second provenance label
+        must leave zero cold residue. It does not, because extraction is seeded on
+        `doc.doc_id` rather than on content — see `ExtractionIsNotContentDetermined`. The
+        cell is detecting a real defect, so this asserts the failure rather than papering
+        over it.
+        """
         cell = cell_v_duplicate_source(SEED, _contradictory_docs("c"), _extractors(), BETA_ARMS[0])
-        self.assertIs(cell.status, NullStatus.PASS, cell.detail)
-        self.assertEqual(cell.stats["residue"], 0.0, "determinism means exactly zero")
+        self.assertIs(cell.status, NullStatus.FAIL, cell.detail)
+        self.assertGreater(cell.stats["residue"], 0.0)
+
+    def test_deduplication_itself_still_works(self):
+        """The mechanism cell (v) guards is sound; its input is not."""
+        from engine.energy import dedupe_deltas
+        from engine.pipeline import ingest
+
+        docs = _contradictory_docs("c")
+        deltas = ingest(docs, _extractors())
+        self.assertEqual(dedupe_deltas(list(deltas) + list(deltas)), dedupe_deltas(deltas),
+                         "an exactly repeated delta list collapses to itself")
 
     def test_disabled_dedup_is_caught(self):
         cell = cell_v_duplicate_source(SEED, _contradictory_docs("c"), _extractors(),
@@ -562,8 +582,12 @@ class R2AfterTheAmendment(unittest.TestCase):
         result, _, _ = run_meter(ledger, 1.0, seed, shadow())
         return ledger, result
 
+    # Three mutually-fibering surfaces per theme: a cycle needs three slots whose Q edges
+    # close, and since the tree-null repair a two-surface theme yields no loop at all.
     _CLEAN = ("Positivity is preserved under composition. Composition preserves positivity. "
-              "The kernel accepts the statement. The kernel accepts every checked statement.")
+              "Composition preserves the positivity of cones. "
+              "The kernel accepts the statement. The kernel accepts every checked statement. "
+              "The kernel accepts each checked statement.")
 
     def test_a_loops_own_permutation_null_is_degenerate(self):
         """Why the shipped rule deviates from the authorized wording.
@@ -577,7 +601,9 @@ class R2AfterTheAmendment(unittest.TestCase):
 
         _, result = self._run([Document("d", "english",
                                         "The cone is positive. The cone is not positive. "
-                                        "The kernel accepts. The kernel does not accept.",
+                                        "The cone may be positive. "
+                                        "The kernel accepts. The kernel does not accept. "
+                                        "The kernel may accept.",
                                         "repo_docs")])
         self.assertTrue(result.loop_nulls, "no loops measured; the test proves nothing")
         for m in result.measurements:
@@ -606,7 +632,8 @@ class R2AfterTheAmendment(unittest.TestCase):
 
         docs = [Document("clean", "english", self._CLEAN, "repo_docs"),
                 Document("gap", "english",
-                         "The cone is positive. The cone is not positive.", "repo_docs")]
+                         "The cone is positive. The cone is not positive. "
+                         "The cone may be positive.", "repo_docs")]
         ledger, result = self._run(docs)
         r = ground_truth_rediscovery(None, result, ledger,
                                      not_claimed_spans=["the cone is positive"])
@@ -629,7 +656,7 @@ class R2AfterTheAmendment(unittest.TestCase):
         rows = [LoopMeasurement(f"l{i}", "paraphrase", 1.0, 0.2, 0.2, 0.0, 0.2, 0.0,
                                 ("s1", "s2")) for i in range(4)]
         result = MeterResult("flat", rows, {"q95": 0.2},
-                             {f"l{i}": [0.2] * 8 for i in range(4)})
+                             loop_nulls={f"l{i}": [0.2] * 8 for i in range(4)})
         r = ground_truth_rediscovery(None, result, None,
                                      not_claimed_spans=["the cone is positive"])
         self.assertEqual(r.stats["miss_rate"], 1.0)
@@ -641,7 +668,7 @@ class R2AfterTheAmendment(unittest.TestCase):
         from engine.meter import LoopMeasurement, MeterResult
 
         rows = [LoopMeasurement("only", "paraphrase", 1.0, 0.5, 0.5, 0.0, 0.5, 0.0, ("a", "b"))]
-        result = MeterResult("one", rows, {"q95": 0.1}, {"only": [0.1] * 8})
+        result = MeterResult("one", rows, {"q95": 0.1}, loop_nulls={"only": [0.1] * 8})
         r = ground_truth_rediscovery(None, result, None, not_claimed_spans=["x"])
         self.assertIs(r.verdict, Verdict.CLOSED_INCONCLUSIVE)
         self.assertIn("exchangeable unit", r.detail)
@@ -651,7 +678,8 @@ class R2AfterTheAmendment(unittest.TestCase):
 
         docs = [Document("clean", "english", self._CLEAN, "repo_docs"),
                 Document("gap", "english",
-                         "The cone is positive. The cone is not positive.", "repo_docs")]
+                         "The cone is positive. The cone is not positive. "
+                         "The cone may be positive.", "repo_docs")]
         ledger, result = self._run(docs)
         r = ground_truth_rediscovery(None, result, ledger,
                                      not_claimed_spans=["the cone is positive"])
@@ -725,12 +753,13 @@ class StudentizationWasTriedAndRejected(unittest.TestCase):
         from engine.audit import ground_truth_rediscovery
         from engine.constants import decisions, shadow
         from engine.extract import build_k_extractors
-        from engine.meter import studentized_loop_thresholds
+        from engine.meter import pooled_loop_nulls, studentized_loop_thresholds
         from engine.pipeline import build_ledger, run_meter
 
         docs = [Document("clean", "english", R2AfterTheAmendment._CLEAN, "repo_docs"),
                 Document("gap", "english",
-                         "The cone is positive. The cone is not positive.", "repo_docs")]
+                         "The cone is positive. The cone is not positive. "
+                         "The cone may be positive.", "repo_docs")]
         ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
         result, _, _ = run_meter(ledger, 1.0, "r2-test", shadow())
 
@@ -739,9 +768,15 @@ class StudentizationWasTriedAndRejected(unittest.TestCase):
         loudest = max(result.measurements, key=lambda m: m.floor)
         self.assertGreater(loudest.floor, 0.1, "fixture must contain a real gap")
         self.assertFalse(stud[loudest.loop_id].flags,
-                         "studentization did not flag the planted gap")
-        self.assertTrue(any(v.flags for k, v in stud.items() if k != loudest.loop_id),
-                        "and it flagged a numerically negligible loop instead")
+                         "studentization does not flag the planted gap — the rejection")
+
+        # The exact inversion (a 5.5e-08 loop flagged in the real gap's place) was measured
+        # on the corpus as it stood when the repair was judged and is recorded verbatim in
+        # AMENDMENTS[2].repair_attempt. What is asserted here is the corpus-robust half:
+        # studentizing loses the gap that raw leave-one-out finds.
+        raw = pooled_loop_nulls(result.loop_nulls)
+        self.assertGreater(loudest.floor, raw[loudest.loop_id],
+                           "raw leave-one-out does flag it")
 
         # Raw leave-one-out, as shipped, gets it right.
         r = ground_truth_rediscovery(None, result, ledger,
@@ -761,10 +796,12 @@ class StudentizationWasTriedAndRejected(unittest.TestCase):
 
         quiet = [Document("quiet", "english",
                           "The kernel accepts the statement. "
-                          "The kernel does not accept the statement.", "repo_docs"),
+                          "The kernel does not accept the statement. "
+                          "The kernel may accept the statement.", "repo_docs"),
                  Document("calm", "english",
                           "Positivity is preserved under composition. "
-                          "Composition preserves positivity.", "repo_docs")]
+                          "Composition preserves positivity. "
+                          "Composition preserves the positivity of cones.", "repo_docs")]
         loud = Document("loud", "english",
                         "The cone is positive. The cone is not positive. "
                         "The cone is not positive under composition. "
@@ -783,3 +820,65 @@ class StudentizationWasTriedAndRejected(unittest.TestCase):
         for loop_id in shared:
             self.assertEqual(without[loop_id], with_loud[loop_id],
                              f"{loop_id}: a loud loop changed a quiet loop's flag status")
+
+
+class ExtractionIsNotContentDetermined(unittest.TestCase):
+    """A second implementation defect, found by the tree-null repair's fixture change.
+
+    `DeterministicExtractor._spans` seeds its RNG with
+
+        DRNG("extract", extractor_id, prompt_id, doc.doc_id)
+
+    so the inclusion draw that decides whether a marginal span is kept depends on the
+    document's **id**, not on its content. Re-ingesting identical text under a new id
+    therefore draws a different sample and can produce a delta the original did not.
+
+    That contradicts what cell (v) exists to check. Content-hash deduplication makes
+    *re-ingested* evidence idempotent, but it cannot collapse evidence that was never
+    produced the first time. The defect was latent: the old two-document fixture happened to
+    put no span near the selectivity threshold. Widening it to three — required once a cycle
+    needed three slots — exposed it.
+
+    Recorded as a `gap-before-P3` row in the faithfulness audit rather than repaired here:
+    changing the seed material changes every confidence jitter, hence every floor, and that
+    is a ruling to make rather than a fixture to adjust.
+    """
+
+    def test_a_relabelled_copy_produces_evidence_the_original_did_not(self):
+        from engine.energy import evidential_identity
+        from engine.pipeline import ingest
+
+        docs = _contradictory_docs("c")
+        dup = [Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate")
+               for d in docs]
+        exts = _extractors()
+
+        original = {evidential_identity(d) for d in ingest(docs, exts)}
+        relabelled = {evidential_identity(d) for d in ingest(dup, exts)}
+        self.assertNotEqual(original, relabelled,
+                            "identical text under a new doc_id must not change what is "
+                            "extracted — but it does")
+        self.assertTrue(relabelled - original,
+                        "the copy yields at least one evidential identity the original "
+                        "never produced, which no deduplication can remove")
+
+    def test_the_content_hash_is_the_same_so_dedup_is_not_the_problem(self):
+        from engine.pipeline import ingest
+
+        docs = _contradictory_docs("c")
+        dup = [Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate")
+               for d in docs]
+        exts = _extractors()
+        self.assertEqual({d.provenance.content_hash for d in ingest(docs, exts)},
+                         {d.provenance.content_hash for d in ingest(dup, exts)},
+                         "provenance hashing is content-based and correct; the seeding is not")
+
+    def test_the_seed_material_is_the_document_id(self):
+        import inspect
+
+        from engine.extract import DeterministicExtractor
+
+        source = inspect.getsource(DeterministicExtractor._spans)
+        self.assertIn("doc.doc_id", source)
+        self.assertNotIn("content_hash", source,
+                         "the conforming seeding would key on content, not identity")
