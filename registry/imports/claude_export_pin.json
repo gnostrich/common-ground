@@ -1,0 +1,11 @@
+{
+  "source": "claude data export (operator-provided via google drive)",
+  "fetched": "out-of-band 2026-07-31",
+  "zip_sha256": "9465e1f2ad0d8070c6966a495603c6e5eb3989610925aa221d21765e2e8545cc",
+  "conversations_json_sha256": "ffe6e6ade3b606066c90021381a52d06b56cc620f9fbefc2d434644534a7d60b",
+  "threads": 129,
+  "turns": 11514,
+  "adapter": "adapters/claude_export.py load_claude_export — parses in the expected shape (chat_messages/sender/text/uuid/name)",
+  "stored": "external to this PUBLIC repo, per operator decision 2026-07-31 (digest-only in repo); personal history, never committed",
+  "exclusions_policy": "operator 2026-07-31: exclude personal, non-technical content only; nothing technical is confidential; concrete exclusion term-list is authored at ingestion (P3), not defaulted"
+}

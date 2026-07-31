@@ -20,13 +20,29 @@
     "manifest": "seed/CHARTS.json"
   },
   "D3": {
-    "status": "unresolved",
-    "claude_export": null,
-    "lean_corpus": null,
+    "status": "partial",
+    "claude_export": {
+      "pin": "registry/imports/claude_export_pin.json",
+      "conversations_json_sha256": "ffe6e6ade3b606066c90021381a52d06b56cc620f9fbefc2d434644534a7d60b",
+      "threads": 129,
+      "turns": 11514,
+      "stored": "external (digest-only in repo, operator 2026-07-31)"
+    },
+    "lean_corpus": {
+      "pin": "registry/imports/aristotle_corpus_pin.json",
+      "artifact_digest_sha256": "24485b87c2377d54aa9cd4b15a486a610cc93cea4602c2dc81efc8309a0eb648",
+      "source": "aristotle-harmonic (2 accounts)",
+      "projects": 297,
+      "lean_files": 2128,
+      "stored": "external (digest-only in repo, operator 2026-07-31)"
+    },
     "repos": [
       "certified-positivity"
     ],
-    "exclusions": null
+    "repos_second": null,
+    "exclusions": null,
+    "exclusions_policy": "operator 2026-07-31: exclude personal, non-technical content only; term-list authored at ingestion (an explicit [] is still a decision, never a default)",
+    "note": "claude_export + lean_corpus fetched out-of-band and pinned (not live pulls; KICKOFF 7.5). Bytes live external to this public repo per operator; only digests are committed. Still OPEN: concrete exclusions term-list, and the second repo. D3 remains partial and does not unblock SEED.lock (D5, D6 still open)."
   },
   "D4": {
     "status": "partial",
@@ -64,6 +80,8 @@
     "status": "unresolved",
     "lean": null,
     "lean_source": "certified-positivity lake-manifest",
+    "lean_observed_in_aristotle_corpus": "leanprover/lean4:v4.28.0 (244/245 pinned projects; one v4.32.0 outlier), single mathlib rev 8f9d9cff6bd728b17a24e163c9402775d9e6a365",
+    "lean_observed_note": "CORROBORATION ONLY — D6 stays unresolved. The authoritative pin is certified-positivity's lake-manifest, not the imported corpus; recording the corpus toolchain does not decide D6.",
     "python": null,
     "python_observed": "3.11.15",
     "third_party_runtime_deps": []

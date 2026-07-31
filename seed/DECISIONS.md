@@ -43,20 +43,29 @@ planted-defect control (`tests/test_probes.py:TheChartAuditCanDetectAReintroduce
 a reintroduced `if chart == ...` dispatch turns it red before any new chart can slip in
 around it.
 
-## D3 — corpus manifest — **UNRESOLVED**
+## D3 — corpus manifest — **PARTIAL**
 
 Required before P3 (full ingestion). Blocks `SEED.lock`.
 
-- `claude_export`: path `____`
-- `lean_corpus`: directory dump of Aristotle-held Lean sources, path `____`
-  (dump preferred over live MCP; pinned files hash cleanly — KICKOFF §7.5 forbids live
-  pulls during a run)
-- `repos`: `[certified-positivity, ____]`
-- `EXCLUSIONS` (privacy pass, mandatory, precedes ingestion): `____`
+- `claude_export`: **pinned** (operator 2026-07-31) — `registry/imports/claude_export_pin.json`,
+  129 threads / 11,514 turns, `conversations.json` sha256 `ffe6e6ad…7d60b`. Verified to parse
+  in the adapter's expected shape. **Bytes stored external to this public repo** (digest-only),
+  since the export is the operator's full personal history.
+- `lean_corpus`: **pinned** (operator 2026-07-31) — `registry/imports/aristotle_corpus_pin.json`,
+  297 Aristotle projects, 2,128 `.lean` (1,120 unique), `artifact_digest` `24485b87…eb648`.
+  Fetched out-of-band and pinned — **not** a live pull (dump preferred over live MCP; KICKOFF §7.5
+  forbids live pulls during a run). Zero vendored Mathlib. **Bytes stored external to this public
+  repo** (digest-only); a large share is proprietary trading/DeFi formalization.
+- `repos`: `[certified-positivity, ____]` — **second repo still OPEN**.
+- `EXCLUSIONS` (privacy pass, mandatory, precedes ingestion): **policy set, list OPEN** — operator
+  delegated judgement ("exclude personal, non-technical content; nothing technical confidential").
+  The concrete term-list is authored at ingestion; an explicit `[]` would still be a decision, never
+  a default. `adapters/claude_export.py` still raises on `exclusions=None`.
 
-These are paths and a privacy policy on someone else's data. They cannot be defaulted or
-guessed; a wrong guess here silently changes what the run is about, and the EXCLUSIONS
-list is a privacy control that must be authored deliberately, not inferred.
+The two data sources are in hand and pinned; the EXCLUSIONS term-list and the second repo remain.
+A wrong guess here silently changes what the run is about, and the EXCLUSIONS list is a privacy
+control that must be authored deliberately, not inferred — so D3 stays **partial**, and with D5 and
+D6 open, `SEED.lock` is still held closed.
 
 ## D4 — extractors — **PARTIAL**
 

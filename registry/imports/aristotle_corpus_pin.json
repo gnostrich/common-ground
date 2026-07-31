@@ -1,0 +1,21 @@
+{
+  "source": "aristotle-harmonic prover (2 operator accounts)",
+  "fetched": "out-of-band pinning step on 2026-07-31 — NOT a live run pull (KICKOFF 7.5 forbids live pulls during a run; the dump is what a run reads)",
+  "artifact_digest_sha256": "24485b87c2377d54aa9cd4b15a486a610cc93cea4602c2dc81efc8309a0eb648",
+  "digest_algo": "engine.hashing.artifact_digest (hash_obj of sorted {relpath: sha256_file}), over the pruned dump",
+  "projects_with_files": 297,
+  "lean_files": 2128,
+  "unique_lean_by_hash": 1120,
+  "duplicate_lean_files": 1008,
+  "unique_prompts_by_hash": 20,
+  "lean_source_MB": 17.54,
+  "pruned_dump_bytes": 19526727,
+  "pruned_keep": ["*.lean", "PROMPT.txt", "ARISTOTLE_SUMMARY.md", "README.md", "lean-toolchain", "lake-manifest.json", "lakefile.toml"],
+  "pruned_dropped": ["dependency-graph csv/jsonl (~2GB across ~4 projects)", "logs", "archives", "pdf"],
+  "toolchains": {"leanprover/lean4:v4.28.0": 244, "leanprover/lean4:v4.32.0": 1},
+  "mathlib_rev": "8f9d9cff6bd728b17a24e163c9402775d9e6a365",
+  "vendored_mathlib_deps": 0,
+  "stored": "external to this PUBLIC repo, per operator decision 2026-07-31 (digest-only in repo); dump is re-fetchable from aristotle (resumable)",
+  "excluded": {"please-ignore-probe": 1, "projects-with-no-files": 5},
+  "note": "aggregate stats only; per-project names/descriptions are proprietary and deliberately NOT committed to a public repo"
+}
