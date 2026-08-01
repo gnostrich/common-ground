@@ -1,0 +1,18 @@
+{
+  "schema": "common-ground/shadow/v0",
+  "note": "The closure defect between charts, DECLARED in the seed rather than measured from the run. meter.py subtracts it from the measured cold holonomy of any loop that crosses the listed chart pair. Declaring a defect larger than the truth deflates the floor and can manufacture a null result, so the default is zero and raising it is plastic under gate 4: it requires a logged seed-morphism event, a cold re-anneal, and a non-null justification.",
+  "pairs": [
+    {
+      "charts": ["english", "lean"],
+      "declared_defect": 0.0,
+      "status": "declared-zero",
+      "justification": null,
+      "reading": "We declare no closure defect between the English and Lean charts. Any chart-crossing holonomy measured in a run is therefore attributed to the ledger and reported, not absorbed into the shadow. This is the conservative setting: it cannot deflate the floor."
+    }
+  ],
+  "intra_chart": {
+    "declared_defect": 0.0,
+    "status": "declared-zero",
+    "reading": "Intra-English paraphrase loops have no declared shadow. A paraphrase loop that fails to close is reporting a real disagreement in the ledger, not a chart artifact."
+  }
+}

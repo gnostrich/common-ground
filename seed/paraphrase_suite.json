@@ -1,0 +1,150 @@
+{
+  "schema": "common-ground/paraphrase-suite/v0",
+  "note": "Pre-registered. Frozen with SEED.lock. Null cell (ii) requires every known_same pair to collide on one slot id and every known_distinct pair to occupy different slot ids. Editing this file is plastic under gate 4 (it is part of the addressing test surface).",
+  "known_same": [
+    {
+      "id": "en-same-whitespace",
+      "chart": "english",
+      "a": "Positivity is preserved under composition.",
+      "b": "Positivity   is  preserved\tunder composition",
+      "why": "whitespace collapse and terminal punctuation strip"
+    },
+    {
+      "id": "en-same-case",
+      "chart": "english",
+      "a": "Positivity is preserved under composition",
+      "b": "POSITIVITY IS PRESERVED UNDER COMPOSITION",
+      "why": "casefold"
+    },
+    {
+      "id": "en-same-markdown",
+      "chart": "english",
+      "a": "**Positivity** is preserved under `composition`.",
+      "b": "Positivity is preserved under composition",
+      "why": "markdown emphasis and code-span markers are presentation, not address"
+    },
+    {
+      "id": "en-same-unicode-quotes",
+      "chart": "english",
+      "a": "The cone’s closure is positive — always.",
+      "b": "The cone's closure is positive - always",
+      "why": "curly apostrophe and em dash fold to ASCII"
+    },
+    {
+      "id": "en-same-nbsp",
+      "chart": "english",
+      "a": "A positive cone is closed",
+      "b": "A positive cone is closed",
+      "why": "NFKC folds the non-breaking space"
+    },
+    {
+      "id": "en-same-terminal-punct",
+      "chart": "english",
+      "a": "Every certified statement has a kernel receipt!",
+      "b": "Every certified statement has a kernel receipt",
+      "why": "terminal punctuation strip"
+    },
+    {
+      "id": "lean-same-whitespace",
+      "chart": "lean",
+      "a": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
+      "b": "theorem  comp_pos (f g : Cone)  :  IsPositive (f ∘ g)",
+      "why": "whitespace collapse"
+    },
+    {
+      "id": "lean-same-proof-irrelevance",
+      "chart": "lean",
+      "a": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g) := by simp [IsPositive]",
+      "b": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
+      "why": "the proof term is not part of the statement's address"
+    },
+    {
+      "id": "lean-same-comment",
+      "chart": "lean",
+      "a": "-- composition preserves positivity\ntheorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
+      "b": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
+      "why": "line comments are stripped"
+    },
+    {
+      "id": "lean-same-block-comment",
+      "chart": "lean",
+      "a": "theorem comp_pos /- note -/ (f g : Cone) : IsPositive (f ∘ g)",
+      "b": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
+      "why": "block comments are stripped"
+    }
+  ],
+  "known_distinct": [
+    {
+      "id": "en-distinct-operation",
+      "chart": "english",
+      "a": "Positivity is preserved under composition",
+      "b": "Positivity is preserved under addition",
+      "why": "different content word; must not collide"
+    },
+    {
+      "id": "en-distinct-form",
+      "chart": "english",
+      "a": "If the kernel accepts, the statement is certified",
+      "b": "The statement is certified",
+      "why": "conditional vs assert; different type component of the address"
+    },
+    {
+      "id": "en-distinct-negation",
+      "chart": "english",
+      "a": "The cone is positive",
+      "b": "The cone is not positive",
+      "why": "negation is content, not presentation"
+    },
+    {
+      "id": "en-distinct-normative",
+      "chart": "english",
+      "a": "The floor is read after the null cells pass",
+      "b": "No floor is read before its null cells pass",
+      "why": "normative vs assert; also different content"
+    },
+    {
+      "id": "en-distinct-quantifier",
+      "chart": "english",
+      "a": "Every certified statement has a kernel receipt",
+      "b": "Some certified statement has a kernel receipt",
+      "why": "quantifier is content"
+    },
+    {
+      "id": "lean-distinct-name",
+      "chart": "lean",
+      "a": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
+      "b": "theorem comp_neg (f g : Cone) : IsPositive (f ∘ g)",
+      "why": "different declaration name"
+    },
+    {
+      "id": "lean-distinct-statement",
+      "chart": "lean",
+      "a": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
+      "b": "theorem comp_pos (f g : Cone) : IsNegative (f ∘ g)",
+      "why": "different conclusion"
+    },
+    {
+      "id": "lean-distinct-case",
+      "chart": "lean",
+      "a": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
+      "b": "theorem comp_pos (f g : cone) : IsPositive (f ∘ g)",
+      "why": "Lean is case-sensitive; the lean chart must not casefold"
+    },
+    {
+      "id": "lean-distinct-def-body",
+      "chart": "lean",
+      "a": "def Cone.IsPositive (c : Cone) : Prop := ∀ x ∈ c, 0 ≤ x",
+      "b": "def Cone.IsPositive (c : Cone) : Prop := ∀ x ∈ c, 0 < x",
+      "why": "for a definition the definiens is the content; it is not stripped"
+    },
+    {
+      "id": "cross-chart-distinct",
+      "chart": "cross",
+      "a_chart": "english",
+      "a": "Positivity is preserved under composition",
+      "b_chart": "lean",
+      "b": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
+      "why": "charts never share an address; co-reference is a fiber hypothesis, not an identity"
+    }
+  ]
+}

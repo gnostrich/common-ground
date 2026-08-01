@@ -1,0 +1,119 @@
+{
+  "schema": "common-ground/decisions/v0",
+  "D1": {
+    "status": "resolved",
+    "basis": "fact",
+    "repo": "gnostrich/common-ground",
+    "license": "MIT",
+    "visibility": "as-configured-on-remote"
+  },
+  "D2": {
+    "status": "resolved",
+    "basis": "stated-default",
+    "charts": [
+      "english",
+      "lean",
+      "tabular"
+    ],
+    "code_chart": "deferred-to-v0.5",
+    "note": "english + lean per KICKOFF default; tabular added 2026-07-31 by the item-2 chart plug-in refactor (operator-authorized). Charts are now a seed manifest (seed/CHARTS.json), not a compile-time Literal, so a fourth chart is a manifest row plus behavior registration, no engine dispatch edit. code chart still deferred to v0.5.",
+    "manifest": "seed/CHARTS.json"
+  },
+  "D3": {
+    "status": "partial",
+    "claude_export": {
+      "pin": "registry/imports/claude_export_pin.json",
+      "conversations_json_sha256": "ffe6e6ade3b606066c90021381a52d06b56cc620f9fbefc2d434644534a7d60b",
+      "threads": 129,
+      "turns": 11514,
+      "stored": "external (digest-only in repo, operator 2026-07-31)"
+    },
+    "lean_corpus": {
+      "pin": "registry/imports/aristotle_corpus_pin.json",
+      "artifact_digest_sha256": "24485b87c2377d54aa9cd4b15a486a610cc93cea4602c2dc81efc8309a0eb648",
+      "source": "aristotle-harmonic (2 accounts)",
+      "projects": 297,
+      "lean_files": 2128,
+      "stored": "external (digest-only in repo, operator 2026-07-31)"
+    },
+    "repos": [
+      "certified-positivity"
+    ],
+    "repos_second": null,
+    "exclusions": null,
+    "exclusions_policy": "operator 2026-07-31: exclude personal, non-technical content only; term-list authored at ingestion (an explicit [] is still a decision, never a default)",
+    "note": "claude_export + lean_corpus fetched out-of-band and pinned (not live pulls; KICKOFF 7.5). Bytes live external to this public repo per operator; only digests are committed. Still OPEN: concrete exclusions term-list, and the second repo. D3 remains partial and does not unblock SEED.lock (D5, D6 still open)."
+  },
+  "D4": {
+    "status": "partial",
+    "extractors": [
+      {
+        "id": "k0",
+        "model": "claude-opus-5",
+        "prompt": "extract_v1"
+      },
+      {
+        "id": "k1",
+        "model": "claude-opus-5",
+        "prompt": "extract_v2"
+      },
+      {
+        "id": "k2",
+        "model": "claude-sonnet-5",
+        "prompt": "extract_v1"
+      }
+    ],
+    "spend_cap_usd": null,
+    "live_extraction_default": "off"
+  },
+  "D5": {
+    "status": "unresolved",
+    "preminted": [
+      "BVALUED-AGREED.md",
+      "STATEMENTS.md",
+      "REGISTRY.md"
+    ],
+    "preminted_present": [],
+    "additional": null
+  },
+  "D6": {
+    "status": "unresolved",
+    "lean": null,
+    "lean_source": "certified-positivity lake-manifest",
+    "lean_observed_in_aristotle_corpus": "leanprover/lean4:v4.28.0 (244/245 pinned projects; one v4.32.0 outlier), single mathlib rev 8f9d9cff6bd728b17a24e163c9402775d9e6a365",
+    "lean_observed_note": "CORROBORATION ONLY — D6 stays unresolved. The authoritative pin is certified-positivity's lake-manifest, not the imported corpus; recording the corpus toolchain does not decide D6.",
+    "python": null,
+    "python_observed": "3.11.15",
+    "third_party_runtime_deps": []
+  },
+  "D7": {
+    "status": "resolved",
+    "choice": "re-approved-over-amendments",
+    "note": "Originally approved as-is. Re-approved 2026-07-30 over two amendments, both with R1-R5 text verbatim and unrewritten. AMENDMENT-1 (R3, class transcription-restoration, rationales a/b/c): second_fdt_surrogate_floor decides in place of the bootstrap band. AMENDMENT-2 (R4, class pre-data-design, rationales b/c only - (a) explicitly does NOT apply, since nothing in the spec named a null-rewire reference or a sensitivity arm): R4 becomes two-sided and both arms are decided against dropout movement on a degree- and weight-marginal-preserving rewire of the Q graph. Both retain the superseded band as a reported diagnostic that decides nothing. Amendment authority expires when P3 ingestion begins. AMENDMENT-3 (R2, class pre-data-design, rationales b/c - (a) checked against the drafting history and does not apply: KICKOFF section 5 specifies no flagging criterion and the bootstrap was present from the P0 commit): a gap is flagged iff its loop's cold floor exceeds q95 of a leave-one-out pooled label-permutation null. Rationale (c) here is calibration-restoring, not strictness-increasing. Deviates from the authorized per-loop wording, which is unsatisfiable (2**k support, all-cold assignment is the observed floor); the mandated positive control caught it and the deviation needs operator confirmation.",
+    "amendments": [
+      "PREREG-AMENDMENT-1",
+      "PREREG-AMENDMENT-2",
+      "PREREG-AMENDMENT-3"
+    ],
+    "prereg_path": "registry/PREREG.md"
+  },
+  "D8": {
+    "status": "partial",
+    "note": "Lexicon import pins (LEXICON SPEC section 3). Source POLICY is decided; two of the three artifacts have not landed yet. A pin is a content digest of a fetched dump, not a label: 'latest stable' and 'current' resolve to a different artifact next week, so they name a fetch rule, not an input. KICKOFF 7.5 forbids a live pull during a run for the same mechanical reason - an unpinned source cannot hash cleanly, so the seed hash keying every verdict would mean nothing. Record each artifact with `python cli.py pin <source> --path ...` when it lands.",
+    "mathlib_policy": "latest-stable-at-fetch",
+    "mathlib_dump": null,
+    "mathlib_commit": null,
+    "mathlib_dump_sha256": null,
+    "nlab_policy": "current-at-fetch",
+    "nlab_scrape": null,
+    "nlab_scrape_date": null,
+    "nlab_scrape_sha256": null,
+    "wordnet_policy": "pinned-version",
+    "wordnet_path": null,
+    "wordnet_version": "3.1",
+    "wordnet_sha256": null,
+    "convention_table": "approved-with-additions",
+    "convention_table_path": "seed/LEXICON/convention_table.json",
+    "resolved_when": "every *_sha256 recorded; policy fields alone do not resolve D8"
+  }
+}

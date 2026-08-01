@@ -1,0 +1,181 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Pinned to D6's candidate. The engine is pure stdlib by design, so there is
+          # nothing to install and nothing whose version could drift underneath a hash.
+          python-version: "3.11"
+
+      - name: no third-party runtime dependencies
+        run: |
+          # The seed hash must not depend on a linked LAPACK build or a wheel release.
+          # If this ever fails, D6's pinning surface has grown and SEED.lock's toolchain
+          # section needs to grow with it.
+          python - <<'PY'
+          import ast, pathlib, sys
+          stdlib = set(sys.stdlib_module_names)
+          allowed = stdlib | {"engine", "adapters", "tests", "anthropic"}
+          bad = []
+          for path in list(pathlib.Path("engine").rglob("*.py")) + list(pathlib.Path("adapters").rglob("*.py")):
+              tree = ast.parse(path.read_text(encoding="utf-8"))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      names = [a.name.split(".")[0] for a in node.names]
+                  elif isinstance(node, ast.ImportFrom):
+                      names = [(node.module or "").split(".")[0]] if node.level == 0 else []
+                  else:
+                      continue
+                  for name in names:
+                      if name and name not in allowed:
+                          bad.append(f"{path}: {name}")
+          if bad:
+              print("non-stdlib imports outside the gated live-extraction path:")
+              print("\n".join(bad))
+              raise SystemExit(1)
+          print("engine and adapters import stdlib only (anthropic is lazily imported behind the D4 gate)")
+          PY
+
+      - name: unit tests
+        run: python -m unittest discover -s tests -t . -v
+
+      - name: gate 4 — seed hash tripwire
+        run: |
+          if [ -f seed/SEED.lock ]; then
+            python cli.py verify
+          else
+            echo "seed/SEED.lock absent (P0 gate not yet met; D3/D4/D5/D6 unresolved)."
+            echo "Nothing to tripwire until the lock is written — but assert it still refuses:"
+            if python cli.py lock; then
+              echo "::error::seed_lock.build() wrote a lock despite unresolved decisions"
+              exit 1
+            fi
+            echo "lock correctly refused"
+          fi
+
+      - name: null cells i, ii, vi, vii, viii — always runnable, must always be green
+        run: |
+          python - <<'PY'
+          from engine.nulls import (
+              cell_i_idempotence, cell_ii_paraphrase, cell_vi_hub_coverage,
+              cell_vii_shadow, cell_viii_no_clamp_grep,
+          )
+          from adapters.lexicon_imports import import_convention_table
+          from engine.lexicon import Registry
+          from engine.types import NullStatus
+          from engine import seed_lock
+
+          seed = seed_lock.current().seed_hash
+          registry = Registry()
+          import_convention_table(registry)
+          failed = False
+          cells = (
+              cell_i_idempotence(seed),
+              cell_ii_paraphrase(),
+              # vi and vii run on the convention table, which is present regardless
+              # of D8; viii reads the engine's own source and is never blocked.
+              cell_vi_hub_coverage(registry),
+              cell_vii_shadow(registry),
+              cell_viii_no_clamp_grep(),
+          )
+          for cell in cells:
+              print(f"{cell.cell}: {cell.status.value} — {cell.detail}")
+              if cell.status is not NullStatus.PASS:
+                  failed = True
+          raise SystemExit(1 if failed else 0)
+          PY
+
+      - name: positive controls — every cell must be able to fail
+        run: |
+          # A cell whose control does not fire is decorative, and a green row from a
+          # decorative cell is worse than a red one because it looks like a result. Two
+          # cells (iv and v) were vacuous until this rule was adopted; this step is what
+          # stops a third from going unnoticed.
+          python - <<'PY'
+          from adapters.lexicon_imports import import_convention_table
+          from engine.constants import BETA_ARMS, decisions
+          from engine.extract import build_k_extractors
+          from engine.lexicon import Registry
+          from engine import nulls, seed_lock
+
+          seed = seed_lock.current().seed_hash
+          exts = build_k_extractors(decisions(), offline=True)
+          registry = Registry()
+          import_convention_table(registry)
+
+          controls = (
+              ("i",    lambda: nulls._control_i(seed)),
+              ("ii",   nulls._control_ii),
+              ("iii",  lambda: nulls._control_iii(seed, exts, BETA_ARMS[0])),
+              ("iv",   lambda: nulls._control_iv(seed, exts, BETA_ARMS[0])),
+              ("v",    lambda: nulls._control_v(seed, exts, BETA_ARMS[0])),
+              ("vi",   lambda: nulls._control_vi(registry)),
+              ("vii",  lambda: nulls._control_vii(registry)),
+              ("viii", nulls._control_viii),
+              ("ix",   lambda: nulls._control_ix(None, seed)),
+          )
+          dead = []
+          for name, run in controls:
+              fired, detail = run()
+              print(f"{name}: {'live' if fired else 'DEAD'} — {detail}")
+              if not fired:
+                  dead.append(name)
+          if dead:
+              print(f"::error::dead controls: {', '.join(dead)} — those cells cannot fail")
+          raise SystemExit(1 if dead else 0)
+          PY
+
+      - name: gate 6 — every statistical band is classified
+        run: |
+          # Sentence 6 says a verdict is decided against a null, never against a resample
+          # of the observation. Two null cells and two PREREG rules broke that; the first
+          # three were found by hand. This is what finds the next one.
+          python - <<'PY'
+          from engine.static_checks import check_gate6_classification, gate6_report
+
+          result = check_gate6_classification()
+          for site in gate6_report():
+              mark = {True: "conforming", False: "NON-CONFORMING", None: "n/a"}[site["conforming"]]
+              print(f"{site['site']:<50} {site['role']:<11} {mark}")
+          print(f"\n{result.checked_functions} band site(s) across {result.checked_files} files")
+          for v in result.violations:
+              print(f"::error::unclassified band: {v}")
+          if not result.ok:
+              print("Add it to GATE6_SITES with its reference distribution and role.")
+          raise SystemExit(0 if result.ok else 1)
+          PY
+
+      - name: gate 7 — every generative key is content-and-seed only
+        run: |
+          # Identity may label evidence; it may never generate it. Two defects of this
+          # shape were found in one afternoon (extraction seeded on doc_id, and doc_id in
+          # the live prompt), so a new random stream now has to declare what it is keyed on.
+          python -m engine.gate7_sweep
+
+      - name: faithfulness — every theory object mapped and controlled
+        run: |
+          # Gate 6 asks whether a verdict is decided against a null. This asks the prior
+          # question: is the object the theory names actually in the code, and is there a
+          # control that fails if it stops being there. Classified gaps do not fail — they
+          # are findings, listed for P3.
+          python -m engine.faithfulness_report
+
+      - name: probe battery + chart plug-in audit
+        run: |
+          # The commitment -> probe -> status battery. A stubbed or inferred probe is a
+          # reported finding, not a failure; a live probe whose control vanished is a
+          # failure. The chart plug-in audit is printed for the record — it FAILED (a third
+          # chart is not addable by manifest alone), which is an open item-2 ruling.
+          python -m engine.probe_report
+
+      - name: status
+        run: python cli.py status
