@@ -284,5 +284,53 @@
   "gates_continuously": "the six static checks run in-process before every batch and the FULL test suite runs in a subprocess every `gate_every` batches. Red gates HALT the loop and write a `halt` record. There is no log-and-continue path.",
   "controls": "tests/test_continuous.py — 34 controls, each planted against: torn journal line, cold restart re-ask, promotable delta at the inlet, second inlet call site, AUTHORSHIP named in the source, hub cap exceeded, red gate, malformed control file, restart-reset rate budget, unreported cost.",
   "read_view": "engine/corpus_state.build_snapshot_direct + with_arrows. The window loads the persisted corpus read view and lays the proposer's journal arrows over it at request time (read-only, EXTRACTION tier, no write, no promotion). `with_arrows` recomputes fibers and blocks from the arrows and takes contest as the UNION of the stored single-slot arm and the recomputed multi-slot arm; tests/test_corpus_state.py asserts the overlay equals a corpus built with those arrows as claims all along, over the corpus slots."
+ },
+ "REPO_INTAKE": {
+  "status": "held",
+  "note": "Not a numbered D-decision on purpose: it does not gate SEED.lock (unresolved_decisions() in engine/seed_lock.py only scans keys starting with 'D') and it is scoped to the claude/repo-intake-adapter track, a parallel, non-blocking build that must not gate or read as part of P3's own decision sequence. Built and proven on tests/fixtures/mixed_repo/ only. Real-repo ingestion of any of gnostrich's actual repositories is explicitly HELD pending (a) P3 landing on the main line and (b) the operator's approval of the language-audit classification table this track produced.",
+  "manifest": "seed/LANGUAGES.json",
+  "adapter": "adapters/repo_adapter.py",
+  "chart_worthy_languages_built": [
+   {
+    "language": "python",
+    "chart": "python",
+    "floor": "AST segmenter (deterministic, replayable) + the repo's own unittest suite actually run (CI_RECEIPT-tier clamp on each passing test function) -- adapters/python_corpus.py"
+   },
+   {
+    "language": "lean",
+    "chart": "lean",
+    "floor": "kernel elaboration under a pinned toolchain (KERNEL-tier clamp) -- existing chart and adapter (adapters/lean_corpus.py), reused, not duplicated"
+   }
+  ],
+  "reference_tier_languages_held": [
+   {
+    "language": "Markdown (.md, .markdown, .rst, .txt)",
+    "reason": "prose about code; no compiler/kernel/test check exists for an English claim at v0"
+   },
+   {
+    "language": "Go (.go)",
+    "reason": "`go build`/`go test` could supply a floor later; no adapter built at v0, held rather than guessed at"
+   },
+   {
+    "language": "JavaScript/TypeScript (.js, .jsx, .ts, .tsx)",
+    "reason": "no dependency-free stdlib-only replayable check available (a JS/TS toolchain is third-party)"
+   },
+   {
+    "language": "shell (.sh)",
+    "reason": "side-effecting; running it to check a claim is not a parse and is unsafe for grounding"
+   },
+   {
+    "language": "declarative config (.yml, .yaml, .json, .toml, .cfg, .ini)",
+    "reason": "not a truth-apt claim; a schema check could floor it later but none is wired"
+   }
+  ],
+  "shelf_examples": [
+   "lockfiles (package-lock.json, yarn.lock, poetry.lock, Cargo.lock, go.sum, *.lock)",
+   "binaries/images/archives/fonts (.png, .jpg, .pdf, .zip, .whl, .so, .pyc, .woff, .ttf)",
+   "any unregistered extension (default rule)"
+  ],
+  "engine_surgery_needed": [],
+  "engine_surgery_note": "No chart-worthy language attempted required an engine dispatch edit. Both python and lean go through the existing plug-in seam (seed/CHARTS.json manifest row + behavior functions registered in engine/normalize.py and engine/extract.py's _NORMALIZERS/_CLASSIFIERS/_SEGMENTERS dicts; no `if chart == ...` added anywhere) -- engine/chart_plugin_audit.py:verdict() confirms PASS with python registered.",
+  "real_repo_ingestion": "HELD. Deliverable 1's language-audit table (repo x language x class for every gnostrich public repo) is metadata-only enumeration and is reported separately for operator approval; no repo content was pulled into this corpus."
  }
 }

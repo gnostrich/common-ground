@@ -361,7 +361,8 @@ class TheChartRegistryIsAPlugInSeam(unittest.TestCase):
         from engine.charts import chart_names, chart_spec, is_chart
 
         names = chart_names()
-        for expected in ("english", "lean", "tabular", "conversation"):
+        for expected in ("english", "lean", "tabular", "conversation",
+                         "correspondence", "python"):
             self.assertIn(expected, names)
         tags = [chart_spec(n).tag_id for n in names]
         self.assertEqual(len(tags), len(set(tags)), "chart tags must be distinct")
@@ -402,7 +403,7 @@ class TheChartRegistryIsAPlugInSeam(unittest.TestCase):
             tree = ast.parse(inspect.getsource(fn).lstrip())
             for node in ast.walk(tree):
                 if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                    self.assertNotIn(node.value, ("english", "lean", "tabular"),
+                    self.assertNotIn(node.value, ("english", "lean", "tabular", "python"),
                                      f"{fn.__name__} names a chart as a literal")
 
 

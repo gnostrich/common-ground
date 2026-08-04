@@ -135,7 +135,7 @@ class TheReportHeaderCarriesCounts(unittest.TestCase):
             ("doc.md", "The cone is positive."),
             ("t.md", "| a | b |\n|---|---|\n| 1 | 2 |\n"),
             ("a.lean", "theorem t : P := by simp"),
-            ("err.log", "Traceback (most recent call last):\n  boom"),
+            ("err.txt", "Traceback (most recent call last):\n  boom"),
             ("empty.md", "  "),
         ])
         counts = report.counts()
