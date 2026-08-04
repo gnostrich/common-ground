@@ -38,8 +38,11 @@ of the addressing function; editing them is plastic under gate 4.
 The ontology is deliberately thin: it carries only what addressing needs. It is not a
 domain ontology and makes no commitments about the subject matter of any claim.
 
-- **Chart** — `english` | `lean`. A chart is a normalization regime plus a marker set.
-  The code chart is deferred to v0.5 (D2). Charts do not nest and are not ordered.
+- **Chart** — declared in `seed/CHARTS.json` (D2), not a closed enumeration: `english`,
+  `lean`, `tabular`, and `python` (the last added additively on the claude/repo-intake-adapter
+  track; see `seed/DECISIONS.md`'s D2 addendum — fixture-proven, not yet operator-authorized
+  for real-corpus use). A chart is a normalization regime plus a marker set. Charts do not
+  nest and are not ordered.
 - **Slot** — `sha256(nu(surface) || 0x00 || type)`. The atom of address. Two surfaces
   occupy the same slot iff their normalizations and types are identical. Slots are
   chart-separated in practice because `nu` prefixes a chart tag.

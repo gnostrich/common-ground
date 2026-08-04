@@ -221,6 +221,62 @@ later infers a relation. Worth re-reading on any future edit: `compact` (the Bou
 bridge is written as a checkable Lean statement) and the three terms this project itself
 overloads — `chart`, `fiber`, `kernel`.
 
+---
+
+### D2 addendum — `python` chart (claude/repo-intake-adapter track)
+
+Built on a separate, parallel, non-blocking branch (`claude/repo-intake-adapter`), based on
+this repo's history through the PR #1 merge point, **not** on the main line's later P3 work
+— the two tracks do not touch each other's commits. `seed/CHARTS.json` mechanically lists a
+fourth chart, `python` (tag `py`), added through the exact same plug-in seam item 2 built
+for `tabular`: a manifest row plus a normalizer/classifier/segmenter registered under a
+fresh `behavior` id (`engine/normalize.py`, `engine/extract.py`), no engine dispatch edit.
+`english`/`lean`/`tabular`'s tags and addresses are unchanged (`tests/test_python_chart.py:
+TheAdditionIsAdditive`).
+
+Its replayable warrant floor: an AST-based segmenter (deterministic, total, never invokes a
+real parser inside `nu` itself — see `engine/normalize.py:_nu_python`'s docstring for why)
+plus a `CI_RECEIPT`-tier clamp on any test function the corpus's own `unittest` suite,
+actually run in a subprocess, reports passing (`adapters/python_corpus.py`) — the second
+grounding tier GATES.md sentence 3 names, alongside Lean kernel-accept.
+
+Proven only against `tests/fixtures/mixed_repo/`, a synthetic fixture repo. **Not**
+operator-authorized for any real corpus — see the REPO_INTAKE entry immediately below,
+which is the actual gate on real-repo ingestion, and is intentionally not a `D`-numbered
+decision so it cannot be mistaken for something that blocks `SEED.lock` or folds into the
+main line's own D-sequence.
+
+## REPO_INTAKE — repo-intake adapter language classification (claude/repo-intake-adapter track)
+
+Scope: a parallel track building `adapters/repo_adapter.py` (walks a repo, routes each file
+by a seed-declared language manifest, `seed/LANGUAGES.json`, to a chart / a reference-tier
+hold / the shelf) and proving it — end to end, including the `python` chart above — against
+`tests/fixtures/mixed_repo/`, a fixture this track authored. It does **not** touch, gate, or
+depend on the main line's P3 ingestion work.
+
+**Chart-worthy, built:** `python` (floor: AST segmenter + actually-run `unittest` receipts,
+`CI_RECEIPT` tier) and `lean` (floor: kernel elaboration, `KERNEL` tier — the existing chart
+and adapter, reused, not duplicated). Neither required an engine dispatch edit; both go
+through the existing plug-in seam. No language attempted needed engine surgery.
+
+**Reference-tier, held, with rationale** (not silently dropped — counted and hashed by
+`adapters/repo_adapter.py`, no `Document` built, no ingestion): Markdown/reStructuredText/
+plain text (prose about code, no replayable check), Go (`go build`/`go test` could floor it
+later; not built at v0), JavaScript/TypeScript (no dependency-free stdlib-only check
+available), shell (side-effecting; unsafe to run for grounding), declarative config —
+YAML/JSON/TOML/INI/CFG (not a truth-apt claim; no schema check wired). Full table with
+one-line reasons: `seed/LANGUAGES.json`.
+
+**Shelf** (binaries, lockfiles, unregistered extensions — hashed, never read as text):
+`package-lock.json`/`yarn.lock`/`poetry.lock`/`Cargo.lock`/`go.sum` by filename; images,
+archives, fonts, compiled artifacts by extension; anything unregistered, by an explicit
+default rule rather than a silent guess.
+
+**Real-repo ingestion is HELD.** This track enumerated `gnostrich`'s public repositories'
+language/file-type metadata (repo language stats, file-tree extensions — no file bodies)
+for a classification table reported separately for operator approval. No content from any
+of the operator's real repositories was pulled into this corpus. Real ingestion waits on
+(a) the main line's P3 landing and (b) the operator's explicit sign-off on that table.
 
 ---
 
@@ -236,3 +292,4 @@ overloads — `chart`, `fiber`, `kernel`.
 | D6 | **UNRESOLVED** | `SEED.lock`, every kernel clamp |
 | D7 | RESOLVED (re-approved over PREREG-AMENDMENT-1) | — |
 | D8 | PARTIAL (policy set, 2 artifacts + 3 digests outstanding) | `SEED.lock`, null cells vi/vii/ix |
+| REPO_INTAKE | HELD (built + fixture-proven on claude/repo-intake-adapter; real-repo ingestion pending operator approval) | real-repo ingestion only — does not block `SEED.lock` or P3 |

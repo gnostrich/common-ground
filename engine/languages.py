@@ -56,6 +56,7 @@ class LanguageRule:
     cls: str
     chart: str = ""
     why: str = ""
+    filename: str = ""      # an exact basename rule; wins over any extension rule
 
 
 @lru_cache(maxsize=1)
@@ -73,9 +74,10 @@ def rules() -> dict[str, LanguageRule]:
     declared = set(chart_names())
     out: dict[str, LanguageRule] = {}
     for row in raw.get("rules", ()):
-        ext = str(row.get("ext", "")).lower()
+        filename = str(row.get("filename", ""))
+        ext = filename.lower() if filename else str(row.get("ext", "")).lower()
         cls = str(row.get("cls") or row.get("class", ""))
-        if not ext or cls not in _CLASSES:
+        if (not ext and not filename and "ext" not in row) or cls not in _CLASSES:
             raise EngineError(f"LANGUAGES.json: bad row {row!r}; class must be one of "
                               f"{sorted(_CLASSES)}")
         chart = str(row.get("chart", ""))
@@ -83,7 +85,8 @@ def rules() -> dict[str, LanguageRule]:
             raise EngineError(
                 f"LANGUAGES.json: {ext} routes to chart {chart!r}, which seed/CHARTS.json "
                 f"does not declare (declared: {sorted(declared)})")
-        out[ext] = LanguageRule(ext=ext, cls=cls, chart=chart, why=str(row.get("why", "")))
+        out[ext] = LanguageRule(ext=ext, cls=cls, chart=chart, why=str(row.get("why", "")),
+                                filename=filename)
     if WILDCARD not in out:
         raise EngineError(
             "LANGUAGES.json must declare a '*' row: the default has to be readable in the "
@@ -104,10 +107,34 @@ def extension_of(name: str) -> str:
     return tail[dot:].lower() if dot > 0 else ""
 
 
+def basename_of(name: str) -> str:
+    """The artifact's file name, for the FILENAME rules. `''` when it has none."""
+    tail = name.rpartition("||")[2] or name
+    return posixpath.basename(tail.split("#", 1)[0])
+
+
 def rule_for(name: str) -> LanguageRule:
-    """The rule governing this artifact. Falls back to the declared `*` row, never to code."""
+    """The rule governing this artifact. Falls back to the declared rows, never to code.
+
+    Precedence, and each step is a manifest row rather than a branch here:
+
+    1. an exact FILENAME rule (`package-lock.json`) — adopted from the repo-intake registry,
+       because a generated lockfile is not classified by being JSON;
+    2. the extension rule;
+    3. the `""` row when the artifact has NO extension — a chat message id has no name to
+       key on, so content decides, which is what the router always did;
+    4. the `*` row for an extension nobody declared — SHELVED, because an undeclared
+       extension is more likely a binary than prose and reading one manufactures claims.
+    """
     table = rules()
-    return table.get(extension_of(name), table[WILDCARD])
+    named = table.get(basename_of(name).lower())
+    if named is not None and named.filename:
+        return named
+    ext = extension_of(name)
+    hit = table.get(ext)
+    if hit is not None:
+        return hit
+    return table.get("", table[WILDCARD]) if not ext else table[WILDCARD]
 
 
 def report() -> list[dict[str, object]]:

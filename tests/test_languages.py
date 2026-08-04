@@ -34,13 +34,29 @@ class TheManifestDecidesRouting(unittest.TestCase):
         self.assertEqual(route("repo||a.md", "The cone is positive.").destination, "english")
 
     def test_a_held_language_is_counted_not_walked_past(self):
-        """`.py` has no chart. It must SAY so, with a reason, not vanish silently."""
-        self.assertEqual(rule_for("repo||m.py").cls, REFERENCE)
-        got = route("repo||m.py", "def f():\n    return 1\n")
+        """A language with no chart must SAY so, with a reason, not vanish silently.
+
+        `.py` was the example until the repo-intake rebase gave it a chart; `.go` carries the
+        case now, and that swap is the point — the class is what matters, not the extension.
+        """
+        self.assertEqual(rule_for("repo||m.go").cls, REFERENCE)
+        got = route("repo||m.go", "package main\nfunc main() {}\n")
         self.assertEqual(got.destination, "shelf")
         self.assertIn("reference-tier", got.reason)
-        self.assertIn("python chart", got.reason)
         self.assertIsNone(got.document, "a held language must not reach an extractor")
+
+    def test_python_now_enters_its_own_chart_by_manifest_row(self):
+        """The seam, exercised: a chart added by manifest + behaviors, routed with NO edit
+        to engine/router.py."""
+        self.assertEqual(rule_for("repo||m.py").chart, "python")
+        self.assertEqual(route("repo||m.py", "def f():\n    return 1\n").destination, "python")
+
+    def test_a_filename_rule_wins_over_its_extension(self):
+        self.assertEqual(rule_for("repo||package-lock.json").cls, SHELF)
+        self.assertEqual(rule_for("repo||Makefile").cls, REFERENCE)
+
+    def test_an_undeclared_extension_is_shelved_not_read_as_prose(self):
+        self.assertEqual(rule_for("repo||thing.qqq").cls, SHELF)
 
     def test_binary_and_config_are_shelved_by_manifest(self):
         self.assertEqual(rule_for("repo||x.png").cls, SHELF)
@@ -48,7 +64,8 @@ class TheManifestDecidesRouting(unittest.TestCase):
 
     def test_the_default_is_declared_in_the_manifest_not_in_code(self):
         self.assertIn("*", rules(), "the '*' row is what makes the default auditable")
-        self.assertEqual(rules()["*"].cls, CLASSIFY)
+        self.assertEqual(rules()["*"].cls, SHELF, "an undeclared extension is not prose")
+        self.assertEqual(rules()[""].cls, CLASSIFY, "no extension at all: content decides")
         # a chat message id has no extension and must behave exactly as it did before
         self.assertEqual(route("claude||3f2a-11bb:7", "A claim about the cone.").destination,
                          "english")
