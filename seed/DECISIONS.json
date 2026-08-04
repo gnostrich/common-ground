@@ -150,6 +150,33 @@
         "engine/nulls.py",
         "engine/blocks.py"
       ]
+    },
+    "F-restatement-ranking-retired": {
+      "status": "retired 2026-08-04 (operator)",
+      "signal": "restatement count (number of distinct documents restating a slot)",
+      "why_retired": "it measures REPETITION WITHIN A CHART, not bridge likelihood across charts. A slot restated in many documents is boilerplate as often as it is important, and boilerplate concentrates in the smallest chart. Ranking by it selected 186/200 lean x tabular candidates \u2014 Lean theorem statements paired with table rows \u2014 and the proposer correctly answered `none` to all 170 it was shown.",
+      "evidence": "Batch 1: 200 holes, chart-pairs {lean x tabular:186, english x lean:10, conversation x lean:4}; LM 20 calls/46s; answers 170/170 `none`; 0 arrows entered.",
+      "kept_result": "the `none` discipline held in production across 170 candidates \u2014 the proposer forced no match. That is the batch's real result."
+    },
+    "F-claim-form-typing-does-not-discriminate": {
+      "status": "open defect, NAMED not fixed",
+      "claim": "type-compatibility was supposed to filter candidate pairs, but claim-form has four values and one absorbs ~88% of every prose-family chart, so it filters almost nothing.",
+      "measured": {
+        "english_assert": "88.9% of 96308",
+        "conversation_assert": "87.9% of 37297",
+        "tabular_assert": "88.5% of 1456",
+        "lean_assert": "18.1% of 12041 (lean splits: conditional 7467, define 2397, assert 2177)"
+      },
+      "consequence": "tabular rows type as `assert` and therefore match nearly every english/conversation slot AND lean's assert slots \u2014 which is why the 186 lean x tabular candidates passed the type gate. Type-compatible english x lean pairs alone number 234,514,206.",
+      "not_fixed": "a finer claim-form taxonomy moves classify(), which moves addresses (gate 4, plastic). Named for the operator to rule on rather than repaired silently."
+    },
+    "F-lexicon-import-is-the-bottleneck": {
+      "status": "blocking",
+      "question": "can candidate pairs be ranked by shared lexicon anchors (english term <-> Lean name already bound in the imported lexicon)?",
+      "answer": "NO \u2014 the anchored set is not thin, it is EMPTY. 0 of 184 imported senses carry a formal face.",
+      "why": "mathlib import BLOCKED (D8: policy 'latest-stable-at-fetch', no dump landed, mathlib_dump_sha256 null); nlab BLOCKED; wordnet BLOCKED; preminted BLOCKED (D5). The only source that imported is the hand-authored convention table (134 convention + 46 general + 4 preminted senses), and its 51 rows name no formal face at all.",
+      "consequence": "anchor-ranking cannot be computed: it would score all 234.5M english x lean pairs at zero. Batch 2 as specified cannot run until a formal-face source lands.",
+      "unblocks": "land + pin a Mathlib dump (D8), OR derive formal faces from the operator's OWN Lean corpus declaration names via the seeded R-map (engine/rmap.py renders formal -> English through the hashed abbreviation table) \u2014 declared structure, not similarity. The second needs no external fetch. Operator's call."
     }
   }
 }
