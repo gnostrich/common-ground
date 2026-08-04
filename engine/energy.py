@@ -125,6 +125,12 @@ class FreeEnergy:
                 ps[k] * math.log(max(ps[k], EPS)) for k in range(NBV)
             )
 
+        # The equivalence-prior coupling. It degrades honestly on the empty registry: with no
+        # DECLARED correspondence there are no fibers, so `self.edges` is empty, this loop adds
+        # nothing, and F is evidence + lexicon prior + entropy alone. There is no default
+        # coupling and no similarity fallback — an unpopulated correspondence contributes
+        # exactly zero coupling energy, not a silent stand-in — which is why the floor over
+        # such a ledger is a genuine GAP (no cycle to measure) rather than a measured zero.
         for edge in self.edges:
             pu, pv = p.get(edge.u), p.get(edge.v)
             if pu is None or pv is None:

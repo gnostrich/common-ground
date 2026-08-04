@@ -18,7 +18,11 @@ from engine.types import Block, Clamp, Document, Warrant, WarrantTier
 
 FLAT = [0.0, 0.0, 0.0, 0.0]
 
-# A small corpus that fibers and contests, so there is real structure to preserve.
+# A small corpus with real structure to preserve under relabelling: many slots, deltas,
+# blocks and evidence. Under exact addressing it forms NO fibers, loops or floors without a
+# declared correspondence (the P/not-P surfaces are distinct claims, not a similarity
+# contest), so the loop/floor invariants below hold over an empty set — the slot, evidence
+# and shadow-calibration invariants are what carry the relabel-independence claim here.
 CORPUS = [
     Document("pos", "english", "The cone is positive. Positivity is preserved under "
              "composition. Composition preserves the positivity of cones.", "repo_docs"),

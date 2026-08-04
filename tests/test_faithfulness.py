@@ -394,11 +394,24 @@ class TreeNull(unittest.TestCase):
                                    "the quantity is retained and renamed, not recomputed. "
                                    "What changed is that nothing reads it as a floor.")
 
+    @staticmethod
+    def _two_member_tree():
+        """Two GENUINE same-claim paraphrases DECLARED as one proposition. A two-member fiber
+        is a tree — one Q edge, no cycle — so no holonomy is defined on it. This is the honest
+        cycle-free contest graph under exact addressing: the deleted P/not-P pair fibered only
+        on string overlap; these fiber because the correspondence is DECLARED, and they still
+        close no cycle because two members cannot."""
+        docs = [Document("a", "english", "The kernel accepts the statement.", "repo_docs"),
+                Document("b", "english", "The kernel accepts every checked statement.", "repo_docs")]
+        exts = build_k_extractors(decisions(), offline=True)
+        base = build_ledger(docs, exts, correspondence=frozenset())
+        ids = sorted(s.id for s in base.slots)
+        corr = frozenset({(ids[0], ids[1])})
+        return build_ledger(docs, exts, correspondence=corr)
+
     def test_tree_null_passes_with_floor_zero(self):
         """Control 4: a cycle-free contest graph yields floor exactly 0."""
-        docs = [Document("a", "english", "The cone is positive.", "repo_docs"),
-                Document("b", "english", "The cone is not positive.", "repo_docs")]
-        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+        ledger = self._two_member_tree()
         self.assertEqual(ledger.loops, [], "two fibered surfaces close no cycle")
         result, _, _ = run_meter(ledger, 1.0, "tree-null", shadow())
         self.assertEqual(result.mean_floor(), 0.0,
@@ -406,9 +419,7 @@ class TreeNull(unittest.TestCase):
 
     def test_a_cycle_free_corpus_is_flagged_no_cycle_support(self):
         """Control 5: floor 0 with a reason, never a silent zero."""
-        docs = [Document("a", "english", "The cone is positive.", "repo_docs"),
-                Document("b", "english", "The cone is not positive.", "repo_docs")]
-        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+        ledger = self._two_member_tree()
         result, _, _ = run_meter(ledger, 1.0, "tree-null", shadow())
         self.assertTrue(result.no_cycle_support,
                         "a zero floor for want of a cycle must say so")
@@ -433,14 +444,30 @@ class TreeNull(unittest.TestCase):
 class MeasuredShadowChannel(unittest.TestCase):
     """The calibration channel the repair produced. Standard meter output."""
 
-    def test_measured_defect_is_reported_beside_the_seed_declaration(self):
-        docs = [Document("d", "english",
-                         "The cone is positive. The cone is not positive. "
-                         "The cone may be positive.", "repo_docs"),
-                Document("l", "lean", "theorem cone_pos : IsPositive c := by simp",
-                         "lean_corpus")]
-        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+    @staticmethod
+    def _grounded_cross_chart():
+        """A GENUINE english<->lean restatement (both affirm the cone is positive) DECLARED as
+        a cross-chart correspondence, with a KERNEL grounding on the english side that
+        conflicts with the lean reading. The two settled states then differ, so the round-trip
+        closure defect (measured shadow) on the correspondence edge is nonzero — a real
+        translator drift. This replaces the deleted P/not-P triple: the drift here comes from a
+        genuine grounding conflict across a true restatement, never from string overlap. The
+        lean value is read off `nu(lean, surface)` = 'theorem cone_pos : IsPositive c' (cut at
+        `:=`), so nothing outside the address span decides it (GATES.md sentence 8)."""
+        en = Document("d", "english", "The cone is positive.", "repo_docs")
+        ln = Document("l", "lean", "theorem cone_pos : IsPositive c := by simp", "lean_corpus")
+        exts = build_k_extractors(decisions(), offline=True)
+        base = build_ledger([en, ln], exts, correspondence=frozenset())
+        en_slot = next(s.id for s in base.slots if s.chart == "english")
+        ln_slot = next(s.id for s in base.slots if s.chart == "lean")
+        corr = frozenset({(min(en_slot, ln_slot), max(en_slot, ln_slot))})
+        clamps = [Clamp(en_slot, "F", Warrant(WarrantTier.KERNEL, "kernel:accept"))]
+        ledger = build_ledger([en, ln], exts, correspondence=corr, clamps=clamps)
         result, _, _ = run_meter(ledger, 1.0, "calib", shadow())
+        return result
+
+    def test_measured_defect_is_reported_beside_the_seed_declaration(self):
+        result = self._grounded_cross_chart()
 
         self.assertTrue(result.shadow_calibration, "every Q edge contributes a row")
         for row in result.shadow_calibration:
@@ -453,14 +480,10 @@ class MeasuredShadowChannel(unittest.TestCase):
         self.assertEqual(summary["edges"], float(len(result.shadow_calibration)))
 
     def test_translator_drift_names_cross_chart_edges_only(self):
-        docs = [Document("d", "english",
-                         "The cone is positive. The cone is not positive. "
-                         "The cone may be positive.", "repo_docs"),
-                Document("l", "lean", "theorem cone_pos : IsPositive c := by simp",
-                         "lean_corpus")]
-        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
-        result, _, _ = run_meter(ledger, 1.0, "calib", shadow())
-        for row in result.translator_drift():
+        result = self._grounded_cross_chart()
+        drift_rows = result.translator_drift()
+        self.assertTrue(drift_rows, "the grounded restatement must produce a measured drift")
+        for row in drift_rows:
             self.assertTrue(row.crosses_charts)
             self.assertGreater(row.drift, 0.0)
 
@@ -633,10 +656,10 @@ class GenerativeKeysAreContentAndSeedOnly(unittest.TestCase):
     def test_a_relabelled_copy_extracts_bit_identically(self):
         """The repair's control. Was: one extra evidential identity the original never had."""
         from engine.energy import evidential_identity
-        from engine.nulls import _contradictory_docs
+        from engine.nulls import _genuine_paraphrases
         from engine.pipeline import ingest
 
-        docs = _contradictory_docs("c")
+        docs = _genuine_paraphrases("c")
         dup = [Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate")
                for d in docs]
         exts = build_k_extractors(decisions(), offline=True)
@@ -650,11 +673,11 @@ class GenerativeKeysAreContentAndSeedOnly(unittest.TestCase):
 
     def test_cell_v_is_green_on_the_standard_fixture(self):
         from engine.constants import BETA_ARMS
-        from engine.nulls import _contradictory_docs, cell_v_duplicate_source
+        from engine.nulls import _genuine_paraphrases, cell_v_duplicate_source
         from engine.types import NullStatus
 
         cell = cell_v_duplicate_source(
-            "gate7", _contradictory_docs("c"),
+            "gate7", _genuine_paraphrases("c"),
             build_k_extractors(decisions(), offline=True), BETA_ARMS[0],
         )
         self.assertIs(cell.status, NullStatus.PASS, cell.detail)
