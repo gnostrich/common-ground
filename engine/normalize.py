@@ -314,13 +314,33 @@ def _classify_conversation(body: str) -> ClaimForm:
     return _classify_prose(body)
 
 
+# The correspondence chart carries the base category's morphisms as claims. Its surface is
+# already canonical and content-derived (`Correspondence.surface`: two exact slot addresses
+# and a kind), so nu only strips controls and collapses whitespace — no casefolding, because
+# a slot address is a hex hash and a chart name is an identifier, and no markdown/LaTeX
+# stripping, because none of those characters occur in the canonical form. Idempotent by
+# construction, so null cell (i) fuzzes it like every other chart.
+def _nu_correspondence(core: str) -> str:
+    s = _CONTROL_RE.sub("", core)
+    s = unicodedata.normalize("NFKC", s)
+    return _WS_RE.sub(" ", s).strip()
+
+
+def _classify_correspondence(body: str) -> ClaimForm:
+    # "A corresponds to B" asserts a relation between two addresses. It is not conditional,
+    # definitional or normative — it is an assertion about the base category.
+    return "assert"
+
+
 # The plug-in seam, wired once. `nu` and `classify` dispatch through these by the chart's
 # declared behavior id; adding a chart adds a manifest row and (if the behavior is new) an
 # entry here, and touches no dispatch logic.
 _NORMALIZERS.update({"prose": _nu_english, "lean": _nu_lean, "tabular": _nu_tabular,
-                     "conversation": _nu_conversation})
+                     "conversation": _nu_conversation,
+                     "correspondence": _nu_correspondence})
 _CLASSIFIERS.update({"prose": _classify_prose, "lean": _classify_lean,
-                     "tabular": _classify_tabular, "conversation": _classify_conversation})
+                     "tabular": _classify_tabular, "conversation": _classify_conversation,
+                     "correspondence": _classify_correspondence})
 
 
 def _has_explicit_binder(body: str) -> bool:

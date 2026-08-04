@@ -32,13 +32,25 @@ class WarrantTier(IntEnum):
 
     KERNEL = 0  # Lean kernel-accept under the pinned toolchain (D6)
     CI_RECEIPT = 1  # CI-green test receipt
-    PREMINTED = 2  # D5 pre-minted lexicon entry
-    REPO_DOC = 3  # README / STATEMENTS / docs, with repo provenance
-    EXTRACTION = 4  # k-extractor output. Never grounds.
+    AUTHORSHIP = 2  # the operator's explicit confirmation of a specific claim
+    PREMINTED = 3  # D5 pre-minted lexicon entry
+    REPO_DOC = 4  # README / STATEMENTS / docs, with repo provenance
+    EXTRACTION = 5  # k-extractor output. Never grounds.
 
 
 #: Gate 3. The only two tiers that may clamp.
 TOP_TIER: frozenset[WarrantTier] = frozenset({WarrantTier.KERNEL, WarrantTier.CI_RECEIPT})
+
+#: The weakest tier K will promote. A correspondence proposed by the LM is EXTRACTION and may
+#: form a PROVISIONAL fiber and be reported, but it never promotes to the slow corpus until the
+#: operator confirms it at AUTHORSHIP (or a kernel-verified translation grounds it outright).
+#: Tiers are ordered strongest-first, so "at least authorship" is `tier <= AUTHORSHIP`.
+PROMOTION_FLOOR: WarrantTier = WarrantTier.AUTHORSHIP
+
+
+def promotable(tier: WarrantTier) -> bool:
+    """True iff `tier` is strong enough for K to promote it into the slow corpus."""
+    return tier <= PROMOTION_FLOOR
 
 #: Energy weight contributed by a warrant tier, used by `energy.py`. A non-clamping
 #: warrant can be arbitrarily heavy and still never fix a value — that is the whole
@@ -46,6 +58,7 @@ TOP_TIER: frozenset[WarrantTier] = frozenset({WarrantTier.KERNEL, WarrantTier.CI
 TIER_WEIGHT: dict[WarrantTier, float] = {
     WarrantTier.KERNEL: 8.0,
     WarrantTier.CI_RECEIPT: 6.0,
+    WarrantTier.AUTHORSHIP: 5.0,
     WarrantTier.PREMINTED: 4.0,
     WarrantTier.REPO_DOC: 2.0,
     WarrantTier.EXTRACTION: 1.0,

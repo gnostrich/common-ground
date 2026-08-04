@@ -98,11 +98,25 @@ def _segment_conversation(text: str) -> list[tuple[str, str]]:
 
 #: Per-chart span segmenters, keyed by the manifest's behavior id — the third leg of the
 #: chart plug-in seam (normalizer and classifier are the other two, in engine/normalize.py).
+def _segment_correspondence(text: str) -> list[tuple[str, str]]:
+    """One candidate span per correspondence claim — one arrow per line, whole and unsplit.
+
+    A correspondence surface is atomic: splitting it would address half an arrow.
+    """
+    out: list[tuple[str, str]] = []
+    for i, raw in enumerate(text.splitlines()):
+        span = raw.strip()
+        if span:
+            out.append((span, f"arrow:{i}"))
+    return out
+
+
 _SEGMENTERS: dict[str, "Callable[[str], list[tuple[str, str]]]"] = {
     "prose": _segment_prose,
     "lean": _segment_lean,
     "tabular": _segment_tabular,
     "conversation": _segment_conversation,
+    "correspondence": _segment_correspondence,
 }
 
 _TABLE_SEP_ROW_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")

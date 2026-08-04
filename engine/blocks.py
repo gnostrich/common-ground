@@ -23,6 +23,57 @@ from .types import Block, Chart, Delta, Fiber, LoopSpec, QEdge, Slot
 DECLARED_WEIGHT = 1.0
 
 
+def build_loop_fibers(slots: Sequence[Slot], arrows) -> list[Fiber]:
+    """Fibers eligible to carry holonomy — built from `same_claim` arrows ONLY.
+
+    `refines` and `instance_of` are directed and non-invertible, so a round trip through one
+    is not a round trip: it may not be reversed even in principle. Including them would put
+    holonomy on a path that never closes, which is the open-walk defect the tree-null repair
+    removed. They still couple (see `structural_edges`); they just never make a loop.
+    """
+    from .correspondence import loop_pairs
+
+    return build_fibers(slots, loop_pairs(arrows))
+
+
+def loop_edges(slots: Sequence[Slot], arrows) -> list[QEdge]:
+    """Q edges that may carry holonomy: EXACTLY the declared `same_claim` pairs.
+
+    Deliberately NOT a clique over the fiber. Cliquing manufactures an edge that no arrow
+    declared — and when a fiber's members are joined by a path `a~b~c`, the invented closing
+    edge `a—c` let a cycle form through a pair whose only declared arrow was a non-invertible
+    `refines`. The holonomy-exclusion control caught exactly that. An edge exists iff someone
+    claimed it; a fiber that is a path stays a path, and a path has no holonomy (tree-null).
+    """
+    present = {s.id for s in slots}
+    out: dict[tuple[str, str], QEdge] = {}
+    for a in arrows:
+        if not a.loop_eligible:
+            continue
+        u, v = a.pair
+        if u in present and v in present:
+            out[(u, v)] = QEdge(u=u, v=v, weight=DECLARED_WEIGHT,
+                                origin="correspondence:same_claim")
+    return [out[k] for k in sorted(out)]
+
+
+def structural_edges(slots: Sequence[Slot], arrows) -> list[QEdge]:
+    """Q edges for EVERY arrow kind — the coupling structure, loop-eligible or not.
+
+    A `refines` arrow is real structure and enters F as energy (gate 2), so it ties the graph
+    together and can be reported; it simply carries no holonomy. The origin tag records the
+    kind so the structure audit can classify it and the meter can exclude it from loops.
+    """
+    present = {s.id for s in slots}
+    out: dict[tuple[str, str], QEdge] = {}
+    for a in arrows:
+        u, v = a.pair
+        if u in present and v in present:
+            out[(u, v)] = QEdge(u=u, v=v, weight=DECLARED_WEIGHT,
+                                origin=f"correspondence:{a.kind}")
+    return [out[k] for k in sorted(out)]
+
+
 def build_fibers(
     slots: Sequence[Slot],
     correspondence: Iterable[tuple[str, str]] = (),

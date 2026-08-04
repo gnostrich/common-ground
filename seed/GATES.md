@@ -19,6 +19,31 @@ weakenable only by another authorized, logged amendment.
 6. Every statistical verdict is decided against a null constructed under the no-effect hypothesis (permutation / phase-randomization / independent surrogate), never against a resample of the observation. *(Added 2026-07-30 by PREREG-AMENDMENT-1; not KICKOFF text.)*
 7. All generative keys are content-and-seed only; artifact identity lives in provenance exclusively. *(Added 2026-07-30 with the DRNG repair; not KICKOFF text.)*
 8. Any property attributed to a slot is computed over that slot's address span; nothing outside the span may influence what the slot asserts. *(Added 2026-08-04 by operator authorization with the span repair; not KICKOFF text.)*
+9. A correspondence is a directed, typed morphism between two slot addresses, entering as a claim through the one inlet. Uncertainty about a correspondence is expressed as warrant, never as a fuzzy morphism type. *(Added 2026-08-04 by operator authorization with the correspondence build; not KICKOFF text.)*
+
+### On sentence 9
+
+The base category's morphisms are **claims**, disposed like every other claim. There is no
+side registry that writes structure directly: the correspondence set is DERIVED from accepted
+correspondence claims, so `propose()` remains the single door and the one-write-path assertion
+still covers it.
+
+Three kinds and no fourth. `same_claim` is an isomorphism class and is the **only** kind that
+carries holonomy; its reverse is a **separate claim** with a separate address, so an
+unreciprocated arrow is reported as open rather than assumed symmetric. `refines` and
+`instance_of` are directed and non-invertible: they contribute coupling structure but are
+**excluded from loops**, because a round trip through a non-invertible arrow never closes.
+
+**There is no `approximates` kind, and this is constitutional.** Uncertainty about whether two
+slots say the same thing is expressed as *low warrant on a `same_claim` proposal* — an LM
+proposal enters at `EXTRACTION`, the operator's confirmation at `AUTHORSHIP`, a kernel-verified
+translation at `KERNEL`. Fuzziness lives in the warrant ladder, not in the structure. A fuzzy
+arrow type would put a similarity score back inside the algebra, which is exactly the defect
+this build deleted: a graded morphism is a threshold wearing a type's clothes.
+
+Extraction-tier correspondences may form **provisional** fibers and loops and be reported as
+such, but they never clamp and K never promotes them: promotion requires `AUTHORSHIP` or
+stronger (`engine/types.py:PROMOTION_FLOOR`).
 
 ### On sentence 8
 

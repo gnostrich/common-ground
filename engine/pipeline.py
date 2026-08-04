@@ -123,13 +123,28 @@ def ledger_from_deltas(
     over both, without re-running extraction. `correspondence` defaults to the seed's declared
     correspondence (empty at v0 — the gap); pass an explicit set to declare one.
     """
-    from .correspondence import declared_correspondence
+    from .blocks import loop_edges, structural_edges
+    from .correspondence import correspondences_from_deltas, loop_pairs
 
     deltas = list(deltas)
-    corr = declared_correspondence() if correspondence is None else correspondence
     slots = slots_from_deltas(deltas)
-    fibers = build_fibers(slots, corr)
-    edges = edges_from_fibers(fibers, slots)
+
+    # Correspondence is DERIVED from accepted correspondence-chart claims that came through
+    # the inlet — never read from a side registry, which is what keeps `propose()` the single
+    # write-path. An explicit `correspondence=` (a set of pairs, or typed arrows) overrides,
+    # so a control can plant a correspondence without publishing one.
+    if correspondence is None:
+        arrows = correspondences_from_deltas(deltas)
+        fibers = build_fibers(slots, loop_pairs(arrows))
+        # Loop edges are exactly the declared `same_claim` pairs; `refines`/`instance_of`
+        # couple as structure but can carry no holonomy (GATES 9).
+        edges = loop_edges(slots, arrows) + [
+            e for e in structural_edges(slots, arrows)
+            if e.origin != "correspondence:same_claim"
+        ]
+    else:
+        fibers = build_fibers(slots, correspondence)
+        edges = edges_from_fibers(fibers, slots)
     if edge_filter is not None:
         edges = list(edge_filter(edges))
     blocks = build_blocks(slots, edges, deltas)

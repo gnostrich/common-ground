@@ -113,6 +113,41 @@ EXTENSIONS: tuple[Extension, ...] = (
                  "MintController.consider",
     ),
     Extension(
+        name="correspondence chart (morphisms as claims)",
+        move=SWAP_BASE,
+        status=BUILT,
+        rationale="a fifth chart (tag 'corr') — a manifest row plus a registered "
+                  "normalizer/classifier/segmenter, no dispatch edit. Additive: a fresh "
+                  "address space, no existing address moves.",
+        evidence="seed/CHARTS.json · engine/normalize.py:_nu_correspondence · "
+                 "engine/extract.py:_segment_correspondence",
+    ),
+    Extension(
+        name="correspondence morphism supply (the base category's arrows)",
+        move=ADD_MORPHISM,
+        status=BUILT,
+        rationale="THE move-3 supply: `hol : Π₁(B) → Aut(Sem)` integrates over the base's "
+                  "typed translations, and this is where those arrows come from. A "
+                  "correspondence is a directed typed morphism between two slot ADDRESSES, "
+                  "proposed as a claim through the ONE inlet and derived back off accepted "
+                  "claims — not a new base, not a new measure, and not a second write-path. "
+                  "same_claim carries holonomy; refines/instance_of couple but never loop. "
+                  "Uncertainty is warrant, never a fuzzy arrow type (GATES 9).",
+        evidence="engine/correspondence.py:Correspondence · "
+                 "engine/propose_correspondence.py:propose_over_holes → "
+                 "engine/inlet.py:FastTape.propose · engine/blocks.py:loop_edges",
+    ),
+    Extension(
+        name="hole enumeration (demand-driven candidate generation)",
+        move=ADD_MORPHISM,
+        status=BUILT,
+        rationale="enumerating where the base is MISSING a morphism is part of the same "
+                  "move-3 supply: it decides where arrows are sought, and proposes none "
+                  "itself. Cross-chart, type-compatible, restatement-ranked, bounded — never "
+                  "all-pairs, which would be similarity scanning by another name.",
+        evidence="engine/holes.py:enumerate_holes",
+    ),
+    Extension(
         name="persons base (single → social)",
         move=SWAP_BASE,
         status=PLANNED,
