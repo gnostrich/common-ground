@@ -10,8 +10,11 @@ Three constraints, each load-bearing:
 - **Cross-chart only.** Exact addressing (gate 1) already owns intra-chart identity: two
   intra-chart slots are either the same address (one claim) or different claims. An
   intra-chart "correspondence" would be similarity by the back door.
-- **Type-compatible only.** A `define` and an `assert` are different claim-forms; a
-  correspondence between them would cross the type discipline the address encodes.
+- **NO cross-chart type filter.** Claim-form is a property of the SURFACE FORM, and a
+  correspondence is precisely a translation between surface forms: a Lean theorem that binds
+  hypotheses classifies `conditional` while its English restatement is phrased `assert`, so
+  requiring equal claim-form rejects exactly the true pairs. Type-match remains correct
+  INTRA-chart, where it keeps two readings of one surface in separate blocks.
 - **Never all-pairs.** Candidates are grouped by (chart_a, chart_b, type) and ranked by
   RESTATEMENT COUNT — slots restated across many documents first, because a bridge at a
   well-restated claim closes more loops per confirmation than a bridge at a hapax. The caller
@@ -88,13 +91,16 @@ def enumerate_holes(
     for chart_a, chart_b in pairs:
         if chart_a == chart_b:
             continue                     # cross-chart only
-        types = {t for (c, t) in by_key if c == chart_a} & {t for (c, t) in by_key if c == chart_b}
-        for claim_type in sorted(types):
+        # Cross-chart: pair every claim-form against every other. See the note in
+        # holes_by_subtree — type-equality is anti-correlated across charts.
+        types_a = sorted({t for (c, t) in by_key if c == chart_a})
+        types_b = sorted({t for (c, t) in by_key if c == chart_b})
+        for claim_type, type_b in [(a, b) for a in types_a for b in types_b]:
             # Rank each side by restatement first, so the highest-value bridges are formed
             # from the front of both lists and the tail is never visited.
             left = sorted(by_key[(chart_a, claim_type)],
                           key=lambda s: (-doc_support.get(s.id, 1), s.id))
-            right = sorted(by_key[(chart_b, claim_type)],
+            right = sorted(by_key[(chart_b, type_b)],
                            key=lambda s: (-doc_support.get(s.id, 1), s.id))
             for s in left[: limit]:
                 if used[s.id] >= per_slot_cap:
@@ -297,8 +303,12 @@ def holes_by_subtree(slots: Sequence[Slot], deltas,
                                       or src_dir.startswith(prose_dir + "/")):
                     continue
                 for src_slot in src_slots:
-                    if type_of.get(src_slot) != type_of.get(dst_slot):
-                        continue
+                    # NO type filter cross-chart. Claim-form is a property of the SURFACE
+                    # FORM, and a correspondence is a translation BETWEEN surface forms: a
+                    # Lean theorem binding hypotheses is `conditional` while its English
+                    # restatement is `assert`, so type-equality rejects exactly the true
+                    # pairs. Type-match stays correct INTRA-chart (it keeps `assert` and
+                    # `define` readings of one surface in separate blocks) and is wrong here.
                     out[src_slot].append(Hole(
                         src_chart=src_chart, src_slot=src_slot, src_nu=nu_of[src_slot],
                         dst_chart=dst_chart, dst_slot=dst_slot, dst_nu=nu_of[dst_slot],

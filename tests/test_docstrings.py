@@ -297,13 +297,16 @@ class TypeCompatibilityIsAntiCorrelatedAcrossCharts(unittest.TestCase):
                             "the true pair disagrees on claim-form — so a type-equality "
                             "filter drops it")
 
-    def test_the_two_bounding_relations_disagree_about_the_filter(self):
+    def test_no_bounding_relation_type_filters_cross_chart(self):
+        """RESOLVED by operator ruling: the filter is OFF cross-chart, consistently."""
         import inspect
 
-        from engine.holes import holes_by_declaration, holes_by_subtree
+        from engine.holes import enumerate_holes, holes_by_declaration, holes_by_subtree
 
         filter_expr = "type_of.get(src_slot) != type_of.get(dst_slot)"
-        self.assertNotIn(filter_expr, inspect.getsource(holes_by_declaration),
-                         "declaration granularity does not type-filter")
-        self.assertIn(filter_expr, inspect.getsource(holes_by_subtree),
-                      "subtree granularity does type-filter — the inconsistency, pinned")
+        for fn in (holes_by_declaration, holes_by_subtree):
+            self.assertNotIn(filter_expr, inspect.getsource(fn),
+                             f"{fn.__name__} must not type-filter cross-chart")
+        src = inspect.getsource(enumerate_holes)
+        self.assertIn("for a in types_a for b in types_b", src,
+                      "enumerate_holes must pair across claim-forms cross-chart")
