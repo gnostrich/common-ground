@@ -250,8 +250,19 @@ def holes_by_declaration(slots: Sequence[Slot], deltas) -> dict[str, list[Hole]]
     return dict(out)
 
 
+def _depth_below(prose_dir: str, src_dir: str) -> int | None:
+    """How many directory levels `src_dir` sits below `prose_dir`; None if not below it."""
+    if prose_dir == src_dir:
+        return 0
+    if prose_dir and not src_dir.startswith(prose_dir + "/"):
+        return None
+    tail = src_dir[len(prose_dir) + 1:] if prose_dir else src_dir
+    return len(tail.split("/")) if tail else 0
+
+
 def holes_by_subtree(slots: Sequence[Slot], deltas,
-                     src_chart: str = "lean", dst_chart: str = "english") -> dict[str, list[Hole]]:
+                     src_chart: str = "lean", dst_chart: str = "english",
+                     max_depth: int = 1) -> dict[str, list[Hole]]:
     """The second structural relation: a prose document describes the subtree BELOW it.
 
     `certified-positivity/STATEMENTS.md` — "the exact formal claims, verbatim from the named
@@ -298,9 +309,15 @@ def holes_by_subtree(slots: Sequence[Slot], deltas,
             for (r, src_dir), src_slots in src_at.items():
                 if r != repo:
                     continue
-                # "below it": the source file's directory is the prose dir or a descendant.
-                if prose_dir and not (src_dir == prose_dir
-                                      or src_dir.startswith(prose_dir + "/")):
+                # "below it", read CONSERVATIVELY: the source file sits in the prose
+                # document's own directory or at most `max_depth` levels beneath it. A
+                # document's position asserts its scope, but a root README does not thereby
+                # claim every .lean file in the repository — read maximally, one english slot
+                # reached 903 Lean declarations, which is a scope error rather than a
+                # selection problem. Depth-1 gives STATEMENTS.md exactly the lean/ files it
+                # describes and stops a root doc from claiming the whole tree.
+                depth = _depth_below(prose_dir, src_dir)
+                if depth is None or depth > max_depth:
                     continue
                 for src_slot in src_slots:
                     # NO type filter cross-chart. Claim-form is a property of the SURFACE
