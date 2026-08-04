@@ -275,6 +275,37 @@ def cmd_demo(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    """The usable surface (item A): run the pipeline on fixtures and render it."""
+    from engine.surface import build_report, html_page, render_markdown
+
+    report = build_report()
+    md = render_markdown(report)
+    if args.md:
+        Path(args.md).write_text(md, encoding="utf-8")
+        print(f"{GREEN}wrote{RESET} {args.md}")
+    if args.html:
+        Path(args.html).write_text(html_page(report), encoding="utf-8")
+        print(f"{GREEN}wrote{RESET} {args.html}")
+    if not args.md and not args.html:
+        print(md)
+    return 0
+
+
+def cmd_query(args: argparse.Namespace) -> int:
+    """Interrogate the fixture run: slots | contested | verdicts | floors | correspondences
+    | chart <name> | find <term>."""
+    from engine.surface import build_report, query
+
+    try:
+        for line in query(build_report(), args.selector, args.arg):
+            print(line)
+    except ValueError as exc:
+        print(f"{RED}{exc}{RESET}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="common-ground", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -309,6 +340,17 @@ def main(argv: list[str] | None = None) -> int:
     p_p1.set_defaults(fn=cmd_p1)
 
     sub.add_parser("demo", help="synthetic smoke run").set_defaults(fn=cmd_demo)
+
+    p_report = sub.add_parser("report", help="usable surface: render the fixture run")
+    p_report.add_argument("--md", default=None, help="write the markdown report to this path")
+    p_report.add_argument("--html", default=None, help="write the openable HTML page to this path")
+    p_report.set_defaults(fn=cmd_report)
+
+    p_query = sub.add_parser("query", help="interrogate the fixture run")
+    p_query.add_argument("selector",
+                         help="slots | contested | verdicts | floors | correspondences | chart | find")
+    p_query.add_argument("arg", nargs="?", default=None, help="name (chart) or term (find)")
+    p_query.set_defaults(fn=cmd_query)
 
     args = parser.parse_args(argv)
     if getattr(args, "samples", None) is None and hasattr(args, "samples"):

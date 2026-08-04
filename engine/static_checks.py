@@ -289,6 +289,15 @@ GATE6_SITES: tuple[dict[str, object], ...] = (
         "note": "Built on the conforming surrogate. Mint is OFF; the flag is logged and "
                 "never acted on, so this decides nothing regardless.",
     },
+    {
+        "site": "engine/surface.py:build_report", "role": "diagnostic",
+        "reference": "none — reads the meter's already-computed q95 and second_fdt_floor",
+        "conforming": True,
+        "note": "The usable surface (item A) is a render-only view. It reads q95 and the "
+                "second-FDT floor to DISPLAY them on the fixture report and decides nothing "
+                "against either; it builds no band. Both numbers are shown side by side so a "
+                "reader compares them rather than the surface picking one.",
+    },
 )
 
 #: Functions exempt from classification: they take a band as an argument or are the

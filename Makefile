@@ -1,4 +1,4 @@
-.PHONY: help status test lock verify nulls demo p0 p1 pin gate6 gate7 faithfulness probes three-moves clean
+.PHONY: help status test lock verify nulls demo p0 p1 pin gate6 gate7 faithfulness probes three-moves report clean
 
 help:
 	@echo "status  — decisions, lock state, lexicon pins, phase readiness"
@@ -13,6 +13,7 @@ help:
 	@echo "probes  — commitment -> probe -> status battery + chart plug-in audit"
 	@echo "three-moves — belonging audit: every extension = swap-base/add-measure/add-morphism (seed/OBJECT.md)"
 	@echo "demo    — synthetic end-to-end smoke run, writes nothing"
+	@echo "report  — usable surface: render the fixture run (reports/fixture-report.md + .html)"
 	@echo "p0 / p1 — phase gates"
 
 status:
@@ -44,6 +45,9 @@ probes:
 
 three-moves:
 	@python3 -m engine.three_moves_sweep
+
+report:
+	@python3 cli.py report --md reports/fixture-report.md --html reports/fixture-report.html
 
 demo:
 	@python3 cli.py demo
