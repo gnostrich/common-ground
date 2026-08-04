@@ -40,6 +40,7 @@ from typing import Callable
 
 from .charts import is_chart
 from .hashing import sha256_text
+from .languages import CHART, REFERENCE, SHELF as SHELF_CLASS, rule_for
 from .types import Document
 
 # Destinations.
@@ -104,6 +105,9 @@ class RoutingReport:
         return out
 
     def header(self) -> str:
+        """The tally, and what was HELD. A reference-tier count is the coverage caveat:
+        it says in a number what the engine did not read, so a figure derived from this run
+        cannot be quoted as if it covered the whole repository."""
         parts = [f"{k}={v}" for k, v in sorted(self.counts().items())]
         return "routing: " + ", ".join(parts) if parts else "routing: (empty)"
 
@@ -270,7 +274,27 @@ def route(
     """Classify one artifact. `name` carries the extension the router keys `.lean` on."""
     raw_hash = sha256_text(text)
     normalized = _nfc(text)
-    is_lean_file = name.endswith(".lean")
+
+    # Which chart an EXTENSION enters is seed data (`seed/LANGUAGES.json`), not a literal in
+    # this file. It used to be `name.endswith(".lean")`, which meant a chart could be
+    # declared, tagged, normalized, classified and segmented and still have nothing route to
+    # it — the half of the plug-in contract the chart audit was not measuring.
+    rule = rule_for(name)
+    if rule.cls == REFERENCE:
+        # Held, and SAID so with a count. The engine has no chart for this language; the
+        # alternative — an `if ext in {...}` at the call site — is how 1,405 .py files became
+        # invisible with nothing in the system reporting a zero.
+        return RoutedDoc(name, SHELF, f"reference-tier: {rule.why or 'no chart for this language'}",
+                         raw_hash)
+    if rule.cls == SHELF_CLASS:
+        return RoutedDoc(name, SHELF, "shelf by manifest", raw_hash)
+    is_lean_file = rule.cls == CHART and rule.chart == LEAN
+    if rule.cls == CHART and not is_lean_file:
+        # Any OTHER manifest-declared chart entry. This branch is what makes the seam real:
+        # standing up a python chart is a CHARTS.json row, a LANGUAGES.json row and three
+        # behavior functions — and no edit here.
+        return RoutedDoc(name, rule.chart, "chart by manifest extension", raw_hash,
+                         Document(name, rule.chart, normalized, source))
 
     # 1. Verbatim is a property of a SPAN. Fenced blocks are lifted out and pinned by hash;
     #    what remains is the document's prose and is routed on its own merits. A file that is

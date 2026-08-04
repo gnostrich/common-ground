@@ -71,6 +71,7 @@ class CorpusSnapshot:
             "loops": self.loops,
             "floor": self.floor_status,
             "sources": dict(self.sources),
+            "coverage": coverage_caveat(),
         }
 
     def save(self, path: str | Path) -> None:
@@ -84,6 +85,22 @@ class CorpusSnapshot:
             return CorpusSnapshot()
         with p.open("rb") as fh:
             return pickle.load(fh)
+
+
+def coverage_caveat() -> str:
+    """What this corpus DOES NOT contain, stated wherever its figures are stated.
+
+    Every number this build produces is a number about the material the router admits. The
+    languages manifest says which extensions are held with no chart, so the caveat is derived
+    from it rather than written by hand — it cannot drift out of date while the manifest
+    changes underneath it.
+    """
+    from .languages import REFERENCE, SHELF, rules
+
+    held = sorted(r.ext for r in rules().values() if r.cls == REFERENCE)
+    shelved = sorted(r.ext for r in rules().values() if r.cls == SHELF)
+    return (f"COVERAGE: source code is NOT ingested. Held with no chart: {', '.join(held)}. "
+            f"Shelved: {', '.join(shelved)}. Every figure here is about prose and Lean only.")
 
 
 def source_bucket(doc_id: str) -> str:
