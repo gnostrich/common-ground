@@ -27,7 +27,7 @@ from . import EngineError
 from .constants import BVALUES
 from .hashing import DRNG
 from .charts import chart_spec
-from .normalize import address, classify
+from .normalize import address, classify, nu
 from .types import BValue, ClaimForm, Delta, Document, Provenance, Warrant, WarrantTier
 
 #: A span as produced by a concrete extractor. The warrant is deliberately absent.
@@ -199,8 +199,18 @@ class DeterministicExtractor(Extractor):
             # Selectivity shifts which marginal spans each extractor keeps.
             if keep_draw < self.selectivity:
                 continue
-            lowered = surface.casefold()
-            value, base = self._value_for(lowered)
+            # GATES sentence 8: any property attributed to a slot is computed over that
+            # slot's ADDRESS SPAN. The b-value is valued over `nu(chart, surface)` — the same
+            # normalized span `classify` uses — so that valuation and addressing cannot
+            # disagree. Valuing the raw segment was UNFAITHFUL SUBSTITUTION #2: the Lean
+            # segmenter runs a span from one declaration head to the next, so proof bodies and
+            # trailing docstrings (often prose about the NEXT declaration) reached the value.
+            # A stray "no "/"does not"/"might" in a comment flipped a theorem to F/N and
+            # manufactured contest against the identical statement in another file — 52 of 59
+            # observed contests were exactly this. The claim's truth-value must be a function
+            # of the claim's identity, and the address span is that identity.
+            address_span = nu(doc.chart, surface)
+            value, base = self._value_for(address_span.casefold())
             yield Span(
                 surface=surface,
                 type=classify(doc.chart, surface),
