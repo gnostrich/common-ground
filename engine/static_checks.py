@@ -384,12 +384,17 @@ def gate6_report() -> list[dict[str, object]]:
 GENERATIVE_KEY_SITES: tuple[dict[str, object], ...] = (
     {
         "site": "engine/extract.py:DeterministicExtractor._spans",
-        "key": "DRNG('extract', extractor_id, prompt_id, doc.content_hash)",
+        "key": "DRNG('extract', extractor_id, prompt_id, slot_address)",
         "keying": "content",
-        "note": "Repaired. Was seeded on `doc.doc_id`, which made the inclusion draw a "
-                "function of what a document was called; a relabelled copy extracted "
-                "differently and null cell (v) failed. `extractor_id`/`prompt_id` still "
-                "separate the three readers, so k=3 keeps its variance.",
+        "note": "Repaired TWICE. First: seeded on `doc.doc_id`, which made the inclusion draw "
+                "a function of what a document was called (gate 7). Then UNFAITHFUL "
+                "SUBSTITUTION #3: seeded on `doc.content_hash` and drawn in document order, "
+                "so a slot's confidence moved when a comment or a DIFFERENT declaration "
+                "changed, and inserting a declaration shifted every later slot's draw — "
+                "gate-7 clean but gate-8 violating. Now keyed on the SLOT ADDRESS "
+                "(hash(nu, type)), so a claim's draw is a function of that claim alone. "
+                "`extractor_id`/`prompt_id` still separate the three readers, so k=3 keeps "
+                "its ensemble variance; only composition-variance died.",
     },
     {
         "site": "engine/extract.py:AnthropicExtractor._spans",
@@ -581,3 +586,106 @@ def generative_key_report() -> list[dict[str, object]]:
         (dict(s) for s in GENERATIVE_KEY_SITES),
         key=lambda s: (order.get(str(s["keying"]), 9), str(s["site"])),
     )
+
+
+# --- gate 8: slot-attributed properties are computed over the address span ----------
+
+#: The fields of a `Span` that are ATTRIBUTED TO THE SLOT, and so must be functions of the
+#: slot's address span. `surface` and `locator` are excluded by construction: they are the
+#: provenance target — facts about where the claim was found, not about what it asserts.
+SLOT_ATTRIBUTED_FIELDS: frozenset[str] = frozenset({"value", "type", "confidence"})
+
+#: Expressions WIDER than a slot's address. Both #2 and #3 took this exact form — a
+#: slot-attributed property whose seed or input reaches past the address span into the
+#: document. Anything here appearing in a slot-attributed computation is a gate-8 violation.
+WIDER_THAN_ADDRESS: tuple[str, ...] = (
+    "doc.content_hash",   # the whole document (#3: the confidence jitter's seed)
+    "doc.text",           # the whole document
+    "content_hash",
+    "doc_id",             # identity, also a gate-7 matter
+    "doc.source",
+)
+
+
+def _names_used(node: ast.AST) -> set[str]:
+    """Dotted names and bare identifiers appearing anywhere in `node`."""
+    out: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Attribute):
+            parts, cur = [child.attr], child.value
+            while isinstance(cur, ast.Attribute):
+                parts.append(cur.attr)
+                cur = cur.value
+            if isinstance(cur, ast.Name):
+                parts.append(cur.id)
+                out.add(".".join(reversed(parts)))
+        elif isinstance(child, ast.Name):
+            out.add(child.id)
+    return out
+
+
+def check_span_discipline(root: Path | None = None) -> StaticCheckResult:
+    """Sentence 8: nothing wider than the slot's address may reach a slot-attributed property.
+
+    Shaped to the FORM both defects took rather than to either instance. In any function that
+    constructs a `Span(...)`, the check walks the assignments feeding the slot-attributed
+    fields (`value`, `type`, `confidence`) and fails if a document-wide expression — the
+    document's text, its content hash, its id, its source — reaches them, directly or through
+    a local binding (including a `DRNG(...)` seed, which is how #3 hid: gate-7 clean because
+    it was content-keyed, gate-8 violating because the content was the whole file).
+
+    `surface`/`locator` are exempt: they are provenance, not attribution.
+    """
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+
+    for path in sorted((base / "engine").rglob("*.py")):
+        rel = str(path.relative_to(base)).replace("\\", "/")
+        if rel == "engine/static_checks.py":
+            continue  # names the forbidden expressions in prose and in the table above
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
+        result.checked_files += 1
+        for qualname, node in _top_level_functions(tree):
+            spans = [c for c in ast.walk(node)
+                     if isinstance(c, ast.Call) and getattr(c.func, "id", None) == "Span"]
+            if not spans:
+                continue
+            result.checked_functions += 1
+
+            # Local bindings: name -> the wide expressions its value was built from. One
+            # pass in source order is enough for the straight-line extractor bodies here.
+            tainted: dict[str, str] = {}
+            for stmt in ast.walk(node):
+                targets = []
+                if isinstance(stmt, ast.Assign):
+                    targets = stmt.targets
+                elif isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+                    targets = [stmt.target]
+                else:
+                    continue
+                used = _names_used(stmt.value)
+                wide = sorted(used & set(WIDER_THAN_ADDRESS)) or sorted(
+                    n for n in used if n in tainted
+                )
+                if not wide:
+                    continue
+                reason = ", ".join(tainted.get(w, w) for w in wide)
+                for t in targets:
+                    for nm in ([t.id] if isinstance(t, ast.Name) else
+                               [e.id for e in getattr(t, "elts", []) if isinstance(e, ast.Name)]):
+                        tainted[nm] = reason
+
+            for call in spans:
+                for kw in call.keywords:
+                    if kw.arg not in SLOT_ATTRIBUTED_FIELDS:
+                        continue
+                    used = _names_used(kw.value)
+                    direct = sorted(used & set(WIDER_THAN_ADDRESS))
+                    via = sorted(n for n in used if n in tainted)
+                    if direct or via:
+                        why = ", ".join(direct + [f"{n} <- {tainted[n]}" for n in via])
+                        result.violations.append(
+                            Violation(rel, call.lineno, "gate 8: out-of-span attribution",
+                                      f"{qualname}: Span.{kw.arg} depends on {why}")
+                        )
+    return result

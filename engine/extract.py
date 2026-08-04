@@ -192,28 +192,39 @@ class DeterministicExtractor(Extractor):
         # The per-extractor stream that makes k=3 informative is untouched: `extractor_id`
         # and `prompt_id` still separate the three readers. What is removed is the one
         # component that let a label change what was read.
-        rng = DRNG("extract", self.extractor_id, self.prompt_id, doc.content_hash)
         for surface, locator in self._candidate_spans(doc):
+            # GATES sentence 8: every slot-attributed property is computed over the slot's
+            # ADDRESS SPAN. The stream is therefore keyed on the slot address — the hash of
+            # (nu, type) — not on the whole document.
+            #
+            # Seeding on `doc.content_hash` and drawing in document order was UNFAITHFUL
+            # SUBSTITUTION #3: editing a comment, or a DIFFERENT declaration, moved a slot's
+            # confidence (measured 0.91832 -> 0.91440 on a byte-identical claim), and
+            # inserting one declaration shifted every subsequent slot's draw. That is variance
+            # driven by document COMPOSITION, which was never extractor noise. The k=3
+            # ensemble's disagreement is preserved: `extractor_id` and `prompt_id` still
+            # separate the three readers, so what dies is composition-variance only.
+            span_type = classify(doc.chart, surface)
+            slot_address, address_span = address(doc.chart, surface, span_type)
+            rng = DRNG("extract", self.extractor_id, self.prompt_id, slot_address)
             keep_draw = rng.random()
             jitter = rng.uniform(-0.12, 0.12)
             # Selectivity shifts which marginal spans each extractor keeps.
             if keep_draw < self.selectivity:
                 continue
-            # GATES sentence 8: any property attributed to a slot is computed over that
-            # slot's ADDRESS SPAN. The b-value is valued over `nu(chart, surface)` — the same
-            # normalized span `classify` uses — so that valuation and addressing cannot
-            # disagree. Valuing the raw segment was UNFAITHFUL SUBSTITUTION #2: the Lean
-            # segmenter runs a span from one declaration head to the next, so proof bodies and
-            # trailing docstrings (often prose about the NEXT declaration) reached the value.
-            # A stray "no "/"does not"/"might" in a comment flipped a theorem to F/N and
-            # manufactured contest against the identical statement in another file — 52 of 59
-            # observed contests were exactly this. The claim's truth-value must be a function
-            # of the claim's identity, and the address span is that identity.
-            address_span = nu(doc.chart, surface)
+            # The b-value is valued over `nu(chart, surface)` — the same normalized span
+            # `classify` uses — so that valuation and addressing cannot disagree. Valuing the
+            # raw segment was UNFAITHFUL SUBSTITUTION #2: the Lean segmenter runs a span from
+            # one declaration head to the next, so proof bodies and trailing docstrings (often
+            # prose about the NEXT declaration) reached the value. A stray "no "/"does not"/
+            # "might" in a comment flipped a theorem to F/N and manufactured contest against
+            # the identical statement in another file — 52 of 59 observed contests were
+            # exactly this. The claim's truth-value must be a function of the claim's
+            # identity, and the address span is that identity.
             value, base = self._value_for(address_span.casefold())
             yield Span(
                 surface=surface,
-                type=classify(doc.chart, surface),
+                type=span_type,
                 value=value,
                 confidence=max(0.05, min(1.0, base + jitter)),
                 locator=locator,
