@@ -21,13 +21,26 @@ from engine.router import (
 
 
 class VerbatimArtifacts(unittest.TestCase):
-    """Rule 1: code / logs / traces are pinned and not extracted."""
+    """Rule 1: code / logs / traces are pinned and not extracted — at SPAN level.
 
-    def test_a_fenced_code_block_is_verbatim(self):
+    Updated 2026-08-04 with the span-level repair. The fenced BLOCK is still never extracted;
+    what changed is that the prose around it no longer goes down with it. The old assertion
+    (whole document -> verbatim on one fence) encoded the defect, so it is replaced rather
+    than kept: on the real repositories it discarded 226 of 742 markdown files.
+    """
+
+    def test_a_fenced_code_block_is_pinned_and_never_extracted(self):
         r = route("notes.md", "Here is code:\n```\nx = 1\n```\n")
+        self.assertEqual(r.destination, "english", "the prose around the fence survives")
+        self.assertEqual(len(r.verbatim_spans), 1, "the fence is pinned by content hash")
+        self.assertNotIn("x = 1", r.document.text, "fence content must not reach an extractor")
+        self.assertIn("Here is code", r.document.text)
+        self.assertTrue(r.content_hash, "the whole artifact is still pinned by content hash")
+
+    def test_a_document_that_is_only_a_fence_is_wholly_verbatim(self):
+        r = route("snippet.md", "```\nx = 1\n```\n")
         self.assertEqual(r.destination, VERBATIM)
         self.assertIsNone(r.document, "a verbatim artifact must not reach an extractor")
-        self.assertTrue(r.content_hash, "it is pinned by content hash")
 
     def test_a_stack_trace_is_verbatim(self):
         trace = ('Traceback (most recent call last):\n'
@@ -167,3 +180,84 @@ def is_chart(name):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VerbatimIsASpanNotADocument(unittest.TestCase):
+    """A README's prose is not forfeit because a usage example sits beside it.
+
+    The old rule shelved the whole artifact on one fence: 226 of 742 real markdown files,
+    2.21M characters of prose discarded to avoid extracting 225k of code.
+    """
+
+    DOC = (
+        "# Positivity checker\n\n"
+        "The cone is positive under composition.\n\n"
+        "```python\n"
+        "def is_positive(cone):\n"
+        "    return cone.det > 0\n"
+        "```\n\n"
+        "Every generator is checked before the cone is accepted.\n"
+    )
+
+    def test_prose_reaches_english_and_the_fence_does_not(self):
+        from engine.extract import DeterministicExtractor
+
+        routed = route("repo||README.md", self.DOC, "repo")
+        self.assertEqual(routed.destination, "english")
+        self.assertIsNotNone(routed.document)
+        self.assertEqual(len(routed.verbatim_spans), 1, "the fenced block must be pinned")
+
+        surfaces = " ".join(
+            d.surface for d in DeterministicExtractor("t", "p").extract(routed.document))
+        self.assertIn("cone is positive under composition", surfaces.casefold())
+        self.assertIn("every generator is checked", surfaces.casefold())
+        for token in ("def is_positive", "cone.det", "return cone"):
+            self.assertNotIn(token, surfaces,
+                             f"{token!r} came from inside the fence; it must be pinned only")
+
+    def test_zero_claims_come_from_inside_the_fence(self):
+        """PLANTED: the fence body is a sentence-shaped claim, so a leak would be visible."""
+        from engine.extract import DeterministicExtractor
+
+        doc = ("Real prose about the cone.\n\n```\n"
+               "The fenced sentence is a decoy and must never become a claim.\n```\n")
+        routed = route("repo||d.md", doc, "repo")
+        self.assertEqual(routed.destination, "english")
+        surfaces = [d.surface.casefold()
+                    for d in DeterministicExtractor("t", "p").extract(routed.document)]
+        self.assertTrue(any("real prose about the cone" in s for s in surfaces))
+        self.assertFalse(any("decoy" in s for s in surfaces),
+                         "a fenced sentence became a claim")
+
+    def test_a_file_that_is_only_a_fence_is_still_a_whole_artifact(self):
+        routed = route("repo||snippet.md", "```\nprint(1)\n```\n", "repo")
+        self.assertEqual(routed.destination, "verbatim-artifact")
+        self.assertIsNone(routed.document)
+        self.assertEqual(len(routed.verbatim_spans), 1)
+
+    def test_an_unclosed_fence_runs_to_the_end(self):
+        routed = route("repo||trunc.md", "Prose first.\n\n```python\ndef f():\n    pass\n", "repo")
+        self.assertEqual(routed.destination, "english")
+        self.assertIn("Prose first", routed.document.text)
+        self.assertNotIn("def f()", routed.document.text)
+
+    def test_log_and_trace_keep_document_level_treatment_and_say_why(self):
+        """No delimiter exists for these, so the extent would have to be guessed."""
+        doc = "Notes.\n\nTraceback (most recent call last)\n  File \"x.py\", line 3\nBoom\n"
+        routed = route("repo||crash.md", doc, "repo")
+        self.assertEqual(routed.destination, "verbatim-artifact")
+        self.assertIn("no span delimiter", routed.reason)
+
+    def test_existing_addresses_do_not_move(self):
+        """ADDITIVE, not plastic: a document with no fence addresses byte-identically."""
+        from engine.extract import DeterministicExtractor
+
+        plain = "The cone is positive under composition. Every generator is checked.\n"
+        routed = route("repo||plain.md", plain, "repo")
+        ids = [d.slot for d in DeterministicExtractor("t", "p").extract(routed.document)]
+        self.assertTrue(ids)
+        # the same prose, now with a fence appended, must produce the SAME slot ids
+        withfence = plain + "\n```\ncode()\n```\n"
+        routed2 = route("repo||plain2.md", withfence, "repo")
+        ids2 = [d.slot for d in DeterministicExtractor("t", "p").extract(routed2.document)]
+        self.assertEqual(ids, ids2, "removing a fence must not move a prose address")

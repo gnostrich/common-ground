@@ -7,9 +7,13 @@ page rather than an inference.
 
 The rules, in order (first match wins):
 
-1. **fenced code block / log / stack trace -> verbatim-artifact.** Pinned by content hash,
-   **not extracted** — a stack trace is not a claim, and running an extractor over it would
-   manufacture b-values from noise.
+1. **fenced blocks -> verbatim SPANS, lifted out and pinned by content hash**; the prose
+   around them is routed on its own merits. A stack trace is not a claim and an extractor
+   over it would manufacture b-values from noise — but neither is a README's usage section
+   forfeit because it sits beside one. Verbatim is a property of a span, and a fence is a
+   delimiter the author wrote. A document that is *entirely* fenced blocks, or whose prose
+   residue still reads as log/trace (those have no delimiter — a stated limitation), is a
+   whole verbatim artifact.
 2. **`.lean` -> Lean chart, always.** Gate 3 governs GROUNDING, not entry, so a Lean file
    enters on the strength of being Lean, at extraction tier.
 3. **Elaboration decides CLAMP ELIGIBILITY only.** It is an *injected* predicate; with no
@@ -47,6 +51,13 @@ VERBATIM = "verbatim-artifact"
 SHELF = "shelf"
 
 _FENCE_RE = re.compile(r"^\s*```", re.MULTILINE)
+#: A complete fenced block: an opening fence, its body, and a CLOSING fence of the same kind.
+#: The backreference is what makes it a span rather than a guess — the block's extent is
+#: written in the document by its author, not inferred.
+_FENCE_BLOCK_RE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})[^\n]*\n.*?^[ \t]{0,3}\1[ \t]*$",
+                             re.DOTALL | re.MULTILINE)
+#: A fence opened and never closed runs to the end of the document. Same delimiter, one end.
+_OPEN_FENCE_RE = re.compile(r"^[ \t]{0,3}(?:`{3,}|~{3,})[^\n]*\n.*\Z", re.DOTALL | re.MULTILINE)
 _TRACEBACK_RE = re.compile(r"Traceback \(most recent call last\)|^\s+at .+:\d+\)?$", re.MULTILINE)
 _LOG_LINE_RE = re.compile(r"^\s*\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d|^(DEBUG|INFO|WARN|ERROR|FATAL)\b", re.MULTILINE)
 _TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$", re.MULTILINE)
@@ -73,6 +84,9 @@ class RoutedDoc:
     content_hash: str
     document: Document | None = None   # None for verbatim/shelf — not sent to extractors
     math_tokens: tuple[str, ...] = ()  # opaque hashes of inline math preserved from prose
+    #: Content hashes of the fenced blocks lifted out of this document. They are pinned as
+    #: artifacts of record and never extracted; the prose around them is routed normally.
+    verbatim_spans: tuple[str, ...] = ()
     #: English documents derived from a Lean file's docstrings. ADDITIVE: they are extra
     #: claims in the English chart and do not touch the Lean document or its address.
     companions: tuple[Document, ...] = ()
@@ -131,6 +145,43 @@ def _tokenize_math(text: str) -> tuple[str, list[str]]:
 def _is_verbatim(text: str) -> bool:
     return bool(_FENCE_RE.search(text) or _TRACEBACK_RE.search(text)
                 or _LOG_LINE_RE.search(text))
+
+
+def _is_log_or_trace(text: str) -> bool:
+    """The verbatim signals that have no span delimiter. See `split_verbatim`."""
+    return bool(_TRACEBACK_RE.search(text) or _LOG_LINE_RE.search(text))
+
+
+def split_verbatim(text: str) -> tuple[str, tuple[str, ...]]:
+    """Separate a document's PROSE from its fenced blocks. Span-level, not document-level.
+
+    Verbatim is a property of a SPAN, not of a document. The old rule shelved an entire
+    artifact if it contained a single fence, which on the real repositories discarded 226 of
+    742 markdown files — 2.21M characters of prose, to avoid extracting 225k characters of
+    code. The prose it discarded is exactly the prose most likely to bridge: a README's usage
+    section is the natural-language statement of what the code beside it does.
+
+    A fenced block is used as the delimiter because it *is* one: the author wrote where the
+    code starts and where it stops, so removing it is reading the document's own markup, not
+    inferring an extent. Each removed block is pinned by content hash and returned, so it is
+    still an artifact of record — it is simply not run through an extractor.
+
+    Log lines and stack traces get NO span treatment here, and that is a stated limitation
+    rather than an oversight: they carry no delimiter, so their extent would have to be
+    guessed, and a guessed extent is the kind of threshold this build removes rather than
+    adds. A document whose prose residue still reads as log/trace stays a whole artifact.
+    On the real corpus that residue is **one document of 227**.
+    """
+    pinned: list[str] = []
+
+    def _pin(match: re.Match) -> str:
+        pinned.append(sha256_text(match.group())[:16])
+        return "\n"
+
+    prose = _FENCE_BLOCK_RE.sub(_pin, text)
+    if _FENCE_RE.search(prose):        # an opening fence that was never closed
+        prose = _OPEN_FENCE_RE.sub(_pin, prose)
+    return prose, tuple(pinned)
 
 
 def _is_conversation(text: str) -> bool:
@@ -221,10 +272,23 @@ def route(
     normalized = _nfc(text)
     is_lean_file = name.endswith(".lean")
 
-    # 1. verbatim artifacts: code / logs / traces — pinned, never extracted.
+    # 1. Verbatim is a property of a SPAN. Fenced blocks are lifted out and pinned by hash;
+    #    what remains is the document's prose and is routed on its own merits. A file that is
+    #    nothing but fenced blocks, or whose residue still reads as log/trace (no delimiter
+    #    exists for those), is a whole artifact and is shelved as one — with its spans pinned.
     #    (A .lean file is code too, but it has its own elaboration route below.)
-    if not is_lean_file and _is_verbatim(normalized):
-        return RoutedDoc(name, VERBATIM, "code/log/trace — pinned, not extracted", raw_hash)
+    pinned: tuple[str, ...] = ()
+    if not is_lean_file:
+        normalized, pinned = split_verbatim(normalized)
+        if pinned and not normalized.strip():
+            # It had fenced blocks and nothing else. An EMPTY document has no spans and is
+            # not an artifact; it falls through to the shelf where it belongs.
+            return RoutedDoc(name, VERBATIM, "entirely fenced/code — pinned, not extracted",
+                             raw_hash, verbatim_spans=pinned)
+        if _is_log_or_trace(normalized):
+            return RoutedDoc(name, VERBATIM,
+                             "log/trace — pinned, not extracted (no span delimiter exists)",
+                             raw_hash, verbatim_spans=pinned)
 
     # 2/3. Lean is keyed on the .lean extension (per the spec). A prose file that merely
     #      mentions "lemma" is prose, not Lean — the content heuristic false-fired on
@@ -254,23 +318,26 @@ def route(
     #      because a dialogue is neither, and its speaker turns are the segmentation unit.
     if _is_conversation(normalized):
         return RoutedDoc(name, CONVERSATION, "speaker-attributed transcript", raw_hash,
-                         Document(name, CONVERSATION, normalized, source))
+                         Document(name, CONVERSATION, normalized, source),
+                         verbatim_spans=pinned)
 
     # 4/5. Markdown tables: well-formed -> tabular; malformed -> prose, tagged.
     shape = _table_shape(normalized)
     if shape == "well-formed":
         return RoutedDoc(name, TABULAR, "well-formed table", raw_hash,
-                         Document(name, TABULAR, normalized, source))
+                         Document(name, TABULAR, normalized, source), verbatim_spans=pinned)
     if shape == "malformed":
         prose, tokens = _tokenize_math(normalized)
         return RoutedDoc(name, ENGLISH, "malformed-table -> prose", raw_hash,
-                         Document(name, ENGLISH, prose, source), tuple(tokens))
+                         Document(name, ENGLISH, prose, source), tuple(tokens),
+                         verbatim_spans=pinned)
 
     # 6. Prose -> English, with inline math preserved as opaque tokens.
     if normalized.strip():
         prose, tokens = _tokenize_math(normalized)
         return RoutedDoc(name, ENGLISH, "prose", raw_hash,
-                         Document(name, ENGLISH, prose, source), tuple(tokens))
+                         Document(name, ENGLISH, prose, source), tuple(tokens),
+                         verbatim_spans=pinned)
 
     # 7. Everything else (empty / unclassifiable) -> shelf.
     return RoutedDoc(name, SHELF, "unclassified", raw_hash)
