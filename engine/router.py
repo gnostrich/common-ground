@@ -52,6 +52,18 @@ _LOG_LINE_RE = re.compile(r"^\s*\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d|^(DEBUG|INFO|W
 _TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$", re.MULTILINE)
 _INLINE_MATH_RE = re.compile(r"\$[^$\n]+\$|\\\([^\n]*?\\\)")
 
+#: A Lean declaration docstring (`/-- ... -/`) and a module/section doc (`/-! ... -/`).
+#: These are natural-language STATEMENTS about the declaration they precede — the most
+#: perfectly co-located prose that can exist, since they sit ON the declaration.
+_LEAN_DOCSTRING_RE = re.compile(r"/--(.*?)-/", re.DOTALL)
+_LEAN_SECTION_DOC_RE = re.compile(r"/-!(.*?)-/", re.DOTALL)
+#: The declaration a docstring is attached to: Lean convention puts the doc immediately
+#: before its declaration, so the head that follows is the one being documented.
+_NEXT_DECL_RE = re.compile(
+    r"\s*(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+|noncomputable\s+|partial\s+|unsafe\s+"
+    r"|nonrec\s+|scoped\s+|local\s+)*"
+    r"(theorem|lemma|def|abbrev|structure|class|instance|inductive|axiom)\s+([^\s:({\[]+)")
+
 
 @dataclass(frozen=True, slots=True)
 class RoutedDoc:
@@ -61,6 +73,9 @@ class RoutedDoc:
     content_hash: str
     document: Document | None = None   # None for verbatim/shelf — not sent to extractors
     math_tokens: tuple[str, ...] = ()  # opaque hashes of inline math preserved from prose
+    #: English documents derived from a Lean file's docstrings. ADDITIVE: they are extra
+    #: claims in the English chart and do not touch the Lean document or its address.
+    companions: tuple[Document, ...] = ()
 
 
 @dataclass(slots=True)
@@ -79,8 +94,17 @@ class RoutingReport:
         return "routing: " + ", ".join(parts) if parts else "routing: (empty)"
 
     def to_charts(self) -> list[Document]:
-        """Only the documents that reached a chart. Verbatim and shelved are excluded."""
-        return [r.document for r in self.routed if r.document is not None]
+        """Only the documents that reached a chart. Verbatim and shelved are excluded.
+
+        Includes docstring companions: a Lean docstring is an English claim about the
+        declaration it sits on, so it reaches the English chart alongside the Lean document.
+        """
+        out: list[Document] = []
+        for r in self.routed:
+            if r.document is not None:
+                out.append(r.document)
+            out.extend(r.companions)
+        return out
 
 
 def _nfc(text: str) -> str:
@@ -147,6 +171,44 @@ def _default_lean_elaborates(text: str) -> tuple[bool, str]:
     return False, "no pinned Lean toolchain (D6 unresolved); elaboration unverified"
 
 
+def lean_docstrings(name: str, text: str, source: str = "repo_docs") -> list[Document]:
+    """A Lean file's docstrings, as ENGLISH claims attached to their declaration.
+
+    `/-- ... -/` documents the declaration that follows it (Lean convention), so the derived
+    English document's id names that declaration: `<file>#doc:<declaration>`. `/-! ... -/` is a
+    section/module doc with no single owner, so it is attributed to the file.
+
+    This is ADDITIVE and NON-PLASTIC. The Lean document and its address are untouched — `nu`
+    still strips docstrings from the Lean surface, so every Lean slot id is byte-identical
+    before and after. What changes is that 293k characters of prose which used to be discarded
+    at the boundary now enter the English chart, carrying provenance that points at the exact
+    declaration they describe. That provenance is what makes them co-located at DECLARATION
+    granularity — tighter than any directory.
+    """
+    out: list[Document] = []
+    for match in _LEAN_DOCSTRING_RE.finditer(text):
+        body = match.group(1).strip()
+        if not body:
+            continue
+        owner = _NEXT_DECL_RE.match(text, match.end())
+        decl = owner.group(2) if owner else ""
+        doc_id = f"{name}#doc:{decl}" if decl else f"{name}#doc@{match.start()}"
+        doc = Document(doc_id, ENGLISH, _nfc(body), source)
+        doc.meta["lean_file"] = name
+        if decl:
+            doc.meta["declaration"] = decl
+            doc.meta["declaration_head"] = owner.group(1)
+        out.append(doc)
+    for match in _LEAN_SECTION_DOC_RE.finditer(text):
+        body = match.group(1).strip()
+        if not body:
+            continue
+        doc = Document(f"{name}#sectiondoc@{match.start()}", ENGLISH, _nfc(body), source)
+        doc.meta["lean_file"] = name
+        out.append(doc)
+    return out
+
+
 def route(
     name: str,
     text: str,
@@ -181,10 +243,12 @@ def route(
         # unresolved, zero clamps. The one line cost 407 GitHub .lean files their chart.
         elaborates, reason = (lean_elaborates or _default_lean_elaborates)(normalized)
         document = Document(name, LEAN, normalized, source)
+        companions = tuple(lean_docstrings(name, normalized, source))
         if elaborates:
-            return RoutedDoc(name, LEAN, "elaborates; clamp-eligible", raw_hash, document)
+            return RoutedDoc(name, LEAN, "elaborates; clamp-eligible", raw_hash, document,
+                             companions=companions)
         return RoutedDoc(name, LEAN, f"extraction tier, NOT clamp-eligible: {reason}",
-                         raw_hash, document)
+                         raw_hash, document, companions=companions)
 
     # 3.5. Speaker-attributed transcript -> conversation chart. Checked before tables/prose
     #      because a dialogue is neither, and its speaker turns are the segmentation unit.

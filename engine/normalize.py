@@ -43,7 +43,15 @@ _TYPOGRAPHIC = {
     "\u2026": "...", "\u00a0": " ", "\u202f": " ", "\u2007": " ",
 }
 
-_MD_INLINE_RE = re.compile(r"[*_`~]+")
+#: Markdown inline emphasis. An underscore BETWEEN WORD CHARACTERS is an IDENTIFIER, not
+#: emphasis — `gershgorin_wall` is a Lean declaration someone is naming, and stripping the
+#: underscore mangled it to `gershgorinwall`, so prose naming a declaration could never share
+#: a token with the declaration itself. Measured: 571 of 1,113 identifier-shaped declarations
+#: are named in prose, and every one of them was being destroyed at this line. Emphasis
+#: (`_word_`, `**bold**`) still strips; an intra-word underscore survives.
+#: Gate-4 plastic: this moves prose addresses and was authorized as a seed-morphism.
+_MD_INLINE_RE = re.compile(r"(?<![0-9A-Za-z])_+(?![0-9A-Za-z])|(?<=[0-9A-Za-z])_+(?![0-9A-Za-z])"
+                           r"|(?<![0-9A-Za-z])_+(?=[0-9A-Za-z])|[*`~]+")
 _MD_LINE_PREFIX_RE = re.compile(r"^\s*(?:#{1,6}\s+|>\s+|[-*+]\s+|\d+[.)]\s+)", re.MULTILINE)
 _LATEX_DELIM_RE = re.compile(r"\\[()\[\]]|\$+")
 _TERMINAL_PUNCT_RE = re.compile(r"[.?!;,:\s]+$")
