@@ -1,0 +1,2 @@
+# common-ground has NO third-party dependencies — pure Python stdlib.
+# This file exists so Nixpacks/Railway detects a Python app and runs the Procfile.

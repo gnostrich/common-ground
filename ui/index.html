@@ -103,8 +103,9 @@ async function reset_(){ await post('/reset',{}); render(null); }
 function render(st){
   if(!st){ $('proposals').innerHTML='nothing proposed yet.'; $('settle').innerHTML=''; $('floor').innerHTML=''; $('gate').innerHTML=''; $('lmstate').textContent=''; return; }
   $('lmstate').innerHTML = st.lm_available
-     ? 'LM source: <b>on</b> (Opus proposing in parallel)'
-     : 'LM source: <b>off</b> (no key — deterministic "me" source only; the LM would enter the same inlet)';
+     ? 'LM source: <b>on</b> (Opus proposing in parallel through the same inlet)'
+     : '<b>LM source omitted (no key) — engine runs live.</b> The deterministic "me" source '
+       + 'proposes; the LM would enter the same inlet if a key were supplied.';
 
   // proposals, tagged by source, visibly equal (same tier badge)
   const by = st.proposals_by_source || {};

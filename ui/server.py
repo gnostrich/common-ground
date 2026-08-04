@@ -108,10 +108,18 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps({"error": f"{type(exc).__name__}: {exc}"}))
 
 
-def serve(host: str = "127.0.0.1", port: int = 8848) -> None:
-    if host not in ("127.0.0.1", "localhost", "::1"):
-        raise SystemExit("refusing to bind a non-localhost host; this window is local only")
-    have = "yes" if os.environ.get("ANTHROPIC_API_KEY") else "no (LM source will be absent)"
+def serve(host: str | None = None, port: int | None = None) -> None:
+    """Serve the window. Localhost by default; binds 0.0.0.0 only when a platform sets $PORT
+    (Railway/Heroku/etc.) or COMMON_GROUND_BIND_ALL=1 is set explicitly — so a laptop run
+    stays local while a deploy is reachable. LM-omitted unless ANTHROPIC_API_KEY is set.
+    """
+    deploy = bool(os.environ.get("PORT") or os.environ.get("COMMON_GROUND_BIND_ALL"))
+    host = host or ("0.0.0.0" if deploy else "127.0.0.1")
+    port = port or int(os.environ.get("PORT", 8848))
+    if host not in ("127.0.0.1", "localhost", "::1", "0.0.0.0") and not deploy:
+        raise SystemExit("refusing to bind a non-localhost host; set COMMON_GROUND_BIND_ALL=1 "
+                         "or $PORT to deploy")
+    have = "yes" if os.environ.get("ANTHROPIC_API_KEY") else "no — LM source omitted, engine runs live"
     print(f"common-ground window on http://{host}:{port}  (ANTHROPIC_API_KEY set: {have})")
     HTTPServer((host, port), Handler).serve_forever()
 
