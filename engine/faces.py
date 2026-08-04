@@ -110,6 +110,19 @@ def face_index(faces: Iterable[FormalFace]) -> dict[str, list[FormalFace]]:
     return dict(idx)
 
 
+def first_word_index(index: dict[str, list[FormalFace]]) -> dict[str, tuple[str, ...]]:
+    """INVERTED index: first word of a face -> the faces beginning with it.
+
+    This is what makes anchoring a lookup instead of a scan. Without it, testing a slot means
+    walking every face — which is the enumeration-wearing-an-index's-clothes defect this build
+    has already deleted twice. Built once per corpus, in O(faces).
+    """
+    out: dict[str, list[str]] = defaultdict(list)
+    for face in index:
+        out[face.split(" ", 1)[0]].append(face)
+    return {w: tuple(sorted(fs)) for w, fs in out.items()}
+
+
 _WORD_RE = re.compile(r"[a-z0-9]+")
 
 
@@ -118,19 +131,23 @@ def _phrase_in(haystack: str, phrase: str) -> bool:
     return re.search(rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])", haystack) is not None
 
 
-def anchors_for_english(nu_body: str, index: dict[str, list[FormalFace]]) -> list[str]:
+def anchors_for_english(nu_body: str, by_first: dict[str, tuple[str, ...]]) -> list[str]:
     """Which declared faces this English slot mentions, by exact word-boundary containment.
 
-    Bounded by the slot's own words: only faces whose first word occurs in the slot are ever
-    tested, so this is O(words in the slot), not O(faces).
+    INDEX-DRIVEN: iterate the slot's own words and look each up in the inverted index, so only
+    faces that *begin with a word this slot actually contains* are ever tested. Cost is
+    O(words in the slot x faces sharing that first word) — independent of the total face count.
+
+    An earlier version looped over every face and filtered inside the loop, which made this
+    O(slots x faces) while the docstring claimed the bound below. The claim was wrong and the
+    operator caught it; the index is now real rather than described.
     """
     body = nu_body.casefold()
-    words = set(_WORD_RE.findall(body))
     hits: list[str] = []
-    for face, _ in index.items():
-        first = face.split(" ", 1)[0]
-        if first in words and _phrase_in(body, face):
-            hits.append(face)
+    for word in set(_WORD_RE.findall(body)):
+        for face in by_first.get(word, ()):
+            if _phrase_in(body, face):
+                hits.append(face)
     return hits
 
 

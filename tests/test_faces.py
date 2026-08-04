@@ -16,6 +16,7 @@ from engine.faces import (
     declarations,
     derive_faces,
     face_index,
+    first_word_index,
 )
 from engine.types import Document, WarrantTier
 
@@ -82,7 +83,11 @@ class FacesCarryProvenanceAndTheRightTier(unittest.TestCase):
 
 class AnchoringIsExactNotFuzzy(unittest.TestCase):
     def setUp(self):
-        self.index = face_index([
+        self.index = first_word_index(face_index([
+            FormalFace("spectralRadius", "spectral radius", "def", "f.lean"),
+            FormalFace("IsPositive", "is positive", "def", "f.lean"),
+        ]))
+        self.faces = face_index([
             FormalFace("spectralRadius", "spectral radius", "def", "f.lean"),
             FormalFace("IsPositive", "is positive", "def", "f.lean"),
         ])
@@ -100,7 +105,44 @@ class AnchoringIsExactNotFuzzy(unittest.TestCase):
 
     def test_a_lean_slot_anchors_from_its_own_declaration_name(self):
         self.assertIn("spectral radius",
-                      anchors_for_lean("def spectralRadius (M : Matrix) : R := x", self.index))
+                      anchors_for_lean("def spectralRadius (M : Matrix) : R := x", self.faces))
+
+
+class AnchoringIsIndexDrivenNotAScan(unittest.TestCase):
+    """The control the operator asked for: cost must not grow with the total face count.
+
+    An earlier version looped over every face per slot while its docstring claimed the
+    opposite. This asserts the property instead of describing it.
+    """
+
+    def _index(self, n: int):
+        faces = [FormalFace(f"Decl{i}", f"filler{i} term", "def", "f.lean") for i in range(n)]
+        faces.append(FormalFace("spectralRadius", "spectral radius", "def", "f.lean"))
+        return first_word_index(face_index(faces))
+
+    def test_lookups_touch_only_faces_sharing_a_word_with_the_slot(self):
+        small, large = self._index(10), self._index(20000)
+        slot = "the spectral radius equals the largest eigenvalue"
+        self.assertEqual(anchors_for_english(slot, small), anchors_for_english(slot, large))
+
+    def test_cost_does_not_grow_with_the_face_count(self):
+        import time
+        slot = "the spectral radius equals the largest eigenvalue"
+        small, large = self._index(50), self._index(50000)
+        anchors_for_english(slot, small); anchors_for_english(slot, large)   # warm
+        t0 = time.perf_counter()
+        for _ in range(200):
+            anchors_for_english(slot, small)
+        t_small = time.perf_counter() - t0
+        t0 = time.perf_counter()
+        for _ in range(200):
+            anchors_for_english(slot, large)
+        t_large = time.perf_counter() - t0
+        # A scan over 1000x more faces would be ~1000x slower. An index is flat; allow 5x
+        # for noise and dict-size effects.
+        self.assertLess(t_large, max(t_small, 1e-4) * 5,
+                        f"anchoring scales with face count ({t_small:.5f}s -> {t_large:.5f}s): "
+                        "that is a scan, not an index")
 
 
 class AnAnchorIsOnlyAPrior(unittest.TestCase):
