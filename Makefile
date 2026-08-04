@@ -1,4 +1,4 @@
-.PHONY: help status test lock verify nulls demo p0 p1 pin gate6 gate7 faithfulness probes clean
+.PHONY: help status test lock verify nulls demo p0 p1 pin gate6 gate7 faithfulness probes three-moves clean
 
 help:
 	@echo "status  — decisions, lock state, lexicon pins, phase readiness"
@@ -11,6 +11,7 @@ help:
 	@echo "gate7   — generative-key sweep (GATES.md sentence 7)"
 	@echo "faithfulness — theory object -> code site -> control audit"
 	@echo "probes  — commitment -> probe -> status battery + chart plug-in audit"
+	@echo "three-moves — belonging audit: every extension = swap-base/add-measure/add-morphism (seed/OBJECT.md)"
 	@echo "demo    — synthetic end-to-end smoke run, writes nothing"
 	@echo "p0 / p1 — phase gates"
 
@@ -40,6 +41,9 @@ faithfulness:
 
 probes:
 	@python3 -m engine.probe_report
+
+three-moves:
+	@python3 -m engine.three_moves_sweep
 
 demo:
 	@python3 cli.py demo
