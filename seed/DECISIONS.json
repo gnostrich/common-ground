@@ -269,6 +269,18 @@
   "F-the-seam-held-on-first-use": {
    "finding": "two charts (python, go) were added with zero edits to engine/router.py, confirming the router-seam repair. Before it, `name.endswith('.lean')` meant no manifest row could route anything anywhere.",
    "asserted_not_claimed": "tests/test_code_charts.py walks engine/router.py's AST and fails if it names 'python', 'go', '.py' or '.go' as a code constant."
+  },
+  "F-batch-3-produced-no-cycle-verdict": {
+   "finding": "Batch 3 (perp-options-amm) completed its LM phase — 818 calls, 10,021 answers, 234 same_claim arrows — and was then KILLED by its own 3-hour timeout while still in the holonomy phase. There is no cycle verdict, and the arrows are gone.",
+   "lm_phase_result": "lean x english n=5,503 none=97.0% same_claim=144 refines=13 instance_of=9; lean x tabular n=4,518 none=97.9% same_claim=90 refines=6 instance_of=0.",
+   "why_the_holonomy_phase_never_finished": "run_meter settles and runs the null battery over 25,812 slots, and Ledger.contested_blocks inside it is O(blocks x deltas) — the same quadratic access pattern found in the read view (F-contest-predicate-was-quadratic-in-its-access-pattern). The read view was repaired; the settlement path was not.",
+   "the_actual_lesson": "batch3.py held every arrow in memory and wrote nothing until the end, so a timeout in the last phase destroyed 818 calls of LM work. The continuous daemon does not have this failure mode: engine/journal.py fsyncs every answer as it arrives, and a restart replays it. This is the concrete argument for the architecture change, arrived at by losing the work.",
+   "still_open": "whether any cycle closes on this corpus. UNMEASURED, not zero."
+  },
+  "F-a-tolerant-parser-must-tolerate-any-shape": {
+   "finding": "a proposer returned {\"answers\": [0, 1, 2]} and parse_answers raised AttributeError on the bare int, killing the continuous daemon after ninety minutes of running.",
+   "compounding_defect": "the exception escaped run(), so the journal's last line was a successful call and the status file still said `running`. Nothing in the system recorded what ended it — the exact silent-failure shape the ledger exists to prevent.",
+   "repair": "parse_answers drops anything that is not a mapping, like every other unparseable thing it sees; and an unhandled exception in the loop is now a HALT record carrying its traceback. Controls cover both, including that valid answers beside a malformed one still land."
   }
  },
  "D10_continuous_proposer": {

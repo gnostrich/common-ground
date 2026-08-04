@@ -640,3 +640,48 @@ class PoolIsStreamed(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AMalformedAnswerCannotKillTheDaemon(unittest.TestCase):
+    """OBSERVED: a proposer returned `{"answers": [0, 1, 2]}` and the daemon died mid-run.
+
+    It had been up ninety minutes. The journal's last line was a successful call and the
+    status file still said `running`, so nothing in the system recorded what ended it.
+    """
+
+    def test_a_bare_integer_where_an_answer_belongs_is_dropped(self):
+        from engine.propose_correspondence import parse_answers
+
+        holes = [hole(LN, "l0", EN, "e0")]
+        for payload in ('{"answers": [0, 1, 2]}',
+                        '[0, "x", null]',
+                        '{"answers": [{"i": 0, "kind": "none"}, 7]}'):
+            got = parse_answers(payload, holes)
+            self.assertTrue(all(o.kind in ("none", "same_claim", "refines", "instance_of")
+                                for o in got), payload)
+
+    def test_the_valid_answers_beside_a_malformed_one_still_land(self):
+        from engine.propose_correspondence import parse_answers
+
+        holes = [hole(LN, f"l{i}", EN, f"e{i}") for i in range(3)]
+        got = parse_answers(
+            '{"answers": [{"i": 0, "kind": "same_claim", "evidence": "a"}, 5, '
+            '{"i": 2, "kind": "none", "evidence": "b"}]}', holes)
+        self.assertEqual([(o.hole.src_slot, o.kind) for o in got],
+                         [("l0", "same_claim"), ("l2", "none")])
+
+    def test_an_unexpected_crash_becomes_a_halt_record(self):
+        """PLANTED: run_batch raises. The loop must record it, not vanish."""
+        h = Harness(holes=[hole(LN, "l1", EN, "e1")])
+        try:
+            def boom(chunk):
+                raise RuntimeError("planted")
+
+            h.proposer.run_batch = boom
+            status = h.proposer.run(max_batches=3, max_iterations=3)
+            self.assertIn("HALTED", status.reason)
+            self.assertEqual(h.journal.totals()["halts"], 1)
+            halt = [r for r in h.journal.tail(10) if r["kind"] == "halt"][-1]
+            self.assertIn("planted", halt["detail"])
+        finally:
+            h.close()

@@ -503,7 +503,18 @@ class ContinuousProposer:
                 continue
 
             self.status.reason = f"asking {len(chunk)} candidates"
-            self.run_batch(chunk)
+            try:
+                self.run_batch(chunk)
+            except Exception as exc:                    # noqa: BLE001 - see below
+                # An unattended process that dies on an unexpected exception leaves no
+                # record of why: the journal's last line is a successful call and the
+                # status file says "running". That is exactly what happened when a
+                # proposer returned a bare integer where an answer object belonged. A
+                # crash is now a HALT with its traceback, so the ledger says what ended it.
+                import traceback
+
+                self._halt("unhandled exception in batch", traceback.format_exc()[-1500:])
+                break
             batches += 1
             self.status.batches += 1
             self.status.pool_position = self._pool_pos

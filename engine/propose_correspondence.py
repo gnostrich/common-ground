@@ -148,6 +148,13 @@ def parse_answers(raw: str, holes: Sequence[Hole]) -> list[ProposalOutcome]:
         answers = []
     out: list[ProposalOutcome] = []
     for a in answers:
+        # A tolerant parser has to tolerate ANY shape, not just the wrong-but-dict shapes.
+        # A proposer returned `{"answers": [0, 1, 2]}` on the real corpus and this function
+        # raised `AttributeError` on the bare int, which killed an unattended process that
+        # had been running for ninety minutes. Anything that is not a mapping is not an
+        # answer, and is dropped like every other unparseable thing here.
+        if not isinstance(a, dict):
+            continue
         try:
             i = int(a.get("i", -1))
         except (TypeError, ValueError):
