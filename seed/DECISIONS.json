@@ -210,6 +210,23 @@
       "container": "27GB free disk (sufficient); no elan/lake/lean installed; container is EPHEMERAL so any build is lost at session end and must be redone.",
       "two_toolchains": "repos do not agree: v4.28.0 (certified-positivity, beauville-laszlo, realization-lean) vs v4.32.0 (discovery-kernel). D6 must pin per-repo or accept two.",
       "honest_answer": "a full kernel-verified Mathlib build is NOT practical in this environment. Kernel clamps are future work; chart entry does not need them."
+    },
+    "F-where-prose-about-lean-actually-lives": {
+      "status": "measured 2026-08-04; three defects NAMED, none fixed (operator rules)",
+      "question": "dir-level provenance bounding covered only 179 of 1,317 lean slots (13.6%) BEFORE the proposer said anything. Where does prose-about-Lean actually live?",
+      "c_key_number": "571 of 1,113 identifier-shaped lean declaration names (51.3%) ARE named in English prose somewhere in the corpus. THE BRIDGES EXIST \u2014 co-location is simply the wrong finder. Sample: A3_exists, A4_main, B1_bound, B2_recurrence, B4_resolvent, C1_kolmogorov, C2_stochastic, C3_gibbs, D2_b_posdef, AmericanOptimalityPrinciple, CoveragePrimeFree.",
+      "defect_1_underscore_stripping": "engine/normalize.py:_nu_english strips `_ * ` ~` as MARKDOWN EMPHASIS, so every Lean identifier written in prose is MANGLED in the address: gershgorin_wall -> gershgorinwall. Prose naming a declaration and the declaration itself can therefore never share a token. This is in the ADDRESSING function (gate-4 plastic). It is why a first pass at the key number returned 0 of 1,113 \u2014 the measurement had to be run against the same transform the corpus underwent.",
+      "defect_2_docstrings_discarded": "264 of 407 .lean files (64.9%) carry /-- docstrings -/, 292,633 chars = 15.8% of all Lean text. _nu_lean strips them from the Lean address AND the file routes wholesale to the Lean chart on its extension, so they are never available as English. The most perfectly co-located prose that can exist \u2014 sitting ON the declaration \u2014 is discarded at the boundary.",
+      "defect_3_dir_bounding_wrong_shaped": "certified-positivity keeps STATEMENTS.md ('the exact formal claims, verbatim from the named source file') at the repo ROOT while 75 of its 77 .lean files sit in lean/. Docs at top, code below. Dir-level bounding pairs that prose with 2 files and misses 75. The bound is not wrong in kind \u2014 it is wrong in SHAPE for how repositories are organized.",
+      "method_caveat": "the key number required a >=4-character minimum after the markdown transform, to stop one-letter names (A, C) matching every English word. That threshold is the diagnostic's, introduced for this measurement and flagged rather than left silent."
+    },
+    "F-batch-2-result": {
+      "status": "complete 2026-08-04; PROVISIONAL, nothing promoted",
+      "run": "179 lean declarations, each against its dir-co-located english slots. OpenRouter, openrouter/auto, 179 calls, 468s.",
+      "answers": "1,227 answers: none 1,223 (99.7%), same_claim 3, instance_of 1.",
+      "structure": "4 arrows entered at EXTRACTION tier; 2 fibers, 4 edges, 0 loops; provisional floor 0.0 reported as NO-CYCLE-SUPPORT, never as agreement. 3 open reverse arrows.",
+      "arrows_are_real": "gershgorin_wall and wall_gersh_margin_zero <-> the prose naming gershgorin_wall as the certified instance; wall_sigmaMin_half <-> 'the lower bound half of the condition number theorem'; relation_eq_sum_smul_proj -> checkRelation/checkRelationSound/checkRelationIff, correctly typed instance_of rather than same_claim.",
+      "reading": "the mechanism is sound end-to-end (holes -> proposer -> one inlet -> derived arrows -> fibers) and the none-discipline held under 1,227 chances to force a match. The limit was COVERAGE, not the proposer: the bound reached 13.6% of a corpus in which 51.3% of declarations are nameable."
     }
   }
 }
