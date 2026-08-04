@@ -211,6 +211,60 @@ def _canonical_table(rows: list[list[str]]) -> str:
     return _ROW_SEP.join(_CELL_SEP.join(r) for r in rows)
 
 
+_PY_COMMENT_RE = re.compile(r"#[^\n]*")
+_PY_DEFINE_HEADS = frozenset({"def", "class"})
+_PY_CONDITIONAL_HEADS = frozenset({"if", "elif", "while", "for", "with"})
+
+
+def _nu_python(core: str) -> str:
+    """Normalize Python source text. Total and idempotent; never invokes a real parser.
+
+    Same shape as `_nu_lean`: strip control characters, fold to NFKC, strip comments,
+    collapse whitespace. Deliberately no casefold — Python is case-sensitive, same
+    reasoning as Lean. No `ast.parse` here on purpose: null cell (i) fuzzes this function
+    with adversarial garbage (including bare `#`, unmatched brackets, control characters)
+    500 times per chart, and a real parser would raise on almost all of it, breaking the
+    "total" half of gate 1. The AST *is* used, but only in the segmenter
+    (`engine/extract.py:_segment_python`), which runs on whole documents that are real
+    files on disk, never on an arbitrary fuzzed span.
+
+    The comment stripper is a plain regex, not string-literal-aware, matching `_nu_lean`'s
+    `--` stripper exactly in spirit: a `#` inside a string literal is stripped too. That is
+    a known, declared simplification (minimal-faithful-by-design), not a defect — the same
+    one the Lean normalizer already carries for `--`.
+    """
+    s = _CONTROL_RE.sub("", core)
+    s = unicodedata.normalize("NFKC", s)
+    s = _PY_COMMENT_RE.sub("", s)
+    s = _WS_RE.sub(" ", s).strip()
+    return s
+
+
+def _python_head(s: str) -> str:
+    """First non-decorator token; `async def` reads as `def`. Mirrors `_lean_head`."""
+    tokens = s.split()
+    i = 0
+    while i < len(tokens) and tokens[i].startswith("@"):
+        i += 1
+    if i < len(tokens) and tokens[i] == "async" and i + 1 < len(tokens):
+        return tokens[i + 1]
+    return tokens[i] if i < len(tokens) else ""
+
+
+def _classify_python(body: str) -> ClaimForm:
+    """A `def`/`class` head is a stipulation (`define`); a guard head is `conditional`;
+    a body whose top-level token stream contains `assert` is asserting an invariant
+    (`assert`); anything else defaults to `assert`, same reasoning as `_classify_lean`'s
+    fallback — a Python fragment with no recognised head is still a claim about the code.
+    """
+    head = _python_head(body)
+    if head in _PY_DEFINE_HEADS:
+        return "define"
+    if head in _PY_CONDITIONAL_HEADS:
+        return "conditional"
+    return "assert"
+
+
 def _nu_tabular(core: str) -> str:
     """Normalize a well-formed markdown table to a canonical, idempotent string.
 
@@ -304,9 +358,10 @@ def _classify_tabular(body: str) -> ClaimForm:
 # The plug-in seam, wired once. `nu` and `classify` dispatch through these by the chart's
 # declared behavior id; adding a chart adds a manifest row and (if the behavior is new) an
 # entry here, and touches no dispatch logic.
-_NORMALIZERS.update({"prose": _nu_english, "lean": _nu_lean, "tabular": _nu_tabular})
+_NORMALIZERS.update({"prose": _nu_english, "lean": _nu_lean, "tabular": _nu_tabular,
+                     "python": _nu_python})
 _CLASSIFIERS.update({"prose": _classify_prose, "lean": _classify_lean,
-                     "tabular": _classify_tabular})
+                     "tabular": _classify_tabular, "python": _classify_python})
 
 
 def _has_explicit_binder(body: str) -> bool:

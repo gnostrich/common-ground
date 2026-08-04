@@ -71,6 +71,27 @@
       "a": "theorem comp_pos /- note -/ (f g : Cone) : IsPositive (f ∘ g)",
       "b": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
       "why": "block comments are stripped"
+    },
+    {
+      "id": "python-same-whitespace",
+      "chart": "python",
+      "a": "def add(a, b):\n    return a + b",
+      "b": "def  add(a,  b):\n        return a + b",
+      "why": "whitespace collapse"
+    },
+    {
+      "id": "python-same-comment",
+      "chart": "python",
+      "a": "def add(a, b):  # sums two numbers\n    return a + b",
+      "b": "def add(a, b):\n    return a + b",
+      "why": "line comments are stripped, same as Lean's -- stripper"
+    },
+    {
+      "id": "python-same-blank-lines",
+      "chart": "python",
+      "a": "def add(a, b):\n\n\n    return a + b\n",
+      "b": "def add(a, b):\n    return a + b",
+      "why": "blank-line runs collapse under the same whitespace rule as everything else"
     }
   ],
   "known_distinct": [
@@ -145,6 +166,36 @@
       "b_chart": "lean",
       "b": "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)",
       "why": "charts never share an address; co-reference is a fiber hypothesis, not an identity"
+    },
+    {
+      "id": "python-distinct-name",
+      "chart": "python",
+      "a": "def add(a, b):\n    return a + b",
+      "b": "def sum_two(a, b):\n    return a + b",
+      "why": "different function name"
+    },
+    {
+      "id": "python-distinct-body",
+      "chart": "python",
+      "a": "def add(a, b):\n    return a + b",
+      "b": "def add(a, b):\n    return a - b",
+      "why": "different body; unlike Lean's proof-irrelevance cut, Python has no proof term to strip, so the whole body is content"
+    },
+    {
+      "id": "python-distinct-case",
+      "chart": "python",
+      "a": "class Cone:\n    pass",
+      "b": "class cone:\n    pass",
+      "why": "Python is case-sensitive; the python chart must not casefold, same reasoning as Lean"
+    },
+    {
+      "id": "python-cross-chart-distinct",
+      "chart": "cross",
+      "a_chart": "python",
+      "a": "def add(a, b):\n    return a + b",
+      "b_chart": "lean",
+      "b": "def add(a, b):\n    return a + b",
+      "why": "charts never share an address even on byte-identical surface text"
     }
   ]
 }

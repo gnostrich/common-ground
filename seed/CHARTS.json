@@ -1,9 +1,10 @@
 {
   "schema": "common-ground/charts/v0",
-  "note": "Charts as a seed-declared manifest (item 2 refactor). `name` is the chart id; `tag` is the [a-z]+ control-character tag nu wraps every address in, hashed into SEED.lock; `behavior` selects the normalizer/classifier/segmenter, keyed by id in engine code. Adding a chart is a manifest row plus (if the behavior is new) three registered functions — no dispatch edit.",
+  "note": "Charts as a seed-declared manifest (item 2 refactor). `name` is the chart id; `tag` is the [a-z]+ control-character tag nu wraps every address in, hashed into SEED.lock; `behavior` selects the normalizer/classifier/segmenter, keyed by id in engine code. Adding a chart is a manifest row plus (if the behavior is new) three registered functions — no dispatch edit. `python` added on claude/repo-intake-adapter (repo-intake track, additive, fixture-proven): new tag `py`, no existing tag moved. See seed/DECISIONS.md D2 addendum and the REPO_INTAKE ledger entry for the real-corpus-ingestion hold.",
   "charts": [
     {"name": "english", "tag": "en", "behavior": "prose"},
     {"name": "lean", "tag": "lean", "behavior": "lean"},
-    {"name": "tabular", "tag": "tab", "behavior": "tabular"}
+    {"name": "tabular", "tag": "tab", "behavior": "tabular"},
+    {"name": "python", "tag": "py", "behavior": "python"}
   ]
 }
