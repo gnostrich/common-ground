@@ -151,6 +151,12 @@ def anchors_for_english(nu_body: str, by_first: dict[str, tuple[str, ...]]) -> l
     return hits
 
 
+#: nu wraps every body in a control-character chart tag. The declaration regex anchors on
+#: `^\s*`, and `\x01` is not whitespace, so the tag must come off before parsing — without
+#: this, EVERY Lean slot silently yields no face (measured: 0 of 12,041, in 0s).
+_TAG_RE = re.compile(r"^\x01[a-z]+\x01")
+
+
 def anchors_for_lean(nu_body: str, index: dict[str, list[FormalFace]]) -> list[str]:
     """Which declared faces this Lean slot's own declaration name renders to.
 
@@ -158,7 +164,7 @@ def anchors_for_lean(nu_body: str, index: dict[str, list[FormalFace]]) -> list[s
     not from matching prose. Exact, by construction.
     """
     out: list[str] = []
-    for _head, name in declarations(nu_body):
+    for _head, name in declarations(_TAG_RE.sub("", nu_body, count=1)):
         face = render(name).strip()
         if face in index:
             out.append(face)

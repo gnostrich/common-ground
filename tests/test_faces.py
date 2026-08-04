@@ -103,6 +103,15 @@ class AnchoringIsExactNotFuzzy(unittest.TestCase):
         # No stemming, no fuzz: "radii" is not "radius".
         self.assertEqual(anchors_for_english("the spectral radii differ", self.index), [])
 
+    def test_a_tagged_lean_nu_still_anchors(self):
+        # Regression: nu wraps bodies in a \x01lean\x01 tag and the declaration regex
+        # anchors on ^\s*, so an unstripped tag made EVERY Lean slot yield zero faces
+        # (measured 0 of 12,041 in 0s — the "0 in 0s" was the tell).
+        from engine.normalize import nu as _nu
+        tagged = _nu("lean", "def spectralRadius (M : Matrix) : R := x")
+        self.assertTrue(tagged.startswith("\x01"), "precondition: nu tags the body")
+        self.assertIn("spectral radius", anchors_for_lean(tagged, self.faces))
+
     def test_a_lean_slot_anchors_from_its_own_declaration_name(self):
         self.assertIn("spectral radius",
                       anchors_for_lean("def spectralRadius (M : Matrix) : R := x", self.faces))
