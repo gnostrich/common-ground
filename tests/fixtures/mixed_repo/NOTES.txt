@@ -1,0 +1,1 @@
+Plain-text reference-tier fixture file. Held by the repo adapter; not ingested.

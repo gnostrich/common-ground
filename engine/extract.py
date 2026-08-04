@@ -17,6 +17,7 @@ Two implementations:
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import re
@@ -84,12 +85,50 @@ def _segment_tabular(text: str) -> list[tuple[str, str]]:
     return out
 
 
+def _segment_python(text: str) -> list[tuple[str, str]]:
+    """One candidate span per top-level `def`/`class` and per method inside a class.
+
+    Uses the real `ast` module — unlike `_nu_python`, this runs on a whole document that
+    is a real file on disk (or, in a test, a deliberately-valid fixture), so a parse
+    failure is a genuine malformed-source signal rather than adversarial fuzz. `ast.parse`
+    is wrapped rather than left to raise: a corpus file with a syntax error yields zero
+    candidate spans instead of crashing the extractor, which is the totality gate 1's
+    idempotence check assumes of every stage downstream of `nu`.
+
+    Granularity mirrors `_segment_lean`'s flat per-declaration spans: module-level
+    functions/classes and one level of method inside a class, no deeper nesting (a nested
+    closure is not spanned separately, same simplification `_segment_lean` makes for a
+    Lean declaration's internal `have`s).
+    """
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError, RecursionError):
+        return []
+
+    out: list[tuple[str, str]] = []
+
+    def walk(node: ast.AST, prefix: str) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                qual = f"{prefix}.{child.name}" if prefix else child.name
+                span = ast.get_source_segment(text, child)
+                if span:
+                    kind = "class" if isinstance(child, ast.ClassDef) else "def"
+                    out.append((span, f"{kind}:{qual}"))
+                if isinstance(child, ast.ClassDef):
+                    walk(child, qual)   # one level: methods, not nested closures
+
+    walk(tree, "")
+    return out
+
+
 #: Per-chart span segmenters, keyed by the manifest's behavior id — the third leg of the
 #: chart plug-in seam (normalizer and classifier are the other two, in engine/normalize.py).
 _SEGMENTERS: dict[str, "Callable[[str], list[tuple[str, str]]]"] = {
     "prose": _segment_prose,
     "lean": _segment_lean,
     "tabular": _segment_tabular,
+    "python": _segment_python,
 }
 
 _TABLE_SEP_ROW_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")

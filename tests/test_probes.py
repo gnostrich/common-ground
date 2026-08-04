@@ -349,10 +349,13 @@ class TheChartRegistryIsAPlugInSeam(unittest.TestCase):
         self.assertEqual(v["blocking_sites"], [],
                          "no engine site may hardcode the chart set any longer")
 
-    def test_the_manifest_declares_three_charts(self):
+    def test_the_manifest_declares_four_charts(self):
+        """Was three; `python` added additively on claude/repo-intake-adapter — new tag
+        `py`, english/lean/tabular unchanged, so this is an updated count, not a rewrite
+        of what the other three assert about themselves."""
         from engine.charts import chart_names
 
-        self.assertEqual(chart_names(), ("english", "lean", "tabular"))
+        self.assertEqual(chart_names(), ("english", "lean", "tabular", "python"))
 
     def test_a_chart_not_in_the_manifest_is_rejected(self):
         from engine.normalize import nu
@@ -388,7 +391,7 @@ class TheChartRegistryIsAPlugInSeam(unittest.TestCase):
             tree = ast.parse(inspect.getsource(fn).lstrip())
             for node in ast.walk(tree):
                 if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                    self.assertNotIn(node.value, ("english", "lean", "tabular"),
+                    self.assertNotIn(node.value, ("english", "lean", "tabular", "python"),
                                      f"{fn.__name__} names a chart as a literal")
 
 
