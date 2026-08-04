@@ -33,6 +33,7 @@ import os
 import sys
 import time
 from collections import defaultdict
+from dataclasses import asdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -242,7 +243,7 @@ def cmd_status() -> None:
               if Path(STATUS_PATH).exists() else {"note": "never run"})
     journal = Journal(JOURNAL_PATH)
     print(json.dumps({"status": status, "totals": journal.totals(),
-                      "control": {k: v for k, v in vars(Control.read(CONTROL_PATH)).items()},
+                      "control": asdict(Control.read(CONTROL_PATH)),
                       "recent": journal.tail(12)}, indent=2))
     journal.close()
 
@@ -259,7 +260,7 @@ def _set(**changes) -> None:
     for key, value in changes.items():
         setattr(control, key, value)
     control.write(CONTROL_PATH)
-    print(json.dumps({k: v for k, v in vars(control).items() if k != "error"}, indent=2))
+    print(json.dumps({k: v for k, v in asdict(control).items() if k != "error"}, indent=2))
 
 
 def main(argv: list[str]) -> int:

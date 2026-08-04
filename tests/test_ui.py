@@ -15,6 +15,7 @@ import urllib.request
 from http.server import HTTPServer
 from pathlib import Path
 
+import ui.server
 from ui.current import Current, run_current
 from ui.server import Handler
 
@@ -110,8 +111,66 @@ class LiveLocalhostSmoke(unittest.TestCase):
             server.shutdown()
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TheProposerLedgerIsVisibleAndReadOnly(unittest.TestCase):
+    """The window shows the daemon's own journal, and cannot promote through it."""
+
+    def test_the_ledger_endpoint_reports_the_tier_and_the_journal(self):
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        port = server.server_address[1]
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/proposer") as r:
+                payload = json.load(r)
+            self.assertNotIn("error", payload, payload.get("error", ""))
+            self.assertIn("EXTRACTION only", payload["tier"])
+            self.assertIn("asked", payload["totals"])
+            self.assertIn("calls_per_hour", payload["control"])
+        finally:
+            server.shutdown()
+
+    def test_the_control_surface_writes_only_operational_fields(self):
+        """PLANTED-shaped: the endpoint must not be able to set a tier, warrant, or promotion.
+
+        Rather than trying every spelling of the attack, the control reads the AST of the
+        `/proposer/control` branch and asserts the exact set of fields it writes. A new
+        assignment target — of any name — fails this until it is added deliberately.
+        """
+        import ast
+
+        source = Path(ui.server.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        branch = None
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.If):
+                continue
+            test = node.test
+            if (isinstance(test, ast.Compare) and isinstance(test.left, ast.Name)
+                    and test.left.id == "path"
+                    and any(isinstance(c, ast.Constant) and c.value == "/proposer/control"
+                            for c in test.comparators)):
+                branch = node
+        self.assertIsNotNone(branch, "the control endpoint disappeared")
+
+        written: set[str] = set()
+        # body only: `orelse` is the rest of the elif chain, which is not this endpoint
+        for stmt in branch.body:
+         for node in ast.walk(stmt):
+             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
+                     and node.func.id == "setattr":
+                 for arg in node.args[1:2]:
+                     if isinstance(arg, ast.Name):
+                         written.add(f"<loop:{arg.id}>")
+             elif isinstance(node, ast.Assign):
+                 for target in node.targets:
+                     if isinstance(target, ast.Attribute):
+                         written.add(target.attr)
+             if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                 written.add(node.value)
+        allowed = {"calls_per_hour", "batch", "paused", "stop", "max_cost",
+                   "/proposer/control", "<loop:field>", ""}
+        self.assertEqual(written - allowed, set(),
+                         "the control endpoint touches a field outside the operational set; "
+                         "warrant is not a window concern")
 
 
 class OpenRouterOnly(unittest.TestCase):
@@ -151,3 +210,7 @@ class OpenRouterOnly(unittest.TestCase):
         from ui.lm import model_for
 
         self.assertEqual(model_for("sk-or-v1-whatever"), "openrouter/auto")
+
+
+if __name__ == "__main__":
+    unittest.main()

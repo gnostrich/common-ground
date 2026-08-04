@@ -69,6 +69,22 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
     </div>
   </div>
 
+  <h2>The continuous proposer — global, unattended, EXTRACTION only</h2>
+  <p class="muted">Runs over the whole corpus at a rate you set. It proposes; it never
+  promotes and never confirms. Everything it has asked is below, including every
+  <b>none</b> and every contradiction between what it answered and what the arrows imply.</p>
+  <div class="row">
+    <label>calls/hour <input id="rate" type="number" min="0" max="600" value="30" size="4"></label>
+    <button onclick="ctl({calls_per_hour:parseInt($('rate').value)})">set rate</button>
+    <button onclick="ctl({paused:true})">pause</button>
+    <button onclick="ctl({paused:false,stop:false})">resume</button>
+    <button onclick="ctl({stop:true})">stop</button>
+    <label>cost cap <input id="cap" placeholder="(none)" size="6"></label>
+    <button onclick="ctl({max_cost:$('cap').value})">set cap</button>
+    <button onclick="ledger()">refresh</button>
+  </div>
+  <div id="proposer" class="muted">not loaded — press refresh.</div>
+
   <h2>Ask the current (grounded)</h2>
   <div class="row">
     <input id="q" placeholder="ask a question, grounded in the settled state" style="flex:1">
@@ -142,6 +158,49 @@ function render(st){
   $('gate').innerHTML = `<div class="muted">K considered ${proms.length}; promoted ${yes.length}; corpus ${Object.keys(st.corpus).length}.</div>` +
     proms.map(p=>`<div class="prop"><span class="${p.promoted?'promoted':'blocked'}">${p.promoted?'PROMOTED':'held'}</span>
       <b class="b ${p.value}">${p.value}</b> <span class="muted">${esc(p.reason)} · top ${p.hankel_top.toExponential(2)} vs thr ${p.threshold.toExponential(2)}</span></div>`).join('');
+}
+
+async function ledger(){ renderLedger(await (await fetch('/proposer')).json()); }
+async function ctl(body){ renderLedger(await post('/proposer/control', body)); }
+
+function renderLedger(L){
+  if(L.error){ $('proposer').innerHTML = `<span class="err">${esc(L.error)}</span>`; return; }
+  const t = L.totals||{}, c = L.control||{}, s = L.status||{};
+  const running = s.running ? 'RUNNING' : (c.paused ? 'PAUSED' : 'not running');
+  let h = `<div class="prop"><b>${running}</b> · ${c.calls_per_hour||0} calls/hour`
+        + (c.max_cost!=null ? ` · cap ${esc(String(c.max_cost))}` : ' · no cost cap')
+        + ` · <span class="tier">${esc(L.tier||'')}</span><br>`
+        + `<span class="muted">${esc(s.reason||'')}</span></div>`;
+  h += `<div class="prop">asked <b>${t.asked||0}</b> · arrows <b>${t.arrows||0}</b> · none <b>${t.none||0}</b>`
+     + ` (${((t.none_rate||0)*100).toFixed(1)}%) · contradictions <b>${t.contradictions||0}</b><br>`
+     + `calls ${t.calls||0} (${t.call_errors||0} failed) · tokens ${t.tokens_in||0}/${t.tokens_out||0}`
+     + ` · cost <b>${t.cost||0}</b> <span class="muted">${esc(t.cost_coverage||'')}</span></div>`;
+  const comp = s.composition||{};
+  if(Object.keys(comp).length){
+    h += `<div class="prop">composition: implied <b>${comp.implied||0}</b> · intra-chart residue `
+       + `${comp.residues||0} <span class="muted">(no morphism for these at v0)</span>`
+       + (comp.dropped_by_hub_cap ? ` · hub cap dropped ${comp.dropped_by_hub_cap}` : '') + `</div>`;
+  }
+  const red = (s.gates||[]).filter(g=>!g.ok);
+  h += `<div class="prop">gates: ${red.length ? `<span class="err">RED — ${red.map(g=>esc(g.check)).join(', ')}</span>`
+        : `<span class="promoted">green (${(s.gates||[]).length} static)</span>`} · suite ${esc(String(s.suite||'-')).slice(0,60)}</div>`;
+  if((L.contradictions||[]).length){
+    h += '<h2 style="border:none">Contradictions — flagged, never resolved</h2>' +
+      L.contradictions.map(x=>`<div class="prop"><b class="F">${esc(x.implied)}</b> implied via `
+        + `${esc((x.via||[]).join(' → '))} but answered <b>${esc(x.recorded)}</b>`
+        + `<br><span class="muted">${esc(x.note||'')}</span></div>`).join('');
+  }
+  h += '<h2 style="border:none">Ledger tail</h2>' + (L.recent||[]).slice().reverse().map(r=>{
+    if(r.kind==='ask') return `<div class="prop"><span class="tier">${esc(r.relation)}</span> `
+      + `<b class="${r.answer==='none'?'N':'T'}">${esc(r.answer)}</b> `
+      + `<span class="nu">[${esc(r.src_chart)}] ${esc(r.src_slot)} → [${esc(r.dst_chart)}] ${esc(r.dst_slot)}</span>`
+      + (r.evidence ? `<br><span class="muted">${esc(r.evidence)}</span>` : '') + '</div>';
+    if(r.kind==='call') return `<div class="prop muted">call · ${r.candidates} candidates · `
+      + `${r.ok?'ok':'<span class="err">failed: '+esc(r.error||'')+'</span>'} · cost ${r.cost==null?'unreported':r.cost}</div>`;
+    if(r.kind==='halt') return `<div class="prop err">HALT — ${esc(r.reason)}</div>`;
+    return `<div class="prop muted">${esc(r.kind)}</div>`;
+  }).join('');
+  $('proposer').innerHTML = h;
 }
 
 async function ask(){

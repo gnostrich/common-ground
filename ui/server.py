@@ -22,6 +22,35 @@ from .lm import LMClient, answer, api_key, lm_available
 HERE = Path(__file__).resolve().parent
 INDEX = HERE / "index.html"
 
+
+def _proposer_ledger() -> dict:
+    """What the continuous proposer has proposed, accepted, and contradicted itself on.
+
+    Read-only, and read off the daemon's own journal rather than any shared memory, so the
+    window shows the same file the operator can `tail` — there is no second account of what
+    the background process did.
+    """
+    from dataclasses import asdict
+
+    from engine.continuous import CONTROL_PATH, STATUS_PATH, Control
+    from engine.journal import Journal
+
+    status_path = Path(STATUS_PATH)
+    status = (json.loads(status_path.read_text(encoding="utf-8"))
+              if status_path.exists() else {"note": "the continuous proposer has never run"})
+    journal = Journal(Path(__file__).resolve().parents[1] / "runs" / "proposer.journal.jsonl")
+    try:
+        return {
+            "status": status,
+            "totals": journal.totals(),
+            "control": asdict(Control.read(CONTROL_PATH)),
+            "recent": journal.tail(25),
+            "contradictions": journal.contradictions[-25:],
+            "tier": "EXTRACTION only — the daemon promotes nothing and confirms nothing",
+        }
+    finally:
+        journal.close()
+
 # One localhost user, one current. Module-level, so the window accumulates as you type.
 CURRENT = Current()
 
@@ -69,8 +98,14 @@ class Handler(BaseHTTPRequestHandler):
             return {}
 
     def do_GET(self):
-        if self.path.split("?")[0] in ("/", "/index.html"):
+        path = self.path.split("?")[0]
+        if path in ("/", "/index.html"):
             self._send(200, INDEX.read_text(encoding="utf-8"), "text/html; charset=utf-8")
+        elif path == "/proposer":
+            try:
+                self._send(200, json.dumps(_proposer_ledger()))
+            except Exception as exc:
+                self._send(200, json.dumps({"error": f"{type(exc).__name__}: {exc}"}))
         else:
             self._send(404, json.dumps({"error": "not found"}))
 
@@ -91,6 +126,23 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/reset":
                 CURRENT.reset()
                 self._send(200, json.dumps({"ok": True}))
+            elif path == "/proposer/control":
+                # The operator's hand on the background process: rate, pause, stop, cost cap.
+                # It writes the control file the daemon re-reads; it cannot promote anything,
+                # because there is nothing in the daemon that promotes.
+                from engine.continuous import CONTROL_PATH, Control
+
+                ctl = Control.read(CONTROL_PATH)
+                for field in ("calls_per_hour", "batch"):
+                    if field in b:
+                        setattr(ctl, field, max(0, int(b[field])))
+                for field in ("paused", "stop"):
+                    if field in b:
+                        setattr(ctl, field, bool(b[field]))
+                if "max_cost" in b:
+                    ctl.max_cost = None if b["max_cost"] in (None, "") else float(b["max_cost"])
+                ctl.write(CONTROL_PATH)
+                self._send(200, json.dumps(_proposer_ledger()))
             elif path == "/ask":
                 question = str(b.get("question", ""))
                 state = CURRENT.state(lm_used=lm_available(key))

@@ -9,3 +9,10 @@ venv/
 
 # Claude Code local state (agent worktrees, etc.) — not part of the repo.
 .claude/
+
+# The continuous proposer's working files. The JOURNAL is evidence and should be committed
+# when it says something; the POOL is a derived index of the operator's private corpus (it
+# carries nu-strings of the source material) and must never enter this repository.
+runs/pool.jsonl
+runs/corpus.snapshot
+runs/proposer.status.json
