@@ -52,13 +52,13 @@ from engine.continuous import (
 from engine.energy import dedupe_deltas
 from engine.extract import build_k_extractors, slots_from_deltas
 from engine.holes import holes_by_declaration, holes_by_subtree
+from engine.languages import REFERENCE, SHELF as SHELF_CLASS, rule_for
 from engine.corpus_state import SNAPSHOT_PATH
 from engine.journal import Journal
 from engine.pipeline import ingest
 from engine.router import RoutingReport, route
 
 REPO_SKIP = {".git", "node_modules", ".lake", "build", ".cache", "__pycache__", ".venv"}
-PROSE_EXT = {".md", ".txt", ".rst"}
 
 
 # --- the union corpus -------------------------------------------------------------------
@@ -106,8 +106,11 @@ def lean_corpus_docs() -> list:
 
 
 def repo_docs() -> tuple[list, list[str]]:
+    from collections import Counter
+
     root = Path(os.environ.get("CG_REPO_ROOT", "/workspace"))
     docs, names = [], []
+    held: Counter = Counter()
     if not root.is_dir():
         return docs, names
     for repo_dir in sorted(p for p in root.iterdir() if p.is_dir()):
@@ -119,10 +122,17 @@ def repo_docs() -> tuple[list, list[str]]:
             dirnames[:] = [d for d in dirnames if d not in REPO_SKIP]
             for filename in filenames:
                 full = Path(dirpath) / filename
-                ext = full.suffix.lower()
-                if ext not in PROSE_EXT and ext != ".lean":
-                    continue
                 rel = str(full.relative_to(repo_dir)).replace(os.sep, "/")
+                # NO extension filter here. seed/LANGUAGES.json decides what a file is, and
+                # `route` reads it — a hardcoded set at the call site is exactly the shape
+                # that made 1,405 .py files invisible while nothing reported a zero. A file
+                # the manifest shelves costs one read and is counted; that is the price of
+                # the count being true.
+                if rule_for(f"{repo}||{rel}").cls in (SHELF_CLASS, REFERENCE):
+                    held[rule_for(f"{repo}||{rel}").cls] += 1
+                    continue
+                if full.stat().st_size > 3_000_000:
+                    continue
                 try:
                     text = full.read_text(encoding="utf-8", errors="replace")
                 except OSError:
@@ -137,6 +147,9 @@ def repo_docs() -> tuple[list, list[str]]:
                 found += len(routed.companions)
         if found:
             names.append(f"{repo}:{found}")
+    if held:
+        # The coverage caveat, as a number rather than an absence.
+        names.append(f"held[{'/'.join(f'{k}:{v}' for k, v in sorted(held.items()))}]")
     return docs, names
 
 
