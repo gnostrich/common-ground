@@ -1,4 +1,9 @@
-"""The LM in the loop: Opus as a proposer INTO D (move-3), extraction-tier, never clamps.
+"""The LM in the loop: a proposer INTO D (move-3), extraction-tier, never clamps.
+
+OPENROUTER ONLY, model `openrouter/auto`. There is no Anthropic path: the transport, the
+key lookup and the model selection all refuse a non-`sk-or-` key outright. A fallback would
+let a stray key in the environment silently reroute the operator's window to another
+provider, which is the kind of thing that is only noticed after it has already happened.
 
 The LM does four things, all as *proposals* the engine then disposes:
 
@@ -10,7 +15,7 @@ The LM does four things, all as *proposals* the engine then disposes:
 3. `propose_bridges` — cross-chart "this English ~ that Lean" suggestions.
 4. `answer` — a conversational reply, grounded on engine facts injected by the server.
 
-The Anthropic call goes through a plain stdlib `urllib` transport so the app needs no SDK.
+The call goes through a plain stdlib `urllib` transport so the app needs no SDK.
 The transport is injectable (`LMClient(transport=...)`) so tests exercise the whole loop
 against a canned response without a network or a key. The key is never logged.
 """
@@ -26,13 +31,10 @@ from typing import Callable, Iterable
 from engine.extract import Extractor, Span
 from engine.types import BValue, Document
 
-API_URL = "https://api.anthropic.com/v1/messages"
-API_VERSION = "2023-06-01"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # OpenRouter keys start with sk-or-; the operator asked for auto model-selection.
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openrouter/auto")
-# The operator's chosen Anthropic model. Overridable if `claude-opus-4-7` is not intended.
-DEFAULT_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
+
 
 _VALID_TYPES = ("assert", "define", "conditional", "normative")
 _VALID_B: tuple[BValue, ...] = ("T", "F", "B", "N")
@@ -43,13 +45,22 @@ def _is_openrouter(key: str) -> bool:
 
 
 def api_key(explicit: str | None = None) -> str:
-    """Provider-agnostic: an explicit request key, else OpenRouter, else Anthropic env."""
-    return (explicit or os.environ.get("OPENROUTER_API_KEY")
-            or os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+    """OPENROUTER ONLY. An explicit request key, else `OPENROUTER_API_KEY`.
+
+    There is deliberately NO `ANTHROPIC_API_KEY` fallback: every LM call the engine makes on
+    the operator's behalf goes through OpenRouter, and a fallback would let a stray Anthropic
+    key in the environment silently reroute the whole window to a different provider.
+    """
+    return (explicit or os.environ.get("OPENROUTER_API_KEY") or "").strip()
 
 
 def model_for(key: str) -> str:
-    return OPENROUTER_MODEL if _is_openrouter(key) else DEFAULT_MODEL
+    """Always `openrouter/auto` — auto model-selection, per the operator's standing rule."""
+    if key and not _is_openrouter(key):
+        raise RuntimeError(
+            "refusing a non-OpenRouter key: this build calls OpenRouter only "
+            "(keys start with sk-or-). No Anthropic path exists.")
+    return OPENROUTER_MODEL
 
 
 def lm_available(explicit: str | None = None) -> bool:
@@ -60,7 +71,7 @@ Transport = Callable[[str, dict], str]
 
 
 def _http_post(key: str, body: dict) -> str:
-    """POST to OpenRouter (OpenAI-format) or Anthropic, by key prefix; return the text."""
+    """POST to OpenRouter (OpenAI-format) and return the text. OpenRouter only."""
     if _is_openrouter(key):
         or_body = {
             "model": body["model"],
@@ -102,22 +113,11 @@ def _http_post(key: str, body: dict) -> str:
         raise RuntimeError(
             f"openrouter: empty content (model={payload.get('model')}, "
             f"finish_reason={choice.get('finish_reason')})")
-    # Anthropic Messages API.
-    req = urllib.request.Request(
-        API_URL, data=json.dumps(body).encode("utf-8"),
-        headers={"content-type": "application/json", "x-api-key": key,
-                 "anthropic-version": API_VERSION},
-        method="POST")
-    with urllib.request.urlopen(req, timeout=90) as resp:
-        payload = json.load(resp)
-    if payload.get("type") == "error":
-        raise RuntimeError(f"anthropic error: {payload.get('error', {}).get('message', '?')}")
-    return "".join(b.get("text", "") for b in payload.get("content", [])
-                   if b.get("type") == "text")
+    raise RuntimeError("non-OpenRouter key reached the transport; there is no Anthropic path")
 
 
 class LMClient:
-    """A thin LM client (OpenRouter or Anthropic by key prefix); injectable transport."""
+    """A thin OpenRouter client; injectable transport for tests."""
 
     def __init__(self, key: str, model: str | None = None, transport: Transport | None = None):
         self._key = key

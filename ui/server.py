@@ -3,10 +3,10 @@
 One window onto one current. `GET /` serves the page; `POST /propose` enters a submission
 through the single inlet and returns the settled current + K's deposits; `POST /ask` answers
 grounded on the engine's actual state; `POST /reset` clears the current. The API key is read
-from the request or `ANTHROPIC_API_KEY` and is never logged or written to disk. With no key
+from the request or `OPENROUTER_API_KEY` and is never logged or written to disk. With no key
 the LM source is simply absent and the page says so — every other source still flows.
 
-Run:  ANTHROPIC_API_KEY=sk-... python -m ui.server   (then open http://127.0.0.1:8848)
+Run:  OPENROUTER_API_KEY=sk-or-... python -m ui.server   (open http://127.0.0.1:8848)
 """
 
 from __future__ import annotations
@@ -111,7 +111,7 @@ class Handler(BaseHTTPRequestHandler):
 def serve(host: str | None = None, port: int | None = None) -> None:
     """Serve the window. Localhost by default; binds 0.0.0.0 only when a platform sets $PORT
     (Railway/Heroku/etc.) or COMMON_GROUND_BIND_ALL=1 is set explicitly — so a laptop run
-    stays local while a deploy is reachable. LM-omitted unless ANTHROPIC_API_KEY is set.
+    stays local while a deploy is reachable. LM-omitted unless OPENROUTER_API_KEY is set.
     """
     deploy = bool(os.environ.get("PORT") or os.environ.get("COMMON_GROUND_BIND_ALL"))
     host = host or ("0.0.0.0" if deploy else "127.0.0.1")
@@ -119,8 +119,8 @@ def serve(host: str | None = None, port: int | None = None) -> None:
     if host not in ("127.0.0.1", "localhost", "::1", "0.0.0.0") and not deploy:
         raise SystemExit("refusing to bind a non-localhost host; set COMMON_GROUND_BIND_ALL=1 "
                          "or $PORT to deploy")
-    have = "yes" if os.environ.get("ANTHROPIC_API_KEY") else "no — LM source omitted, engine runs live"
-    print(f"common-ground window on http://{host}:{port}  (ANTHROPIC_API_KEY set: {have})")
+    have = "yes" if os.environ.get("OPENROUTER_API_KEY") else "no — LM source omitted, engine runs live"
+    print(f"common-ground window on http://{host}:{port}  (OPENROUTER_API_KEY set: {have})")
     HTTPServer((host, port), Handler).serve_forever()
 
 

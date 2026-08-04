@@ -31,7 +31,7 @@ def _mock_transport(_key, _body):
 class TheLMIsASourceThroughTheOneInlet(unittest.TestCase):
     def test_lm_proposals_enter_at_proposal_tier(self):
         out = run_current("The cone is positive under composition.", chart="english",
-                          key="test-key", lm_transport=_mock_transport)
+                          key="sk-or-test-key", lm_transport=_mock_transport)
         self.assertTrue(out["lm_available"])
         by = out["proposals_by_source"]
         self.assertIn("me", by)
@@ -112,3 +112,42 @@ class LiveLocalhostSmoke(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OpenRouterOnly(unittest.TestCase):
+    """Every LM call the engine makes goes through OpenRouter. There is no Anthropic path."""
+
+    def test_no_anthropic_endpoint_exists(self):
+        import inspect
+
+        import ui.lm as mod
+
+        src = inspect.getsource(mod)
+        self.assertNotIn("api.anthropic.com", src, "no Anthropic endpoint may exist")
+        self.assertIn("openrouter.ai", src)
+
+    def test_the_key_lookup_has_no_anthropic_fallback(self):
+        import os
+
+        from ui.lm import api_key
+
+        old_or = os.environ.pop("OPENROUTER_API_KEY", None)
+        os.environ["ANTHROPIC_API_KEY"] = "sk-ant-should-be-ignored"
+        try:
+            self.assertEqual(api_key(), "",
+                             "an Anthropic key must NOT satisfy the key lookup")
+        finally:
+            os.environ.pop("ANTHROPIC_API_KEY", None)
+            if old_or is not None:
+                os.environ["OPENROUTER_API_KEY"] = old_or
+
+    def test_a_non_openrouter_key_is_refused(self):
+        from ui.lm import model_for
+
+        with self.assertRaises(RuntimeError):
+            model_for("sk-ant-abc")
+
+    def test_the_model_is_always_auto(self):
+        from ui.lm import model_for
+
+        self.assertEqual(model_for("sk-or-v1-whatever"), "openrouter/auto")
