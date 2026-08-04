@@ -21,8 +21,8 @@ indistinguishable from a mistake, and after P3 the difference is unrecoverable.
 | Theory object | Code site | Control asserts | Deviation |
 |---|---|---|---|
 | **evidence factor** | `engine/energy.py:evidence_from_deltas` | a slot with no evidence settles uniform; adding supporting deltas moves mass onto the supported value, weighted by confidence x warrant | — |
-| **intra-chart sheaf (gluing within one chart)** | `engine/blocks.py:edges_from_fibers` | two same-chart slots joined by a fiber edge settle closer together than the same two slots with the edge dropped | by design |
-| **inter-chart correspondence** | `engine/types.py:QEdge` | a cross-chart edge transports; and a 3-cycle of pairwise edges is shown NOT to represent a genuine ternary factor — it cannot encode a joint constraint that no pair of its projections encodes | by design |
+| **intra-chart sheaf (gluing within one chart)** | `engine/blocks.py:edges_from_fibers` | two same-chart slots joined by a DECLARED-correspondence fiber edge (membership is the exact declared relation, never token similarity) settle closer together than with the edge dropped; the edge carries the DECLARED weight, not a graded score | by design |
+| **inter-chart correspondence** | `engine/types.py:QEdge` | a cross-chart edge — a DECLARED typed translation, never inferred from similarity — transports; and a 3-cycle of pairwise edges is shown NOT to represent a genuine ternary factor | by design |
 | **Q-priors (equivalence prior as energy)** | `engine/energy.py:FreeEnergy` | a prior weight raised far beyond any corpus evidence still leaves mass off the vertex — the prior tilts and never fixes, which is the difference between an energy and a clamp | — |
 | **clamps (grounding)** | `engine/types.py:Clamp` | a clamped slot stays at its value through settling, and constructing a Clamp from an EXTRACTION warrant raises GateViolation | — |
 | **type-consistency** | `engine/normalize.py:slot_id` | one surface read as `assert` and as `define` produces two distinct slots that never share a block, so a type mismatch cannot become a contest | by design |
@@ -214,6 +214,42 @@ floor. Declaring it would deflate real-corpus floors by a number derived from to
 `seed/shadow.json`'s zero is the conservative setting precisely because it cannot deflate
 anything. A shadow declaration worth making would be measured on the corpus it will be
 applied to, which needs D3.
+
+## Contest under exact addressing — the object's definition of disagreement
+
+**FINDING (first-class).** Once addressing is exact (`GATES.md` sentence 1: slot =
+`hash(nu(surface), type)`) and fiber MEMBERSHIP is the DECLARED correspondence relation
+(never token similarity), contest is producible **only** by:
+
+1. **A clamp conflicting with extraction on the SAME slot** — a clamp-eligible warrant
+   (kernel receipt / CI receipt) asserting one b-value on a slot whose extracted reading
+   asserts a different one. Single slot, multiple values: a contested block with no loop.
+2. **A declared correspondence over genuinely-same-claim slots with conflicting grounding** —
+   a clamp on one member contradicting the extraction its co-referent paraphrases share.
+   This closes a **holonomy loop**: the cycle is frustrated and the cold floor is nonzero.
+
+Nothing else produces contest. Distinct addresses are distinct claims and never meet;
+genuine paraphrases *declared* into one fiber **agree** (they read the same b-value) and
+floor at zero — the declaration alone is not a disagreement. Grounding is what disagrees.
+
+This is why the old null-battery "contest" fixtures were an artifact. They fibered
+`"The cone is positive" / "…is not positive" / "…may be positive"` — three GENUINELY
+DIFFERENT claims (P, ¬P, ◇P) — on token overlap and read the resulting holonomy as a
+contest. Under exact addressing that grouping is not producible without *declaring* those
+unequal claims equal, which is false. Every control that rested on the P/¬P triple was
+testing a similarity artifact; each was deleted and rebuilt on mechanism (1)/(2) with a real
+`Clamp` carrying a KERNEL-tier `Warrant`. (This composed with a second finding — the
+value/address span mismatch, now GATES.md sentence 8: a slot's b-value is read off its
+address span `nu(chart, surface)`, so no out-of-span proof body or comment can flip it. The
+rebuilt controls carry their deciding token in the **clamp**, which is a separate constraint
+set derived from no surface at all, so they are span-clean by construction.)
+
+The consequence is a **design input, not just a cleanup**: the object's definition of
+disagreement is exactly these two mechanisms, so the correspondence FORMAT (still an
+undesigned HOLE — see `engine/correspondence.py`) must be designed to express *declared
+co-reference over genuinely-same-claim slots*, because that plus grounding is the only thing
+that can put a nonzero floor on H¹. A format that admitted similarity-grouped members would
+re-manufacture the artifact.
 
 ## What holds
 

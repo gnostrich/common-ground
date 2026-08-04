@@ -115,5 +115,16 @@
     "convention_table": "approved-with-additions",
     "convention_table_path": "seed/LEXICON/convention_table.json",
     "resolved_when": "every *_sha256 recorded; policy fields alone do not resolve D8"
+  },
+  "findings": {
+    "note": "First-class findings recorded from the object outward. Not decisions (no status/resolution): design inputs and rulings that constrain later work. Keyed outside the D-series so the resolution check (seed_lock.unresolved_decisions, which scans D* keys) ignores them.",
+    "F-contest-under-exact-addressing": {
+      "date": "2026-08-04",
+      "statement": "Under exact addressing (GATES.md #1: slot = hash(nu, type)) with fiber membership the DECLARED correspondence relation and never token similarity, contest is producible ONLY by (1) a clamp-eligible warrant (kernel/CI receipt) asserting one b-value on a slot whose EXTRACTED reading asserts a different b-value (single-slot multi-value contest), or (2) a DECLARED correspondence over genuinely-same-claim slots with CONFLICTING grounding (a clamp on one member contradicting extraction), which closes a holonomy loop. This is the object's definition of disagreement.",
+      "consequence": "Design input for the correspondence FORMAT, which remains an undesigned HOLE (engine/correspondence.py): the format must express declared co-reference over genuinely-same-claim slots, because that plus grounding is the only thing that puts a nonzero floor on H1. A format admitting similarity-grouped members would re-manufacture the artifact.",
+      "supersedes": "The null-battery P/not-P 'contest' fixtures ('The cone is positive / is not positive / may be positive') declared three GENUINELY-DIFFERENT claims equal on token overlap and read the holonomy as contest. Deleted; every control resting on them rebuilt on mechanism (1)/(2) with a real KERNEL-tier Clamp+Warrant.",
+      "composes_with": "GATES.md sentence 8 (value/address span): a slot's b-value is read off nu(chart, surface), so the rebuilt controls carry their deciding token in the CLAMP (a separate constraint set derived from no surface), keeping them span-clean by construction.",
+      "see": ["FAITHFULNESS.md", "engine/correspondence.py", "engine/nulls.py", "engine/blocks.py"]
+    }
   }
 }

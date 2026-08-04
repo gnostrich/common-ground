@@ -154,9 +154,17 @@ def ledger_from_deltas(
 def consensus_ledger(ledger: Ledger) -> Ledger:
     """The same ledger with every block forced to internal agreement.
 
-    Per block, every delta is rewritten to the block's modal b-value. The result is a
-    ledger that *cannot* disagree with itself, so its floor is the numerical residue of
-    the pipeline and nothing else.
+    Per block, every delta is rewritten to the block's modal b-value, and clamps are
+    dropped. The result is a ledger that *cannot* disagree with itself, so its floor is the
+    numerical residue of the pipeline and nothing else.
+
+    Dropping clamps is part of forcing agreement, not a convenience. A clamp that pins a
+    slot against its block's modal value is itself a disagreement — it is exactly the
+    mechanism-(2) grounding conflict a floor is made of — so a "cannot disagree with itself"
+    null must neutralise it. Were the clamp retained, a planted grounding conflict would push
+    the consensus floor up by its own value, the band would rise to meet the observed floor,
+    and cell (iv)'s control could never fire: the same resample-of-the-observation pathology
+    that made the bootstrap band vacuous, wearing a clamp.
 
     This is the null null cell (iv) needs. Bootstrapping the observed floors gives a band
     centred on the observed data, which makes `floor <= band` true at any floor — the test
@@ -200,7 +208,7 @@ def consensus_ledger(ledger: Ledger) -> Ledger:
         priors=ledger.priors,
         chart_of=ledger.chart_of,
         loops=ledger.loops,
-        clamps=ledger.clamps,
+        clamps=[],  # a forced-agreement null carries no grounding conflict; see the docstring
     )
 
 

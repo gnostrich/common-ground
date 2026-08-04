@@ -92,10 +92,13 @@ FAITHFULNESS_ROWS: tuple[Row, ...] = (
         object="intra-chart sheaf (gluing within one chart)",
         family="factor",
         site="engine/blocks.py:edges_from_fibers",
-        role="Q edges between same-chart slots; quadratic coupling in F",
+        role="Q edges between same-chart slots of a DECLARED-correspondence fiber (membership "
+             "is the exact declared relation, never a token-similarity threshold); quadratic "
+             "coupling in F",
         control="tests/test_faithfulness.py:IntraChartSheaf.test_same_chart_coupling_pulls_and_dropping_it_releases",
-        control_claim="two same-chart slots joined by a fiber edge settle closer together "
-                      "than the same two slots with the edge dropped",
+        control_claim="two same-chart slots joined by a declared-correspondence fiber edge "
+                      "settle closer together than the same two slots with the edge dropped; "
+                      "the edge carries the DECLARED weight, not a graded similarity score",
         deviation=Deviation(
             kind=MINIMAL_FAITHFUL,
             note="There is no sheaf object: no restriction maps, no cocycle condition, no "
@@ -113,8 +116,9 @@ FAITHFULNESS_ROWS: tuple[Row, ...] = (
         object="inter-chart correspondence",
         family="factor",
         site="engine/types.py:QEdge",
-        role="Q edges whose endpoints lie in different charts; same coupling term, plus "
-             "shadow subtraction at the meter",
+        role="Q edges whose endpoints lie in different charts — a DECLARED typed translation "
+             "(OBJECT.md hol over the base morphisms), never inferred from token similarity; "
+             "same coupling term, plus shadow subtraction at the meter",
         control="tests/test_faithfulness.py:InterChartCorrespondence.test_correspondence_is_pairwise_and_a_three_cycle_is_not_a_ternary_factor",
         control_claim="a cross-chart edge transports; and a 3-cycle of pairwise edges is "
                       "shown NOT to represent a genuine ternary factor — it cannot encode a "

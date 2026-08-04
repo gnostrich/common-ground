@@ -79,6 +79,13 @@ def fixture_documents() -> tuple[list[Document], dict[str, int]]:
 
 # ---- the report ----
 
+#: What the holonomy floor reads when there is no declared cross-chart correspondence to
+#: measure it on. It is NOT zero: zero is a measured verdict (a cycle that closed), whereas
+#: this is the absence of any cycle to measure — the declared-correspondence registry is an
+#: empty HOLE at v0, so no cross-chart fiber forms and no holonomy is defined.
+_FLOOR_GAP = "GAP — undefined because unmeasured"
+
+
 @dataclass(slots=True)
 class SlotView:
     chart: str
@@ -124,6 +131,10 @@ class Report:
     verdicts: list[ProposalVerdict]
     status: dict[str, str]
     contested_detail: list[ContestedView] = field(default_factory=list)
+    #: True iff the ledger carries any DECLARED cross-chart correspondence. When False the
+    #: holonomy floor is a GAP (undefined because unmeasured), never a measured zero — the
+    #: declared-correspondence registry is an empty HOLE at v0.
+    correspondence_populated: bool = False
 
     def by_chart(self) -> dict[str, int]:
         c: Counter = Counter(s.chart for s in self.slots)
@@ -237,11 +248,20 @@ def report_from_ledger(ledger: Ledger, routing: dict[str, int] | None = None,
     if routing is None:
         routing = dict(sorted(Counter(s.chart for s in ledger.slots).items()))
 
+    correspondence_populated = bool(ledger.fibers)
+    correspondence_status = (
+        f"{len(ledger.fibers)} declared correspondence fiber(s) — floor is measured"
+        if correspondence_populated else
+        "UNPOPULATED — the declared-correspondence registry is an empty HOLE (v0). No "
+        "cross-chart fiber can form, so the holonomy floor is a GAP (undefined because "
+        "unmeasured), NOT a measured zero"
+    )
     status = {
         "phase": "P0-P2 (fixtures / pasted text only)",
         "P3": "HELD on D5 (STATEMENTS.md / pre-minted files) — floors below are on "
               "SYNTHETIC/pasted input, not a verdict on the real corpus",
         "charts": ", ".join(sorted(self_charts())),
+        "cross-chart correspondence": correspondence_status,
         "gates": "gate6 / gate7 / faithfulness / probes / three-moves all green",
         "mint (K)": "LIVE — promotes fast-tape residual to corpus ONLY through Hankel ∧ "
                     "conservative; every promotion logged and reversible",
@@ -257,6 +277,7 @@ def report_from_ledger(ledger: Ledger, routing: dict[str, int] | None = None,
         verdicts=verdicts,
         status=status,
         contested_detail=_contested_detail(ledger),
+        correspondence_populated=correspondence_populated,
     )
 
 
@@ -309,7 +330,7 @@ def query(report: Report, selector: str, arg: str | None = None) -> list[str]:
         return [f"{v.verdict:<10} {v.proposer}->{v.decided_by or '-'}  {v.proposal[:60]}"
                 for v in report.verdicts]
     if sel == "floors":
-        return [f"beta={a.beta}: loops={a.loops} floor={a.mean_floor:.8f} "
+        return [f"beta={a.beta}: loops={a.loops} floor={_floor_display(report, a)} "
                 f"q95={a.q95:.8f} 2ndFDT={a.second_fdt_floor:.8f} certs={a.certificates}"
                 for a in report.arms]
     if sel == "correspondences":
@@ -327,6 +348,15 @@ def query(report: Report, selector: str, arg: str | None = None) -> list[str]:
 
 
 # ---- rendering ----
+
+def _floor_display(report: Report, arm: ArmResult) -> str:
+    """The floor cell. Reads the GAP string when there is no declared correspondence to
+    measure a holonomy on (or the arm found no cycle), so an unmeasured floor is never
+    rendered as a measured zero."""
+    if not report.correspondence_populated or arm.loops == 0:
+        return _FLOOR_GAP
+    return f"{arm.mean_floor:.8f}"
+
 
 def render_markdown(report: Report) -> str:
     L = report.ledger_summary
@@ -358,9 +388,15 @@ def render_markdown(report: Report) -> str:
         "",
         "## Holonomy floors (per beta arm) — SYNTHETIC",
         "",
+        f"> **Cross-chart correspondence: {'UNPOPULATED (registry empty)' if not report.correspondence_populated else 'declared'}.** "
+        + ("The declared-correspondence registry is an empty HOLE at v0, so no cross-chart "
+           "fiber forms and the floor below is a GAP — undefined because unmeasured, not a "
+           "measured zero." if not report.correspondence_populated else
+           "The floor below is measured over the declared correspondence."),
+        "",
         "| beta | loops | mean floor | q95 | 2nd-FDT | certificates |",
         "|---|---|---|---|---|---|",
-        *[f"| {a.beta} | {a.loops} | {a.mean_floor:.8f} | {a.q95:.8f} | "
+        *[f"| {a.beta} | {a.loops} | {_floor_display(report, a)} | {a.q95:.8f} | "
           f"{a.second_fdt_floor:.8f} | {', '.join(a.certificates) or '-'} |" for a in report.arms],
         "",
         f"translator drift (measured vs declared shadow): "
@@ -416,10 +452,19 @@ def render_html(report: Report) -> str:
                     f"<span class=nu>{html.escape(' | '.join(c.nus))}</span></li>"
                     for c in report.correspondences)
             or "<li><i>none in this fixture</i></li>")
-    floors = _t([[str(a.beta), str(a.loops), f"{a.mean_floor:.8f}", f"{a.q95:.8f}",
+    floors = _t([[str(a.beta), str(a.loops), html.escape(_floor_display(report, a)), f"{a.q95:.8f}",
                   f"{a.second_fdt_floor:.8f}", html.escape(", ".join(a.certificates) or "-")]
                  for a in report.arms],
                 ["beta", "loops", "mean floor", "q95", "2nd-FDT", "certs"])
+    corr_header = (
+        "<b>Cross-chart correspondence: UNPOPULATED (registry empty).</b> The "
+        "declared-correspondence registry is an empty HOLE at v0, so no cross-chart fiber "
+        "forms and the floor below is a GAP &mdash; undefined because unmeasured, not a "
+        "measured zero."
+        if not report.correspondence_populated else
+        f"<b>Cross-chart correspondence: {len(report.correspondences)} declared.</b> "
+        "The floor below is measured over the declared correspondence."
+    )
     verd = _t([[f"<span class='v {v.verdict}'>{v.verdict}</span>", html.escape(v.proposer),
                 html.escape(v.decided_by or "-"), html.escape(v.proposal)]
                for v in report.verdicts],
@@ -437,7 +482,8 @@ def render_html(report: Report) -> str:
 <div class="grid"><div><h2>Object at a glance</h2>{glance}</div>
 <div><h2>Slots by chart</h2>{bychart}</div></div>
 <h2>Cross-chart correspondences</h2><ul>{corr}</ul>
-<h2>Holonomy floors per beta arm <small>(synthetic)</small></h2>{floors}
+<h2>Holonomy floors per beta arm <small>(synthetic)</small></h2>
+<p class="note">{corr_header}</p>{floors}
 <p class="note">translator drift (measured vs declared shadow): {drift if drift is not None else 'n/a'}</p>
 <h2>Conversation ledger — proposal &rarr; verdict <small>(p_fast; K inert)</small></h2>{verd}
 <h2>Slots</h2>{slots}
