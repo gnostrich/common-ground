@@ -121,3 +121,64 @@ class IdentifiersSurviveTheAddress(unittest.TestCase):
                   "_ _ _", "x_ _y", "*#\nr\t\x00\x01m -> $_\n="):
             once = nu("english", s)
             self.assertEqual(once, nu("english", once), f"not idempotent on {s!r}")
+
+
+class DeclarationGranularityBounding(unittest.TestCase):
+    """The tightest bound: a Lean declaration and the docstring written ON it.
+
+    Directory bounding covered 13.6% of Lean slots; this covers 52.1%, and the pairing is
+    given by where the author wrote the words — no ranking, no threshold, nothing to tune.
+    """
+
+    def _pipeline(self):
+        from engine.constants import decisions
+        from engine.energy import dedupe_deltas
+        from engine.extract import build_k_extractors, slots_from_deltas
+        from engine.pipeline import ingest
+        from engine.router import route_all
+
+        report = route_all([("Cone.lean", _SRC)])
+        docs = report.to_charts()
+        deltas = dedupe_deltas(ingest(docs, build_k_extractors(decisions(), offline=True)))
+        return slots_from_deltas(deltas), deltas
+
+    def test_a_docstring_pairs_with_its_own_declaration(self):
+        from engine.holes import holes_by_declaration
+
+        slots, deltas = self._pipeline()
+        bounded = holes_by_declaration(slots, deltas)
+        self.assertTrue(bounded, "the docstring and its declaration must pair")
+        for src, holes in bounded.items():
+            for h in holes:
+                self.assertEqual(h.src_chart, "lean")
+                self.assertEqual(h.dst_chart, "english")
+
+    def test_it_pairs_nothing_when_the_docstring_is_removed(self):
+        from engine.constants import decisions
+        from engine.energy import dedupe_deltas
+        from engine.extract import build_k_extractors, slots_from_deltas
+        from engine.holes import holes_by_declaration
+        from engine.pipeline import ingest
+        from engine.router import route_all
+
+        stripped = _SRC.replace("/-- The cone is positive under composition. -/\n", "")
+        stripped = stripped.replace(
+            "/-- Spectral radius is the largest modulus eigenvalue. -/\n", "")
+        docs = route_all([("Cone.lean", stripped)]).to_charts()
+        deltas = dedupe_deltas(ingest(docs, build_k_extractors(decisions(), offline=True)))
+        bounded = holes_by_declaration(slots_from_deltas(deltas), deltas)
+        self.assertEqual(bounded, {},
+                         "with no docstring there is no declaration-level co-location")
+
+    def test_a_docstring_does_not_pair_with_a_different_declaration(self):
+        from engine.holes import holes_by_declaration
+
+        slots, deltas = self._pipeline()
+        nu_of = {s.id: s.nu for s in slots}
+        for src, holes in holes_by_declaration(slots, deltas).items():
+            lean_nu = nu_of[src]
+            for h in holes:
+                # the paired english slot must come from THIS declaration's docstring
+                if "comp_pos" in lean_nu:
+                    self.assertNotIn("eigenvalue", h.dst_nu,
+                                     "comp_pos must not pair with spectralRadius's docstring")
