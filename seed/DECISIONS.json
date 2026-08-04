@@ -232,6 +232,19 @@
    "finding": "a repository is a fact about where files were checked in, not a boundary in the base category. Running one campaign per repo guarantees that the only correspondences ever proposed live inside a single checkout, so no cross-corpus bridge can ever be found \u2014 including the Aristotle/Claude material, which is the only hub that touches more than one repo.",
    "consequence": "architecture changed to a continuous global process (D10). Batch runners are retained only as one-shot measurements.",
    "measured": "batch 3 (perp-options-amm) enumerated 20,430 holes inside ONE repo and 0 across any boundary, because both bounding relations are provenance relations."
+  },
+  "F-contest-predicate-was-quadratic-in-its-access-pattern": {
+   "finding": "Ledger.contested_blocks is [b for b in blocks if is_contested(b, deltas)], and is_contested scans EVERY delta for EVERY block. On the union corpus that is 183,135 blocks against 620,503 deltas \u2014 about 1.1e11 slot comparisons \u2014 and the window's read view was killed after thirty minutes inside that one call.",
+   "diagnosis": "the predicate is cheap; only its access pattern was expensive. Nothing about the definition of contest is wrong.",
+   "repair": "engine/corpus_state.build_snapshot_direct indexes the deltas by slot once (_flatten_deltas) and evaluates the identical two-arm predicate against that index. Settlement machinery the read view does not need \u2014 evidence vectors, lexicon priors \u2014 is not built at all.",
+   "measured": "field-for-field agreement with the ledger build on the four-chart fixture (both contest arms planted against) and on three real repos: beauville-laszlo 143 slots 2.1x, mathlib-structure-probes 2,063 slots 27.7x, autosynth 5,121 slots 69.3x. Zero disagreements. The speedup grows with corpus size, which is what a quadratic-to-linear repair looks like.",
+   "caveat": "the three real subsets had 0 arrows and 0 contested slots, so they exercised slots/blocks/fibers/floor-status agreement but NOT the contest arms. Those are covered only by the fixture, where both arms are planted."
+  },
+  "F-corpus-contest-is-structurally-impossible-without-arrows": {
+   "finding": "the full union corpus settles to 183,135 slots, 0 fibers, 0 contested slots and floor GAP when built from corpus material alone.",
+   "why": "this is the exact consequence of the span repair (GATES 8). A slot's b-value is computed over its address span, and the address determines the span, so every delta landing on one address necessarily agrees. Single-slot contest is impossible BY CONSTRUCTION. Contest can only arise from the multi-slot arm, which requires a declared correspondence \u2014 and correspondences are precisely what the corpus does not contain until a proposer supplies them.",
+   "consequence": "the corpus alone can carry no contest and no floor. Both are downstream of correspondence. With the daemon's first 56 arrows laid over the same corpus: 25 fibers, 66 contested slots, floor still GAP (no cycle).",
+   "not_a_defect": "it is the engine reporting absence as absence rather than manufacturing agreement."
   }
  },
  "D10_continuous_proposer": {
@@ -249,6 +262,7 @@
   "cost": "REPORTED, never estimated. OpenRouter is asked for usage.cost; when the provider reports nothing the total says so ('n/m calls reported a cost') rather than multiplying tokens by a guessed rate.",
   "discipline": "every delta enters at EXTRACTION through FastTape.propose, tier-asserted BEFORE the write. engine/static_checks.check_proposer_discipline walks the daemon's AST and fails the build if it names MintController/AUTHORSHIP/KERNEL/CI_RECEIPT/PREMINTED/Clamp/confirm, or if there is more than one .propose() call site. K promotes nothing; the daemon cannot confirm.",
   "gates_continuously": "the six static checks run in-process before every batch and the FULL test suite runs in a subprocess every `gate_every` batches. Red gates HALT the loop and write a `halt` record. There is no log-and-continue path.",
-  "controls": "tests/test_continuous.py \u2014 34 controls, each planted against: torn journal line, cold restart re-ask, promotable delta at the inlet, second inlet call site, AUTHORSHIP named in the source, hub cap exceeded, red gate, malformed control file, restart-reset rate budget, unreported cost."
+  "controls": "tests/test_continuous.py \u2014 34 controls, each planted against: torn journal line, cold restart re-ask, promotable delta at the inlet, second inlet call site, AUTHORSHIP named in the source, hub cap exceeded, red gate, malformed control file, restart-reset rate budget, unreported cost.",
+  "read_view": "engine/corpus_state.build_snapshot_direct + with_arrows. The window loads the persisted corpus read view and lays the proposer's journal arrows over it at request time (read-only, EXTRACTION tier, no write, no promotion). `with_arrows` recomputes fibers and blocks from the arrows and takes contest as the UNION of the stored single-slot arm and the recomputed multi-slot arm; tests/test_corpus_state.py asserts the overlay equals a corpus built with those arrows as claims all along, over the corpus slots."
  }
 }

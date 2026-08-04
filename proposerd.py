@@ -2,6 +2,7 @@
 """proposerd — the continuous, global correspondence proposer.
 
     python3 proposerd.py build-pool          # assemble the GLOBAL pool once (slow, one-shot)
+    python3 proposerd.py build-snapshot      # the window's read view over the whole corpus
     python3 proposerd.py run                 # the daemon: runs until stopped or a gate reddens
     python3 proposerd.py status              # totals, gates, last records — safe any time
     python3 proposerd.py rate 20             # calls/hour, takes effect next batch
@@ -51,6 +52,7 @@ from engine.continuous import (
 from engine.energy import dedupe_deltas
 from engine.extract import build_k_extractors, slots_from_deltas
 from engine.holes import holes_by_declaration, holes_by_subtree
+from engine.corpus_state import SNAPSHOT_PATH
 from engine.journal import Journal
 from engine.pipeline import ingest
 from engine.router import RoutingReport, route
@@ -175,6 +177,26 @@ def cmd_build_pool() -> None:
                                "`measure-cross-repo` for the size of that gap.")}, indent=2))
 
 
+def cmd_build_snapshot() -> None:
+    """The window's read view over the whole corpus, built DIRECTLY.
+
+    Not through `ledger_from_deltas`: `Ledger.contested_blocks` scans every delta for every
+    block, which on this corpus is ~1.1e11 comparisons and was killed after thirty minutes.
+    The direct build is verified field-for-field against the ledger build in
+    `tests/test_corpus_state.py` and on real repo subsets.
+    """
+    from engine.corpus_state import build_snapshot_direct, source_counts
+    from engine.correspondence import correspondences_from_deltas
+
+    started = time.time()
+    slots, deltas = build_corpus()
+    arrows = correspondences_from_deltas(deltas)
+    snap = build_snapshot_direct(deltas, arrows, source_counts(deltas))
+    snap.save(SNAPSHOT_PATH)
+    print(json.dumps({"saved": SNAPSHOT_PATH, "seconds": round(time.time() - started, 1),
+                      **snap.header()}, indent=2))
+
+
 def cmd_measure_cross_repo() -> None:
     """The named gap, as a number: how many declaration names two repos share.
 
@@ -270,6 +292,8 @@ def main(argv: list[str]) -> int:
     command, rest = argv[0], argv[1:]
     if command == "build-pool":
         cmd_build_pool()
+    elif command == "build-snapshot":
+        cmd_build_snapshot()
     elif command == "measure-cross-repo":
         cmd_measure_cross_repo()
     elif command == "run":

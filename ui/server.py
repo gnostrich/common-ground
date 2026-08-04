@@ -1,8 +1,10 @@
 """The window's server: stdlib http.server, localhost only, key never logged.
 
-One window onto one current. `GET /` serves the page; `POST /propose` enters a submission
-through the single inlet and returns the settled current + K's deposits; `POST /ask` answers
-grounded on the engine's actual state; `POST /reset` clears the current. The API key is read
+One window onto one current, over a loaded corpus. `GET /` serves the page; `GET /corpus`
+reports what read view is loaded; `GET /proposer` is the continuous proposer's ledger;
+`POST /propose` enters a submission through the single inlet and returns the settled current
++ K's deposits; `POST /ask` compiles the question against the REAL corpus and answers from
+the compiled field state; `POST /reset` clears the typed current (never the corpus). The API key is read
 from the request or `OPENROUTER_API_KEY` and is never logged or written to disk. With no key
 the LM source is simply absent and the page says so — every other source still flows.
 
@@ -16,7 +18,9 @@ import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-from .current import Current
+from engine.inbound import INBOUND_SYSTEM
+
+from .current import Current, ask_the_corpus, corpus_header
 from .lm import LMClient, answer, api_key, lm_available
 
 HERE = Path(__file__).resolve().parent
@@ -101,6 +105,11 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path in ("/", "/index.html"):
             self._send(200, INDEX.read_text(encoding="utf-8"), "text/html; charset=utf-8")
+        elif path == "/corpus":
+            try:
+                self._send(200, json.dumps(corpus_header()))
+            except Exception as exc:
+                self._send(200, json.dumps({"error": f"{type(exc).__name__}: {exc}"}))
         elif path == "/proposer":
             try:
                 self._send(200, json.dumps(_proposer_ledger()))
@@ -145,15 +154,30 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, json.dumps(_proposer_ledger()))
             elif path == "/ask":
                 question = str(b.get("question", ""))
-                state = CURRENT.state(lm_used=lm_available(key))
-                facts = _engine_facts(state, term=question)
-                if lm_available(key):
-                    reply = answer(LMClient(key), question, facts, float(b.get("temperature", 0.2)))
+                compiled = ask_the_corpus(question, str(b.get("chart", "english")))
+                if compiled["conditioned"]:
+                    # The field supplied the content; the typed text was the boundary
+                    # condition. The system prompt is the inbound one, not the window's.
+                    system, grounded_on = INBOUND_SYSTEM, compiled["compiled"]
                 else:
-                    reply = ("(no key — the LM is not answering. Here are the engine facts the "
-                             "answer would be grounded on.)")
-                self._send(200, json.dumps({"answer": reply, "grounded_on": facts,
-                                            "lm_available": lm_available(key)}))
+                    # Nothing landed. Fall back to the typed current's own facts and SAY so —
+                    # a near-passthrough reported as one is honest; one reported as a
+                    # corpus-grounded answer is not.
+                    state = CURRENT.state(lm_used=lm_available(key))
+                    system, grounded_on = INBOUND_SYSTEM, (
+                        compiled["compiled"] + "\n\nTYPED CURRENT (not the corpus):\n"
+                        + _engine_facts(state, term=question))
+                if lm_available(key):
+                    client = LMClient(key)
+                    reply = client.complete(system, grounded_on,
+                                            float(b.get("temperature", 0.2)), 1200).strip()
+                else:
+                    reply = ("(no key — the LM is not answering. What it would have received "
+                             "is below, compiled from the field.)")
+                self._send(200, json.dumps({
+                    "answer": reply, "grounded_on": grounded_on,
+                    "lm_available": lm_available(key), "compiled": compiled,
+                    "corpus_header": corpus_header()}))
             else:
                 self._send(404, json.dumps({"error": "not found"}))
         except Exception as exc:   # keep the window alive; surface the error in the panel

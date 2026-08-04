@@ -232,5 +232,48 @@ class OpenRouterOnly(unittest.TestCase):
         self.assertEqual(model_for("sk-or-v1-whatever"), "openrouter/auto")
 
 
+class TheWindowIsHonestAboutTheCorpus(unittest.TestCase):
+    """A missing corpus must never be presented as an empty one, or as a grounded answer."""
+
+    def test_the_header_says_whether_anything_is_loaded(self):
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        port = server.server_address[1]
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/corpus") as r:
+                head = json.load(r)
+            self.assertIn("loaded", head)
+            self.assertIn("floor", head)
+            if not head["loaded"]:
+                self.assertIn("NO CORPUS LOADED", head["note"])
+            else:
+                self.assertGreater(head["slots"], 0)
+        finally:
+            server.shutdown()
+
+    def test_an_unlanded_question_is_reported_as_a_passthrough(self):
+        """PLANTED: a question that cannot address to anything in the corpus.
+
+        Landing is EXACT (gate 1). A string this specific has no chance of matching a stored
+        address, so the compiler must say NO FIELD TO CONDITION ON rather than quietly
+        answering from the model's own knowledge and calling it grounded.
+        """
+        from ui.current import ask_the_corpus
+
+        out = ask_the_corpus("zzq unlikely boundary condition 84619 that lands nowhere at all")
+        self.assertFalse(out["conditioned"])
+        self.assertIn("NO FIELD TO CONDITION ON", out["compiled"])
+        self.assertEqual(out["landed"], 0)
+
+    def test_the_floor_is_never_rendered_as_a_number_when_it_is_a_gap(self):
+        """A window that printed `floor: 0.0` would report agreement where there is absence."""
+        from ui.current import corpus_header
+
+        head = corpus_header()
+        self.assertIsInstance(head["floor"], str)
+        if head.get("loops", 0) == 0:
+            self.assertIn("GAP", head["floor"])
+
+
 if __name__ == "__main__":
     unittest.main()

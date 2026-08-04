@@ -89,6 +89,20 @@ class CompiledInput:
         }
 
 
+def display(nu: str) -> str:
+    """A nu-string with its chart tag stripped, for READING only.
+
+    `nu` carries `\x01<chart>\x01` so that two charts can never share an address (gate 1).
+    Rendered raw it comes out as `enthe cone is positive`, which reads as a typo. The tag is
+    removed here and nowhere else: addressing, hashing and comparison all keep it.
+    """
+    if nu.startswith("\x01"):
+        end = nu.find("\x01", 1)
+        if end != -1:
+            return nu[end + 1:]
+    return nu
+
+
 def _arrows_for(snapshot: CorpusSnapshot, slot: str) -> list[str]:
     out: list[str] = []
     for a in snapshot.arrows:
@@ -97,7 +111,7 @@ def _arrows_for(snapshot: CorpusSnapshot, slot: str) -> list[str]:
             rec = snapshot.slots.get(other)
             tier = "provisional" if a.provisional else "confirmed"
             out.append(f"{a.kind} ({tier}) -> [{rec.chart if rec else '?'}] "
-                       f"{(rec.nu[:110] if rec else other[:16])}")
+                       f"{(display(rec.nu)[:110] if rec else other[:16])}")
     return out
 
 
@@ -161,7 +175,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english") -
         rec = snapshot.slots.get(l.slot)
         status = "CONTESTED" if l.contested else "settled"
         lines.append(f"LANDED [{rec.chart}/{l.type}] value={l.value} warrant={l.tier} "
-                     f"({status}) :: {rec.nu[:200]}")
+                     f"({status}) :: {display(rec.nu)[:200]}")
         facts.append({"kind": "landing", "slot": l.slot, "chart": rec.chart,
                       "value": l.value, "tier": l.tier, "contested": l.contested,
                       "docs": list(l.docs)})
@@ -178,7 +192,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english") -
             seen.add(nid)
             mark = "CONTESTED" if nid in snapshot.contested else "settled"
             lines.append(f"  NEIGHBOUR [{n.chart}/{n.type}] value={n.value} ({mark}) "
-                         f":: {n.nu[:160]}")
+                         f":: {display(n.nu)[:160]}")
             facts.append({"kind": "neighbour", "slot": nid, "chart": n.chart,
                           "value": n.value, "contested": nid in snapshot.contested})
         lines.append("")

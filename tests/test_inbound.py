@@ -128,5 +128,30 @@ class InboundIsReadSideOnly(unittest.TestCase):
                          "inbound is read-side; proposing is the operator's explicit choice")
 
 
+class TheChartTagIsStrippedForReadingOnly(unittest.TestCase):
+    """`\x01en\x01the cone` must render as `the cone`, and ONLY when rendering."""
+
+    def test_the_tag_is_removed_from_display(self):
+        from engine.inbound import display
+        from engine.normalize import nu
+
+        raw = nu("english", "The cone is positive")
+        self.assertTrue(raw.startswith("\x01"), "the tag is what makes charts disjoint")
+        self.assertEqual(display(raw), "the cone is positive")
+        self.assertNotIn("\x01", display(raw))
+
+    def test_addressing_still_uses_the_tagged_form(self):
+        """PLANTED: if display leaked into addressing, two charts would collide."""
+        from engine.inbound import display
+        from engine.normalize import address, nu, slot_id
+
+        a, _ = address("english", "IsPositive c", "assert")
+        b, _ = address("lean", "IsPositive c", "assert")
+        self.assertNotEqual(a, b)
+        self.assertEqual(slot_id(display(nu("english", "x")), "assert"),
+                         slot_id(display(nu("lean", "x")), "assert"),
+                         "stripped forms DO collide — which is why stripping is display-only")
+
+
 if __name__ == "__main__":
     unittest.main()

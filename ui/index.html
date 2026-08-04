@@ -35,6 +35,7 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
 <div class="wrap">
   <div class="banner">One inlet. All proposers equal. Warrant conferred only at the gate.</div>
   <h1>common-ground — one current</h1>
+  <div id="corpushdr" class="muted">corpus: loading…</div>
   <p class="muted">I propose by typing. The LM (Opus) proposes in parallel through the same
   inlet. Both settle in the same current. K deposits what survives — only through Hankel ∧
   conservative. Nothing writes past the inlet; nothing reaches the corpus except through K.</p>
@@ -85,12 +86,24 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
   </div>
   <div id="proposer" class="muted">not loaded — press refresh.</div>
 
-  <h2>Ask the current (grounded)</h2>
+  <h2>Ask the corpus — the field conditions the answer</h2>
+  <p class="muted">What you type is a <b>boundary condition</b>, not a prompt. It is addressed
+  exactly (gate 1: <span class="nu">hash(nu, type)</span>), the addresses it lands on supply
+  the content, and the model receives the compiled field state. Novel phrasing lands nowhere
+  and the compiler says so rather than degrading into a plain prompt.</p>
   <div class="row">
-    <input id="q" placeholder="ask a question, grounded in the settled state" style="flex:1">
-    <button onclick="ask()">ask</button>
+    <input id="q" placeholder="ask a question; it will be addressed against the real corpus" style="flex:1">
+    <label>chart <select id="qchart">
+      <option>english</option><option>lean</option><option>tabular</option><option>conversation</option>
+    </select></label>
+    <button class="go" onclick="ask()">ask</button>
   </div>
   <div id="answer"></div>
+  <div class="grid">
+    <div><h2 style="border:none">What I typed</h2><pre id="typed" class="nu"></pre></div>
+    <div><h2 style="border:none">What was compiled from the field</h2><pre id="compiled" class="nu"></pre></div>
+  </div>
+  <div id="landings"></div>
 </div>
 
 <script>
@@ -203,11 +216,43 @@ function renderLedger(L){
   $('proposer').innerHTML = h;
 }
 
-async function ask(){
-  const r = await post('/ask', {question:$('q').value});
-  $('answer').innerHTML = `<div class="prop"><b>answer</b> ${esc(r.answer)}</div>`
-    + `<div class="prop"><b>grounded on (engine facts)</b><pre class="nu">${esc(r.grounded_on)}</pre></div>`;
+async function corpus(){
+  const h = await (await fetch('/corpus')).json();
+  renderCorpus(h);
 }
+function renderCorpus(h){
+  if(!h || h.error){ $('corpushdr').innerHTML = `<span class="err">${esc((h&&h.error)||'?')}</span>`; return; }
+  if(!h.loaded){ $('corpushdr').innerHTML = `<span class="err">NO CORPUS LOADED</span> — ${esc(h.note||'')}`; return; }
+  $('corpushdr').innerHTML = `corpus <b>${h.slots.toLocaleString()}</b> slots `
+    + `${esc(JSON.stringify(h.by_chart))} · arrows <b>${h.arrows}</b> (${h.same_claim} same_claim) `
+    + `· fibers ${h.fibers.toLocaleString()} · contested <b>${h.contested_slots.toLocaleString()}</b> `
+    + `· loops ${h.loops} · floor <b>${esc(h.floor)}</b>`;
+}
+
+async function ask(){
+  $('answer').innerHTML = '<span class="muted">addressing against the corpus…</span>';
+  const r = await post('/ask', {question:$('q').value, chart:$('qchart').value});
+  if(r.error){ $('answer').innerHTML = `<span class="err">${esc(r.error)}</span>`; return; }
+  if(r.corpus_header) renderCorpus(r.corpus_header);
+  const c = r.compiled || {};
+  const cls = c.conditioned ? 'promoted' : 'err';
+  $('answer').innerHTML = `<div class="prop"><span class="${cls}">`
+    + (c.conditioned ? 'CONDITIONED ON THE FIELD' : 'NOT CONDITIONED — near-passthrough')
+    + `</span> <span class="muted">${c.landed||0} of ${c.spans||0} typed spans landed on a real address</span>`
+    + `<br><br><b>answer</b> ${esc(r.answer)}</div>`;
+  $('typed').textContent = c.typed || $('q').value;
+  $('compiled').textContent = r.grounded_on || '';
+  const L = c.landings || [];
+  $('landings').innerHTML = L.length
+    ? '<h2 style="border:none">Where each typed span landed</h2>' + L.map(l =>
+        `<div class="prop"><span class="${l.hit?'promoted':'blocked'}">${l.hit?'LANDED':'no address'}</span>`
+        + (l.hit ? ` <b class="b ${l.value}">${l.value}</b> <span class="tier">${esc(l.tier)}</span>`
+                 + (l.contested?' <b class="F">CONTESTED</b>':'')
+                 + ` <span class="muted">fiber ${l.fiber} · block ${l.block} · arrows ${(l.arrows||[]).length}</span>` : '')
+        + `<br><span class="nu">${esc(l.surface)}</span></div>`).join('')
+    : '';
+}
+corpus();
 </script>
 </body>
 </html>

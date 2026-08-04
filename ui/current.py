@@ -15,10 +15,13 @@ survives — the whole current in one window.
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 
 from engine import seed_lock
 from engine.constants import BETA_ARMS, MINT_ENABLED, shadow
+from engine.corpus_state import SNAPSHOT_PATH, CorpusSnapshot, with_arrows
 from engine.extract import DeterministicExtractor
+from engine.inbound import compile_input
 from engine.inlet import FastTape, stub_translator
 from engine.mint_tape import MintController, read_tape, residual_stream
 from engine.pipeline import ledger_from_deltas, run_meter
@@ -26,6 +29,67 @@ from engine.surface import report_from_ledger
 from engine.types import Document
 
 from .lm import LMClient, LMProposer, api_key, lm_available
+
+#: The persisted read view over the real corpus. Loaded once, lazily, and never rebuilt in
+#: the window — a request that rebuilt 620k deltas would be a request that never returned.
+#: When the file is absent the window says the corpus is not loaded rather than answering
+#: against an empty current and calling it the corpus.
+_SNAPSHOT: CorpusSnapshot | None = None
+
+
+def _journal_arrows() -> list:
+    """The continuous proposer's arrows, read off its journal. Read-only, EXTRACTION tier.
+
+    The daemon writes to its journal and the window reads it; there is no shared memory and
+    no second account. An arrow it refuses to build (malformed, intra-chart) is skipped
+    rather than coerced, exactly as `correspondences_from_deltas` does.
+    """
+    from engine import EngineError
+    from engine.continuous import JOURNAL_PATH
+    from engine.correspondence import Correspondence
+    from engine.journal import Journal
+
+    if not Path(JOURNAL_PATH).exists():
+        return []
+    journal = Journal(JOURNAL_PATH)
+    try:
+        out = []
+        for rec in journal.arrows:
+            try:
+                out.append(Correspondence(
+                    src_chart=rec.src_chart, src_slot=rec.src_slot,
+                    dst_chart=rec.dst_chart, dst_slot=rec.dst_slot, kind=rec.answer,
+                    proposer=rec.proposer, prompt_hash=rec.prompt_hash,
+                    evidence=(rec.evidence,)))
+            except EngineError:
+                continue
+        return out
+    finally:
+        journal.close()
+
+
+def corpus_snapshot(reload: bool = False) -> CorpusSnapshot:
+    """The corpus read view WITH the proposer's arrows laid over it.
+
+    Reloaded on demand rather than cached forever, because the daemon is still running: a
+    window that cached the arrow set at startup would show a frozen picture of a live process.
+    """
+    global _SNAPSHOT
+    if _SNAPSHOT is None or reload:
+        base = CorpusSnapshot.load(SNAPSHOT_PATH)
+        _SNAPSHOT = with_arrows(base, _journal_arrows()) if not base.empty else base
+    return _SNAPSHOT
+
+
+def corpus_header() -> dict:
+    """What the window must display so a missing corpus is never mistaken for an empty one."""
+    snap = corpus_snapshot()
+    head = snap.header()
+    head["path"] = SNAPSHOT_PATH
+    if snap.empty:
+        head["note"] = ("NO CORPUS LOADED — run `python3 proposerd.py build-snapshot`. "
+                        "The window is answering from the typed current alone.")
+    return head
 
 
 def _modal(deltas) -> dict[str, str]:
@@ -92,6 +156,7 @@ class Current:
 
         return {
             "law": "One inlet. All proposers equal. Warrant conferred only at the gate.",
+            "corpus_header": corpus_header(),
             "lm_available": bool(lm_used),
             "proposals_by_source": self.tape.by_source(),
             "proposals": [
@@ -103,6 +168,19 @@ class Current:
             "promotions": [pr.as_record() for pr in controller.log],
             "corpus": controller.corpus,
         }
+
+
+def ask_the_corpus(question: str, chart: str = "english") -> dict:
+    """Compile the LM's input FROM THE FIELD, and hand back both sides of the compilation.
+
+    The answer is not retrieval-with-receipts. The typed question is addressed like any other
+    input (gate 1, exact), the addresses it LANDS ON supply the content, and what the model
+    receives is the compiled field state — which is why the window shows the typed text and
+    the compiled input side by side. When nothing lands, the compiler says
+    "NO FIELD TO CONDITION ON" instead of quietly degrading into a plain prompt.
+    """
+    compiled = compile_input(question, corpus_snapshot(), chart)
+    return compiled.as_record()
 
 
 def run_current(text: str, chart: str = "english", temperature: float = 0.3,
