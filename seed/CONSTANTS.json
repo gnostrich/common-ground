@@ -34,7 +34,7 @@
   "prior_dropout_trials": 5,
   "null_fuzz_samples": 500,
   "lexicon": {
-    "note": "source_beta is the lexicon SOURCE-AUTHORITY tier, and it reaches F only as prior energy via lexicon.fiber_prior_weights — never as a tie-break inside sense selection. The meter's `beta` (beta_arms) is a different quantity entirely: the VERIFICATION BUDGET, 1x and 4x, not a temperature. Kept distinct by name so a log record carrying both is unambiguous.",
+    "note": "source_beta is the lexicon SOURCE-AUTHORITY tier, and it reaches F only as prior energy via lexicon.fiber_prior_weights \u2014 never as a tie-break inside sense selection. The meter's `beta` (beta_arms) is a different quantity entirely: the VERIFICATION BUDGET, 1x and 4x, not a temperature. Kept distinct by name so a log record carrying both is unambiguous.",
     "source_order": [
       "mathlib",
       "convention",
@@ -531,7 +531,7 @@
   ],
   "beta_arms_note": "Verification budget multipliers, per PREREG. Not temperatures. Enter F as the coefficient on the entropic term.",
   "single_doc_tolerance": 1e-09,
-  "single_doc_tolerance_note": "Null cell (iv) compares the observed floor against the CONSENSUS floor — the same ledger with every block forced to its modal value, so it cannot disagree with itself. This is the numerical floor beneath that comparison. The earlier bootstrap band was vacuous: centred on the observed floors, it passed at any floor.",
+  "single_doc_tolerance_note": "Null cell (iv) compares the observed floor against the CONSENSUS floor \u2014 the same ledger with every block forced to its modal value, so it cannot disagree with itself. This is the numerical floor beneath that comparison. The earlier bootstrap band was vacuous: centred on the observed floors, it passed at any floor.",
   "duplicate_residue_tolerance": 1e-12,
   "duplicate_residue_tolerance_note": "Null cell (v): 'zero cold residue' means zero. The engine is deterministic and a genuine duplicate yields bit-identical evidence, so only float-ordering noise is admissible. Comparing against a bootstrap band of the observed floors made the cell vacuous and was caught by its positive control.",
   "rewire_passes": 10,
@@ -551,6 +551,11 @@
   "spellcheck": {
     "enabled": false,
     "chart": "prose",
-    "note": "Optional deterministic non-word normalization stage (item 4). OFF by default; flipping `enabled` to true is a seed edit — plastic under gate 4, needs a seed-morphism and cold re-anneal, because it moves prose addresses. Non-word only, allow-lists the seed lexicon + chart symbols, deterministic edit-1 correction, prose chart only. Dictionary at seed/SPELL/dictionary.txt."
+    "note": "Optional deterministic non-word normalization stage (item 4). OFF by default; flipping `enabled` to true is a seed edit \u2014 plastic under gate 4, needs a seed-morphism and cold re-anneal, because it moves prose addresses. Non-word only, allow-lists the seed lexicon + chart symbols, deterministic edit-1 correction, prose chart only. Dictionary at seed/SPELL/dictionary.txt."
+  },
+  "face_admission": {
+    "note": "Which derived formal faces may anchor a candidate hole. A face is admissible if it is MULTI-WORD (a rendered declaration rather than a fragment of one), or SINGLE-WORD and rare in the English corpus by MEASUREMENT. Rarity is a measured corpus property, not a curated stop list: the earlier hand-written list caught is/of/the/eq/add but missed with/real/mark/state/value, which then dominated the anchored pair count. Declared here so it is seed-hashed and plastic under gate 4.",
+    "single_word_max_df_fraction": 0.001,
+    "rationale": "a term specific enough to name a formal declaration should not appear in more than 1 in 1000 English claims; at 96,308 english slots that admits a single word occurring in <=96 of them."
   }
 }

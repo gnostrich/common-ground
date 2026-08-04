@@ -117,6 +117,13 @@ def shadow_probes() -> dict[str, Any]:
     return _load(SHADOW_PROBES_PATH)
 
 
+#: Face admission (engine/faces.py). Multi-word faces are admissible by construction; a
+#: single-word face is admissible only if its English document frequency is below this
+#: fraction — a MEASURED corpus property, replacing the curated stop list that missed
+#: with/real/mark/state/value.
+FACE_SINGLE_WORD_MAX_DF: float = float(
+    C.get("face_admission", {}).get("single_word_max_df_fraction", 0.001))
+
 # Fiber membership is EXACT declared correspondence (engine/correspondence.py), not a
 # similarity threshold, so there are no fiber-similarity constants: the `fiber` block and
 # `fiber_cap` were removed from seed/CONSTANTS.json in the same seed-morphism.

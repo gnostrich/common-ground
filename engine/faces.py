@@ -29,6 +29,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Iterable, Sequence
 
+from .constants import FACE_SINGLE_WORD_MAX_DF
 from .rmap import render
 from .types import WarrantTier
 
@@ -44,18 +45,14 @@ _DECL_RE = re.compile(
     re.MULTILINE,
 )
 
-#: A face must be a real phrase to anchor anything. One-character renders and pure numbers
-#: would match everywhere; they are dropped rather than allowed to anchor by accident.
-_MIN_FACE_CHARS = 4
+#: A face must be non-degenerate to be a face at all. This is not a discrimination rule —
+#: which faces may ANCHOR is decided by `admissible_faces` from a measured corpus property.
+_MIN_FACE_CHARS = 2
 
-#: Faces this common in English are not discriminating (they would anchor half the corpus).
-#: Declared, not tuned: these are the closed-class words the R-map can emit from a name like
-#: `is_of_the_form`. Not a similarity threshold — a fixed, seed-visible stop list.
-_STOP_FACES = frozenset({
-    "is", "of", "the", "to", "in", "on", "at", "and", "or", "not", "eq", "ne", "le", "lt",
-    "ge", "gt", "add", "sub", "mul", "div", "zero", "one", "two", "self", "aux", "def",
-    "type", "prop", "set", "map", "fun", "val", "get", "mk", "elim", "intro", "cases",
-})
+#: RETIRED: a curated stop list (is/of/the/eq/add/...). It caught the closed-class words it
+#: was written for and missed `with`, `real`, `mark`, `state`, `value` — which then supplied
+#: most of the anchored pair count. A hand-written list encodes the author's guess about what
+#: is generic; `admissible_faces` measures it instead.
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,7 +89,7 @@ def derive_faces(documents: Sequence) -> list[FormalFace]:
         path = doc.meta.get("path", doc.doc_id) if getattr(doc, "meta", None) else doc.doc_id
         for head, name in declarations(doc.text):
             face = render(name).strip()
-            if len(face) < _MIN_FACE_CHARS or face in _STOP_FACES:
+            if len(face) < _MIN_FACE_CHARS:
                 continue
             key = (name, face)
             if key in seen:
@@ -169,3 +166,32 @@ def anchors_for_lean(nu_body: str, index: dict[str, list[FormalFace]]) -> list[s
         if face in index:
             out.append(face)
     return out
+
+
+def admissible_faces(
+    faces: Iterable[str],
+    english_df: dict[str, int],
+    n_english_slots: int,
+    max_df_fraction: float = FACE_SINGLE_WORD_MAX_DF,
+) -> tuple[frozenset[str], frozenset[str]]:
+    """Which faces may anchor. Returns (multi_word, rare_single_word).
+
+    A face anchors if it is a RENDERED DECLARATION rather than a fragment of one:
+
+    - **multi-word** — admissible by construction. "anomalous dimension" is a term; it cannot
+      be an accident of prose the way a single common word can.
+    - **single-word** — admissible only if RARE in the English corpus, measured: its document
+      frequency must be below `max_df_fraction` of English slots. `mcMillan`, `hankel`,
+      `lipschitz`, `tendsto` are real terms and rare; `with`, `real`, `mark`, `state`, `value`
+      are not terms in the prose that mentions them, and their frequency says so.
+
+    The threshold is declared in `seed/CONSTANTS.json` (hashed, gate-4 plastic), and rarity is
+    a measured property of THIS corpus — not a curated list. The list this replaces caught the
+    closed-class words its author thought of and missed the five that went on to supply most of
+    the anchored pair count.
+    """
+    cap = max(1, int(max_df_fraction * max(1, n_english_slots)))
+    multi = frozenset(f for f in faces if " " in f)
+    single = frozenset(f for f in faces
+                       if " " not in f and english_df.get(f, 0) <= cap)
+    return multi, single

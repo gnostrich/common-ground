@@ -177,6 +177,15 @@
       "why": "mathlib import BLOCKED (D8: policy 'latest-stable-at-fetch', no dump landed, mathlib_dump_sha256 null); nlab BLOCKED; wordnet BLOCKED; preminted BLOCKED (D5). The only source that imported is the hand-authored convention table (134 convention + 46 general + 4 preminted senses), and its 51 rows name no formal face at all.",
       "consequence": "anchor-ranking cannot be computed: it would score all 234.5M english x lean pairs at zero. Batch 2 as specified cannot run until a formal-face source lands.",
       "unblocks": "land + pin a Mathlib dump (D8), OR derive formal faces from the operator's OWN Lean corpus declaration names via the seeded R-map (engine/rmap.py renders formal -> English through the hashed abbreviation table) \u2014 declared structure, not similarity. The second needs no external fetch. Operator's call."
+    },
+    "F-generic-collision-masquerading-as-anchor": {
+      "status": "caught and fixed 2026-08-04",
+      "pattern": "a LEXICAL MATCH THAT LOOKS LIKE DECLARED STRUCTURE but is generic-word collision \u2014 the same class as the deleted Jaccard membership and the value/address span mismatch, one layer further out.",
+      "instance": "corpus-derived formal faces anchored 161,694 english x lean pairs (a 1,450x reduction from 234,514,206), but the top of the list was `mark`, `with`, `value`, `real`, `state` \u2014 generic English words that happen to be fragments of Lean declaration names. `with` alone anchored 9,987 english slots to 1 lean slot.",
+      "how_caught": "by MEASURING THE TOP OF THE LIST rather than trusting the headline reduction. The aggregate looked like a triumph; the composition showed it was mostly junk.",
+      "why_the_stop_list_failed": "it was CURATED. It caught the closed-class words its author thought of (is/of/the/eq/add) and missed the five that went on to supply most of the pair count. A hand-written list encodes a guess about what is generic.",
+      "fix": "RETIRED the stop list. A face now anchors only if it is (1) MULTI-WORD \u2014 a rendered declaration rather than a fragment of one \u2014 or (2) SINGLE-WORD AND RARE by MEASUREMENT: english document frequency below seed/CONSTANTS.json:face_admission.single_word_max_df_fraction (0.001, hashed, gate-4 plastic). Rarity admits genuine single-word terms (mcMillan, hankel, lipschitz, tendsto) without a curated list.",
+      "standard": "a measured corpus property, never a tuned or curated cutoff."
     }
   }
 }
