@@ -40,15 +40,22 @@ class VerbatimArtifacts(unittest.TestCase):
 
 
 class LeanRouting(unittest.TestCase):
-    """Rules 2-3: elaborating .lean -> Lean; non-elaborating -> shelf, counted separately."""
+    """Rules 2-3: .lean ALWAYS enters the Lean chart; elaboration decides clamp eligibility.
+
+    INVERTED. These tests used to assert that a non-elaborating .lean was shelved. That was
+    the defect: GATES sentence 3 governs GROUNDING ("only top-tier warrants ground
+    (clamp-eligible)"), not chart ENTRY, and shelving conflated the two — costing the GitHub
+    corpus all 407 of its .lean files while the Aristotle corpus ran 12,041 Lean slots at
+    extraction tier with zero clamps through the adapter's (correct) rule.
+    """
 
     THM = "theorem foo (h : P) : Q := by simp\n"
 
-    def test_non_elaborating_lean_is_shelved_with_a_reason(self):
+    def test_non_elaborating_lean_still_enters_the_chart_not_clamp_eligible(self):
         r = route("a.lean", self.THM)
-        self.assertEqual(r.destination, SHELF)
-        self.assertIn("elaboration-error", r.reason)
-        self.assertIsNone(r.document, "an unverified proof must not become a Lean slot")
+        self.assertEqual(r.destination, LEAN, "entry does not require kernel-acceptance")
+        self.assertIn("NOT clamp-eligible", r.reason)
+        self.assertIsNotNone(r.document, "an unverified proof is readable; it just grounds nothing")
 
     def test_elaborating_lean_reaches_the_lean_chart(self):
         r = route("a.lean", self.THM, lean_elaborates=lambda _t: (True, "kernel-accepted"))
@@ -123,12 +130,14 @@ class TheReportHeaderCarriesCounts(unittest.TestCase):
         self.assertEqual(counts[TABULAR], 1)
         self.assertEqual(counts[VERBATIM], 1)
         self.assertEqual(counts["shelf:unclassified"], 1)
-        self.assertEqual(sum(1 for k in counts if k.startswith("shelf:elaboration-error")), 1)
+        # No elaboration-error shelf any more: .lean enters the chart, not clamp-eligible.
+        self.assertEqual(sum(1 for k in counts if k.startswith("shelf:elaboration-error")), 0)
+        self.assertEqual(counts[LEAN], 1)
 
-        # to_charts excludes verbatim and shelved.
+        # to_charts excludes verbatim and shelved — lean now reaches a chart.
         charts = report.to_charts()
-        self.assertEqual(len(charts), 2, "only english + tabular reach a chart")
-        self.assertEqual({d.chart for d in charts}, {ENGLISH, TABULAR})
+        self.assertEqual(len(charts), 3, "english + tabular + lean reach a chart")
+        self.assertEqual({d.chart for d in charts}, {ENGLISH, TABULAR, LEAN})
 
         header = report.header()
         self.assertTrue(header.startswith("routing:"))

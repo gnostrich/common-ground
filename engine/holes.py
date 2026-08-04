@@ -127,3 +127,75 @@ def document_support(deltas) -> dict[str, int]:
     for d in deltas:
         docs[d.slot].add(d.provenance.doc_id)
     return {slot: len(ds) for slot, ds in docs.items()}
+
+
+# --- provenance-bounded candidate generation (the structural bound) --------------------
+
+def provenance_unit(doc_id: str, level: str = "dir") -> str:
+    """The provenance unit a document belongs to. Pure structure, no inference.
+
+    A doc_id is `<repo>||<relative/path>`. `dir` bounds by the directory the file sits in,
+    `project` by the top-level subtree, `repo` by the repository. Nothing here reads content.
+    """
+    import posixpath
+
+    repo, _, rel = doc_id.partition("||")
+    if level == "repo" or not rel:
+        return repo
+    if level == "project":
+        head = rel.split("/", 1)[0] if "/" in rel else ""
+        return f"{repo}/{head}"
+    return f"{repo}/{posixpath.dirname(rel)}"
+
+
+def slot_units(deltas, level: str = "dir") -> dict[str, set[str]]:
+    """slot id -> the provenance units it appears in. A slot restated in two directories
+    belongs to both; that is a fact about the corpus, not a merge."""
+    out: dict[str, set[str]] = defaultdict(set)
+    for d in deltas:
+        out[d.slot].add(provenance_unit(d.provenance.doc_id, level))
+    return out
+
+
+def holes_by_provenance(
+    slots: Sequence[Slot],
+    deltas,
+    level: str = "dir",
+    src_chart: str = "lean",
+    dst_chart: str = "english",
+) -> dict[str, list[Hole]]:
+    """Candidates bounded by PROVENANCE: per source-chart slot, the destination-chart slots
+    CO-LOCATED with it.
+
+    This is the whole rule, and it is not a rule about meaning: two claims are candidates
+    because they were written in the same place. There is no ranking, no anchor, no
+    threshold, no list — nothing to tune and nothing to accumulate. Returns a mapping from
+    source slot id to its co-located candidate holes, which is also the natural batch unit:
+    one proposer call per source declaration.
+    """
+    units = slot_units(deltas, level)
+    by_unit_dst: dict[str, list[Slot]] = defaultdict(list)
+    for s in slots:
+        if s.chart == dst_chart:
+            for u in units.get(s.id, ()):
+                by_unit_dst[u].append(s)
+
+    out: dict[str, list[Hole]] = {}
+    for s in slots:
+        if s.chart != src_chart:
+            continue
+        seen: set[str] = set()
+        holes: list[Hole] = []
+        for u in sorted(units.get(s.id, ())):
+            for t in by_unit_dst.get(u, ()):
+                if t.id in seen or t.type != s.type:
+                    continue          # type-compatible, per the existing hole contract
+                seen.add(t.id)
+                holes.append(Hole(
+                    src_chart=s.chart, src_slot=s.id, src_nu=s.nu,
+                    dst_chart=t.chart, dst_slot=t.id, dst_nu=t.nu,
+                    type=s.type, restatement=0,   # retired as a ranking signal
+                ))
+        if holes:
+            out[s.id] = holes
+    return out

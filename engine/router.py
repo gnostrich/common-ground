@@ -10,10 +10,11 @@ The rules, in order (first match wins):
 1. **fenced code block / log / stack trace -> verbatim-artifact.** Pinned by content hash,
    **not extracted** — a stack trace is not a claim, and running an extractor over it would
    manufacture b-values from noise.
-2. **`.lean` that elaborates -> Lean chart.** Elaboration is an *injected* predicate; with
-   no pinned Lean toolchain (D6 unresolved) the default cannot verify, so:
-3. **`.lean` that does not elaborate -> shelf**, `elaboration-error`, counted separately
-   from ordinary shelving so a broken proof is distinguishable from off-topic text.
+2. **`.lean` -> Lean chart, always.** Gate 3 governs GROUNDING, not entry, so a Lean file
+   enters on the strength of being Lean, at extraction tier.
+3. **Elaboration decides CLAMP ELIGIBILITY only.** It is an *injected* predicate; with no
+   pinned toolchain (D6 unresolved) the default cannot verify, so the slot enters
+   `NOT clamp-eligible` — present and readable, grounding nothing.
 4. **well-formed markdown table -> tabular chart.**
 5. **malformed markdown table -> prose**, tagged `malformed-table`, so a table that failed
    to parse is still read rather than lost.
@@ -139,9 +140,9 @@ def _table_shape(text: str) -> str:
 def _default_lean_elaborates(text: str) -> tuple[bool, str]:
     """No pinned Lean toolchain (D6 unresolved), so elaboration cannot be verified.
 
-    Returns (False, reason). This is deliberately conservative: an unverifiable proof is
-    shelved with a reason, never waved through into the Lean chart, because a Lean-chart
-    slot that was never kernel-checked would be a grounding claim the engine cannot back.
+    Returns (False, reason). The file still enters the Lean chart — gate 3 is about what may
+    GROUND, not about what may be read — but it enters NOT clamp-eligible, so nothing it says
+    is backed by a kernel receipt the engine does not have.
     """
     return False, "no pinned Lean toolchain (D6 unresolved); elaboration unverified"
 
@@ -167,11 +168,23 @@ def route(
     #      mentions "lemma" is prose, not Lean — the content heuristic false-fired on
     #      table headers, so routing to Lean is extension-only.
     if is_lean_file:
+        # GATES sentence 3 governs GROUNDING, not chart ENTRY: "Only top-tier warrants
+        # ground (clamp-eligible): Lean kernel-accept under pinned toolchain". A `.lean`
+        # file therefore enters the Lean chart on the strength of being Lean, at extraction
+        # tier, and elaboration decides only whether it may later CLAMP.
+        #
+        # This used to shelf every non-elaborating file, justified as "a Lean-chart slot
+        # that was never kernel-checked would be a grounding claim the engine cannot back".
+        # That conflated entry with grounding — `adapters/lean_corpus.py` had it right all
+        # along ("refuses to emit clamps while D6 is unresolved, and emits documents only"),
+        # and the Aristotle corpus proves it: 12,041 Lean slots at extraction tier, D6
+        # unresolved, zero clamps. The one line cost 407 GitHub .lean files their chart.
         elaborates, reason = (lean_elaborates or _default_lean_elaborates)(normalized)
+        document = Document(name, LEAN, normalized, source)
         if elaborates:
-            return RoutedDoc(name, LEAN, "elaborates", raw_hash,
-                             Document(name, LEAN, normalized, source))
-        return RoutedDoc(name, SHELF, f"elaboration-error: {reason}", raw_hash)
+            return RoutedDoc(name, LEAN, "elaborates; clamp-eligible", raw_hash, document)
+        return RoutedDoc(name, LEAN, f"extraction tier, NOT clamp-eligible: {reason}",
+                         raw_hash, document)
 
     # 3.5. Speaker-attributed transcript -> conversation chart. Checked before tables/prose
     #      because a dialogue is neither, and its speaker turns are the segmentation unit.
