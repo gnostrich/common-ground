@@ -83,7 +83,7 @@
   "lean": null,
   "lean_source": "certified-positivity lake-manifest",
   "lean_observed_in_aristotle_corpus": "leanprover/lean4:v4.28.0 (244/245 pinned projects; one v4.32.0 outlier), single mathlib rev 8f9d9cff6bd728b17a24e163c9402775d9e6a365",
-  "lean_observed_note": "CORROBORATION ONLY \u2014 D6 stays unresolved. The authoritative pin is certified-positivity's lake-manifest, not the imported corpus; recording the corpus toolchain does not decide D6.",
+  "lean_observed_note": "CORROBORATION ONLY — D6 stays unresolved. The authoritative pin is certified-positivity's lake-manifest, not the imported corpus; recording the corpus toolchain does not decide D6.",
   "python": null,
   "python_observed": "3.11.15",
   "third_party_runtime_deps": []
@@ -127,13 +127,13 @@
    "refines",
    "instance_of"
   ],
-  "no_approximates": "CONSTITUTIONAL (GATES sentence 9). Uncertainty is LOW WARRANT on a same_claim proposal, never a fuzzy morphism type \u2014 a graded morphism is a threshold wearing a type's clothes, i.e. the deleted similarity defect re-entering the algebra.",
+  "no_approximates": "CONSTITUTIONAL (GATES sentence 9). Uncertainty is LOW WARRANT on a same_claim proposal, never a fuzzy morphism type — a graded morphism is a threshold wearing a type's clothes, i.e. the deleted similarity defect re-entering the algebra.",
   "holonomy": "same_claim ONLY. refines/instance_of are directed and non-invertible: recorded, they contribute coupling structure (gate-2 energy), and are EXCLUDED from loops.",
   "reverse_arrow": "a SEPARATE proposal with its own address. It may not arrive, or may disagree; that mismatch is SIGNAL and is reported as open, never assumed symmetric.",
   "warrant_ladder": "LM proposal = EXTRACTION; operator confirmation = AUTHORSHIP; kernel-verified translation = KERNEL. Extraction-tier arrows may form PROVISIONAL fibers/loops and be reported, but never clamp and never promote through K below AUTHORSHIP (engine/types.py:PROMOTION_FLOOR).",
   "write_path": "NO side registry. The correspondence set is DERIVED from accepted correspondence-chart claims that came through propose(); seed/CORRESPONDENCE.json was REMOVED so no direct write-path exists.",
-  "granularity": "SLOT-LEVEL at v0 \u2014 a faithful NON-COMPOSITIONAL approximation, recorded as such.",
-  "granularity_v_next": "TERM-LEVEL (designed, not built): a lexicon-entry ~ Lean-name correspondence that INDUCES slot correspondences compositionally \u2014 the functorial version. Slot-level does not compose: two slot arrows do not entail an arrow between claims built from the same terms.",
+  "granularity": "SLOT-LEVEL at v0 — a faithful NON-COMPOSITIONAL approximation, recorded as such.",
+  "granularity_v_next": "TERM-LEVEL (designed, not built): a lexicon-entry ~ Lean-name correspondence that INDUCES slot correspondences compositionally — the functorial version. Slot-level does not compose: two slot arrows do not entail an arrow between claims built from the same terms.",
   "candidate_generation": "STRUCTURAL hole enumeration (engine/holes.py): cross-chart only (exact addressing owns intra-chart identity), type-compatible only, ranked by restatement count, bounded before materialization. Never all-pairs, never scanning."
  },
  "findings": {
@@ -154,9 +154,9 @@
   "F-restatement-ranking-retired": {
    "status": "retired 2026-08-04 (operator)",
    "signal": "restatement count (number of distinct documents restating a slot)",
-   "why_retired": "it measures REPETITION WITHIN A CHART, not bridge likelihood across charts. A slot restated in many documents is boilerplate as often as it is important, and boilerplate concentrates in the smallest chart. Ranking by it selected 186/200 lean x tabular candidates \u2014 Lean theorem statements paired with table rows \u2014 and the proposer correctly answered `none` to all 170 it was shown.",
+   "why_retired": "it measures REPETITION WITHIN A CHART, not bridge likelihood across charts. A slot restated in many documents is boilerplate as often as it is important, and boilerplate concentrates in the smallest chart. Ranking by it selected 186/200 lean x tabular candidates — Lean theorem statements paired with table rows — and the proposer correctly answered `none` to all 170 it was shown.",
    "evidence": "Batch 1: 200 holes, chart-pairs {lean x tabular:186, english x lean:10, conversation x lean:4}; LM 20 calls/46s; answers 170/170 `none`; 0 arrows entered.",
-   "kept_result": "the `none` discipline held in production across 170 candidates \u2014 the proposer forced no match. That is the batch's real result."
+   "kept_result": "the `none` discipline held in production across 170 candidates — the proposer forced no match. That is the batch's real result."
   },
   "F-claim-form-typing-does-not-discriminate": {
    "status": "open defect, NAMED not fixed",
@@ -167,32 +167,32 @@
     "tabular_assert": "88.5% of 1456",
     "lean_assert": "18.1% of 12041 (lean splits: conditional 7467, define 2397, assert 2177)"
    },
-   "consequence": "tabular rows type as `assert` and therefore match nearly every english/conversation slot AND lean's assert slots \u2014 which is why the 186 lean x tabular candidates passed the type gate. Type-compatible english x lean pairs alone number 234,514,206.",
+   "consequence": "tabular rows type as `assert` and therefore match nearly every english/conversation slot AND lean's assert slots — which is why the 186 lean x tabular candidates passed the type gate. Type-compatible english x lean pairs alone number 234,514,206.",
    "not_fixed": "a finer claim-form taxonomy moves classify(), which moves addresses (gate 4, plastic). Named for the operator to rule on rather than repaired silently."
   },
   "F-lexicon-import-is-the-bottleneck": {
    "status": "blocking",
    "question": "can candidate pairs be ranked by shared lexicon anchors (english term <-> Lean name already bound in the imported lexicon)?",
-   "answer": "NO \u2014 the anchored set is not thin, it is EMPTY. 0 of 184 imported senses carry a formal face.",
+   "answer": "NO — the anchored set is not thin, it is EMPTY. 0 of 184 imported senses carry a formal face.",
    "why": "mathlib import BLOCKED (D8: policy 'latest-stable-at-fetch', no dump landed, mathlib_dump_sha256 null); nlab BLOCKED; wordnet BLOCKED; preminted BLOCKED (D5). The only source that imported is the hand-authored convention table (134 convention + 46 general + 4 preminted senses), and its 51 rows name no formal face at all.",
    "consequence": "anchor-ranking cannot be computed: it would score all 234.5M english x lean pairs at zero. Batch 2 as specified cannot run until a formal-face source lands.",
-   "unblocks": "land + pin a Mathlib dump (D8), OR derive formal faces from the operator's OWN Lean corpus declaration names via the seeded R-map (engine/rmap.py renders formal -> English through the hashed abbreviation table) \u2014 declared structure, not similarity. The second needs no external fetch. Operator's call."
+   "unblocks": "land + pin a Mathlib dump (D8), OR derive formal faces from the operator's OWN Lean corpus declaration names via the seeded R-map (engine/rmap.py renders formal -> English through the hashed abbreviation table) — declared structure, not similarity. The second needs no external fetch. Operator's call."
   },
   "F-generic-collision-masquerading-as-anchor": {
    "status": "caught and fixed 2026-08-04",
-   "pattern": "a LEXICAL MATCH THAT LOOKS LIKE DECLARED STRUCTURE but is generic-word collision \u2014 the same class as the deleted Jaccard membership and the value/address span mismatch, one layer further out.",
-   "instance": "corpus-derived formal faces anchored 161,694 english x lean pairs (a 1,450x reduction from 234,514,206), but the top of the list was `mark`, `with`, `value`, `real`, `state` \u2014 generic English words that happen to be fragments of Lean declaration names. `with` alone anchored 9,987 english slots to 1 lean slot.",
+   "pattern": "a LEXICAL MATCH THAT LOOKS LIKE DECLARED STRUCTURE but is generic-word collision — the same class as the deleted Jaccard membership and the value/address span mismatch, one layer further out.",
+   "instance": "corpus-derived formal faces anchored 161,694 english x lean pairs (a 1,450x reduction from 234,514,206), but the top of the list was `mark`, `with`, `value`, `real`, `state` — generic English words that happen to be fragments of Lean declaration names. `with` alone anchored 9,987 english slots to 1 lean slot.",
    "how_caught": "by MEASURING THE TOP OF THE LIST rather than trusting the headline reduction. The aggregate looked like a triumph; the composition showed it was mostly junk.",
    "why_the_stop_list_failed": "it was CURATED. It caught the closed-class words its author thought of (is/of/the/eq/add) and missed the five that went on to supply most of the pair count. A hand-written list encodes a guess about what is generic.",
-   "fix": "RETIRED the stop list. A face now anchors only if it is (1) MULTI-WORD \u2014 a rendered declaration rather than a fragment of one \u2014 or (2) SINGLE-WORD AND RARE by MEASUREMENT: english document frequency below seed/CONSTANTS.json:face_admission.single_word_max_df_fraction (0.001, hashed, gate-4 plastic). Rarity admits genuine single-word terms (mcMillan, hankel, lipschitz, tendsto) without a curated list.",
+   "fix": "RETIRED the stop list. A face now anchors only if it is (1) MULTI-WORD — a rendered declaration rather than a fragment of one — or (2) SINGLE-WORD AND RARE by MEASUREMENT: english document frequency below seed/CONSTANTS.json:face_admission.single_word_max_df_fraction (0.001, hashed, gate-4 plastic). Rarity admits genuine single-word terms (mcMillan, hankel, lipschitz, tendsto) without a curated list.",
    "standard": "a measured corpus property, never a tuned or curated cutoff."
   },
   "F-english-and-lean-share-zero-provenance": {
    "status": "first-class finding, 2026-08-04",
    "measured": "English slots come from 109 Claude conversation threads; Lean slots from 252 Aristotle project uploads. Intersection of provenance units: ZERO.",
    "consequence": "cross-chart candidate generation is STRUCTURALLY IMPOSSIBLE in the Aristotle+Claude corpus until prose and formalization co-locate. No lexical mechanism substitutes for a structural relation that does not exist.",
-   "evidence_not_mechanism": "anchoring produced 495 shared faces / 319,551 pairs of which 97.1% came from generic single-word collisions (is, of, one, with, real, mark, state). The multi-word set (241 faces, 3,819 pairs) and measured-rare-single-word set (117 faces, 5,360 pairs) are RECORDED EVIDENCE for why option (1) was rejected \u2014 NOT a mechanism that is kept.",
-   "rule_pile": "four anchor rules had accumulated (4-char min, stop list, stop-list extension, multi-word) and none is specified by the object. Anchoring was unspecified scaffolding growing a rule pile \u2014 the same failure as similarity, one layer up. Operator retired it.",
+   "evidence_not_mechanism": "anchoring produced 495 shared faces / 319,551 pairs of which 97.1% came from generic single-word collisions (is, of, one, with, real, mark, state). The multi-word set (241 faces, 3,819 pairs) and measured-rare-single-word set (117 faces, 5,360 pairs) are RECORDED EVIDENCE for why option (1) was rejected — NOT a mechanism that is kept.",
+   "rule_pile": "four anchor rules had accumulated (4-char min, stop list, stop-list extension, multi-word) and none is specified by the object. Anchoring was unspecified scaffolding growing a rule pile — the same failure as similarity, one layer up. Operator retired it.",
    "resolution": "option (2): bound candidates by PROVENANCE. Retired anchoring from the candidate path."
   },
   "F-router-overreads-gate-3": {
@@ -201,7 +201,7 @@
    "spec": "GATES 3 verbatim: 'Only top-tier warrants ground (clamp-eligible): Lean kernel-accept under pinned toolchain; CI-green test receipts.' adapters/lean_corpus.py implements the correct reading: 'refuses to emit clamps while D6 is unresolved, and emits documents only.'",
    "evidence": "the Aristotle corpus already carries 12,041 Lean slots at extraction tier with D6 unresolved and zero clamps. Two ingestion paths, two different rules, one mistaken.",
    "impact": "all 407 GitHub .lean files were shelved by the router. Under the adapter's (correct) rule they yield 1,676 Lean slots across 6 repos, which is what makes provenance-bounded candidates possible at all.",
-   "d6_still_required_for": "KERNEL clamps only \u2014 never for chart entry."
+   "d6_still_required_for": "KERNEL clamps only — never for chart entry."
   },
   "F-d6-build-not-feasible-in-container": {
    "status": "measured 2026-08-04",
@@ -214,10 +214,10 @@
   "F-where-prose-about-lean-actually-lives": {
    "status": "measured 2026-08-04; three defects NAMED, none fixed (operator rules)",
    "question": "dir-level provenance bounding covered only 179 of 1,317 lean slots (13.6%) BEFORE the proposer said anything. Where does prose-about-Lean actually live?",
-   "c_key_number": "571 of 1,113 identifier-shaped lean declaration names (51.3%) ARE named in English prose somewhere in the corpus. THE BRIDGES EXIST \u2014 co-location is simply the wrong finder. Sample: A3_exists, A4_main, B1_bound, B2_recurrence, B4_resolvent, C1_kolmogorov, C2_stochastic, C3_gibbs, D2_b_posdef, AmericanOptimalityPrinciple, CoveragePrimeFree.",
-   "defect_1_underscore_stripping": "engine/normalize.py:_nu_english strips `_ * ` ~` as MARKDOWN EMPHASIS, so every Lean identifier written in prose is MANGLED in the address: gershgorin_wall -> gershgorinwall. Prose naming a declaration and the declaration itself can therefore never share a token. This is in the ADDRESSING function (gate-4 plastic). It is why a first pass at the key number returned 0 of 1,113 \u2014 the measurement had to be run against the same transform the corpus underwent.",
-   "defect_2_docstrings_discarded": "264 of 407 .lean files (64.9%) carry /-- docstrings -/, 292,633 chars = 15.8% of all Lean text. _nu_lean strips them from the Lean address AND the file routes wholesale to the Lean chart on its extension, so they are never available as English. The most perfectly co-located prose that can exist \u2014 sitting ON the declaration \u2014 is discarded at the boundary.",
-   "defect_3_dir_bounding_wrong_shaped": "certified-positivity keeps STATEMENTS.md ('the exact formal claims, verbatim from the named source file') at the repo ROOT while 75 of its 77 .lean files sit in lean/. Docs at top, code below. Dir-level bounding pairs that prose with 2 files and misses 75. The bound is not wrong in kind \u2014 it is wrong in SHAPE for how repositories are organized.",
+   "c_key_number": "571 of 1,113 identifier-shaped lean declaration names (51.3%) ARE named in English prose somewhere in the corpus. THE BRIDGES EXIST — co-location is simply the wrong finder. Sample: A3_exists, A4_main, B1_bound, B2_recurrence, B4_resolvent, C1_kolmogorov, C2_stochastic, C3_gibbs, D2_b_posdef, AmericanOptimalityPrinciple, CoveragePrimeFree.",
+   "defect_1_underscore_stripping": "engine/normalize.py:_nu_english strips `_ * ` ~` as MARKDOWN EMPHASIS, so every Lean identifier written in prose is MANGLED in the address: gershgorin_wall -> gershgorinwall. Prose naming a declaration and the declaration itself can therefore never share a token. This is in the ADDRESSING function (gate-4 plastic). It is why a first pass at the key number returned 0 of 1,113 — the measurement had to be run against the same transform the corpus underwent.",
+   "defect_2_docstrings_discarded": "264 of 407 .lean files (64.9%) carry /-- docstrings -/, 292,633 chars = 15.8% of all Lean text. _nu_lean strips them from the Lean address AND the file routes wholesale to the Lean chart on its extension, so they are never available as English. The most perfectly co-located prose that can exist — sitting ON the declaration — is discarded at the boundary.",
+   "defect_3_dir_bounding_wrong_shaped": "certified-positivity keeps STATEMENTS.md ('the exact formal claims, verbatim from the named source file') at the repo ROOT while 75 of its 77 .lean files sit in lean/. Docs at top, code below. Dir-level bounding pairs that prose with 2 files and misses 75. The bound is not wrong in kind — it is wrong in SHAPE for how repositories are organized.",
    "method_caveat": "the key number required a >=4-character minimum after the markdown transform, to stop one-letter names (A, C) matching every English word. That threshold is the diagnostic's, introduced for this measurement and flagged rather than left silent."
   },
   "F-batch-2-result": {
@@ -229,22 +229,42 @@
    "reading": "the mechanism is sound end-to-end (holes -> proposer -> one inlet -> derived arrows -> fibers) and the none-discipline held under 1,227 chances to force a match. The limit was COVERAGE, not the proposer: the bound reached 13.6% of a corpus in which 51.3% of declarations are nameable."
   },
   "F-batch-per-repo-was-a-scope-error": {
-   "finding": "a repository is a fact about where files were checked in, not a boundary in the base category. Running one campaign per repo guarantees that the only correspondences ever proposed live inside a single checkout, so no cross-corpus bridge can ever be found \u2014 including the Aristotle/Claude material, which is the only hub that touches more than one repo.",
+   "finding": "a repository is a fact about where files were checked in, not a boundary in the base category. Running one campaign per repo guarantees that the only correspondences ever proposed live inside a single checkout, so no cross-corpus bridge can ever be found — including the Aristotle/Claude material, which is the only hub that touches more than one repo.",
    "consequence": "architecture changed to a continuous global process (D10). Batch runners are retained only as one-shot measurements.",
    "measured": "batch 3 (perp-options-amm) enumerated 20,430 holes inside ONE repo and 0 across any boundary, because both bounding relations are provenance relations."
   },
   "F-contest-predicate-was-quadratic-in-its-access-pattern": {
-   "finding": "Ledger.contested_blocks is [b for b in blocks if is_contested(b, deltas)], and is_contested scans EVERY delta for EVERY block. On the union corpus that is 183,135 blocks against 620,503 deltas \u2014 about 1.1e11 slot comparisons \u2014 and the window's read view was killed after thirty minutes inside that one call.",
+   "finding": "Ledger.contested_blocks is [b for b in blocks if is_contested(b, deltas)], and is_contested scans EVERY delta for EVERY block. On the union corpus that is 183,135 blocks against 620,503 deltas — about 1.1e11 slot comparisons — and the window's read view was killed after thirty minutes inside that one call.",
    "diagnosis": "the predicate is cheap; only its access pattern was expensive. Nothing about the definition of contest is wrong.",
-   "repair": "engine/corpus_state.build_snapshot_direct indexes the deltas by slot once (_flatten_deltas) and evaluates the identical two-arm predicate against that index. Settlement machinery the read view does not need \u2014 evidence vectors, lexicon priors \u2014 is not built at all.",
+   "repair": "engine/corpus_state.build_snapshot_direct indexes the deltas by slot once (_flatten_deltas) and evaluates the identical two-arm predicate against that index. Settlement machinery the read view does not need — evidence vectors, lexicon priors — is not built at all.",
    "measured": "field-for-field agreement with the ledger build on the four-chart fixture (both contest arms planted against) and on three real repos: beauville-laszlo 143 slots 2.1x, mathlib-structure-probes 2,063 slots 27.7x, autosynth 5,121 slots 69.3x. Zero disagreements. The speedup grows with corpus size, which is what a quadratic-to-linear repair looks like.",
    "caveat": "the three real subsets had 0 arrows and 0 contested slots, so they exercised slots/blocks/fibers/floor-status agreement but NOT the contest arms. Those are covered only by the fixture, where both arms are planted."
   },
   "F-corpus-contest-is-structurally-impossible-without-arrows": {
    "finding": "the full union corpus settles to 183,135 slots, 0 fibers, 0 contested slots and floor GAP when built from corpus material alone.",
-   "why": "this is the exact consequence of the span repair (GATES 8). A slot's b-value is computed over its address span, and the address determines the span, so every delta landing on one address necessarily agrees. Single-slot contest is impossible BY CONSTRUCTION. Contest can only arise from the multi-slot arm, which requires a declared correspondence \u2014 and correspondences are precisely what the corpus does not contain until a proposer supplies them.",
+   "why": "this is the exact consequence of the span repair (GATES 8). A slot's b-value is computed over its address span, and the address determines the span, so every delta landing on one address necessarily agrees. Single-slot contest is impossible BY CONSTRUCTION. Contest can only arise from the multi-slot arm, which requires a declared correspondence — and correspondences are precisely what the corpus does not contain until a proposer supplies them.",
    "consequence": "the corpus alone can carry no contest and no floor. Both are downstream of correspondence. With the daemon's first 56 arrows laid over the same corpus: 25 fibers, 66 contested slots, floor still GAP (no cycle).",
    "not_a_defect": "it is the engine reporting absence as absence rather than manufacturing agreement."
+  },
+  "F-verbatim-was-a-document-property-not-a-span-property": {
+   "finding": "engine/router.py rule 1 shelved an ENTIRE artifact if it contained a single code fence. On the operator's 9 repositories that discarded 226 of 742 markdown files — 2,209,806 characters of prose — to avoid extracting 224,623 characters of fenced code.",
+   "why_it_matters": "the prose it discarded is exactly the prose most likely to bridge: a README's usage section is the natural-language statement of what the code beside it does.",
+   "repair": "fenced blocks are lifted out as SPANS, pinned by content hash on RoutedDoc.verbatim_spans, and the prose around them is routed on its own merits. A fence is a delimiter the author wrote, so removing it reads the document's markup rather than inferring an extent.",
+   "stated_limitation": "log lines and stack traces keep DOCUMENT-level treatment. They carry no delimiter, so their extent would have to be guessed, and a guessed extent is a threshold. On the real corpus that residue is 1 document of 227 — measured, not assumed.",
+   "measured_after": "md->verbatim 226->0; 225 documents reach a chart that could not before; md->english 324->482, md->tabular 81->105, md->conversation 111->155. Corpus census re-run: deltas 620,503 -> 955,380 (+54%), slots 183,135 -> 299,451 (+63.5%), english 112,721 -> 168,442, conversation 50,147 -> 107,219, tabular 7,934 -> 11,457, lean 12,333 unchanged (Lean routing untouched). Candidate pool 98,811 -> 208,316.",
+   "additive_not_plastic": "a prose address is byte-identical with and without a fence appended; the recovered documents previously had NO slots, so nothing moved."
+  },
+  "F-the-chart-plugin-audit-was-measuring-half-the-contract": {
+   "finding": "chart_plugin_audit reported PASS while engine/router.py decided Lean with `name.endswith('.lean')`. Addressing was declarative; routing was compiled in. A chart could be declared, tagged, normalized, classified and segmented and still have NOTHING route to it.",
+   "repair": "seed/LANGUAGES.json + engine/languages.py, wired into engine/router.py rather than a parallel adapter path. Four classes: chart / classify / reference / shelf. audit_routing() walks the router's AST for file-extension literals in code; routing_reaches() confirms the manifest actually delivers, because an AST-only check passes on source that has no literals and routes nothing.",
+   "contract_text_was_false": "seed/CHARTS.json claimed 'a manifest row plus three registered functions — no dispatch edit'. There is no registration API: _NORMALIZERS, _CLASSIFIERS and _SEGMENTERS are dict literals edited in place, and routing needed a third thing the text never mentioned. The note now says so, and two controls hold it to the source.",
+   "coverage_consequence": "1,405 .py files across the repositories were never opened by any ingest path — not routed as prose, never read. They are now `reference`: shelved with a stated reason and COUNTED in the routing header, so the gap appears as a number instead of an absence. On claude/repo-intake-adapter-rebased they route to a python chart."
+  },
+  "F-md-to-conversation-is-misrouted-prose": {
+   "finding": "197 repo markdown/txt files route to the CONVERSATION chart. Measured, they are not dialogue: 180 of 197 have turns/speakers <= 1.5, and in 175 of 197 no 'speaker' appears more than twice.",
+   "evidence": "the 'speakers' _is_conversation finds are markdown label-colon lines — 'Artifact', 'File', 'Pattern', 'EVIDENCE', 'SCOPE', 'Rationale', 'Plain English' — and in two cases a whole sentence ('So A's clean band is TIGHT', 'NOT folded to INDEX. CORRECTION recorded'). The rule needs >=3 turns across >=2 speakers, which a structured design doc with bolded labels satisfies trivially.",
+   "discriminator": "a real transcript has FEW speakers each taking MANY turns; a labelled document has MANY distinct 'speakers' each appearing once. turns/speakers ~ 1 is the label signature. The distribution is reported; no threshold decides anything.",
+   "scale": "live corpus conversation slots by source: claude_export 37,297 (genuine transcripts), repo_file 12,850 (this defect). NOT FIXED — awaiting an operator ruling."
   }
  },
  "D10_continuous_proposer": {
@@ -253,16 +273,16 @@
   "shape": "a background process over the UNION corpus (all repos + Aristotle + Claude export), at an operator-set rate, with a durable journal as its only memory",
   "global": "the candidate pool is built once over the union corpus and streamed; repository identity plays no part in it",
   "cross_repo_gap": "NAMED, NOT FILLED. The two structural bounding relations (declaration granularity, depth-1 subtree) are PROVENANCE relations, and provenance does not cross a repository boundary. Cross-repo candidates therefore come from COMPOSITION only. Shared-identifier bounding would be a new candidate rule and is NOT enabled; `proposerd.py measure-cross-repo` reports the size of the gap as a number so the operator can rule with a count rather than an intuition.",
-  "persistence": "engine/journal.py \u2014 append-only fsync'd JSONL. A DIRECTED pair that has been answered is never asked again; the reverse arrow stays a separate question. Restart REPLAYS the journal through FastTape.propose, so the resumed tape came through the one inlet.",
-  "composition": "engine/compose.py \u2014 a PARTIAL table. same\u2218same=same; same\u2218refines=refines (and mirror); refines\u2218refines=refines; same\u2218instance_of=instance_of (and mirror). refines\u2218instance_of, instance_of\u2218instance_of and instance_of\u2218refines are UNDEFINED and stay undefined; those pairs are implied by nothing. Implied pairs are asked FIRST because a triangle is the only thing that can produce a cycle, and therefore a floor.",
+  "persistence": "engine/journal.py — append-only fsync'd JSONL. A DIRECTED pair that has been answered is never asked again; the reverse arrow stays a separate question. Restart REPLAYS the journal through FastTape.propose, so the resumed tape came through the one inlet.",
+  "composition": "engine/compose.py — a PARTIAL table. same∘same=same; same∘refines=refines (and mirror); refines∘refines=refines; same∘instance_of=instance_of (and mirror). refines∘instance_of, instance_of∘instance_of and instance_of∘refines are UNDEFINED and stay undefined; those pairs are implied by nothing. Implied pairs are asked FIRST because a triangle is the only thing that can produce a cycle, and therefore a floor.",
   "contradiction": "an implied pair the proposer already answered `none` (or answered a different kind) is written to the journal as a `contradiction` record and surfaced. It is NEVER auto-resolved: the `none` is not rewritten and no arrow is minted.",
-  "intra_chart_residue": "composition through a hub can imply a relation between two slots in ONE chart. Correspondence refuses that (gate 1 owns intra-chart identity), so it is returned as a RESIDUE and reported \u2014 a place where accumulated structure says something the v0 algebra has no morphism for.",
-  "operator_control": "runs/proposer.control.json, re-read every iteration: calls_per_hour, paused, stop, max_cost, batch. A MALFORMED control file PAUSES the daemon rather than falling back to defaults \u2014 an unattended process must fail towards doing nothing.",
+  "intra_chart_residue": "composition through a hub can imply a relation between two slots in ONE chart. Correspondence refuses that (gate 1 owns intra-chart identity), so it is returned as a RESIDUE and reported — a place where accumulated structure says something the v0 algebra has no morphism for.",
+  "operator_control": "runs/proposer.control.json, re-read every iteration: calls_per_hour, paused, stop, max_cost, batch. A MALFORMED control file PAUSES the daemon rather than falling back to defaults — an unattended process must fail towards doing nothing.",
   "rate_limit": "a rolling one-hour window read off the journal's own `call` timestamps, so a restart cannot reset the budget. Timestamps are operational ONLY; no clock value reaches an address, a random stream or a value (GATES 7).",
   "cost": "REPORTED, never estimated. OpenRouter is asked for usage.cost; when the provider reports nothing the total says so ('n/m calls reported a cost') rather than multiplying tokens by a guessed rate.",
   "discipline": "every delta enters at EXTRACTION through FastTape.propose, tier-asserted BEFORE the write. engine/static_checks.check_proposer_discipline walks the daemon's AST and fails the build if it names MintController/AUTHORSHIP/KERNEL/CI_RECEIPT/PREMINTED/Clamp/confirm, or if there is more than one .propose() call site. K promotes nothing; the daemon cannot confirm.",
   "gates_continuously": "the six static checks run in-process before every batch and the FULL test suite runs in a subprocess every `gate_every` batches. Red gates HALT the loop and write a `halt` record. There is no log-and-continue path.",
-  "controls": "tests/test_continuous.py \u2014 34 controls, each planted against: torn journal line, cold restart re-ask, promotable delta at the inlet, second inlet call site, AUTHORSHIP named in the source, hub cap exceeded, red gate, malformed control file, restart-reset rate budget, unreported cost.",
+  "controls": "tests/test_continuous.py — 34 controls, each planted against: torn journal line, cold restart re-ask, promotable delta at the inlet, second inlet call site, AUTHORSHIP named in the source, hub cap exceeded, red gate, malformed control file, restart-reset rate budget, unreported cost.",
   "read_view": "engine/corpus_state.build_snapshot_direct + with_arrows. The window loads the persisted corpus read view and lays the proposer's journal arrows over it at request time (read-only, EXTRACTION tier, no write, no promotion). `with_arrows` recomputes fibers and blocks from the arrows and takes contest as the UNION of the stored single-slot arm and the recomputed multi-slot arm; tests/test_corpus_state.py asserts the overlay equals a corpus built with those arrows as claims all along, over the corpus slots."
  }
 }
