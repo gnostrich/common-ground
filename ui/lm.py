@@ -74,11 +74,34 @@ def _http_post(key: str, body: dict) -> str:
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}",
                      "X-Title": "common-ground window"},
             method="POST")
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=180) as resp:
             payload = json.load(resp)
         if payload.get("error"):
             raise RuntimeError(f"openrouter error: {payload['error'].get('message', '?')}")
-        return payload["choices"][0]["message"]["content"]
+        choices = payload.get("choices") or []
+        if not choices:
+            raise RuntimeError(f"openrouter returned no choices (model={payload.get('model')})")
+        choice = choices[0]
+        message = choice.get("message") or {}
+        content = message.get("content")
+        if content:
+            return content
+        # Auto model-selection can land on a REASONING model (e.g. gpt-5-nano). Those put
+        # their tokens in `reasoning` and return `content: null` — and when the budget runs
+        # out mid-thought, `finish_reason` is "length" and there is no answer at all. Silently
+        # returning "" would look like the model declined; say what actually happened.
+        if choice.get("finish_reason") == "length":
+            raise RuntimeError(
+                f"openrouter: response truncated before any content "
+                f"(model={payload.get('model')}, finish_reason=length). A reasoning model "
+                "spent the budget thinking; raise max_tokens."
+            )
+        reasoning = message.get("reasoning")
+        if reasoning:
+            return reasoning
+        raise RuntimeError(
+            f"openrouter: empty content (model={payload.get('model')}, "
+            f"finish_reason={choice.get('finish_reason')})")
     # Anthropic Messages API.
     req = urllib.request.Request(
         API_URL, data=json.dumps(body).encode("utf-8"),
