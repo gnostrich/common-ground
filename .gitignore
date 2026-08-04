@@ -6,3 +6,6 @@ venv/
 .DS_Store
 
 # runs/ and registry/ are evidence, not build output — they are committed on purpose.
+
+# Claude Code local state (agent worktrees, etc.) — not part of the repo.
+.claude/
