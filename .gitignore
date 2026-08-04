@@ -10,9 +10,18 @@ venv/
 # Claude Code local state (agent worktrees, etc.) — not part of the repo.
 .claude/
 
-# The continuous proposer's working files. The JOURNAL is evidence and should be committed
-# when it says something; the POOL is a derived index of the operator's private corpus (it
-# carries nu-strings of the source material) and must never enter this repository.
+# The continuous proposer's working files. ALL of them quote the operator's private corpus
+# and none may enter this repository until its visibility is confirmed:
+#   pool.jsonl              a derived index carrying the nu-strings of the source material
+#   proposer.journal.jsonl  the ledger — its `evidence` field is the proposer quoting the
+#                           Lean source and repo prose verbatim, which is corpus content
+#   corpus.snapshot         the settled corpus itself
+#   proposer.control.json / status.json   per-machine runtime state, not evidence
+# The ledger is visible where it is meant to be visible: on disk, via `proposerd.py status`,
+# and in the window at GET /proposer. Being readable at any time is not the same as being
+# published, and only the first was asked for.
 runs/pool.jsonl
 runs/corpus.snapshot
+runs/proposer.journal.jsonl
+runs/proposer.control.json
 runs/proposer.status.json

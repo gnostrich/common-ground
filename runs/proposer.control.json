@@ -1,7 +1,0 @@
-{
-  "batch": 12,
-  "calls_per_hour": 30,
-  "max_cost": null,
-  "paused": false,
-  "stop": false
-}
