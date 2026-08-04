@@ -182,3 +182,128 @@ class DeclarationGranularityBounding(unittest.TestCase):
                 if "comp_pos" in lean_nu:
                     self.assertNotIn("eigenvalue", h.dst_nu,
                                      "comp_pos must not pair with spectralRadius's docstring")
+
+
+class SubtreeBounding(unittest.TestCase):
+    """A prose document describes the subtree BELOW it — docs at top, code below.
+
+    certified-positivity keeps STATEMENTS.md ("the exact formal claims, verbatim from the
+    named source file") at the repo root while 75 of its 77 .lean files sit in lean/.
+    Declaration-granularity cannot see that (a STATEMENTS.md entry is not a docstring) and
+    directory-granularity cannot either (one level apart). This relation can, and it is the
+    many-to-one shape a CYCLE needs: a docstring belongs to exactly one declaration, so
+    declaration-granularity yields only stars and holonomy is zero by path-debt forever.
+    """
+
+    def _build(self, files):
+        from engine.constants import decisions
+        from engine.energy import dedupe_deltas
+        from engine.extract import build_k_extractors, slots_from_deltas
+        from engine.pipeline import ingest
+        from engine.router import route_all
+
+        docs = route_all(files, "repo").to_charts()
+        deltas = dedupe_deltas(ingest(docs, build_k_extractors(decisions(), offline=True)))
+        return slots_from_deltas(deltas), deltas
+
+    _ROOT_DOC = ("The cone is positive under composition. "
+                 "The spectral radius equals the largest modulus eigenvalue.")
+    # Binder-free, so they classify `assert` like their English restatements. A theorem WITH
+    # binders classifies `conditional` and is rejected by the type filter — see
+    # TypeCompatibilityIsAntiCorrelatedAcrossCharts below.
+    _LEAN_A = "theorem comp_pos : IsPositive compose := by simp"
+    _LEAN_B = "theorem spec_rad : SpectralRadius equals sSup := by simp"
+
+    def test_a_root_doc_pairs_with_lean_below_it(self):
+        from engine.holes import holes_by_subtree
+
+        slots, deltas = self._build([
+            ("r||STATEMENTS.md", self._ROOT_DOC),
+            ("r||lean/A.lean", self._LEAN_A),
+            ("r||lean/B.lean", self._LEAN_B),
+        ])
+        sub = holes_by_subtree(slots, deltas)
+        self.assertTrue(sub, "a root prose doc must reach .lean in a subdirectory")
+
+    def test_it_does_not_pair_across_repos(self):
+        from engine.holes import holes_by_subtree
+
+        slots, deltas = self._build([
+            ("r1||STATEMENTS.md", self._ROOT_DOC),
+            ("r2||lean/A.lean", self._LEAN_A),
+        ])
+        self.assertEqual(holes_by_subtree(slots, deltas), {},
+                         "a document describes its own repo, not someone else's")
+
+    def test_a_deep_doc_does_not_reach_a_sibling_subtree(self):
+        from engine.holes import holes_by_subtree
+
+        slots, deltas = self._build([
+            ("r||docs/notes.md", self._ROOT_DOC),
+            ("r||other/A.lean", self._LEAN_A),
+        ])
+        self.assertEqual(holes_by_subtree(slots, deltas), {},
+                         "docs/ describes what is below docs/, not a sibling tree")
+
+    def test_it_can_produce_the_many_to_one_shape_a_cycle_needs(self):
+        from engine.holes import holes_by_subtree
+
+        slots, deltas = self._build([
+            ("r||STATEMENTS.md", self._ROOT_DOC),
+            ("r||lean/A.lean", self._LEAN_A),
+            ("r||lean/B.lean", self._LEAN_B),
+        ])
+        by_english = {}
+        for src, holes in holes_by_subtree(slots, deltas).items():
+            for h in holes:
+                by_english.setdefault(h.dst_slot, set()).add(h.src_slot)
+        self.assertTrue(any(len(v) >= 2 for v in by_english.values()),
+                        "one prose document restating two theorems must give an english "
+                        "slot two lean candidates — the precondition for a closed cycle")
+
+    def test_docstring_derived_english_is_excluded_from_the_subtree_relation(self):
+        from engine.holes import holes_by_subtree
+
+        slots, deltas = self._build([("r||lean/A.lean", "/-- Doc for A. -/\n" + self._LEAN_A)])
+        for holes in holes_by_subtree(slots, deltas).values():
+            for h in holes:
+                self.assertNotIn("#doc:", h.dst_nu,
+                                 "docstrings are already paired at declaration granularity")
+
+
+class TypeCompatibilityIsAntiCorrelatedAcrossCharts(unittest.TestCase):
+    """FINDING, pinned not fixed: requiring equal claim-form across charts rejects exactly
+    the true correspondences.
+
+    A Lean theorem that binds hypotheses classifies `conditional`; its English restatement is
+    almost always phrased as an `assert`. Claim-form is a property of the SURFACE FORM, and a
+    correspondence is precisely a translation BETWEEN surface forms — so equality of
+    claim-form is the wrong compatibility test cross-chart, however right it is within a
+    chart (where it keeps `assert` and `define` readings of one surface in separate blocks).
+
+    Recorded for the operator's ruling. `holes_by_declaration` does NOT apply the filter;
+    `holes_by_subtree` and `enumerate_holes` DO. That inconsistency is real and is named here
+    rather than resolved unilaterally.
+    """
+
+    def test_a_lean_theorem_with_binders_and_its_english_restatement_disagree_on_type(self):
+        from engine.normalize import classify
+
+        lean = "theorem comp_pos (f g : Cone) : IsPositive (f ∘ g)"
+        english = "The cone is positive under composition."
+        self.assertEqual(classify("lean", lean), "conditional")
+        self.assertEqual(classify("english", english), "assert")
+        self.assertNotEqual(classify("lean", lean), classify("english", english),
+                            "the true pair disagrees on claim-form — so a type-equality "
+                            "filter drops it")
+
+    def test_the_two_bounding_relations_disagree_about_the_filter(self):
+        import inspect
+
+        from engine.holes import holes_by_declaration, holes_by_subtree
+
+        filter_expr = "type_of.get(src_slot) != type_of.get(dst_slot)"
+        self.assertNotIn(filter_expr, inspect.getsource(holes_by_declaration),
+                         "declaration granularity does not type-filter")
+        self.assertIn(filter_expr, inspect.getsource(holes_by_subtree),
+                      "subtree granularity does type-filter — the inconsistency, pinned")

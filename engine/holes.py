@@ -242,3 +242,65 @@ def holes_by_declaration(slots: Sequence[Slot], deltas) -> dict[str, list[Hole]]
                     dst_chart=chart_of[en_slot], dst_slot=en_slot, dst_nu=nu_of[en_slot],
                     type=type_of[ln_slot], restatement=0))
     return dict(out)
+
+
+def holes_by_subtree(slots: Sequence[Slot], deltas,
+                     src_chart: str = "lean", dst_chart: str = "english") -> dict[str, list[Hole]]:
+    """The second structural relation: a prose document describes the subtree BELOW it.
+
+    `certified-positivity/STATEMENTS.md` — "the exact formal claims, verbatim from the named
+    source file" — sits at the repo root while the 75 `.lean` files it restates sit in
+    `lean/`. Docs at top, code below. Declaration-granularity cannot see that pairing (a
+    STATEMENTS.md entry is not a docstring), and directory-granularity cannot either (one
+    level apart).
+
+    The justification is the same as for docstrings, one level up: a document's *position*
+    asserts its scope. A prose file at `d/` is about what lives at `d/` and below. No ranking,
+    no threshold, no lexical matching — the pairing is where the author put the file.
+
+    This is also the many-to-one shape a CYCLE needs. Declaration-granularity can only make
+    stars (a docstring belongs to exactly one declaration), so the correspondence graph is a
+    forest and holonomy is always zero by path-debt. One prose document restating many
+    theorems is the first structure in which an English slot can correspond to two Lean
+    declarations — the precondition for a closed cycle.
+    """
+    import posixpath
+
+    def parts(doc_id: str) -> tuple[str, str]:
+        repo, _, rel = doc_id.partition("||")
+        return repo, posixpath.dirname(rel.split("#", 1)[0])
+
+    src_docs: dict[str, set[str]] = defaultdict(set)   # slot -> doc_ids
+    dst_docs: dict[str, set[str]] = defaultdict(set)
+    for d in deltas:
+        if d.chart == src_chart:
+            src_docs[d.slot].add(d.provenance.doc_id)
+        elif d.chart == dst_chart and "#doc:" not in d.provenance.doc_id:
+            dst_docs[d.slot].add(d.provenance.doc_id)   # docstrings are already paired
+
+    nu_of = {s.id: s.nu for s in slots}
+    type_of = {s.id: s.type for s in slots}
+    src_at: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for slot, docs in src_docs.items():
+        for doc in docs:
+            src_at[parts(doc)].add(slot)
+
+    out: dict[str, list[Hole]] = defaultdict(list)
+    for dst_slot, docs in dst_docs.items():
+        for doc in docs:
+            repo, prose_dir = parts(doc)
+            for (r, src_dir), src_slots in src_at.items():
+                if r != repo:
+                    continue
+                # "below it": the source file's directory is the prose dir or a descendant.
+                if prose_dir and not (src_dir == prose_dir
+                                      or src_dir.startswith(prose_dir + "/")):
+                    continue
+                for src_slot in src_slots:
+                    if type_of.get(src_slot) != type_of.get(dst_slot):
+                        continue
+                    out[src_slot].append(Hole(
+                        src_chart=src_chart, src_slot=src_slot, src_nu=nu_of[src_slot],
+                        dst_chart=dst_chart, dst_slot=dst_slot, dst_nu=nu_of[dst_slot],
+                        type=type_of[src_slot], restatement=0))
+    return dict(out)
