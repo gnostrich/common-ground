@@ -9,6 +9,7 @@ exactly ONE proposer morphism, and the server never logs the key.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import unittest
 import urllib.request
@@ -20,6 +21,25 @@ from ui.current import Current, run_current
 from ui.server import Handler
 
 ROOT = Path(__file__).resolve().parents[1]
+
+_SAVED_KEY: str | None = None
+
+
+def setUpModule():
+    """The window's tests must not depend on the operator's shell.
+
+    Every test here either supplies an explicit key or exercises the NO-key path, so an
+    `OPENROUTER_API_KEY` in the ambient environment both breaks the no-key assertions and
+    makes the live smoke fire a real billed LM call. The continuous proposer runs the suite
+    as a gate with its own key exported, which is exactly when that would bite.
+    """
+    global _SAVED_KEY
+    _SAVED_KEY = os.environ.pop("OPENROUTER_API_KEY", None)
+
+
+def tearDownModule():
+    if _SAVED_KEY is not None:
+        os.environ["OPENROUTER_API_KEY"] = _SAVED_KEY
 
 
 def _mock_transport(_key, _body):

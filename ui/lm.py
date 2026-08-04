@@ -171,11 +171,11 @@ def _parse_json_block(raw: str) -> object:
     if start == -1:
         return {}
     try:
-        return json.loads(raw[start:])
+        return json.loads(raw[start:], strict=False)
     except json.JSONDecodeError:
         # trim trailing prose after the last closing brace/bracket
         end = max(raw.rfind("}"), raw.rfind("]"))
-        return json.loads(raw[start:end + 1]) if end > start else {}
+        return json.loads(raw[start:end + 1], strict=False) if end > start else {}
 
 
 _EXTRACT_SYS = (

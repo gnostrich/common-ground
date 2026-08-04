@@ -214,7 +214,7 @@ def _openrouter_transport():
     client = LMClient(key, model_for(key))
 
     def transport(system: str, user: str) -> tuple[str, dict]:
-        raw = client.complete(system, user, 0.0, max_tokens=8000)
+        raw = client.complete(system, user, 0.0, max_tokens=16000)
         return raw, dict(client.last_usage)
 
     return transport, client.model

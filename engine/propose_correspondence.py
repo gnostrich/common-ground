@@ -82,20 +82,70 @@ def _json_block(raw: str) -> object:
     start = min((i for i in (text.find("{"), text.find("[")) if i != -1), default=-1)
     if start == -1:
         return {}
+    # strict=False: the proposer quotes the corpus back, and a nu-string carries the \x01
+    # chart tag as a literal control character. Strict JSON forbids an unescaped control
+    # character inside a string, so a faithful quotation of our own normalized surface would
+    # otherwise be unparsable — which is a defect in the reader, not in the answer.
     try:
-        return json.loads(text[start:])
+        return json.loads(text[start:], strict=False)
     except json.JSONDecodeError:
-        end = max(text.rfind("}"), text.rfind("]"))
-        try:
-            return json.loads(text[start:end + 1]) if end > start else {}
-        except json.JSONDecodeError:
-            return {}
+        pass
+    end = max(text.rfind("}"), text.rfind("]"))
+    try:
+        return json.loads(text[start:end + 1], strict=False) if end > start else {}
+    except json.JSONDecodeError:
+        return {"answers": _salvage_objects(text)}
+
+
+def _salvage_objects(text: str) -> list[dict]:
+    """Recover the COMPLETE answer objects from a reply whose array was cut off mid-write.
+
+    A proposer answering 25 candidates with cited evidence can exhaust the token budget
+    partway through, leaving `{"answers": [ {...}, {...}, {"i": 7, "kind": "no` — strictly
+    invalid, but the objects before the cut are fully specified and were genuinely answered.
+    Dropping all of them would silently discard real answers and leave those candidates
+    looking unasked.
+
+    Every complete brace-balanced object is parsed on its own; the truncated tail is DROPPED
+    and never completed. Nothing is inferred about the answer that was being written.
+    """
+    out: list[dict] = []
+    starts: list[int] = []          # a STACK, because the answer objects are nested inside
+    in_string = False               # the outer `{"answers": [...]}` which never closes
+    escaped = False
+    for i, ch in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            starts.append(i)
+        elif ch == "}" and starts:
+            begin = starts.pop()
+            try:
+                obj = json.loads(text[begin:i + 1], strict=False)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(obj, dict) and "i" in obj and "kind" in obj:
+                out.append(obj)
+    return out
 
 
 def parse_answers(raw: str, holes: Sequence[Hole]) -> list[ProposalOutcome]:
     """Tolerant parse; anything unparseable or out-of-range is dropped, never guessed."""
     payload = _json_block(raw)
-    answers = payload.get("answers", []) if isinstance(payload, dict) else []
+    if isinstance(payload, dict):
+        answers = payload.get("answers", [])
+    elif isinstance(payload, list):
+        answers = payload      # a proposer that returned the bare array without the wrapper
+    else:
+        answers = []
     out: list[ProposalOutcome] = []
     for a in answers:
         try:

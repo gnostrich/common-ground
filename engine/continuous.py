@@ -94,7 +94,12 @@ class Control:
     paused: bool = False
     stop: bool = False
     max_cost: float | None = None       # provider-reported spend cap, in provider units
-    batch: int = 25                     # candidates per call
+    #: Candidates per call. Small on purpose: the proposer cites evidence for every answer,
+    #: so a large batch runs the reply into the token ceiling and the tail arrives truncated.
+    #: `parse_answers` salvages the complete answers from a cut-off reply rather than losing
+    #: the batch, but a truncated tail still means candidates that were shown and not
+    #: answered, which costs a call for nothing. Twelve keeps replies inside the budget.
+    batch: int = 12
     error: str = ""                     # why the daemon paused itself
 
     @staticmethod
@@ -117,7 +122,7 @@ class Control:
                 stop=bool(raw.get("stop", False)),
                 max_cost=(None if raw.get("max_cost") in (None, "")
                           else float(raw["max_cost"])),
-                batch=max(1, min(100, int(raw.get("batch", 25)))),
+                batch=max(1, min(100, int(raw.get("batch", 12)))),
             )
             return ctl
         except Exception as exc:
@@ -403,16 +408,24 @@ class ContinuousProposer:
         except Exception as exc:
             raw, usage, ok, error = "", {}, False, str(exc)
 
+        outcomes = parse_answers(raw, holes) if ok else []
+        # A call that returned text but no usable answers is a failure mode of its own — a
+        # truncated JSON body, a model that argued instead of answering. Recording only the
+        # token count would leave it looking like a successful empty batch, so the head of
+        # the raw reply goes in the record. It is the proposer's own words about candidates
+        # the operator can see in the same journal; nothing private is added by keeping it.
+        if ok and not outcomes:
+            error = f"no parsable answers; raw head: {raw[:200]!r}"
         self.journal.record_call(
-            candidates=len(holes), ok=ok,
+            candidates=len(holes), ok=ok and bool(outcomes),
             tokens_in=int(usage.get("prompt_tokens", 0) or 0),
             tokens_out=int(usage.get("completion_tokens", 0) or 0),
             cost=usage.get("cost"), model=str(usage.get("model", "")), error=error)
-        if not ok:
+        if not outcomes:
             return {"asked": 0, "arrows": 0, "none": 0, "errors": 1}
 
         counts = {"asked": 0, "arrows": 0, "none": 0, "errors": 0}
-        for outcome in parse_answers(raw, holes):
+        for outcome in outcomes:
             h = outcome.hole
             if outcome.is_arrow:
                 delta = as_correspondence_delta(outcome, self.proposer, self.prompt_hash)

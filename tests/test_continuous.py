@@ -556,6 +556,64 @@ class CostIsReportedNotEstimated(unittest.TestCase):
             h.close()
 
 
+class TruncatedRepliesAreSalvagedNotGuessed(unittest.TestCase):
+    """A reply cut off mid-array keeps the answers that arrived and drops the partial one."""
+
+    def test_complete_objects_survive_and_the_tail_is_dropped(self):
+        from engine.propose_correspondence import parse_answers
+
+        holes = [hole(LN, f"l{i}", EN, f"e{i}") for i in range(4)]
+        raw = ('{"answers": [\n'
+               '  {"i": 0, "kind": "same_claim", "evidence": "both state positivity"},\n'
+               '  {"i": 1, "kind": "none", "evidence": "different claims"},\n'
+               '  {"i": 2, "kind": "refines", "evi')          # cut mid-object
+        got = parse_answers(raw, holes)
+        self.assertEqual([(o.hole.src_slot, o.kind) for o in got],
+                         [("l0", "same_claim"), ("l1", "none")])
+
+    def test_nothing_is_completed_for_the_truncated_answer(self):
+        """PLANTED: the cut lands right after a `kind` — it must STILL be dropped."""
+        from engine.propose_correspondence import parse_answers
+
+        holes = [hole(LN, f"l{i}", EN, f"e{i}") for i in range(3)]
+        raw = ('{"answers": [{"i": 0, "kind": "none", "evidence": "x"}, '
+               '{"i": 1, "kind": "same_claim"')
+        got = parse_answers(raw, holes)
+        self.assertEqual(len(got), 1, "an unterminated object was completed")
+        self.assertEqual(got[0].kind, "none")
+
+    def test_evidence_quoting_our_own_nu_tag_still_parses(self):
+        """OBSERVED: the proposer quotes the corpus back, tag and all.
+
+        A nu-string carries `\\x01lean\\x01` as a literal control character. Strict JSON
+        forbids an unescaped control character inside a string, so a faithful quotation of
+        our own normalized surface was being thrown away as unparsable — 4 of 5 real calls.
+        """
+        from engine.propose_correspondence import parse_answers
+
+        holes = [hole(LN, "l0", EN, "e0")]
+        raw = ('{"answers": [{"i": 0, "kind": "none", "evidence": '
+               '"SOURCE (lean): \x01lean\x01def SigmaSing : Set = {S | S.det = 0}"}]}')
+        got = parse_answers(raw, holes)
+        self.assertEqual(len(got), 1, "a quoted nu tag made the whole batch unparsable")
+        self.assertIn("SigmaSing", got[0].evidence)
+
+    def test_a_bare_array_without_the_wrapper_is_accepted(self):
+        """Observed on the real corpus: the proposer answers with the array and no wrapper."""
+        from engine.propose_correspondence import parse_answers
+
+        holes = [hole(LN, f"l{i}", EN, f"e{i}") for i in range(2)]
+        raw = '```json\n[{"i": 0, "kind": "none", "evidence": "x"}, ' \
+              '{"i": 1, "kind": "same_claim", "evidence": "y"}]\n```'
+        got = parse_answers(raw, holes)
+        self.assertEqual([o.kind for o in got], ["none", "same_claim"])
+
+    def test_a_reply_with_no_objects_at_all_yields_nothing(self):
+        from engine.propose_correspondence import parse_answers
+
+        self.assertEqual(parse_answers("I would rather not answer.", [hole(LN, "a", EN, "b")]), [])
+
+
 class PoolIsStreamed(unittest.TestCase):
     def test_round_trip(self):
         d = Path(tempfile.mkdtemp())
