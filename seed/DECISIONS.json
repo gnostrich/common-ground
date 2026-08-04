@@ -186,6 +186,30 @@
       "why_the_stop_list_failed": "it was CURATED. It caught the closed-class words its author thought of (is/of/the/eq/add) and missed the five that went on to supply most of the pair count. A hand-written list encodes a guess about what is generic.",
       "fix": "RETIRED the stop list. A face now anchors only if it is (1) MULTI-WORD \u2014 a rendered declaration rather than a fragment of one \u2014 or (2) SINGLE-WORD AND RARE by MEASUREMENT: english document frequency below seed/CONSTANTS.json:face_admission.single_word_max_df_fraction (0.001, hashed, gate-4 plastic). Rarity admits genuine single-word terms (mcMillan, hankel, lipschitz, tendsto) without a curated list.",
       "standard": "a measured corpus property, never a tuned or curated cutoff."
+    },
+    "F-english-and-lean-share-zero-provenance": {
+      "status": "first-class finding, 2026-08-04",
+      "measured": "English slots come from 109 Claude conversation threads; Lean slots from 252 Aristotle project uploads. Intersection of provenance units: ZERO.",
+      "consequence": "cross-chart candidate generation is STRUCTURALLY IMPOSSIBLE in the Aristotle+Claude corpus until prose and formalization co-locate. No lexical mechanism substitutes for a structural relation that does not exist.",
+      "evidence_not_mechanism": "anchoring produced 495 shared faces / 319,551 pairs of which 97.1% came from generic single-word collisions (is, of, one, with, real, mark, state). The multi-word set (241 faces, 3,819 pairs) and measured-rare-single-word set (117 faces, 5,360 pairs) are RECORDED EVIDENCE for why option (1) was rejected \u2014 NOT a mechanism that is kept.",
+      "rule_pile": "four anchor rules had accumulated (4-char min, stop list, stop-list extension, multi-word) and none is specified by the object. Anchoring was unspecified scaffolding growing a rule pile \u2014 the same failure as similarity, one layer up. Operator retired it.",
+      "resolution": "option (2): bound candidates by PROVENANCE. Retired anchoring from the candidate path."
+    },
+    "F-router-overreads-gate-3": {
+      "status": "NAMED, operator ruling pending",
+      "defect": "engine/router.py:_default_lean_elaborates shelves every non-elaborating .lean file, justified as 'a Lean-chart slot that was never kernel-checked would be a grounding claim the engine cannot back'. That is a misreading: GATES sentence 3 governs GROUNDING (clamp-eligibility), not chart ENTRY.",
+      "spec": "GATES 3 verbatim: 'Only top-tier warrants ground (clamp-eligible): Lean kernel-accept under pinned toolchain; CI-green test receipts.' adapters/lean_corpus.py implements the correct reading: 'refuses to emit clamps while D6 is unresolved, and emits documents only.'",
+      "evidence": "the Aristotle corpus already carries 12,041 Lean slots at extraction tier with D6 unresolved and zero clamps. Two ingestion paths, two different rules, one mistaken.",
+      "impact": "all 407 GitHub .lean files were shelved by the router. Under the adapter's (correct) rule they yield 1,676 Lean slots across 6 repos, which is what makes provenance-bounded candidates possible at all.",
+      "d6_still_required_for": "KERNEL clamps only \u2014 never for chart entry."
+    },
+    "F-d6-build-not-feasible-in-container": {
+      "status": "measured 2026-08-04",
+      "toolchain": "leanprover/lean4:v4.28.0 IS downloadable (HTTP 200, 520MB, releases.lean-lang.org -> release-assets.githubusercontent.com).",
+      "mathlib_cache": "BLOCKED: release.ammkrn.dev -> 502 connect_rejected (agent-proxy policy denial, in the proxy's own failure log). Without the cache Mathlib builds from source: hours of CPU.",
+      "container": "27GB free disk (sufficient); no elan/lake/lean installed; container is EPHEMERAL so any build is lost at session end and must be redone.",
+      "two_toolchains": "repos do not agree: v4.28.0 (certified-positivity, beauville-laszlo, realization-lean) vs v4.32.0 (discovery-kernel). D6 must pin per-repo or accept two.",
+      "honest_answer": "a full kernel-verified Mathlib build is NOT practical in this environment. Kernel clamps are future work; chart entry does not need them."
     }
   }
 }
