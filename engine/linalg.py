@@ -62,8 +62,10 @@ def singular_values(matrix: Matrix, max_sweeps: int = 60, tol: float = 1e-12) ->
 
     One-sided Jacobi: orthogonalize the columns of A by a sequence of plane rotations
     until every pair is orthogonal to within `tol`; the column norms are then the
-    singular values. Column count is small here (a Hankel window), so the O(n^2) sweep
-    is cheap and the result is bit-reproducible.
+    singular values. The column count is small here (a Hankel window), so sweeping to
+    convergence is cheap. The routine is deterministic — same input, same output — which
+    the mint tape depends on; that property is asserted by a control rather than claimed
+    here (gate 10).
     """
     if not matrix or not matrix[0]:
         return []

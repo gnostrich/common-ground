@@ -190,6 +190,13 @@ class Deduplication(unittest.TestCase):
 
 
 class LinAlg(unittest.TestCase):
+    def test_singular_values_are_deterministic(self):
+        # Gate 10: the docstring says the routine is deterministic; this is what makes that
+        # a property of the build rather than a description of intent. The mint tape's
+        # Hankel reading depends on it.
+        m = [[3.0, 1.0, 0.0], [0.5, 2.0, 1.0], [0.0, 1.0, 1.0]]
+        self.assertEqual(singular_values(m), singular_values(m))
+
     def test_singular_values_of_a_diagonal_matrix(self):
         svs = singular_values([[3.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 1.0]])
         for got, want in zip(svs, [3.0, 2.0, 1.0]):

@@ -689,3 +689,119 @@ def check_span_discipline(root: Path | None = None) -> StaticCheckResult:
                                       f"{qualname}: Span.{kw.arg} depends on {why}")
                         )
     return result
+
+
+# --- gate 10: a claimed property is warranted by a control, or it is not claimed ------
+
+#: Docstring/comment phrasings that assert a PROPERTY OF THE CODE rather than describe what
+#: it does. Three instances of a claim the implementation did not honour were found in one
+#: build — a partition "provably identical", a "span-keyed" confidence, and an "index-driven"
+#: anchoring that scanned — so the check is shaped to the FORM (a claimed property) rather
+#: than to any one of them. Docstrings are not warrants.
+CLAIM_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("complexity", r"\bO\(\s*[^)]*\)"),
+    ("complexity", r"\b(?:does not|doesn't|never)\s+(?:grow|scale)s?\b"),
+    ("complexity", r"\bindependent of the (?:total|number|count)\b"),
+    ("index", r"\bindex-driven\b|\binverted index\b|\blookup,? not\b|\blookup rather than\b"),
+    ("index", r"\bnever enumerat\w*\b|\bno enumeration\b|\bnot a scan\b"),
+    ("exactness", r"\bprovably identical\b|\bbit-identical\b|\bexactly identical\b"),
+    ("exactness", r"\bequivalence (?:is )?proven\b|\bidentical to the global\b"),
+    ("exactness", r"\bexact(?:ly)? equivalent\b|\bno .{0,24} is dropped\b"),
+)
+
+#: Every site that makes such a claim, and the CONTROL that verifies it. A claim with no
+#: control is a violation: either the property is asserted by a test, or the claim comes out
+#: of the prose. `control` names a test that must exist.
+CLAIMED_PROPERTY_SITES: tuple[dict[str, str], ...] = (
+    {"site": "engine/faces.py:anchors_for_english",
+     "claim": "index-driven; cost independent of total face count",
+     "control": "tests/test_faces.py:AnchoringIsIndexDrivenNotAScan"},
+    {"site": "engine/faces.py:first_word_index",
+     "claim": "lookup instead of scan; built once in O(faces)",
+     "control": "tests/test_faces.py:AnchoringIsIndexDrivenNotAScan"},
+    {"site": "engine/holes.py:enumerate_holes",
+     "claim": "the cross-product is never materialized; bounded before materialization",
+     "control": "tests/test_correspondence.py:HoleEnumerationIsStructural"},
+    {"site": "engine/blocks.py:loop_edges",
+     "claim": "edges are exactly the declared same_claim pairs, not a clique",
+     "control": "tests/test_correspondence.py:HolonomyExclusion"},
+    {"site": "engine/nulls.py:cell_v_duplicate_source",
+     "claim": "a genuine duplicate leaves the floor bit-identical (residue exactly 0)",
+     "control": "tests/test_controls.py:CellVIsNoLongerVacuous"},
+    {"site": "engine/linalg.py:singular_values",
+     "claim": "deterministic — same input, same output",
+     "control": "tests/test_engine.py:test_singular_values_are_deterministic"},
+    {"site": "engine/static_checks.py:check_span_discipline",
+     "claim": "shaped to the form, catches indirect taint",
+     "control": "tests/test_span_discipline.py:PlantedDefectsMakeItRed"},
+)
+
+
+def _claims_in(text: str) -> list[tuple[str, str]]:
+    """(kind, matched phrase) for every property-claim phrasing in `text`."""
+    import re as _re
+
+    found: list[tuple[str, str]] = []
+    for kind, pattern in CLAIM_PATTERNS:
+        for m in _re.finditer(pattern, text, _re.IGNORECASE):
+            found.append((kind, m.group(0)))
+    return found
+
+
+def check_claim_discipline(root: Path | None = None) -> StaticCheckResult:
+    """Gate 10: any function claiming a complexity bound, an index, an exactness property or
+    an equivalence must have that property enforced by a named control — or not claim it.
+
+    Walks every function in `engine/`, reads its docstring AND its inline comments, and fails
+    on any property-claim whose site is not registered in `CLAIMED_PROPERTY_SITES` with a
+    control that exists. A prose claim is a description of intent; only a control makes it a
+    property of the build.
+    """
+    import io
+    import tokenize
+
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+    registered = {str(s["site"]): s for s in CLAIMED_PROPERTY_SITES}
+
+    for path in sorted((base / "engine").rglob("*.py")):
+        rel = str(path.relative_to(base)).replace("\\", "/")
+        if rel == "engine/static_checks.py":
+            continue          # defines the claim vocabulary itself
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=rel)
+        result.checked_files += 1
+
+        # Comments, by line, so a claim in a comment counts exactly like one in a docstring.
+        comments: dict[int, str] = {}
+        try:
+            for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+                if tok.type == tokenize.COMMENT:
+                    comments[tok.start[0]] = tok.string
+        except tokenize.TokenError:
+            pass
+
+        for qualname, node in _top_level_functions(tree):
+            result.checked_functions += 1
+            text = ast.get_docstring(node) or ""
+            lo, hi = node.lineno, getattr(node, "end_lineno", node.lineno)
+            text += "\n" + "\n".join(c for ln, c in comments.items() if lo <= ln <= hi)
+            claims = _claims_in(text)
+            if not claims:
+                continue
+            site = f"{rel}:{qualname}"
+            row = registered.get(site)
+            if row is None:
+                kinds = ", ".join(sorted({k for k, _ in claims}))
+                phrases = "; ".join(sorted({p for _, p in claims})[:3])
+                result.violations.append(Violation(
+                    rel, node.lineno, f"gate 10: unwarranted {kinds} claim",
+                    f"{qualname} claims [{phrases}] with no control registered"))
+                continue
+            control = str(row.get("control", ""))
+            test_file = control.split(":", 1)[0]
+            if not control or not (base / test_file).exists():
+                result.violations.append(Violation(
+                    rel, node.lineno, "gate 10: control missing",
+                    f"{qualname} cites control {control!r} which does not exist"))
+    return result
