@@ -20,27 +20,28 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 
+from . import EngineError
 from .constants import SEED_DIR
-from .normalize import address
 
 CORRESPONDENCE_PATH = SEED_DIR / "CORRESPONDENCE.json"
 
 
 @lru_cache(maxsize=1)
 def declared_correspondence() -> frozenset[tuple[str, str]]:
-    """Unordered declared slot-id pairs. Empty at v0 (the correspondence gap).
+    """Declared correspondence pairs (slot-id, slot-id). EMPTY at v0 — the correspondence GAP.
 
-    Each declaration names two claims by `(chart, surface, type)`; both are put through the
-    exact addressing function, so the pair is content-derived (gate 1) rather than a free
-    edge. A row whose two sides address to the SAME slot is dropped: that is not a
-    correspondence, it is one claim.
+    The registry is a HOLE, not a mechanism. HOW a correspondence gets declared — hand-authored,
+    LM-proposed-and-gated, or derived structurally — is a deliberate design decision made from
+    the object outward, in a separate pass. It is NOT designed here, so no declaration FORMAT
+    is interpreted: the file's `declared` list must be empty. A non-empty list is refused
+    rather than read through a format this build has not been authorized to invent.
     """
     payload = json.loads(CORRESPONDENCE_PATH.read_text(encoding="utf-8"))
-    pairs: set[tuple[str, str]] = set()
-    for row in payload.get("declared", []):
-        a, b = row["a"], row["b"]
-        sa, _ = address(a["chart"], a["surface"], a["type"])
-        sb, _ = address(b["chart"], b["surface"], b["type"])
-        if sa != sb:
-            pairs.add((sa, sb) if sa < sb else (sb, sa))
-    return frozenset(pairs)
+    declared = payload.get("declared", [])
+    if declared:
+        raise EngineError(
+            "seed/CORRESPONDENCE.json carries declarations, but the declaration FORMAT is an "
+            "undesigned GAP (the operator designs it separately, from the object outward). "
+            "Refusing to interpret rows in an un-authorized format. Leave `declared` empty."
+        )
+    return frozenset()
