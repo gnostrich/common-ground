@@ -70,13 +70,21 @@ def lm_available(explicit: str | None = None) -> bool:
 Transport = Callable[[str, dict], str]
 
 
-def _http_post(key: str, body: dict) -> str:
-    """POST to OpenRouter (OpenAI-format) and return the text. OpenRouter only."""
+def _http_post(key: str, body: dict, usage: dict | None = None) -> str:
+    """POST to OpenRouter (OpenAI-format) and return the text. OpenRouter only.
+
+    `usage`, if given, is filled in place with what the provider REPORTED: token counts and,
+    because the request asks for it, OpenRouter's own `cost`. It is left empty when the
+    provider says nothing. The caller must then report cost as unavailable rather than
+    multiply tokens by a guessed rate — an estimate presented as a running total is a
+    fabricated number, and this build does not produce those.
+    """
     if _is_openrouter(key):
         or_body = {
             "model": body["model"],
             "temperature": body.get("temperature", 0.3),
             "max_tokens": body.get("max_tokens", 1500),
+            "usage": {"include": True},        # ask OpenRouter to report what it charged
             "messages": ([{"role": "system", "content": body["system"]}] if body.get("system")
                          else []) + body["messages"],
         }
@@ -87,6 +95,12 @@ def _http_post(key: str, body: dict) -> str:
             method="POST")
         with urllib.request.urlopen(req, timeout=180) as resp:
             payload = json.load(resp)
+        if usage is not None:
+            reported = payload.get("usage") or {}
+            usage.update({k: reported[k] for k in
+                          ("prompt_tokens", "completion_tokens", "total_tokens", "cost")
+                          if k in reported})
+            usage["model"] = payload.get("model", "")
         if payload.get("error"):
             raise RuntimeError(f"openrouter error: {payload['error'].get('message', '?')}")
         choices = payload.get("choices") or []
@@ -120,9 +134,18 @@ class LMClient:
     """A thin OpenRouter client; injectable transport for tests."""
 
     def __init__(self, key: str, model: str | None = None, transport: Transport | None = None):
+        import inspect
+
         self._key = key
         self.model = model or model_for(key)
         self._transport = transport or _http_post
+        #: What the provider reported for the LAST call: tokens and, when OpenRouter supplies
+        #: it, `cost`. Empty when nothing was reported. Never estimated.
+        self.last_usage: dict = {}
+        try:
+            self._wants_usage = len(inspect.signature(self._transport).parameters) >= 3
+        except (TypeError, ValueError):
+            self._wants_usage = False        # a builtin or C callable: no usage channel
 
     def complete(self, system: str, user: str, temperature: float, max_tokens: int = 1500) -> str:
         body = {
@@ -132,6 +155,9 @@ class LMClient:
             "system": system,
             "messages": [{"role": "user", "content": user}],
         }
+        self.last_usage = {}
+        if self._wants_usage:
+            return self._transport(self._key, body, self.last_usage)
         return self._transport(self._key, body)
 
 

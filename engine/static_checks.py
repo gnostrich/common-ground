@@ -734,7 +734,93 @@ CLAIMED_PROPERTY_SITES: tuple[dict[str, str], ...] = (
     {"site": "engine/static_checks.py:check_span_discipline",
      "claim": "shaped to the form, catches indirect taint",
      "control": "tests/test_span_discipline.py:PlantedDefectsMakeItRed"},
+    {"site": "engine/compose.py:compose",
+     "claim": "the hub cap is enforced and whatever it drops is counted, not truncated",
+     "control": "tests/test_continuous.py:CompositionIsBounded"},
+    {"site": "engine/continuous.py:wait_for_slot",
+     "claim": "a restart cannot reset the rate budget (window read off the durable log)",
+     "control": "tests/test_continuous.py:RateLimitSurvivesRestart"},
+    {"site": "engine/static_checks.py:check_proposer_discipline",
+     "claim": "the daemon cannot promote; enforced on the source, not promised in prose",
+     "control": "tests/test_continuous.py:ProposerDisciplineIsStatic"},
 )
+
+
+# --- the unattended-proposer discipline (GATES 3 + 10, on the source) --------------------
+
+#: The modules the continuous proposer is made of. Everything it can do lives here.
+PROPOSER_MODULES: tuple[str, ...] = (
+    "engine/continuous.py",
+    "engine/journal.py",
+    "engine/compose.py",
+)
+
+#: Names the proposer may never mention. A background process that runs unattended must not
+#: be *able* to promote, clamp, or confer authorship — so the check is that it does not name
+#: the machinery at all, which is decidable on the AST rather than argued about in review.
+#: `promotable` is deliberately absent: the daemon asserts non-promotability before it writes.
+FORBIDDEN_IN_PROPOSER: frozenset[str] = frozenset({
+    "MintController", "mint_tape", "Clamp", "clamp", "clamp_eligible",
+    "AUTHORSHIP", "KERNEL", "CI_RECEIPT", "PREMINTED", "confirm", "PROMOTION_FLOOR",
+})
+
+#: The one method on the proposer allowed to reach the inlet. Every other path must route
+#: through it, so the tier assertion cannot be bypassed by adding a second call site.
+INLET_GUARD: tuple[str, str] = ("engine/continuous.py", "_enter")
+
+
+def check_proposer_discipline(root: Path | None = None) -> StaticCheckResult:
+    """The unattended proposer cannot promote, and has exactly one door to the inlet.
+
+    Two AST facts, both decidable:
+
+    1. No module of the proposer *names* promotion machinery — no `MintController`, no
+       `AUTHORSHIP`, no `Clamp`. Docstrings and comments are not Name nodes, so the check
+       reads what the code can do rather than what it says about itself.
+    2. `FastTape.propose` is called from exactly one place in `engine/continuous.py`, and
+       that place is the method carrying the EXTRACTION-tier assertion. A second call site
+       would be a way past the assertion, so a second call site is a violation.
+    """
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+
+    for rel in PROPOSER_MODULES:
+        tree = _read(rel, base)
+        if tree is None:
+            result.violations.append(Violation(rel, 0, "missing module", "proposer surface"))
+            continue
+        result.checked_files += 1
+        for node in ast.walk(tree):
+            name = None
+            if isinstance(node, ast.Name):
+                name = node.id
+            elif isinstance(node, ast.Attribute):
+                name = node.attr
+            elif isinstance(node, ast.alias):
+                name = (node.asname or node.name).rsplit(".", 1)[-1]
+            if name in FORBIDDEN_IN_PROPOSER:
+                result.violations.append(Violation(
+                    rel, getattr(node, "lineno", 0), f"names {name}",
+                    "the unattended proposer must not reach promotion machinery"))
+
+    guard_rel, guard_fn = INLET_GUARD
+    tree = _read(guard_rel, base)
+    if tree is not None:
+        sites: list[tuple[int, str]] = []
+        for parent in ast.walk(tree):
+            if not isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            result.checked_functions += 1
+            for node in ast.walk(parent):
+                if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "propose"):
+                    sites.append((node.lineno, parent.name))
+        if len(sites) != 1 or sites[0][1] != guard_fn:
+            result.violations.append(Violation(
+                guard_rel, sites[0][0] if sites else 0, "inlet call sites",
+                f"expected exactly one .propose() call, inside {guard_fn}; found "
+                f"{[f'{fn}:{ln}' for ln, fn in sites]}"))
+    return result
 
 
 def _claims_in(text: str) -> list[tuple[str, str]]:

@@ -1,0 +1,234 @@
+"""The proposal journal — append-only, fsync'd, readable at any time.
+
+A background process that silently accumulates structure is how this becomes NELL. The
+journal is the answer to that: it is the daemon's **entire durable memory**, it is written
+before anything is believed, and it is a plain JSONL file the operator can `tail` mid-run.
+Nothing the proposer knows lives anywhere else — not the asked set, not the arrows, not the
+cost. Delete the journal and the daemon has amnesia; that is the intended property.
+
+Four record kinds, and no fifth:
+
+- ``ask``            one candidate pair shown to the proposer, and the answer it gave —
+                     including ``none``, which is *information about the corpus* and is
+                     recorded exactly as durably as an arrow.
+- ``call``           one LM request: candidate count, outcome, tokens, and the provider's
+                     own reported cost. Also the rate limiter's clock (see below).
+- ``contradiction``  composition implied a pair the proposer already answered otherwise.
+                     Never silently dropped, never auto-resolved.
+- ``halt``           the loop stopped, and why. A halt is a record, not a log line.
+
+**Resume is replay, not restore.** On startup the daemon re-enters every recorded arrow
+through `FastTape.propose` — the one inlet — rather than un-pickling a tape. The write-path
+assertion in `tests/test_inlet.py` therefore still covers the resumed state, and a journal
+line can never introduce structure the inlet would have refused.
+
+**Timestamps are operational only.** ``t`` exists so the operator can see when something
+happened and so the rate limiter can count calls in a window. It is never an input to an
+address, a random stream, or a value — gate 7. `tests/test_continuous.py` plants that defect
+and asserts the check catches it.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import time
+from collections import Counter
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterator, Sequence
+
+ASK = "ask"
+CALL = "call"
+CONTRADICTION = "contradiction"
+HALT = "halt"
+
+#: Answers that are arrows. Anything else recorded as an answer is a `none`.
+_NONE = "none"
+
+
+def pair_key(src_slot: str, dst_slot: str) -> str:
+    """The DIRECTED key. `A->B` and `B->A` are different questions.
+
+    A correspondence is a directed morphism and its reverse is a separate claim with a
+    separate address (GATES 9), so "already asked" must be directed too — otherwise the
+    daemon would answer the reverse question by assuming symmetry, which is exactly what
+    `correspondence.asymmetries` exists to refuse.
+    """
+    return f"{src_slot}>{dst_slot}"
+
+
+@dataclass(frozen=True, slots=True)
+class Recorded:
+    """One answered candidate, as replayed off disk."""
+
+    src_chart: str
+    src_slot: str
+    dst_chart: str
+    dst_slot: str
+    type: str
+    answer: str
+    evidence: str
+    relation: str
+    proposer: str
+    prompt_hash: str
+
+    @property
+    def is_arrow(self) -> bool:
+        return self.answer != _NONE
+
+
+class Journal:
+    """Append-only JSONL. Index is built by replaying the file; there is no other state."""
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.answers: dict[str, str] = {}          # directed pair key -> answer kind
+        self.arrows: list[Recorded] = []
+        self.calls: list[float] = []               # call timestamps, for the rate window
+        self.spend: float = 0.0                    # provider-reported cost, summed
+        self.spend_reported: int = 0               # calls whose cost the provider reported
+        self.tokens_in = 0
+        self.tokens_out = 0
+        self.counts: Counter = Counter()
+        self.contradictions: list[dict] = []
+        self._replay()
+        self._fh = self.path.open("a", encoding="utf-8")
+
+    # --- reading ------------------------------------------------------------------
+
+    def _replay(self) -> None:
+        if not self.path.exists():
+            return
+        with self.path.open("r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    self.counts["corrupt_lines"] += 1
+                    continue                      # a torn tail line is skipped, not guessed
+                self._index(rec)
+
+    def _index(self, rec: dict) -> None:
+        kind = rec.get("kind")
+        self.counts[kind] += 1
+        if kind == ASK:
+            key = pair_key(rec.get("src_slot", ""), rec.get("dst_slot", ""))
+            answer = str(rec.get("answer", _NONE))
+            self.answers[key] = answer
+            self.counts[f"answer:{answer}"] += 1
+            if answer != _NONE:
+                self.arrows.append(Recorded(
+                    src_chart=rec.get("src_chart", ""), src_slot=rec.get("src_slot", ""),
+                    dst_chart=rec.get("dst_chart", ""), dst_slot=rec.get("dst_slot", ""),
+                    type=rec.get("type", "assert"), answer=answer,
+                    evidence=rec.get("evidence", ""), relation=rec.get("relation", ""),
+                    proposer=rec.get("proposer", "lm"), prompt_hash=rec.get("prompt_hash", ""),
+                ))
+        elif kind == CALL:
+            self.calls.append(float(rec.get("t", 0.0)))
+            self.tokens_in += int(rec.get("tokens_in", 0) or 0)
+            self.tokens_out += int(rec.get("tokens_out", 0) or 0)
+            cost = rec.get("cost")
+            if cost is not None:
+                self.spend += float(cost)
+                self.spend_reported += 1
+            if not rec.get("ok", True):
+                self.counts["call_errors"] += 1
+        elif kind == CONTRADICTION:
+            self.contradictions.append(rec)
+
+    def asked(self, src_slot: str, dst_slot: str) -> bool:
+        return pair_key(src_slot, dst_slot) in self.answers
+
+    def answer_for(self, src_slot: str, dst_slot: str) -> str | None:
+        return self.answers.get(pair_key(src_slot, dst_slot))
+
+    def calls_since(self, cutoff: float) -> int:
+        """How many LM calls landed at or after `cutoff`. The rate limiter's only input."""
+        return sum(1 for t in self.calls if t >= cutoff)
+
+    def totals(self) -> dict[str, object]:
+        """The running totals the operator reads. Cost is REPORTED, never estimated."""
+        by_kind = {k.split(":", 1)[1]: v for k, v in self.counts.items()
+                   if k.startswith("answer:")}
+        n_calls = len(self.calls)
+        return {
+            "asked": sum(by_kind.values()),
+            "answers": by_kind,
+            "arrows": sum(v for k, v in by_kind.items() if k != _NONE),
+            "none": by_kind.get(_NONE, 0),
+            "none_rate": (by_kind.get(_NONE, 0) / sum(by_kind.values())
+                          if by_kind else 0.0),
+            "contradictions": len(self.contradictions),
+            "calls": n_calls,
+            "call_errors": self.counts.get("call_errors", 0),
+            "tokens_in": self.tokens_in,
+            "tokens_out": self.tokens_out,
+            "cost": round(self.spend, 6),
+            "cost_coverage": (f"{self.spend_reported}/{n_calls} calls reported a cost"
+                              if n_calls else "no calls yet"),
+            "halts": self.counts.get(HALT, 0),
+        }
+
+    def tail(self, n: int = 40) -> list[dict]:
+        """The last `n` records, for the operator's window. Reads the file, not the index."""
+        if not self.path.exists():
+            return []
+        with self.path.open("r", encoding="utf-8") as fh:
+            lines = fh.readlines()[-n:]
+        out = []
+        for line in lines:
+            try:
+                out.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        return out
+
+    # --- writing ------------------------------------------------------------------
+
+    def _write(self, rec: dict) -> dict:
+        rec = {"t": round(time.time(), 3), **rec}
+        self._fh.write(json.dumps(rec, sort_keys=True) + "\n")
+        self._fh.flush()
+        os.fsync(self._fh.fileno())      # readable at any time, and survives a kill
+        self._index(rec)
+        return rec
+
+    def record_ask(self, *, src_chart: str, src_slot: str, dst_chart: str, dst_slot: str,
+                   type: str, answer: str, evidence: str, relation: str,
+                   proposer: str, prompt_hash: str, tier: str) -> dict:
+        return self._write({
+            "kind": ASK, "src_chart": src_chart, "src_slot": src_slot,
+            "dst_chart": dst_chart, "dst_slot": dst_slot, "type": type,
+            "answer": answer, "evidence": evidence[:300], "relation": relation,
+            "proposer": proposer, "prompt_hash": prompt_hash, "tier": tier,
+        })
+
+    def record_call(self, *, candidates: int, ok: bool, tokens_in: int = 0,
+                    tokens_out: int = 0, cost: float | None = None,
+                    model: str = "", error: str = "") -> dict:
+        return self._write({
+            "kind": CALL, "candidates": candidates, "ok": ok, "tokens_in": tokens_in,
+            "tokens_out": tokens_out, "cost": cost, "model": model, "error": error[:200],
+        })
+
+    def record_contradiction(self, *, src_slot: str, dst_slot: str, implied: str,
+                             recorded: str, via: Sequence[str], note: str) -> dict:
+        return self._write({
+            "kind": CONTRADICTION, "src_slot": src_slot, "dst_slot": dst_slot,
+            "implied": implied, "recorded": recorded, "via": list(via), "note": note,
+        })
+
+    def record_halt(self, reason: str, detail: object = None) -> dict:
+        return self._write({"kind": HALT, "reason": reason, "detail": detail})
+
+    def close(self) -> None:
+        try:
+            self._fh.close()
+        except Exception:
+            pass
