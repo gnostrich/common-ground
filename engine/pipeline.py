@@ -8,7 +8,7 @@ nothing about the run.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Mapping, Sequence
+from typing import Iterable, Mapping, Sequence
 
 from .blocks import (
     build_blocks,
@@ -86,6 +86,7 @@ def build_ledger(
     prior_leaning: Mapping[str, BValue] | None = None,
     edge_filter=None,
     dedupe: bool = True,
+    correspondence: Iterable[tuple[str, str]] | None = None,
 ) -> Ledger:
     """Full ingestion path.
 
@@ -93,13 +94,18 @@ def build_ledger(
     for null cell (v)'s positive control: it disables the content-hash deduplication that
     makes re-ingestion idempotent, so the control can confirm the cell actually detects a
     double-counted source rather than passing because nothing was ever at risk.
+
+    `correspondence` is the DECLARED fiber-membership relation (exact slot-id pairs). It
+    defaults to `engine/correspondence.py:declared_correspondence()` — empty at v0. It is a
+    parameter so a control can declare a correspondence for a planted case; there is no
+    similarity path that would manufacture one.
     """
     deltas = ingest(documents, extractors)
     if dedupe:
         deltas = dedupe_deltas(deltas)
     return ledger_from_deltas(
         deltas, clamps=clamps, prior_leaning=prior_leaning,
-        edge_filter=edge_filter, evidence_dedupe=dedupe,
+        edge_filter=edge_filter, evidence_dedupe=dedupe, correspondence=correspondence,
     )
 
 
@@ -109,15 +115,20 @@ def ledger_from_deltas(
     prior_leaning: Mapping[str, BValue] | None = None,
     edge_filter=None,
     evidence_dedupe: bool = True,
+    correspondence: Iterable[tuple[str, str]] | None = None,
 ) -> Ledger:
     """Build the ledger from pre-made deltas — the shared tail of `build_ledger`.
 
     Exposed so cross-instance coupling can join two instances' deltas and rebuild one ledger
-    over both, without re-running extraction.
+    over both, without re-running extraction. `correspondence` defaults to the seed's declared
+    correspondence (empty at v0 — the gap); pass an explicit set to declare one.
     """
+    from .correspondence import declared_correspondence
+
     deltas = list(deltas)
+    corr = declared_correspondence() if correspondence is None else correspondence
     slots = slots_from_deltas(deltas)
-    fibers = build_fibers(slots)
+    fibers = build_fibers(slots, corr)
     edges = edges_from_fibers(fibers, slots)
     if edge_filter is not None:
         edges = list(edge_filter(edges))

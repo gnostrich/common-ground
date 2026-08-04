@@ -72,14 +72,6 @@ BLOCKING_SITES: tuple[BlockingSite, ...] = (
                             "matching",
         severity="dispatch",
     ),
-    BlockingSite(
-        site="engine/blocks.py:content_tokens",
-        hardcodes='body[:4] in ("en\\x01", "lean") to strip the chart tag',
-        manifest_would_need="tag stripping driven by the same declared tag table, or fiber "
-                            "tokens for a third chart would keep their tag and never match "
-                            "anything",
-        severity="data",
-    ),
 )
 
 

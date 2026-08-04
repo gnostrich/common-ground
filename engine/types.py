@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from typing import Literal, Sequence
 
-from .constants import BVALUES, CLAIM_FORMS, FIBER_CAP
+from .constants import BVALUES, CLAIM_FORMS
 
 #: A chart is a value declared in seed/CHARTS.json, not a closed type. The seam that
 #: made a third chart addable by manifest (item 2 refactor) lives in engine/charts.py;
@@ -145,21 +145,20 @@ class Delta:
 
 @dataclass(frozen=True, slots=True)
 class Fiber:
-    """A co-reference *hypothesis* over at most FIBER_CAP slots.
+    """A co-reference group declared by exact correspondence.
 
     Membership never merges addresses. Two slots in a fiber keep distinct ids and settle
     to their own distributions; the fiber only licenses an equivalence-prior edge, which
-    by gate 2 can enter F as energy and nothing more.
+    by gate 2 can enter F as energy and nothing more. Size is unbounded — a declared
+    correspondence group is as large as it is declared to be, with no similarity cap.
+    (Limitation, recorded: the brute-force cycle search in `blocks.order_cycle` is only
+    tractable for small groups; a large declared group needs a non-brute-force cycle finder.)
     """
 
     id: str
     slots: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        if len(self.slots) > FIBER_CAP:
-            raise ValueError(
-                f"fiber {self.id} has {len(self.slots)} slots, cap is {FIBER_CAP}"
-            )
         if len(set(self.slots)) != len(self.slots):
             raise ValueError(f"fiber {self.id} has duplicate slots")
 

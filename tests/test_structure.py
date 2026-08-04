@@ -74,6 +74,23 @@ class TheGraphIsTheAlgebra(unittest.TestCase):
         r = check_structure(planted)
         self.assertFalse(r.ok, "a tampered fiber-edge weight is not derivable => spurious")
 
+    def test_S7_a_similarity_style_membership_makes_it_red(self):
+        # The mandated audit-hole control: inject a fiber grouping two slots that have NO
+        # declared correspondence between them — a string-overlap / similarity membership.
+        # The relation does not reproduce it, so the audit MUST go RED.
+        from engine.types import Fiber
+
+        edged = {e.u for e in self.ledger.edges} | {e.v for e in self.ledger.edges}
+        isolated = sorted(s.id for s in self.ledger.slots if s.id not in edged)[:2]
+        self.assertEqual(len(isolated), 2, "need two isolated slots to plant a bogus fiber")
+        planted = dataclasses.replace(self.ledger)
+        planted.fibers = list(self.ledger.fibers) + [
+            Fiber(id="planted_sim", slots=tuple(sorted(isolated)))
+        ]
+        r = check_structure(planted)
+        self.assertFalse(r.ok, "a non-declared (similarity-style) fiber membership must be RED")
+        self.assertTrue(r.membership, "the membership-is-exact check must fire")
+
 
 class EveryDeclaredGapIsFenced(unittest.TestCase):
     def test_no_undeclared_deviation(self):

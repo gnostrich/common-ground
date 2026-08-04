@@ -171,12 +171,17 @@ def cell_iii_empty_corpus(
     preminted: Sequence[Document],
     extractors: Sequence[Extractor],
     beta: float,
+    correspondence=None,
 ) -> NullCell:
     """Seed alone must generate zero contest.
 
     Runs on the pre-minted entries only, with no corpus. If the priors were fighting each
     other, the floor would be non-zero before a single document was read, and every later
     floor reading would be measuring the seed rather than the ledger.
+
+    `correspondence` defaults to the seed's declared correspondence (empty at v0). It is a
+    parameter only so the positive control can DECLARE a contradictory correspondence and
+    prove this cell can still fail; the real battery run passes nothing.
     """
     if not preminted:
         return NullCell(
@@ -189,7 +194,7 @@ def cell_iii_empty_corpus(
             stats={"preminted_documents": 0},
         )
 
-    ledger = build_ledger(preminted, extractors)
+    ledger = build_ledger(preminted, extractors, correspondence=correspondence)
     result, _, _ = run_meter(ledger, beta, seed_hash, load_shadow())
     floor = result.mean_floor()
     ok = floor == 0.0
@@ -214,6 +219,7 @@ def cell_iv_single_doc(
     document: Document | None,
     extractors: Sequence[Extractor],
     beta: float,
+    correspondence=None,
 ) -> NullCell:
     """One document, k=3 extraction, cold floor ~ 0 within surrogate noise.
 
@@ -229,7 +235,7 @@ def cell_iv_single_doc(
             stats={},
         )
 
-    ledger = build_ledger([document], extractors)
+    ledger = build_ledger([document], extractors, correspondence=correspondence)
     if not ledger.loops:
         return NullCell(
             cell="iv.single-doc",
@@ -288,6 +294,7 @@ def cell_v_duplicate_source(
     extractors: Sequence[Extractor],
     beta: float,
     dedupe: bool = True,
+    correspondence=None,
 ) -> NullCell:
     """One corpus ingested twice under distinct provenance: zero residue, zero rank growth.
 
@@ -316,8 +323,8 @@ def cell_v_duplicate_source(
     ]
 
     shadow_cfg = load_shadow()
-    once = build_ledger(list(corpus), extractors, dedupe=dedupe)
-    twice = build_ledger(doubled, extractors, dedupe=dedupe)
+    once = build_ledger(list(corpus), extractors, dedupe=dedupe, correspondence=correspondence)
+    twice = build_ledger(doubled, extractors, dedupe=dedupe, correspondence=correspondence)
 
     r1, _, cold1 = run_meter(once, beta, seed_hash, shadow_cfg)
     r2, _, cold2 = run_meter(twice, beta, seed_hash, shadow_cfg)
@@ -654,9 +661,26 @@ def _control_ii() -> tuple[bool, str]:
     return cell.status is NullStatus.FAIL, "suite with a non-colliding known-same pair"
 
 
+def _declare_chain(docs: Sequence[Document], extractors: Sequence[Extractor]) -> frozenset:
+    """Positive-control helper: DECLARE the fixture's claims as one proposition.
+
+    The exact-addressing engine forms no fiber without a declared correspondence, so a control
+    that needs contest (a floor, a loop) must DECLARE it — a chain over the fixture's slots
+    connects them into one fiber, which (with >=3 slots) closes a genuine cycle. This is the
+    faithful stand-in for the old similarity fibering: the contest a control tests now comes
+    from an explicit declaration, not from string overlap. The real battery run declares
+    nothing, and the same fixture produces no loop.
+    """
+    base = build_ledger(list(docs), extractors, correspondence=frozenset())
+    ids = sorted(s.id for s in base.slots)
+    return frozenset((ids[i], ids[i + 1]) for i in range(len(ids) - 1))
+
+
 def _control_iii(seed_hash: str, extractors: Sequence[Extractor], beta: float) -> tuple[bool, str]:
-    cell = cell_iii_empty_corpus(seed_hash, _contradictory_docs("seed"), extractors, beta)
-    return cell.status is NullStatus.FAIL, "pre-minted entries that contradict each other"
+    docs = _contradictory_docs("seed")
+    corr = _declare_chain(docs, extractors)
+    cell = cell_iii_empty_corpus(seed_hash, docs, extractors, beta, correspondence=corr)
+    return cell.status is NullStatus.FAIL, "pre-minted entries declared one proposition, contradicting"
 
 
 def _control_iv(seed_hash: str, extractors: Sequence[Extractor], beta: float) -> tuple[bool, str]:
@@ -665,15 +689,18 @@ def _control_iv(seed_hash: str, extractors: Sequence[Extractor], beta: float) ->
         "The cone is positive. The cone is not positive. The cone may be positive.",
         "control",
     )
-    cell = cell_iv_single_doc(seed_hash, doc, extractors, beta)
-    return cell.status is NullStatus.FAIL, "one document that contradicts itself"
+    corr = _declare_chain([doc], extractors)
+    cell = cell_iv_single_doc(seed_hash, doc, extractors, beta, correspondence=corr)
+    return cell.status is NullStatus.FAIL, "one document declared one proposition, contradicting itself"
 
 
 def _control_v(seed_hash: str, extractors: Sequence[Extractor], beta: float) -> tuple[bool, str]:
+    docs = _contradictory_docs("corpus")
+    corr = _declare_chain(docs, extractors)
     cell = cell_v_duplicate_source(
-        seed_hash, _contradictory_docs("corpus"), extractors, beta, dedupe=False
+        seed_hash, docs, extractors, beta, dedupe=False, correspondence=corr
     )
-    return cell.status is NullStatus.FAIL, "content-hash deduplication disabled"
+    return cell.status is NullStatus.FAIL, "content-hash deduplication disabled (declared correspondence)"
 
 
 def _control_vi(registry: Registry | None) -> tuple[bool, str]:

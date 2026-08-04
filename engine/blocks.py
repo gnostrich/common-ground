@@ -9,118 +9,83 @@ of Q edges and checking whether the cold floor moves beyond surrogate noise.
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from itertools import permutations
 from typing import Iterable, Mapping, Sequence
 
-from .constants import (
-    FIBER_CAP,
-    REWIRE_PASSES,
-    FIBER_CROSS_THRESHOLD,
-    FIBER_INTRA_THRESHOLD,
-    FIBER_TOKEN_PREFIX,
-    STOPWORDS,
-)
+from .constants import REWIRE_PASSES
 from .hashing import DRNG, join_hash
 from .types import Block, Chart, Delta, Fiber, LoopSpec, QEdge, Slot
 
-_CHART_TAG_RE = re.compile(r"^\x01[a-z]+\x01")
-_CAMEL_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
-_SPLIT_RE = re.compile(r"[^0-9A-Za-zÀ-ɏ]+")
+#: The declared correspondence weight. A declared typed translation is ASSERTED, not scored,
+#: so its equivalence-prior coupling carries full weight; there is no similarity to grade it
+#: by. Gate 2 still confines it to energy — a full-weight prior tilts, it never clamps.
+DECLARED_WEIGHT = 1.0
 
 
-def content_tokens(nu: str) -> frozenset[str]:
-    """Declared, deterministic token key used for fiber similarity.
+def build_fibers(
+    slots: Sequence[Slot],
+    correspondence: Iterable[tuple[str, str]] = (),
+) -> list[Fiber]:
+    """Fibers = co-reference groups from EXACT DECLARED correspondence. No similarity.
 
-    Identifiers are split on underscores and CamelCase boundaries first, so a Lean
-    `IsPositive` and an English `positivity` can share a token prefix. Tokens are then
-    truncated to `FIBER_TOKEN_PREFIX` characters, which is a crude stemmer — crude on
-    purpose, since a real stemmer would be a lexicon and would need to be seeded and
-    hashed like one.
+    Gate 1 makes addressing exact, so two DISTINCT slots are distinct claims and two
+    IDENTICAL addresses are already one slot (deduped upstream). Co-reference across distinct
+    addresses is therefore never inferred from string overlap — it is DECLARED, as a typed
+    translation (OBJECT.md `hol : Pi_1(B) -> Aut(Sem)`), and passed in as `correspondence`:
+    a set of unordered slot-id pairs resolved by `engine/correspondence.py` from the seed.
+
+    A fiber is a connected component of that declaration graph, restricted to present slots.
+    With no declared correspondence every slot is its own singleton and NO multi-member fiber
+    exists — which is the honest v0 state (the correspondence gap), not an empty result to be
+    papered over with a similarity fallback.
     """
-    # Strip the chart tag generically: nu wraps the body in `\x01<tag>\x01`, so a single
-    # regex removes whatever tag any chart declared, without this function knowing the
-    # chart set. Hardcoding "en"/"lean" here was one of the sites the chart plug-in audit
-    # flagged.
-    body = _CHART_TAG_RE.sub("", nu, count=1)
-    spaced = _CAMEL_RE.sub(" ", body)
-    raw = _SPLIT_RE.split(spaced)
-    out: set[str] = set()
-    for tok in raw:
-        t = tok.casefold()
-        if not t or t in STOPWORDS or len(t) < 2:
-            continue
-        out.add(t[:FIBER_TOKEN_PREFIX])
-    return frozenset(out)
+    present = {s.id for s in slots}
+    parent: dict[str, str] = {}
 
+    def find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
 
-def jaccard(a: frozenset[str], b: frozenset[str]) -> float:
-    if not a or not b:
-        return 0.0
-    inter = len(a & b)
-    if inter == 0:
-        return 0.0
-    return inter / len(a | b)
+    def union(a: str, b: str) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
 
+    for u, v in correspondence:
+        if u in present and v in present:
+            union(u, v)
 
-def build_fibers(slots: Sequence[Slot]) -> list[Fiber]:
-    """Group slots into co-reference hypotheses, capped at FIBER_CAP members.
+    groups: dict[str, list[str]] = defaultdict(list)
+    for s in slots:
+        groups[find(s.id)].append(s.id)
 
-    Each slot proposes a fiber consisting of itself plus its strongest neighbours;
-    duplicates by membership are collapsed. A fiber is never an identification — the
-    member slots keep distinct addresses and settle independently.
-    """
-    toks = {s.id: content_tokens(s.nu) for s in slots}
-    chart_of = {s.id: s.chart for s in slots}
-    ordered = sorted(slots, key=lambda s: s.id)
-
-    seen: set[frozenset[str]] = set()
     fibers: list[Fiber] = []
-
-    for s in ordered:
-        scored: list[tuple[float, str]] = []
-        for other in ordered:
-            if other.id == s.id:
-                continue
-            sim = jaccard(toks[s.id], toks[other.id])
-            threshold = (
-                FIBER_INTRA_THRESHOLD
-                if chart_of[s.id] == chart_of[other.id]
-                else FIBER_CROSS_THRESHOLD
-            )
-            if sim >= threshold:
-                scored.append((sim, other.id))
-        if not scored:
-            continue
-        # Deterministic: strongest first, ties broken by slot id.
-        scored.sort(key=lambda t: (-t[0], t[1]))
-        members = tuple(sorted({s.id, *(sid for _, sid in scored[: FIBER_CAP - 1])}))
-        key = frozenset(members)
-        if key in seen:
-            continue
-        seen.add(key)
-        fibers.append(Fiber(id=join_hash(*members)[:16], slots=members))
-
+    for members in groups.values():
+        if len(members) < 2:
+            continue  # a lone slot is not a fiber
+        m = tuple(sorted(members))
+        fibers.append(Fiber(id=join_hash(*m)[:16], slots=m))
     return fibers
 
 
-def edges_from_fibers(fibers: Sequence[Fiber], slots: Sequence[Slot]) -> list[QEdge]:
-    """One undirected Q edge per within-fiber pair, weighted by token similarity."""
-    toks = {s.id: content_tokens(s.nu) for s in slots}
+def edges_from_fibers(fibers: Sequence[Fiber], slots: Sequence[Slot] = ()) -> list[QEdge]:
+    """One undirected Q edge per within-fiber pair. Weight is the DECLARED weight.
+
+    A declared correspondence is asserted, not scored, so every within-fiber pair carries
+    `DECLARED_WEIGHT`; there is no token similarity to weight it by. `slots` is accepted for
+    call-site compatibility and unused — edges are a function of the fibers alone now.
+    """
     out: dict[tuple[str, str], QEdge] = {}
     for fiber in fibers:
         members = sorted(fiber.slots)
         for i in range(len(members)):
             for j in range(i + 1, len(members)):
                 u, v = members[i], members[j]
-                w = jaccard(toks.get(u, frozenset()), toks.get(v, frozenset()))
-                if w <= 0.0:
-                    continue
-                key = (u, v)
-                prior = out.get(key)
-                if prior is None or w > prior.weight:
-                    out[key] = QEdge(u=u, v=v, weight=w, origin="fiber")
+                out[(u, v)] = QEdge(u=u, v=v, weight=DECLARED_WEIGHT, origin="correspondence")
     return [out[k] for k in sorted(out)]
 
 
@@ -216,8 +181,9 @@ def order_cycle(
     twice and the paraphrase once, which is the shape PREREG's matrix names. Ties break
     lexicographically so the choice is deterministic and replayable from the seed.
 
-    `FIBER_CAP` bounds a fiber at five members, so the search is over at most 4!/2 = 12
-    distinct cycles and brute force is both exact and cheap.
+    Brute force over member orderings is exact and cheap for the small declared groups this
+    build produces; a large declared correspondence group would need a non-brute-force cycle
+    finder (recorded limitation on `Fiber`).
     """
     if len(members) < 3:
         return None

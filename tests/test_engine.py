@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import unittest
 
-from engine.blocks import build_fibers, content_tokens, edges_from_fibers, jaccard
+from engine.blocks import build_fibers, edges_from_fibers
 from engine.constants import BVALUE_INDEX, CHARTS, NBV
 from engine.energy import dedupe_deltas, evidence_from_deltas, lexicon_prior
 from engine.extract import DeterministicExtractor, build_k_extractors
@@ -288,19 +288,55 @@ class Determinism(unittest.TestCase):
 
 
 class Fibers(unittest.TestCase):
-    def test_fiber_cap_is_enforced(self):
-        from engine.constants import FIBER_CAP
+    """Membership is EXACT declared correspondence — no similarity, no threshold, no cap."""
+
+    def _slots(self, *specs):
+        from engine.types import Slot
+        return [Slot(id=i, nu=n, type=t, chart=c) for (i, n, t, c) in specs]
+
+    def test_no_correspondence_means_no_fiber_even_with_total_token_overlap(self):
+        # Two DISTINCT slots that share every word do NOT fiber without a declared
+        # correspondence. There is no similarity path left in the engine.
+        slots = self._slots(
+            ("a", "\x01en\x01the cone is positive", "assert", "english"),
+            ("b", "\x01en\x01the cone is not positive", "assert", "english"),
+        )
+        self.assertEqual(build_fibers(slots), [])
+        self.assertEqual(build_fibers(slots, correspondence=[]), [])
+
+    def test_declared_correspondence_forms_exactly_that_fiber(self):
+        slots = self._slots(
+            ("a", "\x01en\x01x", "assert", "english"),
+            ("b", "\x01lean\x01y", "assert", "lean"),
+            ("c", "\x01en\x01z", "assert", "english"),
+        )
+        fibers = build_fibers(slots, correspondence=[("a", "b")])
+        self.assertEqual([tuple(f.slots) for f in fibers], [("a", "b")])
+        self.assertNotIn("c", {s for f in fibers for s in f.slots})  # undeclared -> frozen
+
+    def test_declared_correspondence_is_transitive(self):
+        slots = self._slots(
+            ("a", "\x01en\x01x", "assert", "english"),
+            ("b", "\x01lean\x01y", "assert", "lean"),
+            ("c", "\x01en\x01z", "assert", "english"),
+        )
+        fibers = build_fibers(slots, correspondence=[("a", "b"), ("b", "c")])
+        self.assertEqual([tuple(f.slots) for f in fibers], [("a", "b", "c")])
+
+    def test_edge_weight_is_the_declared_weight(self):
+        from engine.blocks import DECLARED_WEIGHT
+        slots = self._slots(
+            ("a", "\x01en\x01x", "assert", "english"),
+            ("b", "\x01lean\x01y", "assert", "lean"),
+        )
+        edges = edges_from_fibers(build_fibers(slots, correspondence=[("a", "b")]), slots)
+        self.assertEqual(len(edges), 1)
+        self.assertEqual(edges[0].weight, DECLARED_WEIGHT)
+        self.assertEqual(edges[0].origin, "correspondence")
+
+    def test_a_declared_group_has_no_similarity_size_cap(self):
         from engine.types import Fiber
-
-        with self.assertRaises(ValueError):
-            Fiber("f", tuple(f"s{i}" for i in range(FIBER_CAP + 1)))
-
-    def test_tokens_split_camel_case_and_underscores(self):
-        self.assertIn("posi", content_tokens("\x01lean\x01theorem comp_pos : IsPositive"))
-
-    def test_jaccard_bounds(self):
-        self.assertEqual(jaccard(frozenset(), frozenset({"a"})), 0.0)
-        self.assertEqual(jaccard(frozenset({"a"}), frozenset({"a"})), 1.0)
+        Fiber("big", tuple(f"s{i}" for i in range(9)))  # must not raise (no FIBER_CAP)
 
 
 if __name__ == "__main__":

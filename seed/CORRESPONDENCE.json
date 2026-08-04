@@ -1,0 +1,5 @@
+{
+  "schema": "common-ground/correspondence/v0",
+  "note": "DECLARED cross-chart / paraphrase correspondence — the specified fiber-membership relation (OBJECT.md: hol over Pi_1(B), typed base-morphism translations). A correspondence is DECLARED, never inferred from similarity. Each row names two claims by (chart, surface, type); they resolve to slot addresses through the exact gate-1 addressing function, so a declaration is content-derived, not a free edge. EMPTY at v0: no correspondence has been declared, so no cross-chart fiber exists and the holonomy cold-floor is a GAP (undefined-because-unmeasured), not zero-because-agreement. There is no similarity fallback.",
+  "declared": []
+}

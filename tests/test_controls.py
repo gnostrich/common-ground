@@ -26,6 +26,7 @@ from engine.nulls import (
     _BROKEN_SUITE,
     _broken_normalizer,
     _contradictory_docs,
+    _declare_chain,
     _control_i,
     _control_ii,
     _control_iii,
@@ -160,7 +161,10 @@ class CellIVIsNoLongerVacuous(unittest.TestCase):
         doc = Document("t", "english",
                        "The cone is positive. The cone is not positive. The cone may be positive.",
                        "control")
-        cell = cell_iv_single_doc(SEED, doc, _extractors(), BETA_ARMS[0])
+        # Declared as one proposition: the exact-addressing engine only contests what a
+        # declared correspondence joins — the control must declare it, never rely on overlap.
+        corr = _declare_chain([doc], _extractors())
+        cell = cell_iv_single_doc(SEED, doc, _extractors(), BETA_ARMS[0], correspondence=corr)
         self.assertIs(cell.status, NullStatus.FAIL)
         self.assertIn("VOID", cell.detail)
 
@@ -224,8 +228,10 @@ class CellVIsNoLongerVacuous(unittest.TestCase):
                          "an exactly repeated delta list collapses to itself")
 
     def test_disabled_dedup_is_caught(self):
-        cell = cell_v_duplicate_source(SEED, _contradictory_docs("c"), _extractors(),
-                                       BETA_ARMS[0], dedupe=False)
+        docs = _contradictory_docs("c")
+        corr = _declare_chain(docs, _extractors())
+        cell = cell_v_duplicate_source(SEED, docs, _extractors(),
+                                       BETA_ARMS[0], dedupe=False, correspondence=corr)
         self.assertIs(cell.status, NullStatus.FAIL)
         self.assertIn("corroboration", cell.detail)
 
@@ -548,14 +554,24 @@ class BrokenFixtures(unittest.TestCase):
     def test_broken_suite_is_genuinely_broken(self):
         self.assertIs(cell_ii_paraphrase(_BROKEN_SUITE).status, NullStatus.FAIL)
 
-    def test_contradictory_docs_fiber_together(self):
-        ledger = build_ledger(_contradictory_docs("t"), _extractors())
-        self.assertTrue(
-            any(len(b.slots) > 1 for b in ledger.blocks),
-            "the control's two surfaces must land in one block or it tests nothing",
-        )
-        result, _, _ = run_meter(ledger, BETA_ARMS[0], SEED, shadow())
-        self.assertGreater(result.mean_floor(), 0.0)
+    def test_contradictory_docs_only_fiber_when_declared(self):
+        # INVERTED after the strip-down. The old control asserted these surfaces fiber on
+        # string overlap ("positive" with "not positive") — which was exactly the similarity
+        # bug. Now: without a declared correspondence they are distinct claims and do NOT
+        # fiber (floor 0); they contest only when a correspondence is DECLARED.
+        docs = _contradictory_docs("t")
+        exts = _extractors()
+        bare = build_ledger(docs, exts)
+        self.assertFalse(any(len(b.slots) > 1 for b in bare.blocks),
+                         "distinct claims must NOT fiber on token overlap")
+        r0, _, _ = run_meter(bare, BETA_ARMS[0], SEED, shadow())
+        self.assertEqual(r0.mean_floor(), 0.0, "no declared correspondence => no floor")
+
+        declared = build_ledger(docs, exts, correspondence=_declare_chain(docs, exts))
+        self.assertTrue(any(len(b.slots) > 1 for b in declared.blocks),
+                        "a declared correspondence must fiber the claims")
+        r1, _, _ = run_meter(declared, BETA_ARMS[0], SEED, shadow())
+        self.assertGreater(r1.mean_floor(), 0.0)
 
 
 if __name__ == "__main__":
