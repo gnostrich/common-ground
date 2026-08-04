@@ -41,6 +41,7 @@ from .types import Document
 ENGLISH = "english"
 LEAN = "lean"
 TABULAR = "tabular"
+CONVERSATION = "conversation"
 VERBATIM = "verbatim-artifact"
 SHELF = "shelf"
 
@@ -107,6 +108,18 @@ def _is_verbatim(text: str) -> bool:
                 or _LOG_LINE_RE.search(text))
 
 
+def _is_conversation(text: str) -> bool:
+    """A transcript: >=3 speaker-attributed turns across >=2 distinct speakers.
+
+    Requiring two speakers and three turns keeps ordinary prose with a stray "Name:" colon
+    from reading as a conversation, while a real dialogue routes to the conversation chart.
+    """
+    from .conversation import parse_transcript
+
+    turns = parse_transcript(text)
+    return len(turns) >= 3 and len({t.speaker for t in turns}) >= 2
+
+
 def _table_shape(text: str) -> str:
     """"well-formed" | "malformed" | "none". A table needs a separator row and >=2 pipes."""
     lines = [ln for ln in text.splitlines() if ln.strip()]
@@ -159,6 +172,12 @@ def route(
             return RoutedDoc(name, LEAN, "elaborates", raw_hash,
                              Document(name, LEAN, normalized, source))
         return RoutedDoc(name, SHELF, f"elaboration-error: {reason}", raw_hash)
+
+    # 3.5. Speaker-attributed transcript -> conversation chart. Checked before tables/prose
+    #      because a dialogue is neither, and its speaker turns are the segmentation unit.
+    if _is_conversation(normalized):
+        return RoutedDoc(name, CONVERSATION, "speaker-attributed transcript", raw_hash,
+                         Document(name, CONVERSATION, normalized, source))
 
     # 4/5. Markdown tables: well-formed -> tabular; malformed -> prose, tagged.
     shape = _table_shape(normalized)

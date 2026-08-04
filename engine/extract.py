@@ -84,12 +84,25 @@ def _segment_tabular(text: str) -> list[tuple[str, str]]:
     return out
 
 
+def _segment_conversation(text: str) -> list[tuple[str, str]]:
+    """One candidate span per speaker-attributed claim; the speaker rides in the locator.
+
+    Delegates to the conversation module's transcript parser (which has no engine deps, so
+    importing it here makes no cycle). This is the third leg of the plug-in seam for the
+    `conversation` behavior — no dispatch edit, just a registered segmenter.
+    """
+    from .conversation import segment_conversation
+
+    return segment_conversation(text)
+
+
 #: Per-chart span segmenters, keyed by the manifest's behavior id — the third leg of the
 #: chart plug-in seam (normalizer and classifier are the other two, in engine/normalize.py).
 _SEGMENTERS: dict[str, "Callable[[str], list[tuple[str, str]]]"] = {
     "prose": _segment_prose,
     "lean": _segment_lean,
     "tabular": _segment_tabular,
+    "conversation": _segment_conversation,
 }
 
 _TABLE_SEP_ROW_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")

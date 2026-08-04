@@ -65,10 +65,12 @@ EXTENSIONS: tuple[Extension, ...] = (
     Extension(
         name="conversation chart",
         move=SWAP_BASE,
-        status=PLANNED,
+        status=BUILT,
         rationale="conversation segmentation is a chart — another object of B, not a new "
-                  "kind of thing. Reduces to swap-base exactly like tabular did.",
-        evidence="planned (session item B: conversation chart against fixtures)",
+                  "kind of thing. Reduces to swap-base exactly like tabular did: a manifest "
+                  "row (tag `cv`) + behavior functions, no dispatch edit.",
+        evidence="seed/CHARTS.json + engine/conversation.py (speaker claims + "
+                 "proposal->verdict ledger = fast-tape content)",
     ),
     Extension(
         name="fast / slow (Mori–Zwanzig timescale split)",

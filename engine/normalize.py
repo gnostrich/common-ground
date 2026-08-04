@@ -301,12 +301,26 @@ def _classify_tabular(body: str) -> ClaimForm:
     return _classify_prose(body)
 
 
+# The conversation chart's claim body is prose — one speaker's sentence — so its normalizer
+# and classifier reuse the prose ones. What makes conversation a distinct chart is its own
+# tag (`cv`, a fresh address space, additive per D2) and its own segmenter (speaker turns,
+# in engine/extract.py), not a different normal form for a claim. Reusing `_nu_english`
+# keeps conversation idempotent for free — null cell (i) fuzzes it like every other chart.
+def _nu_conversation(core: str) -> str:
+    return _nu_english(core)
+
+
+def _classify_conversation(body: str) -> ClaimForm:
+    return _classify_prose(body)
+
+
 # The plug-in seam, wired once. `nu` and `classify` dispatch through these by the chart's
 # declared behavior id; adding a chart adds a manifest row and (if the behavior is new) an
 # entry here, and touches no dispatch logic.
-_NORMALIZERS.update({"prose": _nu_english, "lean": _nu_lean, "tabular": _nu_tabular})
+_NORMALIZERS.update({"prose": _nu_english, "lean": _nu_lean, "tabular": _nu_tabular,
+                     "conversation": _nu_conversation})
 _CLASSIFIERS.update({"prose": _classify_prose, "lean": _classify_lean,
-                     "tabular": _classify_tabular})
+                     "tabular": _classify_tabular, "conversation": _classify_conversation})
 
 
 def _has_explicit_binder(body: str) -> bool:
