@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>common-ground — one current</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#666;--line:#e3e3e3;--acc:#2a6;--card:#fafafa;--me:#2a6;--lm:#4a7bd0;--inst:#c98a2a}
+@media (prefers-color-scheme:dark){:root{--bg:#14161a;--fg:#e8e8e8;--mut:#9aa;--line:#2a2f36;--acc:#5db98b;--card:#1b1e24;--me:#5db98b;--lm:#7ea6ef;--inst:#d6a447}}
+:root[data-theme=dark]{--bg:#14161a;--fg:#e8e8e8;--mut:#9aa;--line:#2a2f36;--acc:#5db98b;--card:#1b1e24}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:1.2rem}
+h1{font-size:1.3rem;margin:.2rem 0}h2{font-size:1rem;color:var(--acc);margin:1.4rem 0 .5rem;border-bottom:1px solid var(--line);padding-bottom:.2rem}
+.banner{position:sticky;top:0;background:var(--acc);color:#fff;padding:.5rem .9rem;border-radius:6px;font-weight:600;font-size:13.5px;z-index:5;margin-bottom:1rem}
+textarea{width:100%;min-height:76px;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:.6rem;font:13.5px ui-monospace,Menlo,monospace}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.5rem 0}
+select,input,button{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:.4rem .6rem;font-size:13.5px}
+button{cursor:pointer;font-weight:600}button.go{background:var(--acc);color:#fff;border-color:var(--acc)}
+label{font-size:12.5px;color:var(--mut)}
+.prop{border-left:3px solid var(--line);padding:.25rem .6rem;margin:.25rem 0;font-size:13px;background:var(--card);border-radius:0 4px 4px 0}
+.prop.me{border-left-color:var(--me)}.prop.lm{border-left-color:var(--lm)}.prop.inst{border-left-color:var(--inst)}
+.tag{font-weight:700;font-size:11px;padding:0 .35rem;border-radius:3px;color:#fff}
+.tag.me{background:var(--me)}.tag.lm{background:var(--lm)}.tag.inst{background:var(--inst)}
+.tier{font-size:10.5px;color:var(--mut);border:1px solid var(--line);border-radius:3px;padding:0 .3rem;margin-left:.3rem}
+.b{font-weight:700}.T{color:var(--acc)}.F{color:#d5566b}.B{color:var(--inst)}.N{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:12.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-space:nowrap}th{background:var(--card)}
+.nu{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--mut)}
+.floor{font-size:1.5rem;font-weight:700}.promoted{color:var(--acc)}.blocked{color:var(--mut)}
+.muted{color:var(--mut);font-size:12.5px}.err{color:#d5566b}
+.grid{display:flex;gap:1.2rem;flex-wrap:wrap}.grid>div{flex:1;min-width:280px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner">One inlet. All proposers equal. Warrant conferred only at the gate.</div>
+  <h1>common-ground — one current</h1>
+  <p class="muted">I propose by typing. The LM (Opus) proposes in parallel through the same
+  inlet. Both settle in the same current. K deposits what survives — only through Hankel ∧
+  conservative. Nothing writes past the inlet; nothing reaches the corpus except through K.</p>
+
+  <textarea id="text" placeholder="Type a claim, a Lean statement, a markdown table, or a Speaker: transcript…"></textarea>
+  <div class="row">
+    <label>chart <select id="chart">
+      <option>english</option><option>lean</option><option>tabular</option><option>conversation</option>
+    </select></label>
+    <label>temperature <input id="temp" type="range" min="0" max="1" step="0.1" value="0.3"></label>
+    <span id="tempv" class="muted">0.3</span>
+    <label>instance <input id="inst" placeholder="(blank = me/LM; else id, e.g. B)" size="10"></label>
+    <label>key <input id="key" type="password" placeholder="ANTHROPIC_API_KEY (optional)" size="18"></label>
+    <button class="go" onclick="propose()">propose &rarr; inlet</button>
+    <button onclick="reset_()">reset current</button>
+  </div>
+  <div id="lmstate" class="muted"></div>
+  <div id="err" class="err"></div>
+
+  <h2>Proposals entering — all sources equal, one tier</h2>
+  <div id="proposals" class="muted">nothing proposed yet.</div>
+
+  <div class="grid">
+    <div>
+      <h2>The current settling</h2>
+      <div id="settle"></div>
+    </div>
+    <div>
+      <h2>The floor — what won't reconcile</h2>
+      <div id="floor"></div>
+      <h2>The gate — what K deposited</h2>
+      <div id="gate"></div>
+    </div>
+  </div>
+
+  <h2>Ask the current (grounded)</h2>
+  <div class="row">
+    <input id="q" placeholder="ask a question, grounded in the settled state" style="flex:1">
+    <button onclick="ask()">ask</button>
+  </div>
+  <div id="answer"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+$('temp').oninput = e => $('tempv').textContent = e.target.value;
+const tagcls = s => s.startsWith('instance') ? 'inst' : (s === 'lm' ? 'lm' : (s === 'me' ? 'me' : 'inst'));
+
+async function post(path, body){
+  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  return r.json();
+}
+function esc(s){return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+async function propose(){
+  $('err').textContent='';
+  const body = {text:$('text').value, chart:$('chart').value, temperature:parseFloat($('temp').value),
+                key:$('key').value||undefined, instance_id:$('inst').value||undefined};
+  const st = await post('/propose', body);
+  if(st.error){ $('err').textContent = st.error; return; }
+  render(st);
+  $('text').value='';
+}
+async function reset_(){ await post('/reset',{}); render(null); }
+
+function render(st){
+  if(!st){ $('proposals').innerHTML='nothing proposed yet.'; $('settle').innerHTML=''; $('floor').innerHTML=''; $('gate').innerHTML=''; $('lmstate').textContent=''; return; }
+  $('lmstate').innerHTML = st.lm_available
+     ? 'LM source: <b>on</b> (Opus proposing in parallel)'
+     : 'LM source: <b>off</b> (no key — deterministic "me" source only; the LM would enter the same inlet)';
+
+  // proposals, tagged by source, visibly equal (same tier badge)
+  const by = st.proposals_by_source || {};
+  let head = Object.keys(by).map(s=>`<span class="tag ${tagcls(s)}">${esc(s)}</span> ${by[s]}`).join(' &nbsp; ');
+  $('proposals').innerHTML = `<div class="muted">${head}</div>` + st.proposals.map(p=>
+    `<div class="prop ${tagcls(p.source)}"><span class="tag ${tagcls(p.source)}">${esc(p.source)}</span>
+     <span class="tier">${esc(p.tier)}</span> <b class="b ${p.value}">${p.value}</b>
+     <span class="muted">[${esc(p.chart)}/${esc(p.type)}]</span> ${esc(p.surface)}</div>`).join('');
+
+  const eng = st.engine;
+  // settlement: contested blocks + correspondences
+  let s = `<div class="muted">slots ${JSON.stringify(eng.by_chart)} · blocks ${eng.ledger_summary.blocks} · contested ${eng.contested.length}</div>`;
+  if(eng.contested.length){
+    s += eng.contested.map(c=>`<div class="prop"><b>contest</b> ${esc(c.block)}<br>` +
+      c.variants.map(v=>`<span class="b ${v.value}">${v.value}</span> <span class="nu">[${esc(v.chart)}] ${esc(v.nu)}</span>`).join('<br>') + '</div>').join('');
+  } else { s += '<div class="muted">no contest yet — everything agrees.</div>'; }
+  if(eng.correspondences.length){
+    s += '<h2 style="border:none">Cross-chart correspondences</h2>' + eng.correspondences.map(c=>
+      `<div class="prop"><b>${esc(c.charts.join('+'))}</b> <span class="nu">${esc(c.nus.join(' | '))}</span></div>`).join('');
+  }
+  if(eng.verdicts && eng.verdicts.length){
+    s += '<h2 style="border:none">Conversation ledger (fast-tape content)</h2>' + eng.verdicts.map(v=>
+      `<div class="prop"><b>${esc(v.verdict)}</b> ${esc(v.proposer)}&rarr;${esc(v.decided_by||'-')} <span class="muted">${esc(v.proposal)}</span></div>`).join('');
+  }
+  $('settle').innerHTML = s;
+
+  // floor
+  $('floor').innerHTML = eng.arms.map(a=>
+    `<div><span class="floor">${a.mean_floor.toExponential(2)}</span> <span class="muted">cold floor @ beta=${a.beta} · q95 ${a.q95.toExponential(2)} · 2ndFDT ${a.second_fdt_floor.toExponential(2)} · certs ${a.certificates.join(',')||'-'}</span></div>`).join('')
+    + `<p class="muted">${esc(eng.status.P3)}</p>`;
+
+  // gate
+  const proms = st.promotions||[];
+  const yes = proms.filter(p=>p.promoted);
+  $('gate').innerHTML = `<div class="muted">K considered ${proms.length}; promoted ${yes.length}; corpus ${Object.keys(st.corpus).length}.</div>` +
+    proms.map(p=>`<div class="prop"><span class="${p.promoted?'promoted':'blocked'}">${p.promoted?'PROMOTED':'held'}</span>
+      <b class="b ${p.value}">${p.value}</b> <span class="muted">${esc(p.reason)} · top ${p.hankel_top.toExponential(2)} vs thr ${p.threshold.toExponential(2)}</span></div>`).join('');
+}
+
+async function ask(){
+  const r = await post('/ask', {question:$('q').value, key:$('key').value||undefined});
+  $('answer').innerHTML = `<div class="prop"><b>answer</b> ${esc(r.answer)}</div>`
+    + `<div class="prop"><b>grounded on (engine facts)</b><pre class="nu">${esc(r.grounded_on)}</pre></div>`;
+}
+</script>
+</body>
+</html>

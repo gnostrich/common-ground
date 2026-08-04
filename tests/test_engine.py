@@ -213,12 +213,47 @@ class LinAlg(unittest.TestCase):
 
 
 class MintTape(unittest.TestCase):
-    def test_tape_is_logged_only_and_refuses_to_be_acted_on(self):
-        reading = read_tape([float(i) for i in range(200)], second_fdt_floor=0.1)
-        self.assertFalse(reading.mint_enabled)
+    def test_mint_is_live_but_refuses_when_disabled(self):
+        # K is live (mint_enabled=true), so act_on_mint reports the gate rather than raising.
+        reading = read_tape([0.9 ** i for i in range(200)], second_fdt_floor=0.0)
+        self.assertTrue(reading.mint_enabled)
+        self.assertIsInstance(act_on_mint(reading), bool)
+        # With mint explicitly disabled the quarantine is intact — it refuses.
         with self.assertRaises(Exception) as ctx:
-            act_on_mint(reading)
+            act_on_mint(reading, enabled=False)
         self.assertIn("mint is OFF", str(ctx.exception))
+
+    def test_K_promotes_a_real_mode_but_planted_noise_never_promotes(self):
+        from engine.mint_tape import MintController
+
+        # A clean single-mode decay clears the Hankel gate; a flat/noise residual does not.
+        real = read_tape([0.9 ** i for i in range(200)], second_fdt_floor=1e-6)
+        noise = read_tape([0.001] * 200, second_fdt_floor=0.5)  # top SV << 3*0.5 threshold
+        self.assertTrue(real.mint_flag)
+        self.assertFalse(noise.mint_flag, "noise below the floor must not flag")
+
+        k = MintController(enabled=True)
+        promoted = k.consider("slot-real", "T", real, source="test")
+        self.assertTrue(promoted.promoted, promoted.reason)
+        blocked = k.consider("slot-noise", "T", noise, source="test")
+        self.assertFalse(blocked.promoted, "planted noise must never promote")
+        self.assertEqual(set(k.corpus), {"slot-real"})
+
+    def test_K_is_conservative_and_reversible(self):
+        from engine.mint_tape import MintController
+
+        real = read_tape([0.9 ** i for i in range(200)], second_fdt_floor=1e-6)
+        k = MintController(enabled=True)
+        first = k.consider("s", "T", real)
+        self.assertTrue(first.promoted)
+        # A contradicting value is refused (conservative-extension), corpus unchanged.
+        clash = k.consider("s", "F", real)
+        self.assertFalse(clash.promoted)
+        self.assertFalse(clash.conservative)
+        self.assertEqual(k.corpus["s"], "T")
+        # Reversible.
+        self.assertTrue(k.revert(first))
+        self.assertNotIn("s", k.corpus)
 
     def test_geometric_decay_is_low_rank(self):
         stream = [0.9 ** i for i in range(200)]

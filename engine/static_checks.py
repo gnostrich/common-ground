@@ -290,13 +290,13 @@ GATE6_SITES: tuple[dict[str, object], ...] = (
                 "never acted on, so this decides nothing regardless.",
     },
     {
-        "site": "engine/surface.py:build_report", "role": "diagnostic",
+        "site": "engine/surface.py:report_from_ledger", "role": "diagnostic",
         "reference": "none — reads the meter's already-computed q95 and second_fdt_floor",
         "conforming": True,
-        "note": "The usable surface (item A) is a render-only view. It reads q95 and the "
-                "second-FDT floor to DISPLAY them on the fixture report and decides nothing "
-                "against either; it builds no band. Both numbers are shown side by side so a "
-                "reader compares them rather than the surface picking one.",
+        "note": "The usable surface / window is a render-only view. It reads q95 and the "
+                "second-FDT floor to DISPLAY them and decides nothing against either; it "
+                "builds no band. Both numbers are shown side by side so a reader compares "
+                "them rather than the surface picking one.",
     },
 )
 

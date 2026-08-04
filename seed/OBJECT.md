@@ -34,8 +34,20 @@ Priors (lexicon, Q-edges) enter E as energy, never clamp.
 | **K : fast → slow** | MEMORY KERNEL = the gated mint. Promotes a fast residual into slow corpus **IFF** `Hankel(residual) > second-FDT floor ∧ conservative-extension`. Unpromoted residue ages out. (This is what stops NELL: the tape enters the corpus only through the gate.) |
 
 NOT a new base, NOT a new bundle — a second measure on D + one morphism K. That is why it
-is still THE object, not a new box. **At v0 the mint is gate-present, actuator-off**
-(`engine/mint_tape.py`: logged only, `act_on_mint` raises) — the anti-NELL posture.
+is still THE object, not a new box. **K is LIVE (operator-authorized, mint_enabled=true).**
+`MintController.consider` promotes fast→slow only through the gate above, every promotion
+logged and reversible; a planted-noise control asserts noise below the floor never promotes.
+The gate is the whole safety — the NELL hazard is fenced by Hankel ∧ conservative, not by an
+off-switch. With `mint_enabled=false` the quarantine returns (`act_on_mint` refuses), so the
+posture is one seed-flip away in either direction.
+
+**The law.** Information moves only UP the warrant gradient, and only by SETTLING, never by
+copying. Every source — me (typing), the LM (Opus), another instance (a translator in front)
+— enters through ONE inlet, `engine/inlet.py:FastTape.propose`, at proposal tier. `source_tag`
+is provenance only; it never confers warrant. No source writes past the inlet. **Warrant
+rises in exactly one place: the gate (K).** The single inlet is one move-3 proposer morphism —
+me/LM/instance are sources through it, not three morphisms (the three-moves audit asserts
+one), and its one write-path is AST-asserted in `tests/test_inlet.py`.
 
 ---
 

@@ -12,7 +12,7 @@
   "cast_t2_decay": 0.9,
   "hankel_window": 64,
   "mint_threshold_multiple": 3.0,
-  "mint_enabled": false,
+  "mint_enabled": true,
   "bvalues": [
     "N",
     "F",

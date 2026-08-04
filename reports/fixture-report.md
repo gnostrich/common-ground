@@ -1,6 +1,6 @@
 # common-ground — fixture report
 
-**HELD on D5 (STATEMENTS.md / pre-minted files) — floors below are on SYNTHETIC fixtures, not a verdict on the real corpus**
+**HELD on D5 (STATEMENTS.md / pre-minted files) — floors below are on SYNTHETIC/pasted input, not a verdict on the real corpus**
 
 ## Routing (ingestion front-end)
 
@@ -50,8 +50,8 @@
 
 | beta | loops | mean floor | q95 | 2nd-FDT | certificates |
 |---|---|---|---|---|---|
-| 1.0 | 5 | 0.00000090 | 0.00000152 | 0.00000090 | monotone |
-| 4.0 | 5 | 0.00000010 | 0.00000017 | 0.00000010 | monotone |
+| 1.0 | 5 | 0.00000090 | 0.00000156 | 0.00000090 | monotone |
+| 4.0 | 5 | 0.00000010 | 0.00000018 | 0.00000010 | monotone |
 
 translator drift (measured vs declared shadow): n/a
 
@@ -68,8 +68,8 @@ translator drift (measured vs declared shadow): n/a
 
 ## Status
 
-- **phase**: P0-P2 (fixtures only)
-- **P3**: HELD on D5 (STATEMENTS.md / pre-minted files) — floors below are on SYNTHETIC fixtures, not a verdict on the real corpus
+- **phase**: P0-P2 (fixtures / pasted text only)
+- **P3**: HELD on D5 (STATEMENTS.md / pre-minted files) — floors below are on SYNTHETIC/pasted input, not a verdict on the real corpus
 - **charts**: conversation, english, lean, tabular
 - **gates**: gate6 / gate7 / faithfulness / probes / three-moves all green
-- **mint (K)**: INERT — the conversation ledger is produced, nothing is promoted
+- **mint (K)**: LIVE — promotes fast-tape residual to corpus ONLY through Hankel ∧ conservative; every promotion logged and reversible

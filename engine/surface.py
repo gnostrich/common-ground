@@ -106,6 +106,13 @@ class ArmResult:
 
 
 @dataclass(slots=True)
+class ContestedView:
+    """A contested block with the competing b-values, one per slot in it."""
+    block: str
+    variants: list[dict]        # {chart, type, value, nu}
+
+
+@dataclass(slots=True)
 class Report:
     routing: dict[str, int]
     ledger_summary: dict[str, int]
@@ -116,10 +123,33 @@ class Report:
     translator_drift: float | None
     verdicts: list[ProposalVerdict]
     status: dict[str, str]
+    contested_detail: list[ContestedView] = field(default_factory=list)
 
     def by_chart(self) -> dict[str, int]:
         c: Counter = Counter(s.chart for s in self.slots)
         return dict(sorted(c.items()))
+
+    def to_dict(self) -> dict:
+        """JSON-able — the engine result object the UI renders."""
+        return {
+            "routing": self.routing,
+            "ledger_summary": self.ledger_summary,
+            "by_chart": self.by_chart(),
+            "slots": [{"chart": s.chart, "type": s.type, "value": s.value, "nu": s.nu}
+                      for s in self.slots],
+            "correspondences": [{"charts": list(c.charts), "nus": list(c.nus), "block": c.block}
+                                for c in self.correspondences],
+            "contested": [{"block": cv.block, "variants": cv.variants}
+                          for cv in self.contested_detail],
+            "arms": [{"beta": a.beta, "loops": a.loops, "mean_floor": a.mean_floor,
+                      "q95": a.q95, "second_fdt_floor": a.second_fdt_floor,
+                      "certificates": list(a.certificates),
+                      "no_cycle_support": list(a.no_cycle_support)} for a in self.arms],
+            "translator_drift": self.translator_drift,
+            "verdicts": [{"proposal": v.proposal, "proposer": v.proposer, "verdict": v.verdict,
+                          "decided_by": v.decided_by, "cue": v.cue} for v in self.verdicts],
+            "status": self.status,
+        }
 
 
 def _modal_value(slot_id: str, deltas: Sequence[Delta]) -> str:
@@ -150,11 +180,36 @@ def _correspondences(ledger: Ledger) -> list[Correspondence]:
     return out
 
 
-def build_report() -> Report:
-    docs, routing = fixture_documents()
-    extractors = build_k_extractors(_d4(), offline=True)
-    ledger = build_ledger(docs, extractors)
+def _contested_detail(ledger: Ledger) -> list[ContestedView]:
+    """Each contested block's competing b-values, one row per slot in it."""
+    nu_of = {s.id: s.nu for s in ledger.slots}
+    type_of = {s.id: s.type for s in ledger.slots}
+    chart_of = ledger.chart_of
+    out: list[ContestedView] = []
+    for b in ledger.contested_blocks:
+        variants = [
+            {"chart": chart_of.get(sid, "?"), "type": type_of.get(sid, "?"),
+             "value": _modal_value(sid, ledger.deltas), "nu": nu_of.get(sid, sid)[:60]}
+            for sid in b.slots
+        ]
+        out.append(ContestedView(block=b.id, variants=variants))
+    return out
 
+
+def build_report_from(
+    docs: Sequence[Document],
+    extractors: Sequence,
+    routing: dict[str, int] | None = None,
+) -> Report:
+    """The report machinery over ANY docs/extractors — fixtures or pasted text."""
+    conv = "\n".join(d.text for d in docs if d.chart == "conversation")
+    return report_from_ledger(build_ledger(docs, extractors), routing=routing,
+                              conversation_text=conv)
+
+
+def report_from_ledger(ledger: Ledger, routing: dict[str, int] | None = None,
+                       conversation_text: str = "") -> Report:
+    """The report over an already-built ledger — what the window renders from the fast tape."""
     lock = seed_lock.current()
     arms: list[ArmResult] = []
     drift: float | None = None
@@ -178,28 +233,36 @@ def build_report() -> Report:
                  value=_modal_value(s.id, ledger.deltas), nu=s.nu)
         for s in ledger.slots
     ]
-    contested = [b.id for b in ledger.contested_blocks]
-    verdicts = proposal_verdict_ledger(_DIALOGUE)
+    verdicts = proposal_verdict_ledger(conversation_text) if conversation_text.strip() else []
+    if routing is None:
+        routing = dict(sorted(Counter(s.chart for s in ledger.slots).items()))
 
     status = {
-        "phase": "P0-P2 (fixtures only)",
+        "phase": "P0-P2 (fixtures / pasted text only)",
         "P3": "HELD on D5 (STATEMENTS.md / pre-minted files) — floors below are on "
-              "SYNTHETIC fixtures, not a verdict on the real corpus",
+              "SYNTHETIC/pasted input, not a verdict on the real corpus",
         "charts": ", ".join(sorted(self_charts())),
         "gates": "gate6 / gate7 / faithfulness / probes / three-moves all green",
-        "mint (K)": "INERT — the conversation ledger is produced, nothing is promoted",
+        "mint (K)": "LIVE — promotes fast-tape residual to corpus ONLY through Hankel ∧ "
+                    "conservative; every promotion logged and reversible",
     }
     return Report(
         routing=routing,
         ledger_summary=ledger.summary(),
         slots=slots,
         correspondences=_correspondences(ledger),
-        contested=contested,
+        contested=[b.id for b in ledger.contested_blocks],
         arms=arms,
         translator_drift=drift,
         verdicts=verdicts,
         status=status,
+        contested_detail=_contested_detail(ledger),
     )
+
+
+def build_report() -> Report:
+    docs, routing = fixture_documents()
+    return build_report_from(docs, build_k_extractors(_d4(), offline=True), routing=routing)
 
 
 def self_charts() -> tuple[str, ...]:

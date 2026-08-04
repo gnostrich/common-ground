@@ -97,6 +97,25 @@ def build_ledger(
     deltas = ingest(documents, extractors)
     if dedupe:
         deltas = dedupe_deltas(deltas)
+    return ledger_from_deltas(
+        deltas, clamps=clamps, prior_leaning=prior_leaning,
+        edge_filter=edge_filter, evidence_dedupe=dedupe,
+    )
+
+
+def ledger_from_deltas(
+    deltas: Sequence[Delta],
+    clamps: Sequence[Clamp] = (),
+    prior_leaning: Mapping[str, BValue] | None = None,
+    edge_filter=None,
+    evidence_dedupe: bool = True,
+) -> Ledger:
+    """Build the ledger from pre-made deltas — the shared tail of `build_ledger`.
+
+    Exposed so cross-instance coupling can join two instances' deltas and rebuild one ledger
+    over both, without re-running extraction.
+    """
+    deltas = list(deltas)
     slots = slots_from_deltas(deltas)
     fibers = build_fibers(slots)
     edges = edges_from_fibers(fibers, slots)
@@ -113,7 +132,7 @@ def build_ledger(
         fibers=fibers,
         edges=edges,
         blocks=blocks,
-        evidence=evidence_from_deltas(deltas, dedupe=dedupe),
+        evidence=evidence_from_deltas(deltas, dedupe=evidence_dedupe),
         priors=lexicon_prior([s.id for s in slots], prior_leaning),
         chart_of=chart_of,
         loops=loops,

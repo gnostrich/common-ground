@@ -58,8 +58,9 @@ class TheNamedExtensionsHaveTheRuledMove(unittest.TestCase):
     def test_memory_kernel_K_is_add_morphism(self):
         self.assertEqual(self._move_of("memory kernel"), ADD_MORPHISM)
 
-    def test_lm_proposer_is_add_morphism(self):
-        self.assertEqual(self._move_of("lm-proposer"), ADD_MORPHISM)
+    def test_the_one_proposer_inlet_is_add_morphism(self):
+        # The reframe: me/LM/instance are ONE proposer morphism (the inlet), not three.
+        self.assertEqual(self._move_of("inlet"), ADD_MORPHISM)
 
 
 class ThePlantedDefectControl(unittest.TestCase):

@@ -81,29 +81,36 @@ EXTENSIONS: tuple[Extension, ...] = (
         evidence="engine/mint_tape.py (fast tape) + the settled corpus (p_slow)",
     ),
     Extension(
-        name="K (memory kernel / gated mint)",
+        name="K (memory kernel / gated mint) — LIVE valve",
         move=ADD_MORPHISM,
-        status=GATED_INERT,
-        rationale="an arrow fast→slow. Promotes a residual IFF Hankel>second-FDT ∧ "
-                  "conservative-extension. Gate present, actuator off at v0 (anti-NELL).",
-        evidence="engine/mint_tape.py + engine/linalg.py (Hankel SVD) + "
-                 "engine/meter.py:second_fdt_surrogate_floor",
+        status=BUILT,
+        rationale="the one arrow fast→slow, now actuating (operator-authorized). Promotes a "
+                  "residual IFF Hankel>second-FDT ∧ conservative-extension — the only place "
+                  "warrant rises, the only write to the corpus. Logged and reversible; a "
+                  "planted-noise control asserts noise below the floor never promotes.",
+        evidence="engine/mint_tape.py:MintController (act_on_mint acts; mint_enabled=true) + "
+                 "engine/linalg.py (Hankel SVD) + engine/meter.py:second_fdt_surrogate_floor",
     ),
     Extension(
-        name="LM-proposer (LM-in-the-loop)",
+        name="single proposer inlet (propose)",
         move=ADD_MORPHISM,
-        status=GATED_INERT,
-        rationale="a proposer INTO D at extraction tier — an arrow, never a clamp. Off "
-                  "unless D4 spend cap + COMMON_GROUND_ENABLE_LLM are both set.",
-        evidence="engine/extract.py (AnthropicExtractor, behind D4 gates)",
+        status=BUILT,
+        rationale="THE one write-path into the fast tape at proposal tier. Me, the LM, and "
+                  "another instance (translator in front) are all SOURCES through this one "
+                  "morphism — not three morphisms. source_tag is provenance only; it never "
+                  "affects warrant. A clamp-eligible warrant is refused at the inlet.",
+        evidence="engine/inlet.py:FastTape.propose (one append, AST-asserted); "
+                 "sources: ui/lm.py:LMProposer (LM), DeterministicExtractor (me), "
+                 "engine/inlet.py:stub_translator (instance)",
     ),
     Extension(
         name="verdict-function-as-content",
         move=ADD_MORPHISM,
-        status=GATED_INERT,
-        rationale="a verdict function feeding K — an arrow into the mint gate, not a new "
-                  "base or measure. Inert while K is inert.",
-        evidence="engine/audit.py verdicts → (future) K input",
+        status=BUILT,
+        rationale="the conversation proposal→verdict ledger IS fast-tape content feeding the "
+                  "now-live K — an arrow into the gate, not a new base or measure.",
+        evidence="engine/conversation.py:proposal_verdict_ledger → engine/mint_tape "
+                 "MintController.consider",
     ),
     Extension(
         name="persons base (single → social)",
@@ -117,9 +124,13 @@ EXTENSIONS: tuple[Extension, ...] = (
         name="T_ij inter-person coupling",
         move=ADD_MORPHISM,
         status=PLANNED,
-        rationale="a translation profunctor States_i ⇸ States_j — an arrow between fibres, "
-                  "entering joint E as energy. A morphism, not a base or measure.",
-        evidence="future move-3 (seed/OBJECT.md · MULTIPLE PERSONS)",
+        rationale="a translation profunctor States_i ⇸ States_j entering joint E as energy. "
+                  "The full profunctor + joint settlement + H² residue is NOT built — that "
+                  "would be a second pipe. For now a stub translator re-stamps an instance's "
+                  "claims to proposal tier so they enter through the ONE inlet like any "
+                  "source; the real joint energy is future.",
+        evidence="stub: engine/inlet.py:stub_translator → the single inlet; "
+                 "full profunctor: future (seed/OBJECT.md · MULTIPLE PERSONS)",
     ),
 )
 
