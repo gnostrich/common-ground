@@ -28,15 +28,28 @@ from engine.types import BValue, Document
 
 API_URL = "https://api.anthropic.com/v1/messages"
 API_VERSION = "2023-06-01"
-# The operator's chosen model. Overridable if `claude-opus-4-7` is not the intended id.
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+# OpenRouter keys start with sk-or-; the operator asked for auto model-selection.
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openrouter/auto")
+# The operator's chosen Anthropic model. Overridable if `claude-opus-4-7` is not intended.
 DEFAULT_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
 
 _VALID_TYPES = ("assert", "define", "conditional", "normative")
 _VALID_B: tuple[BValue, ...] = ("T", "F", "B", "N")
 
 
+def _is_openrouter(key: str) -> bool:
+    return key.startswith("sk-or-")
+
+
 def api_key(explicit: str | None = None) -> str:
-    return (explicit or os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+    """Provider-agnostic: an explicit request key, else OpenRouter, else Anthropic env."""
+    return (explicit or os.environ.get("OPENROUTER_API_KEY")
+            or os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+
+
+def model_for(key: str) -> str:
+    return OPENROUTER_MODEL if _is_openrouter(key) else DEFAULT_MODEL
 
 
 def lm_available(explicit: str | None = None) -> bool:
@@ -47,17 +60,31 @@ Transport = Callable[[str, dict], str]
 
 
 def _http_post(key: str, body: dict) -> str:
-    """POST to the Anthropic Messages API and return the concatenated text content."""
+    """POST to OpenRouter (OpenAI-format) or Anthropic, by key prefix; return the text."""
+    if _is_openrouter(key):
+        or_body = {
+            "model": body["model"],
+            "temperature": body.get("temperature", 0.3),
+            "max_tokens": body.get("max_tokens", 1500),
+            "messages": ([{"role": "system", "content": body["system"]}] if body.get("system")
+                         else []) + body["messages"],
+        }
+        req = urllib.request.Request(
+            OPENROUTER_URL, data=json.dumps(or_body).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}",
+                     "X-Title": "common-ground window"},
+            method="POST")
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            payload = json.load(resp)
+        if payload.get("error"):
+            raise RuntimeError(f"openrouter error: {payload['error'].get('message', '?')}")
+        return payload["choices"][0]["message"]["content"]
+    # Anthropic Messages API.
     req = urllib.request.Request(
-        API_URL,
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "content-type": "application/json",
-            "x-api-key": key,
-            "anthropic-version": API_VERSION,
-        },
-        method="POST",
-    )
+        API_URL, data=json.dumps(body).encode("utf-8"),
+        headers={"content-type": "application/json", "x-api-key": key,
+                 "anthropic-version": API_VERSION},
+        method="POST")
     with urllib.request.urlopen(req, timeout=90) as resp:
         payload = json.load(resp)
     if payload.get("type") == "error":
@@ -67,11 +94,11 @@ def _http_post(key: str, body: dict) -> str:
 
 
 class LMClient:
-    """A thin Anthropic client with an injectable transport (real HTTP or a test double)."""
+    """A thin LM client (OpenRouter or Anthropic by key prefix); injectable transport."""
 
-    def __init__(self, key: str, model: str = DEFAULT_MODEL, transport: Transport | None = None):
+    def __init__(self, key: str, model: str | None = None, transport: Transport | None = None):
         self._key = key
-        self.model = model
+        self.model = model or model_for(key)
         self._transport = transport or _http_post
 
     def complete(self, system: str, user: str, temperature: float, max_tokens: int = 1500) -> str:

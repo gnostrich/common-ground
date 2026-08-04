@@ -47,7 +47,6 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
     <label>temperature <input id="temp" type="range" min="0" max="1" step="0.1" value="0.3"></label>
     <span id="tempv" class="muted">0.3</span>
     <label>instance <input id="inst" placeholder="(blank = me/LM; else id, e.g. B)" size="10"></label>
-    <label>key <input id="key" type="password" placeholder="ANTHROPIC_API_KEY (optional)" size="18"></label>
     <button class="go" onclick="propose()">propose &rarr; inlet</button>
     <button onclick="reset_()">reset current</button>
   </div>
@@ -92,7 +91,7 @@ function esc(s){return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>'
 async function propose(){
   $('err').textContent='';
   const body = {text:$('text').value, chart:$('chart').value, temperature:parseFloat($('temp').value),
-                key:$('key').value||undefined, instance_id:$('inst').value||undefined};
+                instance_id:$('inst').value||undefined};
   const st = await post('/propose', body);
   if(st.error){ $('err').textContent = st.error; return; }
   render(st);
@@ -146,7 +145,7 @@ function render(st){
 }
 
 async function ask(){
-  const r = await post('/ask', {question:$('q').value, key:$('key').value||undefined});
+  const r = await post('/ask', {question:$('q').value});
   $('answer').innerHTML = `<div class="prop"><b>answer</b> ${esc(r.answer)}</div>`
     + `<div class="prop"><b>grounded on (engine facts)</b><pre class="nu">${esc(r.grounded_on)}</pre></div>`;
 }
