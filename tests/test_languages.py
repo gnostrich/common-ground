@@ -34,13 +34,21 @@ class TheManifestDecidesRouting(unittest.TestCase):
         self.assertEqual(route("repo||a.md", "The cone is positive.").destination, "english")
 
     def test_a_held_language_is_counted_not_walked_past(self):
-        """`.py` has no chart. It must SAY so, with a reason, not vanish silently."""
-        self.assertEqual(rule_for("repo||m.py").cls, REFERENCE)
-        got = route("repo||m.py", "def f():\n    return 1\n")
+        """A language with no chart must SAY so, with a reason, not vanish silently.
+
+        `.py` carried this case until it got a chart; `.js` carries it now. The swap is the
+        point — the class is what is under test, not the extension that happened to hold it.
+        """
+        self.assertEqual(rule_for("repo||app.js").cls, REFERENCE)
+        got = route("repo||app.js", "function f() { return 1; }\n")
         self.assertEqual(got.destination, "shelf")
         self.assertIn("reference-tier", got.reason)
-        self.assertIn("python chart", got.reason)
         self.assertIsNone(got.document, "a held language must not reach an extractor")
+
+    def test_python_and_go_now_enter_their_own_charts_by_manifest_row(self):
+        """The seam, exercised: two charts added with NO edit to engine/router.py."""
+        self.assertEqual(route("repo||m.py", "def f():\n    return 1\n").destination, "python")
+        self.assertEqual(route("repo||m.go", "package p\nfunc F() {}\n").destination, "go")
 
     def test_binary_and_config_are_shelved_by_manifest(self):
         self.assertEqual(rule_for("repo||x.png").cls, SHELF)

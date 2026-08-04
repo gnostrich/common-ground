@@ -219,6 +219,115 @@ def _canonical_table(rows: list[list[str]]) -> str:
     return _ROW_SEP.join(_CELL_SEP.join(r) for r in rows)
 
 
+#: Python: a `#` comment, and the heads that decide claim-form. Same shape as the Lean
+#: constants above — data next to the behavior that reads it, not a dispatch table.
+_PY_COMMENT_RE = re.compile(r"#[^\n]*")
+_PY_DEFINE_HEADS = frozenset({"def", "class"})
+_PY_CONDITIONAL_HEADS = frozenset({"if", "elif", "while", "for", "with"})
+
+#: Go: a `//` line comment and a `/* */` block comment, and the heads. `gofmt` is the
+#: normal form Go itself defines, but shelling out to it would make addressing depend on a
+#: toolchain being installed — gate 1 says addressing is a function of the SEED. So the
+#: normalizer does what gofmt does that matters for identity (collapse whitespace, drop
+#: comments) and no more, and that limitation is declared rather than hidden.
+_GO_LINE_COMMENT_RE = re.compile(r"//[^\n]*")
+_GO_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+_GO_DEFINE_HEADS = frozenset({"func", "type", "const", "var", "package"})
+_GO_CONDITIONAL_HEADS = frozenset({"if", "for", "switch", "select", "case"})
+
+def _nu_python(core: str) -> str:
+    """Normalize Python source text. Total and idempotent; never invokes a real parser.
+
+    Same shape as `_nu_lean`: strip control characters, fold to NFKC, strip comments,
+    collapse whitespace. Deliberately no casefold — Python is case-sensitive, same
+    reasoning as Lean. No `ast.parse` here on purpose: null cell (i) fuzzes this function
+    with adversarial garbage (including bare `#`, unmatched brackets, control characters)
+    500 times per chart, and a real parser would raise on almost all of it, breaking the
+    "total" half of gate 1. The AST *is* used, but only in the segmenter
+    (`engine/extract.py:_segment_python`), which runs on whole documents that are real
+    files on disk, never on an arbitrary fuzzed span.
+
+    The comment stripper is a plain regex, not string-literal-aware, matching `_nu_lean`'s
+    `--` stripper exactly in spirit: a `#` inside a string literal is stripped too. That is
+    a known, declared simplification (minimal-faithful-by-design), not a defect — the same
+    one the Lean normalizer already carries for `--`.
+    """
+    s = _CONTROL_RE.sub("", core)
+    s = unicodedata.normalize("NFKC", s)
+    s = _PY_COMMENT_RE.sub("", s)
+    s = _WS_RE.sub(" ", s).strip()
+    return s
+
+
+def _python_head(s: str) -> str:
+    """First non-decorator token; `async def` reads as `def`. Mirrors `_lean_head`."""
+    tokens = s.split()
+    i = 0
+    while i < len(tokens) and tokens[i].startswith("@"):
+        i += 1
+    if i < len(tokens) and tokens[i] == "async" and i + 1 < len(tokens):
+        return tokens[i + 1]
+    return tokens[i] if i < len(tokens) else ""
+
+def _classify_python(body: str) -> ClaimForm:
+    """A `def`/`class` head is a stipulation (`define`); a guard head is `conditional`;
+    a body whose top-level token stream contains `assert` is asserting an invariant
+    (`assert`); anything else defaults to `assert`, same reasoning as `_classify_lean`'s
+    fallback — a Python fragment with no recognised head is still a claim about the code.
+    """
+    head = _python_head(body)
+    if head in _PY_DEFINE_HEADS:
+        return "define"
+    if head in _PY_CONDITIONAL_HEADS:
+        return "conditional"
+    return "assert"
+
+
+def _nu_go(core: str) -> str:
+    """Normalize Go source text. Total and idempotent; never invokes a real parser.
+
+    Go has a canonical form — `gofmt` — and this deliberately does NOT shell out to it.
+    Gate 1 says addressing is a function of the seed and never of engine state, and a
+    normalizer that depends on a binary being installed makes every address in this chart
+    depend on the machine it was computed on. Two runs on two machines would disagree about
+    identity, which is precisely the failure the gate exists to prevent.
+
+    So this does the part of gofmt that bears on identity — drop comments, collapse
+    whitespace — and stops. What it does NOT do is gofmt's reordering and alignment, so two
+    files that gofmt would make identical may still address differently here. That is a
+    declared limitation of the minimal-faithful form, in the same family as `_nu_lean`
+    keeping case and `_nu_python` stripping a `#` inside a string literal.
+
+    No case folding: Go's exported/unexported distinction IS capitalization, so folding
+    would merge `Foo` and `foo`, which are different declarations with different visibility.
+    """
+    s = _CONTROL_RE.sub("", core)
+    s = unicodedata.normalize("NFKC", s)
+    s = _GO_BLOCK_COMMENT_RE.sub(" ", s)
+    s = _GO_LINE_COMMENT_RE.sub("", s)
+    s = _WS_RE.sub(" ", s).strip()
+    return s
+
+
+def _go_head(s: str) -> str:
+    """First token, skipping a leading `package`-less doc. Mirrors `_lean_head`."""
+    tokens = s.split()
+    return tokens[0] if tokens else ""
+
+
+def _classify_go(body: str) -> ClaimForm:
+    """A `func`/`type`/`const`/`var` head is a stipulation (`define`); a guard head is
+    `conditional`; anything else is `assert`, the same fallback `_classify_lean` and
+    `_classify_python` make — a fragment with no recognised head is still a claim.
+    """
+    head = _go_head(body)
+    if head in _GO_DEFINE_HEADS:
+        return "define"
+    if head in _GO_CONDITIONAL_HEADS:
+        return "conditional"
+    return "assert"
+
+
 def _nu_tabular(core: str) -> str:
     """Normalize a well-formed markdown table to a canonical, idempotent string.
 
@@ -345,10 +454,12 @@ def _classify_correspondence(body: str) -> ClaimForm:
 # entry here, and touches no dispatch logic.
 _NORMALIZERS.update({"prose": _nu_english, "lean": _nu_lean, "tabular": _nu_tabular,
                      "conversation": _nu_conversation,
-                     "correspondence": _nu_correspondence})
+                     "correspondence": _nu_correspondence,
+                     "python": _nu_python, "go": _nu_go})
 _CLASSIFIERS.update({"prose": _classify_prose, "lean": _classify_lean,
                      "tabular": _classify_tabular, "conversation": _classify_conversation,
-                     "correspondence": _classify_correspondence})
+                     "correspondence": _classify_correspondence,
+                     "python": _classify_python, "go": _classify_go})
 
 
 def _has_explicit_binder(body: str) -> bool:

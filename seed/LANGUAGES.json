@@ -8,29 +8,95 @@
     "shelf": "skipped; hashed and counted only."
   },
   "rules": [
-    {"ext": ".lean", "class": "chart", "chart": "lean"},
-
-    {"ext": ".md", "class": "classify"},
-    {"ext": ".markdown", "class": "classify"},
-    {"ext": ".rst", "class": "classify"},
-    {"ext": ".txt", "class": "classify"},
-
-    {"ext": ".py", "class": "reference", "why": "no python chart exists. Standing one up needs a CHARTS.json row (tag `py`, behavior `python`) AND a normalizer, classifier and segmenter, which are dict literals in engine/normalize.py and engine/extract.py - there is no registration API. 1,405 files in the operator's repositories are held here."},
-    {"ext": ".go", "class": "reference", "why": "no go chart exists"},
-    {"ext": ".js", "class": "reference", "why": "no javascript chart exists"},
-    {"ext": ".ts", "class": "reference", "why": "no typescript chart exists"},
-    {"ext": ".rs", "class": "reference", "why": "no rust chart exists"},
-    {"ext": ".sh", "class": "reference", "why": "no shell chart exists"},
-
-    {"ext": ".json", "class": "shelf"},
-    {"ext": ".toml", "class": "shelf"},
-    {"ext": ".yaml", "class": "shelf"},
-    {"ext": ".yml", "class": "shelf"},
-    {"ext": ".png", "class": "shelf"},
-    {"ext": ".jpg", "class": "shelf"},
-    {"ext": ".gz", "class": "shelf"},
-    {"ext": ".csv", "class": "shelf"},
-
-    {"ext": "*", "class": "classify", "why": "the DEFAULT, declared here rather than hidden in code. An artifact with no extension - a chat message id like `claude||<uuid>:3` - is classified by content, which is exactly what the router did before this manifest existed. Silence in the manifest therefore changes nothing."}
+    {
+      "ext": ".lean",
+      "class": "chart",
+      "chart": "lean"
+    },
+    {
+      "ext": ".md",
+      "class": "classify"
+    },
+    {
+      "ext": ".markdown",
+      "class": "classify"
+    },
+    {
+      "ext": ".rst",
+      "class": "classify"
+    },
+    {
+      "ext": ".txt",
+      "class": "classify"
+    },
+    {
+      "ext": ".py",
+      "class": "chart",
+      "why": "the python chart: CHARTS.json row (tag `py`, behavior `python`) plus _nu_python, _classify_python and _segment_python. THIS ROW is the third thing the old contract text never mentioned.",
+      "chart": "python"
+    },
+    {
+      "ext": ".go",
+      "class": "chart",
+      "why": "the go chart: CHARTS.json row (tag `go`, behavior `go`) plus _nu_go, _classify_go and _segment_go.",
+      "chart": "go"
+    },
+    {
+      "ext": ".js",
+      "class": "reference",
+      "why": "no javascript chart exists"
+    },
+    {
+      "ext": ".ts",
+      "class": "reference",
+      "why": "no typescript chart exists"
+    },
+    {
+      "ext": ".rs",
+      "class": "reference",
+      "why": "no rust chart exists"
+    },
+    {
+      "ext": ".sh",
+      "class": "reference",
+      "why": "no shell chart exists"
+    },
+    {
+      "ext": ".json",
+      "class": "shelf"
+    },
+    {
+      "ext": ".toml",
+      "class": "shelf"
+    },
+    {
+      "ext": ".yaml",
+      "class": "shelf"
+    },
+    {
+      "ext": ".yml",
+      "class": "shelf"
+    },
+    {
+      "ext": ".png",
+      "class": "shelf"
+    },
+    {
+      "ext": ".jpg",
+      "class": "shelf"
+    },
+    {
+      "ext": ".gz",
+      "class": "shelf"
+    },
+    {
+      "ext": ".csv",
+      "class": "shelf"
+    },
+    {
+      "ext": "*",
+      "class": "classify",
+      "why": "the DEFAULT, declared here rather than hidden in code. An artifact with no extension - a chat message id like `claude||<uuid>:3` - is classified by content, which is exactly what the router did before this manifest existed. Silence in the manifest therefore changes nothing."
+    }
   ]
 }

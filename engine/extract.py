@@ -17,6 +17,8 @@ Two implementations:
 
 from __future__ import annotations
 
+import ast
+
 import json
 import os
 import re
@@ -96,8 +98,87 @@ def _segment_conversation(text: str) -> list[tuple[str, str]]:
     return segment_conversation(text)
 
 
+
+#: A Go top-level declaration head. `func (r *T) M(...)` is a method; the receiver type is
+#: part of the name, because `T.M` and `U.M` are different declarations.
+_GO_DECL_RE = re.compile(
+    r"^(?:func\s+(?:\(\s*\w+\s+\*?(?P<recv>\w+)\s*\)\s*)?(?P<fn>\w+)"
+    r"|type\s+(?P<ty>\w+)"
+    r"|(?:const|var)\s+(?P<cv>\w+))",
+    re.MULTILINE)
+
+
+def _segment_go(text: str) -> list[tuple[str, str]]:
+    """One candidate span per top-level declaration, head to the next head.
+
+    Go's own parser is not available here — the engine is stdlib-only and shelling out to
+    `go` would make segmentation depend on a toolchain being installed, the same objection
+    `_nu_go` records. So this segments the way `_segment_lean` does: on declaration heads at
+    column zero, which Go's formatting guarantees for top-level declarations because gofmt
+    puts them there. Nested closures are not spanned separately, the same simplification
+    `_segment_lean` makes for a Lean declaration's internal `have`s.
+
+    A method's locator carries its receiver (`func:T.M`), because `T.M` and `U.M` are
+    different declarations and a locator that conflated them would attribute one's evidence
+    to the other.
+    """
+    heads = [m for m in _GO_DECL_RE.finditer(text) if m.start() == 0 or text[m.start() - 1] == "\n"]
+    out: list[tuple[str, str]] = []
+    for i, m in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+        span = text[m.start():end].strip()
+        if not span:
+            continue
+        if m.group("fn"):
+            name = f"{m.group('recv')}.{m.group('fn')}" if m.group("recv") else m.group("fn")
+            kind = "func"
+        elif m.group("ty"):
+            name, kind = m.group("ty"), "type"
+        else:
+            name, kind = m.group("cv"), "const"
+        out.append((span, f"{kind}:{name}"))
+    return out
+
+
 #: Per-chart span segmenters, keyed by the manifest's behavior id — the third leg of the
 #: chart plug-in seam (normalizer and classifier are the other two, in engine/normalize.py).
+def _segment_python(text: str) -> list[tuple[str, str]]:
+    """One candidate span per top-level `def`/`class` and per method inside a class.
+
+    Uses the real `ast` module — unlike `_nu_python`, this runs on a whole document that
+    is a real file on disk (or, in a test, a deliberately-valid fixture), so a parse
+    failure is a genuine malformed-source signal rather than adversarial fuzz. `ast.parse`
+    is wrapped rather than left to raise: a corpus file with a syntax error yields zero
+    candidate spans instead of crashing the extractor, which is the totality gate 1's
+    idempotence check assumes of every stage downstream of `nu`.
+
+    Granularity mirrors `_segment_lean`'s flat per-declaration spans: module-level
+    functions/classes and one level of method inside a class, no deeper nesting (a nested
+    closure is not spanned separately, same simplification `_segment_lean` makes for a
+    Lean declaration's internal `have`s).
+    """
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError, RecursionError):
+        return []
+
+    out: list[tuple[str, str]] = []
+
+    def walk(node: ast.AST, prefix: str) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                qual = f"{prefix}.{child.name}" if prefix else child.name
+                span = ast.get_source_segment(text, child)
+                if span:
+                    kind = "class" if isinstance(child, ast.ClassDef) else "def"
+                    out.append((span, f"{kind}:{qual}"))
+                if isinstance(child, ast.ClassDef):
+                    walk(child, qual)   # one level: methods, not nested closures
+
+    walk(tree, "")
+    return out
+
+
 def _segment_correspondence(text: str) -> list[tuple[str, str]]:
     """One candidate span per correspondence claim — one arrow per line, whole and unsplit.
 
@@ -117,6 +198,8 @@ _SEGMENTERS: dict[str, "Callable[[str], list[tuple[str, str]]]"] = {
     "tabular": _segment_tabular,
     "conversation": _segment_conversation,
     "correspondence": _segment_correspondence,
+    "python": _segment_python,
+    "go": _segment_go,
 }
 
 _TABLE_SEP_ROW_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")
