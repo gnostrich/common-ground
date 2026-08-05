@@ -212,6 +212,16 @@ def _adjacency(edges: Sequence[QEdge]) -> dict[str, set[str]]:
     return adj
 
 
+#: Largest fiber `order_cycle` will brute-force. 8 members is 5,040 orderings, which is
+#: instant; 12 is 40 million, which is not. Above this the fiber is reported unmeasured
+#: rather than searched, because the search is a Hamiltonian cycle and does not get cheap.
+CYCLE_BRUTE_MAX = 8
+
+#: How many fibers the last `loops_from_fibers` call declined to search. Module-level so the
+#: read view can state it without threading a return value through five call sites.
+LOOPS_UNSEARCHED = 0
+
+
 def _alternations(order: Sequence[str], chart_of: Mapping[str, Chart]) -> int:
     """How many consecutive pairs of the cycle cross charts."""
     n = len(order)
@@ -240,11 +250,23 @@ def order_cycle(
     twice and the paraphrase once, which is the shape PREREG's matrix names. Ties break
     lexicographically so the choice is deterministic and replayable from the seed.
 
-    Brute force over member orderings is exact and cheap for the small declared groups this
-    build produces; a large declared correspondence group would need a non-brute-force cycle
-    finder (recorded limitation on `Fiber`).
+    Brute force over member orderings is exact and cheap for SMALL declared groups. It is
+    `(n-1)!` orderings, and this docstring recorded that as a limitation for large groups
+    while the code had no bound at all — so the limitation went live rather than being hit as
+    a stated one. At 16,564 declared arrows a fifteen-member fiber is 87 billion orderings,
+    and the read view stopped returning: the window would not answer, its first page load
+    never completed, and it read as a broken deploy rather than as a search that could not
+    finish. `CYCLE_BRUTE_MAX` bounds it.
+
+    Above the bound this returns `None` and the fiber is UNMEASURED, which is the honest
+    outcome and not the same as "no loop here". Finding a cycle through EVERY member is a
+    Hamiltonian-cycle search and is NP-hard, so no bound makes it cheap; changing what counts
+    as a loop would change the measurement, which is an operator's ruling and not a
+    performance fix. The count is reported instead — see `loops_from_fibers`.
     """
     if len(members) < 3:
+        return None
+    if len(members) > CYCLE_BRUTE_MAX:
         return None
 
     first, rest = members[0], list(members[1:])
@@ -302,14 +324,22 @@ def loops_from_fibers(
     inside one — the two loop families PREREG names, unchanged, and now correctly
     instantiated.
     """
+    global LOOPS_UNSEARCHED
+
     allowed = set(restrict_to) if restrict_to is not None else None
     adj = _adjacency(edges)
     loops: list[LoopSpec] = []
     seen: set[frozenset[str]] = set()
+    unsearched = 0
 
     for fiber in fibers:
         members = [s for s in sorted(fiber.slots) if allowed is None or s in allowed]
         if len(members) < 3:
+            continue
+        if len(members) > CYCLE_BRUTE_MAX:
+            # NOT "no loop here". The search was declined, and a declined search reported as
+            # an absence is the failure mode this whole codebase is built against.
+            unsearched += 1
             continue
         key = frozenset(members)
         if key in seen:
@@ -322,6 +352,7 @@ def loops_from_fibers(
         loops.append(
             LoopSpec(id=join_hash("loop", *order)[:16], kind=kind, slots=order)
         )
+    LOOPS_UNSEARCHED = unsearched
     return loops
 
 
