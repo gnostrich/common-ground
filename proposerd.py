@@ -4,6 +4,7 @@
     python3 proposerd.py build-pool          # assemble the GLOBAL pool once (slow, one-shot)
     python3 proposerd.py build-snapshot      # the window's read view over the whole corpus
     python3 proposerd.py run                 # the daemon: runs until stopped or a gate reddens
+    python3 proposerd.py sources             # what corpus is plugged in (or that none is)
     python3 proposerd.py status              # totals, gates, last records — safe any time
     python3 proposerd.py checkpoint          # write the REDACTED ledger, safe to commit
     python3 proposerd.py rate 20             # calls/hour, takes effect next batch
@@ -12,17 +13,15 @@
     python3 proposerd.py contradictions      # every implied-vs-answered conflict, in full
     python3 proposerd.py measure-cross-repo  # the named gap, as a number
 
-Corpus locations come from the environment and are never baked in, because the corpus is not
-in this repository and must not become part of it:
+Where your corpus lives is declared in `corpus.local.json` — copy `seed/CORPUS.example.json`
+and point it at your own material. That file is gitignored, so this repository can be forked,
+shared or published while every corpus stays wherever its owner keeps it. NOTHING in the
+engine names a path. `proposerd.py sources` prints what resolves, including what is missing,
+so a fork nobody has pointed anywhere says so rather than ingesting nothing quietly.
 
-    CG_LEAN_CORPUS     directory of the Lean corpus
-    CG_CLAUDE_EXPORT   conversations.json from the Claude export
-    CG_EXCLUSIONS      newline/space separated thread-id prefixes to EXCLUDE
-    CG_REPO_ROOT       directory holding the GitHub checkouts (default /workspace)
-
-If `CG_CLAUDE_EXPORT` is set but `CG_EXCLUSIONS` is not, the conversation corpus is REFUSED.
-The exclusion list is the privacy decision; running without it would mean ingesting material
-the operator has not cleared, and no amount of convenience justifies guessing at that.
+A `claude_export` source must declare `exclude`, even if empty. An archive contains material
+its owner never meant to hand to an engine, and the failure mode of forgetting is that it has
+already been read.
 
 The LM path is OpenRouter only (`ui/lm.py` has no other transport). Every claim this process
 enters is EXTRACTION tier; it promotes nothing and confirms nothing.
@@ -41,6 +40,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from engine.constants import decisions
+from engine.corpus_sources import status as corpus_status
 from engine.continuous import (
     CONTROL_PATH,
     JOURNAL_PATH,
@@ -72,95 +72,102 @@ def _message_text(message: dict) -> str:
                      if isinstance(b, dict) and b.get("type") == "text")
 
 
-def conversation_docs() -> list:
-    export = os.environ.get("CG_CLAUDE_EXPORT", "").strip()
-    if not export:
-        return []
-    excl_raw = os.environ.get("CG_EXCLUSIONS", "").strip()
-    if not excl_raw:
-        raise SystemExit(
-            "CG_CLAUDE_EXPORT is set but CG_EXCLUSIONS is not. The exclusion list is the "
-            "privacy decision; this refuses to ingest conversations without it.")
-    excluded = {p[:8] for p in excl_raw.split() if p.strip()}
-    report = RoutingReport()
-    for convo in json.load(open(export, encoding="utf-8")):
-        uid = str(convo.get("uuid") or convo.get("id") or "")
-        if uid[:8] in excluded:
-            continue
-        for i, msg in enumerate(convo.get("chat_messages") or convo.get("messages") or []):
-            if str(msg.get("sender") or msg.get("role") or "") not in ("human", "assistant"):
-                continue
-            body = _message_text(msg)
-            if body.strip():
-                report.routed.append(route(f"claude||{uid}:{i}", body, "claude_export"))
-    return report.to_charts()
-
-
-def lean_corpus_docs() -> list:
-    path = os.environ.get("CG_LEAN_CORPUS", "").strip()
-    if not path or not Path(path).is_dir():
-        return []
-    from adapters.lean_corpus import load_lean_corpus
-
-    docs, _ = load_lean_corpus(path, lean_toolchain=None)
-    return docs
-
-
-def repo_docs() -> tuple[list, list[str]]:
+def _docs_from_repos(src) -> tuple[list, dict]:
+    """Every file under a checkout tree, classified by seed/LANGUAGES.json."""
     from collections import Counter
 
-    root = Path(os.environ.get("CG_REPO_ROOT", "/workspace"))
-    docs, names = [], []
-    held: Counter = Counter()
-    if not root.is_dir():
-        return docs, names
+    root = Path(src.path)
+    docs, held = [], Counter()
     for repo_dir in sorted(p for p in root.iterdir() if p.is_dir()):
         repo = repo_dir.name
         if repo.startswith(".") or repo == "common-ground":
             continue
-        found = 0
         for dirpath, dirnames, filenames in os.walk(repo_dir):
-            dirnames[:] = [d for d in dirnames if d not in REPO_SKIP]
+            dirnames[:] = [d for d in dirnames if d not in src.skip_dirs]
             for filename in filenames:
                 full = Path(dirpath) / filename
                 rel = str(full.relative_to(repo_dir)).replace(os.sep, "/")
-                # NO extension filter here. seed/LANGUAGES.json decides what a file is, and
-                # `route` reads it — a hardcoded set at the call site is exactly the shape
-                # that made 1,405 .py files invisible while nothing reported a zero. A file
-                # the manifest shelves costs one read and is counted; that is the price of
-                # the count being true.
-                if rule_for(f"{repo}||{rel}").cls in (SHELF_CLASS, REFERENCE):
-                    held[rule_for(f"{repo}||{rel}").cls] += 1
-                    continue
-                if full.stat().st_size > 3_000_000:
+                cls = rule_for(f"{repo}||{rel}").cls
+                if cls in (REFERENCE, SHELF_CLASS):
+                    held[cls] += 1
                     continue
                 try:
+                    if full.stat().st_size > src.max_bytes:
+                        continue
                     text = full.read_text(encoding="utf-8", errors="replace")
                 except OSError:
                     continue
-                if not text.strip() or len(text) > 3_000_000:
+                if not text.strip():
                     continue
                 routed = route(f"{repo}||{rel}", text, "repo")
                 if routed.document is not None:
                     docs.append(routed.document)
-                    found += 1
                 docs.extend(routed.companions)
-                found += len(routed.companions)
-        if found:
-            names.append(f"{repo}:{found}")
-    if held:
-        # The coverage caveat, as a number rather than an absence.
-        names.append(f"held[{'/'.join(f'{k}:{v}' for k, v in sorted(held.items()))}]")
-    return docs, names
+    return docs, dict(held)
+
+
+def _docs_from_lean_corpus(src) -> tuple[list, dict]:
+    from adapters.lean_corpus import load_lean_corpus
+
+    docs, _ = load_lean_corpus(src.path, lean_toolchain=None)
+    return docs, {}
+
+
+def _docs_from_claude_export(src) -> tuple[list, dict]:
+    """Conversations, minus the ids the source excludes. Exclusions are the source's own."""
+    excluded = {p[:8] for p in src.exclude if str(p).strip()}
+    report = RoutingReport()
+    skipped = 0
+    with open(src.path, encoding="utf-8") as fh:
+        for convo in json.load(fh):
+            uid = str(convo.get("uuid") or convo.get("id") or "")
+            if uid[:8] in excluded:
+                skipped += 1
+                continue
+            for i, msg in enumerate(convo.get("chat_messages") or convo.get("messages") or []):
+                if str(msg.get("sender") or msg.get("role") or "") not in ("human", "assistant"):
+                    continue
+                body = _message_text(msg)
+                if body.strip():
+                    report.routed.append(route(f"claude||{uid}:{i}", body, "claude_export"))
+    return report.to_charts(), {"excluded_conversations": skipped}
+
+
+def _docs_from_files(src) -> tuple[list, dict]:
+    docs = []
+    for p in sorted(Path(src.path).parent.glob(Path(src.path).name)):
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if text.strip():
+            routed = route(f"{src.name}||{p.name}", text, src.name)
+            if routed.document is not None:
+                docs.append(routed.document)
+            docs.extend(routed.companions)
+    return docs, {}
+
+
+LOADERS = {"repos": _docs_from_repos, "lean_corpus": _docs_from_lean_corpus,
+           "claude_export": _docs_from_claude_export, "files": _docs_from_files}
 
 
 def build_corpus():
+    """Every ACTIVE source in the corpus manifest. No path is named in this file."""
+    from engine.corpus_sources import active, status
+
     started = time.time()
-    docs = conversation_docs() + lean_corpus_docs()
-    repo, names = repo_docs()
-    docs += repo
-    print(f"docs={len(docs)}  repos=[{', '.join(names)}]  [{time.time() - started:.0f}s]",
-          flush=True)
+    live = active()
+    if not live:
+        raise SystemExit(json.dumps(status(), indent=2))
+    docs, notes = [], {}
+    for src in live:
+        got, held = LOADERS[src.kind](src)
+        docs.extend(got)
+        notes[src.name] = {"kind": src.kind, "docs": len(got), **held}
+        print(f"  {src.name:28} {src.kind:14} {len(got):>6,} docs "
+              f"[{time.time() - started:.0f}s]", flush=True)
+    print(f"docs={len(docs)}  {json.dumps(notes)}  [{time.time() - started:.0f}s]", flush=True)
     deltas = dedupe_deltas(ingest(docs, build_k_extractors(decisions(), offline=True)))
     slots = slots_from_deltas(deltas)
     print(f"deltas={len(deltas):,} slots={len(slots):,}  [{time.time() - started:.0f}s]",
@@ -333,6 +340,8 @@ def main(argv: list[str]) -> int:
         cmd_run(int(rest[0]) if rest else None)
     elif command == "checkpoint":
         cmd_checkpoint()
+    elif command == "sources":
+        print(json.dumps(corpus_status(), indent=2))
     elif command == "status":
         cmd_status()
     elif command == "contradictions":

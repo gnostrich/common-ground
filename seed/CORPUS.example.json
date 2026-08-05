@@ -1,0 +1,37 @@
+{
+  "schema": "common-ground/corpus/v0",
+  "note": "WHERE A CORPUS LIVES — the one file that is about your material rather than about the mechanism. Copy this to `corpus.local.json` (gitignored) and point it at your own sources. Nothing else in the engine names a path, an account, or a private directory, so the repository can be forked, shared or made public while every corpus stays wherever its owner keeps it. `python3 proposerd.py sources` prints what the loader resolves, including what is missing, so a fork that has not been pointed anywhere says so instead of silently ingesting nothing.",
+
+  "kinds": {
+    "repos": "a directory containing git checkouts. Every file is classified by seed/LANGUAGES.json — prose to its chart, code to its chart, binaries and undeclared extensions to the shelf, counted.",
+    "lean_corpus": "a directory of .lean files loaded by adapters/lean_corpus.py. Enters at extraction tier; nothing here grounds while D6 is unresolved.",
+    "claude_export": "a conversations.json from a Claude data export. REQUIRES `exclude` — see below.",
+    "files": "an explicit list of paths, for a corpus that is neither a repo tree nor an export."
+  },
+
+  "exclusions_are_not_optional": "A `claude_export` source must declare `exclude`. It may be an empty list, but it must be present and it must be a deliberate act: a personal archive contains material its owner never meant to hand to an engine, and the failure mode of forgetting is that it is already ingested. The loader REFUSES an export source with no `exclude` key rather than defaulting to none. Prefixes match the conversation's id.",
+
+  "sources": [
+    {
+      "name": "my-repos",
+      "kind": "repos",
+      "path": "/workspace",
+      "skip_dirs": [".git", "node_modules", ".lake", "build", ".cache", "__pycache__", ".venv", "dist"],
+      "max_bytes": 3000000
+    },
+    {
+      "name": "my-lean-corpus",
+      "kind": "lean_corpus",
+      "path": "/path/to/your/lean/corpus",
+      "enabled": false
+    },
+    {
+      "name": "my-chat-export",
+      "kind": "claude_export",
+      "path": "/path/to/conversations.json",
+      "enabled": false,
+      "exclude": [],
+      "exclude_note": "Conversation id prefixes to leave out. Required even when empty — the loader refuses an export source without this key."
+    }
+  ]
+}

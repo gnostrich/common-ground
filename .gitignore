@@ -33,6 +33,13 @@ venv/
 # keepalive prompt I had written myself repeated it back as though it came from Rohan. It
 # did not. Treating my own inference as his instruction is how a project acquires rules
 # nobody agreed to, and it blocked the journal-durability fix for hours.
+#
+# corpus.local.json is the ONE file that names where a corpus lives — repo roots, export
+# paths, excluded conversation ids. It is what makes this mechanism forkable: the template
+# `seed/CORPUS.example.json` is committed, the real pointer is not, so anyone can take the
+# engine without taking the shape of somebody's disk. tests/test_corpus_sources.py asserts
+# this line still holds, because the seam is only real while the pointer stays out.
+corpus.local.json
 runs/pool.jsonl
 runs/corpus.snapshot
 runs/proposer.journal.jsonl
