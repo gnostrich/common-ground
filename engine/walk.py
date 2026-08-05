@@ -91,9 +91,15 @@ class Step:
     unmeasured: int
     acceptance: float
     cost: float
+    #: The actual drifting triples, not just how many. An earlier version logged the COUNT
+    #: and the pairs lived only in memory, so the first glue-law failures this engine ever
+    #: measured were unrecoverable when the process exited. A number is not a finding.
+    drift_triples: tuple = ()
 
     def as_record(self) -> dict[str, object]:
-        return {k: getattr(self, k) for k in self.__slots__}
+        out = {k: getattr(self, k) for k in self.__slots__}
+        out["drift_triples"] = [list(x) for x in self.drift_triples]
+        return out
 
 
 @dataclass(slots=True)
@@ -174,6 +180,20 @@ class Walk:
         }
 
 
+def _chart(region: Region, slot: str) -> str:
+    for m in region.members:
+        if m.slot == slot:
+            return m.chart
+    return "?"
+
+
+def _nu(region: Region, slot: str) -> str:
+    for m in region.members:
+        if m.slot == slot:
+            return m.nu[:180]
+    return ""
+
+
 def _seed_frontier(walk: Walk, snapshot: CorpusSnapshot) -> None:
     """Start where structure already is. An isolated claim propagates nothing (Q2)."""
     degree: dict[str, int] = {}
@@ -198,11 +218,25 @@ def step(walk: Walk, snapshot: CorpusSnapshot, transport, size: int = REGION_SIZ
     # RESIDUALS first: an implied arrow nobody named is prediction error, and repeated
     # declines across DIFFERENT regions are the glue law failing rather than a bad view.
     drift_here = 0
+    drifted: list[tuple] = []
     for pair in res.residual:
         walk.declines[pair] = walk.declines.get(pair, 0) + 1
         if walk.declines[pair] >= DRIFT_AFTER and pair not in walk.drift:
             walk.drift.append(pair)
             drift_here += 1
+            # WHAT composes to this implied arrow, in full, so the operator can eyeball
+            # whether it is a genuine translation defect or a region-assembly artifact.
+            a, c = pair
+            for (u, v), k1 in region.declared.items():
+                for (x, y), k2 in region.declared.items():
+                    if u == a and v == x and y == c:
+                        drifted.append((
+                            {"slot": u[:16], "chart": _chart(region, u), "nu": _nu(region, u)},
+                            k1,
+                            {"slot": v[:16], "chart": _chart(region, v), "nu": _nu(region, v)},
+                            k2,
+                            {"slot": y[:16], "chart": _chart(region, y), "nu": _nu(region, y)},
+                            region.implied.get(pair, "?"), clamp[:16]))
         walk.push(pair[0], RESIDUAL,
                   f"implied arrow unnamed {walk.declines[pair]}x — prediction error")
 
@@ -223,7 +257,8 @@ def step(walk: Walk, snapshot: CorpusSnapshot, transport, size: int = REGION_SIZ
              novel=len(res.novel), confirmed_declared=len(res.confirmed_declared),
              confirmed_implied=len(res.confirmed_implied), residual=len(res.residual),
              drift=drift_here, old_stock=len(old), unmeasured=res.unmeasured_pairs,
-             acceptance=round(res.acceptance, 3), cost=float(usage.get("cost") or 0.0))
+             acceptance=round(res.acceptance, 3), cost=float(usage.get("cost") or 0.0),
+             drift_triples=tuple(drifted))
     walk.steps.append(s)
     return s, proposals, region
 

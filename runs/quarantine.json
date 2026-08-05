@@ -1,0 +1,6 @@
+{
+  "reason": "entered from the 2.7%-acceptance unbalanced-region walk run; regions were 44% structurally ineligible, so these are LEADS, not evidence",
+  "rule": "excluded from composition closure, from arrow-rich-first region assembly, and from the conditioning path, until re-confirmed by a healthy-run region relaxation, at which point each re-enters as confirmed",
+  "cutoff_t": 1785924568.112,
+  "count": 1455
+}

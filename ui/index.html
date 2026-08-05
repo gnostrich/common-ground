@@ -264,7 +264,12 @@ async function ask(){
   const R = X.rows || [];
   // Two states, and both are results. The field responded, or it did not and the reason is
   // structural. There is no third "we found some words anyway" state to report.
-  const state = c.conditioned ? ['promoted','THE FIELD RELAXED']
+  const A = c.attachment || {};
+  const bears = (A.proposed||[]).filter(x=>x.kind==='bears_on' && x.accepted).length;
+  const corr  = (A.proposed||[]).filter(x=>x.kind!=='bears_on' && x.accepted).length;
+  const how = corr ? `${corr} correspondence` + (bears?` + ${bears} bears-on`:'')
+                   : (bears ? `${bears} bears-on (ephemeral)` : '');
+  const state = c.conditioned ? ['promoted','THE FIELD RELAXED' + (how?` — attached by ${how}`:'')]
                               : ['inst','THE FIELD DID NOT RESPOND'];
   $('answer').innerHTML = `<div class="prop"><span class="${state[0]}">${state[1]}</span>`
     + ` <span class="muted">`

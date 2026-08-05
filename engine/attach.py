@@ -54,7 +54,7 @@ from dataclasses import dataclass, field
 from .correspondence import Correspondence
 from .corpus_state import CorpusSnapshot
 from .holes import Hole
-from .propose_correspondence import PROPOSE_SYSTEM, parse_answers, render_candidates
+from .propose_correspondence import render_candidates
 from .types import WarrantTier
 
 #: Candidate pairs per call. The daemon's batch; kept the same so the prompt the attachment
@@ -67,6 +67,42 @@ CALL_BUDGET = 4
 
 #: Attachment enters at EXTRACTION, like every LM proposal. It cannot ground and cannot clamp.
 ATTACH_TIER = WarrantTier.EXTRACTION
+
+#: The BIAS relation. Not a corpus morphism — the base's kinds stay exactly three.
+#:
+#: A topic or a question cannot correspond to anything: "does `holonomy` state the same
+#: proposition as this Lean theorem?" has one correct answer forever, so asking the identity
+#: question of a bias guarantees `none` and the field is never reached. The aboutness question
+#: is a different question, and it gets a different relation.
+#:
+#: `bears_on` is EPHEMERAL. It conditions one perturbation and then it is gone: never
+#: journalled, never composable, never counted as an arrow, never in the atlas. It is a
+#: boundary condition, not structure. Q5-clean because it is the SAME proposer through the
+#: SAME path — asked the identity question for claims and the aboutness question for a bias.
+BEARS_ON = "bears_on"
+
+#: The kinds an ATTACHMENT may return. The first three are real correspondences and become
+#: arrows; `bears_on` seeds the relaxation and evaporates.
+ATTACH_KINDS = ("same_claim", "refines", "instance_of", BEARS_ON)
+
+ATTACH_SYSTEM = (
+    "A reconciliation engine holds a corpus of CLAIMS across charts (english prose, lean, "
+    "python, go, tabular, conversation). You are shown one INPUT and a numbered list of "
+    "corpus claims. The input may be a claim, a question, or a bare topic — it is a boundary "
+    "condition, not necessarily an assertion.\n\n"
+    "For each candidate, say how the input relates to it:\n"
+    "  same_claim   — the input asserts the SAME proposition as the candidate\n"
+    "  refines      — the input is a strictly more specific form of the candidate\n"
+    "  instance_of  — the input is a particular instance of the candidate's general form\n"
+    "  bears_on     — the input is ABOUT what the candidate is about: a question this claim "
+    "would help answer, or a topic this claim falls under. Use this for questions and topics; "
+    "they assert nothing, so they cannot correspond, but they can still be about something.\n"
+    "  none         — unrelated. Legal and expected for most candidates.\n\n"
+    "Do not force a relation. Shared vocabulary is not aboutness: a claim that merely uses "
+    "the same words as the input, without bearing on it, is `none`.\n\n"
+    'Return ONLY JSON: {"answers":[{"i":int,"kind":one of '
+    "['same_claim','refines','instance_of','bears_on','none'],\"evidence\":str}]}."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +119,11 @@ class Attachment:
     @property
     def accepted(self) -> bool:
         return self.kind != "none"
+
+    @property
+    def is_bias_only(self) -> bool:
+        """`bears_on` conditions the perturbation and never becomes structure."""
+        return self.kind == BEARS_ON
 
     def as_record(self) -> dict[str, object]:
         return {"kind": self.kind, "accepted": self.accepted, "tier": self.tier,
@@ -128,6 +169,10 @@ class AttachResult:
 
         out = []
         for a in self.accepted:
+            if a.is_bias_only:
+                # EPHEMERAL. It seeded the relaxation; it is not an arrow, is never
+                # journalled, and cannot enter composition. The base's kinds stay three.
+                continue
             try:
                 out.append(Correspondence(
                     src_chart=self.typed_chart, src_slot=typed_slot,
@@ -147,6 +192,36 @@ class AttachResult:
                 "note": ("Attachment is a PROPOSED correspondence at extraction tier, judged "
                          "by the same proposer and the same prompt the corpus arrows use. "
                          "`none` is legal and expected; nothing here is promoted.")}
+
+
+def _parse_attach(raw: str, holes) -> list[tuple[int, str, str]]:
+    """(index, kind, evidence) for an ATTACHMENT reply. Its own parser, deliberately.
+
+    `propose_correspondence.parse_answers` filters on `KINDS`, and `KINDS` is the base
+    category's morphism set — exactly three. Widening it so `bears_on` could pass would put a
+    non-morphism into the corpus vocabulary, which is the thing that must not happen. So the
+    bias path parses its own replies against its own kind set, and the base is untouched.
+    """
+    from .propose_correspondence import _json_block, _salvage_objects
+
+    try:
+        body = _json_block(raw)
+    except Exception:
+        body = None
+    rows = (body.get("answers") if isinstance(body, dict) else None)
+    if not isinstance(rows, list):
+        rows = [r for r in _salvage_objects(raw) if isinstance(r, dict) and "i" in r]
+    out = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        i, kind = row.get("i"), str(row.get("kind", ""))
+        if not isinstance(i, int) or isinstance(i, bool):
+            continue
+        if not (0 <= i < len(holes)) or kind not in (set(ATTACH_KINDS) | {"none"}):
+            continue
+        out.append((i, kind, str(row.get("evidence", ""))[:600]))
+    return out
 
 
 def _degree(snapshot: CorpusSnapshot) -> dict[str, int]:
@@ -232,17 +307,17 @@ def attach(text: str, snapshot: CorpusSnapshot, transport, chart: str = "english
                       type="assert", restatement=0)
                  for sid, rec in chunk]
         try:
-            raw, _usage = transport(PROPOSE_SYSTEM, render_candidates(holes))
+            raw, _usage = transport(ATTACH_SYSTEM, render_candidates(holes))
         except Exception as exc:                     # a dead call is reported, never silent
             out.error = f"{type(exc).__name__}: {exc}"
             break
         out.calls += 1
         out.considered += len(holes)
-        for outcome in parse_answers(raw, holes):
+        for i, kind, evidence in _parse_attach(raw, holes):
+            h = holes[i]
             out.proposed.append(Attachment(
-                kind=outcome.kind, dst_slot=outcome.hole.dst_slot,
-                dst_chart=outcome.hole.dst_chart, dst_nu=outcome.hole.dst_nu,
-                evidence=outcome.evidence))
+                kind=kind, dst_slot=h.dst_slot, dst_chart=h.dst_chart, dst_nu=h.dst_nu,
+                evidence=evidence))
 
     # Compared against `available`, NOT against `len(pool)`. The pool is ALREADY truncated to
     # the budget, so comparing with it asks "did we ask about everything we decided to ask

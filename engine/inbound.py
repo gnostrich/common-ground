@@ -195,20 +195,34 @@ def _attachment_block(att) -> str:
     given. So every proposal is listed — including the `none`s, which are the proposer
     declining to force a match and are as informative as the acceptances.
     """
+    from .attach import BEARS_ON
+
+    bias_only = [a for a in att.accepted if a.kind == BEARS_ON]
+    corresponds = [a for a in att.accepted if a.kind != BEARS_ON]
     lines = [
-        "HOW THIS INPUT ATTACHED. The typed text is not in this corpus verbatim, so the "
-        "proposer was asked which corpus claims it CORRESPONDS to — the same proposer, "
-        "prompt and three kinds the corpus's own arrows use, with `none` legal and expected. "
-        "Every accepted attachment below is a correspondence at EXTRACTION tier: proposed, "
-        "not confirmed, and the relaxation that follows rests on it.",
+        "HOW THIS INPUT ATTACHED. The typed text is not in this corpus verbatim, so the same "
+        "proposer that builds the corpus's own arrows was asked how it relates to corpus "
+        "claims — with `none` legal and expected. TWO QUESTIONS are available and the answer "
+        "says which was answered:",
+        "  CORRESPONDS  — the input asserts the same proposition, refines it, or instances "
+        "it. A real correspondence at EXTRACTION tier: proposed, not confirmed, and it "
+        "becomes structure.",
+        "  BEARS ON     — the input is ABOUT what the claim is about. A question or a topic "
+        "asserts nothing, so it cannot correspond; it can still be about something. This is "
+        "EPHEMERAL: it conditions this one perturbation, is never journalled, never composes, "
+        "and never becomes an arrow.",
     ]
-    for a in att.proposed:
-        if not a.accepted:
-            continue
+    if corresponds:
+        lines.append(f"-- {len(corresponds)} CORRESPONDENCE attachment(s) --")
+    for a in corresponds:
         lines.append(f"ATTACHED via {a.kind} (warrant {a.tier}) -> [{a.dst_chart}] "
                      f"{display(a.dst_nu)[:200]}")
         if a.evidence:
             lines.append(f"  BECAUSE {a.evidence[:300]}")
+    if bias_only:
+        lines.append(f"-- {len(bias_only)} BEARS-ON attachment(s), ephemeral --")
+    for a in bias_only:
+        lines.append(f"BEARS ON -> [{a.dst_chart}] {display(a.dst_nu)[:200]}")
     declined = sum(1 for a in att.proposed if not a.accepted)
     lines.append(f"({len(att.accepted)} attachment(s) accepted, {declined} declined as none, "
                  f"out of {att.considered} candidate(s) asked over {att.calls} call(s).)")

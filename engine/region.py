@@ -331,7 +331,8 @@ def provenance_key(doc_id: str) -> str:
 
 
 def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_SIZE,
-                 extra: list[str] | None = None) -> Region:
+                 extra: list[str] | None = None,
+                 quarantined: frozenset = frozenset()) -> Region:
     """Assemble the partial diagram: the clamp, its declared neighbours, then PROVENANCE-NEAR
     claims — same directory, nothing else.
 
@@ -342,8 +343,14 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
     either — it is a global property that does not make two unattached claims near ANYTHING.
     Provenance is the one relation they declare, and it is what this uses.
     """
+    # QUARANTINED arrows do not act. They are not neighbours, they do not raise a claim's
+    # degree, and they imply nothing — otherwise the walk aims itself at its own bad output
+    # and measures residuals against composites built on leads.
+    live = [a for a in snapshot.arrows
+            if (a.src_slot, a.dst_slot) not in quarantined
+            and (a.dst_slot, a.src_slot) not in quarantined]
     neighbours: dict[str, set[str]] = {}
-    for a in snapshot.arrows:
+    for a in live:
         neighbours.setdefault(a.src_slot, set()).add(a.dst_slot)
         neighbours.setdefault(a.dst_slot, set()).add(a.src_slot)
 
@@ -398,7 +405,7 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
                       attached=bool(neighbours.get(sid)))
                for i, sid in enumerate(chosen)]
     inside = {m.slot for m in members}
-    declared = {(a.src_slot, a.dst_slot): a.kind for a in snapshot.arrows
+    declared = {(a.src_slot, a.dst_slot): a.kind for a in live
                 if a.src_slot in inside and a.dst_slot in inside}
     return Region(clamp=clamp, members=members, declared=declared,
                   implied=_compose(declared, inside))
