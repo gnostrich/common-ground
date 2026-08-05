@@ -160,6 +160,45 @@ def _display(nu: str) -> str:
     return nu
 
 
+def escape_nu(nu: str) -> str:
+    """ITEM 2: the nu-string goes over the wire BYTE-EXACT, with invertible escaping.
+
+    These are the exact bytes the address hash was computed over. Re-wrapping, trimming or
+    normalizing whitespace would present the medium with a claim the engine does not hold —
+    a different string, hashing to a different address. So nothing is normalized; only the
+    characters that would collide with the line format are escaped, and the escaping is
+    invertible so `unescape_nu(escape_nu(x)) == x` byte for byte.
+
+    Escaped: backslash (first, or the inversion is ambiguous), newline, carriage return, and
+    the \x01 chart tag that rides inside every nu.
+    """
+    return (nu.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r")
+              .replace("\x01", "\\x01"))
+
+
+def unescape_nu(text: str) -> str:
+    """The inverse. A control asserts the round trip reproduces the hashed bytes."""
+    out, i = [], 0
+    while i < len(text):
+        if text[i] == "\\" and i + 1 < len(text):
+            if text[i:i + 4] == "\\x01":
+                out.append("\x01"); i += 4; continue
+            nxt = text[i + 1]
+            if nxt == "n":
+                out.append("\n"); i += 2; continue
+            if nxt == "r":
+                out.append("\r"); i += 2; continue
+            if nxt == "\\":
+                out.append("\\"); i += 2; continue
+            # `\x01` escapes to FOUR characters: backslash, x, 0, 1. Slicing five consumed
+            # the following character too, so the inverse silently ate a byte and the round
+            # trip failed on the first real nu-string tried.
+            if text[i:i + 4] == "\\x01":
+                out.append("\x01"); i += 4; continue
+        out.append(text[i]); i += 1
+    return "".join(out)
+
+
 def render_region(region: Region) -> str:
     """The partial diagram on the wire: OBJECTS, declared ARROWS, implied ARROWS, task.
 
@@ -171,9 +210,7 @@ def render_region(region: Region) -> str:
     """
     lines = ["OBJECTS"]
     for m in region.members:
-        text = _display(m.nu)
-        cut = len(text) > NU_CAP
-        lines.append(f"[{m.index}|{m.chart}] {text[:NU_CAP]}{' …[cut]' if cut else ''}")
+        lines.append(f"[{m.index}|{m.chart}] {escape_nu(m.nu)}")
 
     lines += ["", "ARROWS (declared)"]
     idx = {m.slot: m.index for m in region.members}
@@ -400,6 +437,12 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
             if len(chosen) >= size:
                 break
 
+    # ITEM 1: index order is engine-assigned and SHUFFLED. Position in a prompt is
+    # attention-salient, so ANY systematic order — provenance, arrow density, chart grouping —
+    # leaks an undeclared ranking signal into the completion. Order must carry zero
+    # information. The permutation is derived from the region's own content, so a region is
+    # still reproducible: same members, same shuffle, and a walk anybody can replay.
+    chosen = _shuffle(chosen)
     members = [Member(index=i, slot=sid, chart=snapshot.slots[sid].chart,
                       type=snapshot.slots[sid].type, nu=snapshot.slots[sid].nu,
                       attached=bool(neighbours.get(sid)))
@@ -409,6 +452,20 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
                 if a.src_slot in inside and a.dst_slot in inside}
     return Region(clamp=clamp, members=members, declared=declared,
                   implied=_compose(declared, inside))
+
+
+def _shuffle(slots: list[str]) -> list[str]:
+    """A content-derived permutation. Deterministic, and carrying no ordering signal.
+
+    Not `random`: an unreproducible region makes a walk unreplayable, and a walk nobody can
+    replay is a walk whose findings cannot be checked. Keying the sort on a hash of the
+    region's whole membership plus each slot means the order is stable for a given region and
+    uncorrelated with degree, provenance or chart — which is exactly "carries no information".
+    """
+    from .hashing import sha256_text
+
+    seed = sha256_text("".join(sorted(slots)))
+    return sorted(slots, key=lambda s: sha256_text(seed + s))
 
 
 def _compose(declared: dict[tuple[str, str], str], inside: set[str]

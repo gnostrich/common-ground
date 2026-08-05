@@ -133,6 +133,68 @@ class ResolveOrVoid(unittest.TestCase):
         self.assertEqual(parse_region("the model wrote prose instead", self.region), [])
 
 
+class TheOutputGrammarIsTheTrustedBase(unittest.TestCase):
+    """ITEM 3. The strictness of this parse is the kernel of the whole LM interaction.
+
+    Only `(i, kind, j)` lines are read. Everything else is silently UNPARSED — never
+    interpreted, never tolerantly recovered, no machine-read rationale, and above all no
+    self-reported confidence: warrant is assigned at ingestion and is never proposed by the
+    thing being warranted.
+    """
+
+    def test_planted_prose_plus_one_valid_triple_yields_exactly_one_arrow(self):
+        reply = (
+            "Looking carefully at this region, I can see several relationships.\n"
+            "First, claim 0 seems quite similar to claim 1 in spirit.\n"
+            "0 -same_claim-> 1\n"
+            "I am about 85% confident in this. Other pairs may also relate but I am unsure.\n"
+            '{"pairs": [{"i": 0, "j": 2, "kind": "refines"}]}\n'
+            "Let me know if you would like me to reconsider."
+        )
+        region = _region(["english", "lean", "python"])
+        got = [p for p in parse_region(reply, region) if p.ok]
+        self.assertEqual(len(got), 1, "prose, a confidence claim and a JSON block must all be "
+                                      "unparsed; exactly the one arrow LINE is read")
+        self.assertEqual((got[0].src.index, got[0].kind, got[0].dst.index), (0, "same_claim", 1))
+
+    def test_no_self_reported_confidence_can_enter(self):
+        """Warrant is assigned at ingestion, never proposed. There is no field for it."""
+        region = _region(["english", "lean"])
+        got = parse_region('0 -same_claim-> 1 (confidence: 0.97)', region)
+        self.assertTrue(got[0].ok)
+        for attr in ("confidence", "score", "certainty"):
+            self.assertFalse(hasattr(got[0], attr), f"a proposal carries no {attr}")
+
+    def test_a_rationale_is_never_machine_read(self):
+        from engine.region import Proposal
+
+        self.assertNotIn("rationale", Proposal.__slots__)
+        self.assertNotIn("reasoning", Proposal.__slots__)
+
+    def test_the_wire_carries_the_bytes_the_hash_was_computed_over(self):
+        """ITEM 2: no re-wrapping, no whitespace normalization; escaping is invertible."""
+        from engine.region import escape_nu, render_region, unescape_nu
+
+        nu = "\x01en\x01a claim with\na newline and a \\ backslash"
+        region = Region(members=[Member(index=0, slot="s" * 64, chart="english",
+                                        type="assert", nu=nu, attached=False)])
+        body = render_region(region)
+        self.assertNotIn("\n" + "a newline", body, "the nu must not break the line format")
+        line = [l for l in body.splitlines() if l.startswith("[0|")][0]
+        self.assertEqual(unescape_nu(line.split("] ", 1)[1]), nu,
+                         "inversion must reproduce the hashed bytes exactly")
+
+    def test_planted_index_order_carries_no_signal(self):
+        """ITEM 1: any systematic order leaks an undeclared ranking into an attention-salient
+        position. The permutation is content-derived, so it is reproducible and uninformative."""
+        from engine.region import _shuffle
+
+        slots = [f"{i:064d}" for i in range(40)]
+        once, twice = _shuffle(slots), _shuffle(list(reversed(slots)))
+        self.assertEqual(once, twice, "the shuffle must depend on the SET, not on input order")
+        self.assertNotEqual(once, slots, "an unshuffled order is a ranking signal")
+
+
 class SilenceIsNotADecline(unittest.TestCase):
     """In the pairwise loop `none` was an answer. Here it would be a fabrication."""
 
@@ -185,9 +247,11 @@ class RegionAssemblyIsStructural(unittest.TestCase):
                                      "lean:theorem cone_pos : True", "same_claim")])
         clamp = ids["english:the cone is positive under composition"]
         region = build_region(snap, clamp=clamp, size=3)
-        self.assertEqual(region.members[0].slot, clamp)
+        # The clamp is SELECTED first but no longer rendered first: item 1 shuffles the index
+        # order so position carries no signal. Membership is the property under test.
+        self.assertIn(clamp, {m.slot for m in region.members})
         self.assertIn(ids["lean:theorem cone_pos : True"],
-                      {m.slot for m in region.members[:2]},
+                      {m.slot for m in region.members},
                       "a declared neighbour must be shown, or the medium re-names it and the "
                       "call buys something already recorded")
 
@@ -232,11 +296,23 @@ class RegionAssemblyIsStructural(unittest.TestCase):
         for m in region.members:
             self.assertIn(f"[{m.index}|{m.chart}]", body)
 
-    def test_the_rendering_marks_where_it_cut(self):
+    def test_the_rendering_never_cuts_because_byte_exact_forbids_it(self):
+        """Truncation and byte-exactness cannot both hold, and byte-exactness wins.
+
+        The nu-string IS the address span — gate 8 already chose the truncation when the
+        claim was addressed. Cutting it again on the wire would present the medium with a
+        string the engine does not hold, hashing to a different address. So the earlier
+        `…[cut]` marker is gone and the exact bytes go over.
+        """
+        from engine.region import unescape_nu
+
+        nu = "\x01en\x01" + "x" * (NU_CAP + 50)
         region = Region(members=[Member(index=0, slot="s" * 64, chart="english",
-                                        type="assert", nu="\x01en\x01" + "x" * (NU_CAP + 50),
-                                        attached=False)])
-        self.assertIn("…[cut]", render_region(region))
+                                        type="assert", nu=nu, attached=False)])
+        body = render_region(region)
+        self.assertNotIn("[cut]", body)
+        line = [l for l in body.splitlines() if l.startswith("[0|")][0]
+        self.assertEqual(unescape_nu(line.split("] ", 1)[1]), nu)
 
     def test_the_rendering_carries_no_slot_ids(self):
         """The medium must not be handed an address; it answers in indices only."""
