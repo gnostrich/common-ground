@@ -81,3 +81,22 @@ def quarantined_pairs(journal_path: str | Path, path: str | Path = QUARANTINE_PA
     # Records written before `region_id` existed carry no context, so they resolve to
     # UNRESOLVED rather than to confirmed — absence of evidence is not evidence.
     return (out - reconfirmed) | (out & unresolved)
+
+
+def non_acting(journal_path: str | Path, aging=None,
+               path: str | Path = QUARANTINE_PATH) -> set[tuple[str, str]]:
+    """THE ONE NON-ACTING SET. Two reasons to be in it; one set, one exclusion path.
+
+    Quarantine and dormancy are not two states. An arrow is in this set because it was
+    admitted against a malformed diagram (quarantine) or because measured events drained its
+    weight under the fast measure (`engine.aging`) — and the three exclusions above apply
+    identically either way. Building a second dormancy set beside this one would be the
+    forbidden shape; `Aging` produces pairs and hands them here.
+
+    Every consumer calls THIS, not `quarantined_pairs`, so a new reason to stop acting is one
+    union and not an edit at three call sites.
+    """
+    out = quarantined_pairs(journal_path, path)
+    if aging is not None:
+        out = out | aging.dormant_pairs()
+    return out

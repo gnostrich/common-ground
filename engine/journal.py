@@ -221,6 +221,29 @@ class Journal:
             rec["region_id"] = region_id
         return self._write(rec)
 
+    def record_admission(self, admission) -> dict:
+        """One K decision at a boundary site, with the evidence it was computed FROM.
+
+        THE PHASING CONDITION, in code. The in-graph hyperedge comes after the suite, but this
+        record carries the full evidence from the very first promotion: the Hankel value, the
+        second-FDT floor, the conservative-check result, and the RESIDUAL SET. The later edge
+        renders this record; it never reconstructs it.
+
+        Evidence not captured at admission time cannot be recovered afterwards, and a record
+        without its residual set is a weight flip with a note attached — decision B silently
+        degraded to decision A. That is the failure this signature exists to prevent, which is
+        why it takes the whole `Admission` and not a handful of scalars.
+        """
+        from . import EngineError
+
+        rec = admission.as_record()
+        if not rec.get("residuals"):
+            raise EngineError(
+                "an admission must carry the residual set it was computed from. Without it "
+                "the promotion is unexplainable after the fact and the in-graph edge would "
+                "have nothing to render.")
+        return self._write(rec)
+
     def record_call(self, *, candidates: int, ok: bool, tokens_in: int = 0,
                     tokens_out: int = 0, cost: float | None = None,
                     model: str = "", error: str = "") -> dict:
