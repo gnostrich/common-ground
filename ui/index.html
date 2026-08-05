@@ -86,19 +86,22 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
   </div>
   <div id="proposer" class="muted">not loaded — press refresh.</div>
 
-  <h2>Ask the corpus — the field conditions the answer</h2>
+  <h2>Perturb the field — a claim goes in, what moves comes back</h2>
   <p class="muted">What you type is a <b>boundary condition</b>, not a prompt and not a search.
   It enters the corpus's energy as a <b>soft constraint</b>, settlement runs, and what the
   model receives is the region that <b>moved</b> — reached over declared correspondences, with
-  every hop shown. Exact addressing (gate 1: <span class="nu">hash(nu, type)</span>) decides
-  claim identity; it does not decide whether the field is consulted. If nothing moves, the
-  window says so and names the structural reason rather than matching words to fill it.</p>
+  every hop shown.</p>
+  <p class="muted"><b>This is not a search box.</b> A bias attaches at an address (gate 1:
+  <span class="nu">hash(nu, type)</span>), so free-form phrasing addresses nothing, couples to
+  nothing, and correctly moves nothing. Give it a claim this corpus actually holds and it will
+  show you what is coupled to that claim. When nothing moves the window says so and names the
+  structural reason — it will not match words to fill the silence.</p>
   <div class="row">
-    <input id="q" placeholder="ask a question; it will be addressed against the real corpus" style="flex:1">
+    <input id="q" placeholder="paste a claim this corpus holds — it becomes the boundary condition" style="flex:1">
     <label>chart <select id="qchart">
       <option>english</option><option>lean</option><option>python</option><option>go</option><option>tabular</option><option>conversation</option>
     </select></label>
-    <button class="go" onclick="ask()">ask</button>
+    <button class="go" onclick="ask()">perturb</button>
   </div>
   <div id="answer"></div>
   <div class="grid">
