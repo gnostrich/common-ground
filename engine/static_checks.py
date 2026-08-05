@@ -808,6 +808,7 @@ CLAIMED_PROPERTY_SITES: tuple[dict[str, str], ...] = (
 MECHANISM_MODULES: frozenset[str] = frozenset({
     "engine/attach.py",        # ADD A MORPHISM — attachment proposer
     "engine/region.py",        # ADD A MORPHISM — the region proposer
+    "engine/walk.py",          # ADD A MORPHISM — the sampler that aims it
     "engine/relax.py",         # the read-side dynamics
     "engine/settle.py",        # the dynamics
     "engine/energy.py",        # the measure

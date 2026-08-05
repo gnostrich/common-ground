@@ -372,9 +372,26 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
         by_charts = sorted(near, key=lambda k: (-len({snapshot.slots[s].chart
                                                       for s in near[k]}), -len(near[k]), k))
         keys = set(by_charts[:1])
+    # CHART-BALANCED within the provenance pool. The pool is still the directory and nothing
+    # else — but the ORDER round-robins across charts, because a correspondence is cross-chart
+    # by construction and a region of sixty claims from one chart is a diagram in which almost
+    # no arrow can exist. Measured before this: 44% of pairs in a region were structurally
+    # ineligible, and 32% of directories with ten or more slots are over 90% a single chart.
+    # Balancing decides which claims are SHOWN, never which relate; chart is a declared
+    # property of a claim (which object of B it lives over), so this compares nothing.
+    pool: list[str] = []
     for key in sorted(keys):
-        for sid in sorted(near.get(key, ())):
-            take(sid)
+        pool.extend(sorted(near.get(key, ())))
+    by_chart: dict[str, list[str]] = {}
+    for sid in pool:
+        by_chart.setdefault(snapshot.slots[sid].chart, []).append(sid)
+    while any(by_chart.values()) and len(chosen) < size:
+        for chart in sorted(by_chart):
+            queue = by_chart[chart]
+            if queue:
+                take(queue.pop(0))
+            if len(chosen) >= size:
+                break
 
     members = [Member(index=i, slot=sid, chart=snapshot.slots[sid].chart,
                       type=snapshot.slots[sid].type, nu=snapshot.slots[sid].nu,

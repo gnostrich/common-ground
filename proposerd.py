@@ -4,6 +4,7 @@
     python3 proposerd.py build-pool          # assemble the GLOBAL pool once (slow, one-shot)
     python3 proposerd.py build-snapshot      # the window's read view over the whole corpus
     python3 proposerd.py run                 # the daemon: runs until stopped or a gate reddens
+    python3 proposerd.py walk [n]            # the SAMPLER: n region queries, no pool
     python3 proposerd.py sources             # what corpus is plugged in (or that none is)
     python3 proposerd.py atlas [out.html]    # ONE self-contained page: charts, arrows, search
     python3 proposerd.py census              # record the depth-1 subtree candidate count
@@ -251,6 +252,68 @@ def cmd_measure_cross_repo() -> None:
     }, indent=2))
 
 
+def cmd_walk(n: int) -> None:
+    """The sampler. No pool: each position is drawn from what the last query produced.
+
+    Arrows enter through the ONE inlet at extraction tier, exactly as the pairwise loop's did.
+    The walk log records every step's type and reason, so the operator can see whether the
+    chain is aimed by prediction error or merely orbiting the structure it started near.
+    """
+    from engine.corpus_state import CorpusSnapshot, with_arrows
+    from engine.inlet import FastTape
+    from engine.propose_correspondence import as_correspondence_delta, ProposalOutcome
+    from engine.holes import Hole
+    from engine.region import arrows_from
+    from engine.types import WarrantTier, promotable
+    from engine.walk import Walk, _seed_frontier, log_step, step
+    from ui.current import _journal_arrows
+
+    transport, model = _openrouter_transport()
+    base = CorpusSnapshot.load(SNAPSHOT_PATH)
+    if base.empty:
+        raise SystemExit("no corpus snapshot — run `proposerd.py build-snapshot`")
+    prior = _journal_arrows()
+    snapshot = with_arrows(base, prior)
+    #: Arrows that predate the composition table. The walk's neighbourhood preference doubles
+    #: as a re-audit of them, and confirmations on old stock are counted apart from new finds.
+    old_stock = frozenset(tuple(sorted((a.src_slot, a.dst_slot))) for a in prior)
+
+    journal = Journal(JOURNAL_PATH)
+    tape = FastTape()
+    walk = Walk()
+    _seed_frontier(walk, snapshot)
+    print(f"walk: model={model} corpus={len(snapshot.slots):,} slots "
+          f"{len(snapshot.arrows):,} arrows  old-stock={len(old_stock):,}", flush=True)
+    try:
+        for _ in range(n):
+            s, proposals, region = step(walk, snapshot, transport, old_stock=old_stock)
+            for arrow in arrows_from(proposals):
+                hole = Hole(src_chart=arrow.src_chart, src_slot=arrow.src_slot, src_nu="",
+                            dst_chart=arrow.dst_chart, dst_slot=arrow.dst_slot, dst_nu="",
+                            type="assert", restatement=0)
+                delta = as_correspondence_delta(
+                    ProposalOutcome(hole, arrow.kind, arrow.evidence[0] if arrow.evidence
+                                    else ""), "lm", "region")
+                if delta.warrant.tier != WarrantTier.EXTRACTION or promotable(
+                        delta.warrant.tier):
+                    raise SystemExit("the sampler may only enter EXTRACTION-tier claims")
+                tape.propose(delta, "lm")                 # the ONE inlet
+                journal.record_ask(
+                    src_chart=arrow.src_chart, src_slot=arrow.src_slot,
+                    dst_chart=arrow.dst_chart, dst_slot=arrow.dst_slot, type="assert",
+                    answer=arrow.kind, evidence=arrow.evidence[0] if arrow.evidence else "",
+                    relation="region", proposer="lm", prompt_hash="region",
+                    tier="EXTRACTION")
+            log_step(s)
+            print(f"  [{s.n}] {s.kind:11} members={s.members:>3} named={s.named:>3} "
+                  f"void={s.void:>3} novel={s.novel:>3} conf={s.confirmed_declared:>2} "
+                  f"comp={s.confirmed_implied:>2} resid={s.residual:>2} "
+                  f"acc={s.acceptance:.0%} ${s.cost:.4f}  {s.reason[:44]}", flush=True)
+    finally:
+        journal.close()
+    print(json.dumps(walk.report(), indent=2))
+
+
 def cmd_census() -> None:
     """Record the depth-1 subtree candidate count per chart pair, to `runs/census.json`.
 
@@ -263,11 +326,14 @@ def cmd_census() -> None:
 
     started = time.time()
     slots, deltas = build_corpus()
+    # `holes_by_subtree_all` returns {chart_pair: {inner_key: [Hole]}} — two levels, and the
+    # OUTER key already is the chart pair. An earlier version iterated one level too shallow,
+    # so `hole` was a dict key (a string) and the census died on `str.src_chart` after two
+    # minutes of corpus rebuild. Counting from the outer key needs no attribute at all.
     subtree: dict[str, int] = {}
-    for key, holes in holes_by_subtree_all(slots, deltas, max_depth=1).items():
-        for hole in holes:
-            pair = " x ".join(sorted((hole.src_chart, hole.dst_chart)))
-            subtree[pair] = subtree.get(pair, 0) + 1
+    for (a, b), groups in holes_by_subtree_all(slots, deltas, max_depth=1).items():
+        pair = " x ".join(sorted((a, b)))
+        subtree[pair] = subtree.get(pair, 0) + sum(len(v) for v in groups.values())
     out = {
         "measured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "measured_by": "engine.holes.holes_by_subtree_all(max_depth=1)",
@@ -390,6 +456,8 @@ def main(argv: list[str]) -> int:
         print(json.dumps(write_atlas(out), indent=2))
     elif command == "census":
         cmd_census()
+    elif command == "walk":
+        cmd_walk(int(rest[0]) if rest else 6)
     elif command == "status":
         cmd_status()
     elif command == "contradictions":

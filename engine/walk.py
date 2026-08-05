@@ -1,0 +1,237 @@
+"""THE SAMPLER: a walk over the field. No pool, no order — every question conditioned on it.
+
+The pairwise daemon consumed a list. The list was enumerated once, before any arrow existed,
+from two structural relations over a corpus snapshot — so every question it asked was decided
+before any of its answers were known. That is the shape being replaced. Here the next position
+is drawn from what the last query produced, and there is no list anywhere.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MORPHISM — a proposer into D. The same one; this changes where it is pointed, not
+how many of it there are.
+Q4: it is move 3 and nothing else — no new chart, no new measure, no second write path.
+Q5 is the load-bearing check and it passes ONLY as a REPLACEMENT. A sampler standing beside
+the pairwise loop would be two proposers walking one field with two policies, which is the
+forbidden shape. The pairwise loop is retired by this, not supplemented.
+Q2 motivated the frontier: an isolated claim has no morphisms, so no amount of visiting it
+will make anything propagate. The walk therefore prefers positions where structure already
+exists, and reaches dark parts of the corpus only by explicit random jump.
+
+THE FOUR STEP TYPES, in priority order. The order is the claim this module makes:
+
+  RESIDUAL   — an implied arrow the query did not name. Prediction error: composition says
+               the arrow is there and the medium, looking straight at it, did not see it.
+               Highest priority, because error is the only thing that carries information
+               about where the model of the field is wrong.
+  COMPOSITION— a pair a length-2 path implies but nothing has checked. These are the cycle
+               route: confirming one closes a triangle, and a closed triangle is the only
+               thing that can make holonomy nonzero.
+  NEIGHBOUR  — the provenance-neighbourhood of an arrow just created. Structure begets
+               structure; a directory that yielded one arrow is likelier to yield another.
+  RANDOM     — a small probability of jumping anywhere, so a dark region is not permanently
+               unvisited. Without it the walk is confined to the component it started in,
+               and "we found nothing there" would be a fact about the walk.
+
+Every step records its type and its reason, and the walk log reports the FIRING DISTRIBUTION
+across the four — which is the number that shows the chain is aimed by error rather than
+orbiting whatever it happened to touch first.
+
+THE GLUE LAW. `S(g o f) = S(g) o S(f)` is the schematic's coherence equation, and the walk is
+where it becomes measurable. An implied arrow the medium CONFIRMS is composition holding. An
+implied arrow the medium repeatedly declines to name across overlapping regions is
+COMPOSITION DRIFT — two hops that do not compose — and that is holonomy arriving through the
+walk rather than through a cycle search. The two are logged as distinct classes and never
+summed.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from .corpus_state import CorpusSnapshot
+from .region import Region, arrows_from, build_region, parse_region, render_region
+from .region import REGION_SIZE, REGION_SYSTEM, Residual, residuals
+
+#: Where the walk writes its log. Append-only, one JSON object per step.
+WALK_PATH = "runs/walk.jsonl"
+
+#: Step types, in the priority order the frontier pops them.
+RESIDUAL, COMPOSITION, NEIGHBOUR, RANDOM = "residual", "composition", "neighbour", "random"
+STEP_TYPES = (RESIDUAL, COMPOSITION, NEIGHBOUR, RANDOM)
+
+#: How often to jump somewhere unrelated. Small, and NOT zero: a walk with no jump is
+#: confined to its starting component, and its silence about the rest of the corpus would be
+#: a fact about the walk rather than about the field.
+JUMP_EVERY = 12
+
+#: An implied arrow must be declined this many times, in DIFFERENT regions, before it is
+#: called composition drift. Once is a region that did not show it well; repeatedly, looking
+#: straight at it, is the glue law failing.
+DRIFT_AFTER = 2
+
+
+@dataclass(frozen=True, slots=True)
+class Step:
+    """One position the walk visited, why it went there, and what came back."""
+
+    n: int
+    kind: str                                 # one of STEP_TYPES
+    reason: str
+    clamp: str
+    members: int
+    named: int
+    void: int
+    novel: int
+    confirmed_declared: int
+    confirmed_implied: int                    # composition holding
+    residual: int                             # implied, not named — prediction error
+    drift: int                                # implied, declined repeatedly — glue-law failure
+    old_stock: int                            # confirmations touching pre-table arrows
+    unmeasured: int
+    acceptance: float
+    cost: float
+
+    def as_record(self) -> dict[str, object]:
+        return {k: getattr(self, k) for k in self.__slots__}
+
+
+@dataclass(slots=True)
+class Walk:
+    """The frontier and the accounting. The only state; there is no pool."""
+
+    steps: list[Step] = field(default_factory=list)
+    #: position -> (kind, reason). A dict, so a position queued twice keeps its FIRST reason:
+    #: the earliest justification is the truest one, and re-queuing must not launder a random
+    #: jump into a residual.
+    frontier: dict[str, tuple[str, str]] = field(default_factory=dict)
+    visited: set[str] = field(default_factory=set)
+    #: implied pair -> how many DIFFERENT regions declined to name it.
+    declines: dict[tuple[str, str], int] = field(default_factory=dict)
+    drift: list[tuple[str, str]] = field(default_factory=list)
+    old_stock: set[tuple[str, str]] = field(default_factory=set)   # arrows predating the table
+
+    def push(self, slot: str, kind: str, reason: str) -> None:
+        if slot and slot not in self.visited and slot not in self.frontier:
+            self.frontier[slot] = (kind, reason)
+
+    def pop(self, snapshot: CorpusSnapshot) -> tuple[str, str, str]:
+        """The next position, by priority, with a forced jump every `JUMP_EVERY` steps."""
+        if self.steps and len(self.steps) % JUMP_EVERY == 0:
+            jump = self._jump(snapshot)
+            if jump:
+                return jump, RANDOM, f"forced jump every {JUMP_EVERY} steps"
+        for kind in STEP_TYPES:
+            for slot, (k, reason) in self.frontier.items():
+                if k == kind:
+                    del self.frontier[slot]
+                    return slot, kind, reason
+        jump = self._jump(snapshot)
+        return (jump, RANDOM, "frontier empty") if jump else ("", RANDOM, "nothing left")
+
+    def _jump(self, snapshot: CorpusSnapshot) -> str:
+        """A deterministic jump: the unvisited slot whose id sorts furthest from the last one.
+
+        Deterministic on purpose. `Math.random`-style choice would make a walk unreproducible,
+        and a walk nobody can replay is a walk whose findings cannot be checked.
+        """
+        anchor = self.steps[-1].clamp if self.steps else ""
+        best, best_key = "", None
+        for sid in snapshot.slots:
+            if sid in self.visited:
+                continue
+            key = (sid > anchor, sid)
+            if best_key is None or key > best_key:
+                best_key, best = key, sid
+        return best
+
+    def counts(self) -> dict[str, int]:
+        out = {k: 0 for k in STEP_TYPES}
+        for s in self.steps:
+            out[s.kind] = out.get(s.kind, 0) + 1
+        return out
+
+    def report(self) -> dict[str, object]:
+        n = len(self.steps)
+        named = sum(s.named for s in self.steps)
+        void = sum(s.void for s in self.steps)
+        return {
+            "steps": n,
+            "step_types": self.counts(),
+            "step_type_share": {k: round(v / n, 3) for k, v in self.counts().items()} if n else {},
+            "novel": sum(s.novel for s in self.steps),
+            "confirmed_declared": sum(s.confirmed_declared for s in self.steps),
+            "composition_confirmed": sum(s.confirmed_implied for s in self.steps),
+            "composition_drift": len(self.drift),
+            "residual_open": sum(1 for v in self.declines.values() if 0 < v < DRIFT_AFTER),
+            "old_stock_touched": len(self.old_stock),
+            "unmeasured": sum(s.unmeasured for s in self.steps),
+            "acceptance": round(named / (named + void), 3) if (named + void) else 0.0,
+            "cost": round(sum(s.cost for s in self.steps), 6),
+            "guard": ("acceptance near the pairwise baseline (~50%) is healthy; trending "
+                      "toward ~90% means the region is condensing noise and must shrink "
+                      "before anything scales"),
+        }
+
+
+def _seed_frontier(walk: Walk, snapshot: CorpusSnapshot) -> None:
+    """Start where structure already is. An isolated claim propagates nothing (Q2)."""
+    degree: dict[str, int] = {}
+    for a in snapshot.arrows:
+        degree[a.src_slot] = degree.get(a.src_slot, 0) + 1
+        degree[a.dst_slot] = degree.get(a.dst_slot, 0) + 1
+    for sid, _ in sorted(degree.items(), key=lambda kv: (-kv[1], kv[0]))[:32]:
+        walk.push(sid, NEIGHBOUR, "seed: already carries declared arrows")
+
+
+def step(walk: Walk, snapshot: CorpusSnapshot, transport, size: int = REGION_SIZE,
+         old_stock: frozenset[tuple[str, str]] = frozenset()) -> tuple[Step, list, Region]:
+    """One position: build the region, query it, read the outcomes, aim the next step."""
+    clamp, kind, reason = walk.pop(snapshot)
+    region = build_region(snapshot, clamp=clamp, size=size)
+    body = render_region(region)
+    raw, usage = transport(REGION_SYSTEM, body)
+    proposals = parse_region(raw, region)
+    res = residuals(proposals, region)
+    walk.visited.add(clamp)
+
+    # RESIDUALS first: an implied arrow nobody named is prediction error, and repeated
+    # declines across DIFFERENT regions are the glue law failing rather than a bad view.
+    drift_here = 0
+    for pair in res.residual:
+        walk.declines[pair] = walk.declines.get(pair, 0) + 1
+        if walk.declines[pair] >= DRIFT_AFTER and pair not in walk.drift:
+            walk.drift.append(pair)
+            drift_here += 1
+        walk.push(pair[0], RESIDUAL,
+                  f"implied arrow unnamed {walk.declines[pair]}x — prediction error")
+
+    # COMPOSITION: pairs a length-2 path implies that this region did not carry.
+    for (a, _b) in region.implied:
+        walk.push(a, COMPOSITION, "composition-implied pair, unchecked")
+
+    # NEIGHBOUR: the provenance-neighbourhood of what was just found.
+    for p in res.novel:
+        walk.push(p.dst.slot, NEIGHBOUR, "provenance-neighbour of a new arrow")
+
+    touched = {tuple(sorted((p.src.slot, p.dst.slot))) for p in res.confirmed_declared}
+    old = touched & old_stock
+    walk.old_stock |= old
+
+    s = Step(n=len(walk.steps) + 1, kind=kind, reason=reason, clamp=clamp,
+             members=len(region.members), named=res.named_pairs, void=len(res.void),
+             novel=len(res.novel), confirmed_declared=len(res.confirmed_declared),
+             confirmed_implied=len(res.confirmed_implied), residual=len(res.residual),
+             drift=drift_here, old_stock=len(old), unmeasured=res.unmeasured_pairs,
+             acceptance=round(res.acceptance, 3), cost=float(usage.get("cost") or 0.0))
+    walk.steps.append(s)
+    return s, proposals, region
+
+
+def log_step(step_record: Step, path: str | Path = WALK_PATH) -> None:
+    """Append one step. The log is how the operator sees the chain follow structure."""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(step_record.as_record(), sort_keys=True) + "\n")
+        fh.flush()

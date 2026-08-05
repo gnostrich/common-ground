@@ -53,10 +53,9 @@ from dataclasses import dataclass, field
 
 from .correspondence import Correspondence
 from .corpus_state import CorpusSnapshot
-from .extract import DeterministicExtractor
 from .holes import Hole
 from .propose_correspondence import PROPOSE_SYSTEM, parse_answers, render_candidates
-from .types import Document, WarrantTier
+from .types import WarrantTier
 
 #: Candidate pairs per call. The daemon's batch; kept the same so the prompt the attachment
 #: proposer sees is the prompt the corpus proposer sees, down to the shape of the body.
@@ -160,17 +159,28 @@ def _degree(snapshot: CorpusSnapshot) -> dict[str, int]:
 
 
 def candidates(snapshot: CorpusSnapshot, typed_chart: str, typed_type: str,
-               limit: int) -> list[tuple[str, object]]:
-    """Corpus claims to ask about, most-connected first.
+               limit: int, near: frozenset[str] = frozenset()) -> list[tuple[str, object]]:
+    """Corpus claims to ask about: ARROW-RICH FIRST, then provenance-relevant.
 
-    Two filters, both structural. Type compatibility, because a correspondence relates claims
-    of the same form. And a different chart, because a correspondence IS cross-chart — asking
-    about an intra-chart pair would produce a proposal the engine then refuses to build.
+    The field's own measured structure does the ordering. A claim that already carries
+    correspondences is a better bridge than an isolated one — it is where the graph is
+    connected, so an attachment there can actually propagate — and degree is read off the
+    declared arrows, not computed from any text. Provenance breaks ties beneath it. Nothing
+    lexical is consulted and nothing about this ordering reaches the compiled input: it
+    decides only what is ASKED ABOUT, and the proposer's `none` still gates every answer.
+
+    NO TYPE FILTER. It used to require the candidate's claim-form to match the typed input's,
+    which was inherited from hole enumeration where both sides are corpus claims of a known
+    form. A bias has no form until something assigns one, and the extractor that used to
+    assign it is no longer in this path — so filtering on it would be asserting a property
+    the bias does not have. This is stated rather than assumed; the operator has not ruled on
+    whether a bias may attach across claim-forms, and this path now does.
     """
     degree = _degree(snapshot)
-    rows = [(sid, rec) for sid, rec in snapshot.slots.items()
-            if rec.chart != typed_chart and rec.type == typed_type]
-    rows.sort(key=lambda kv: (-degree.get(kv[0], 0), kv[0]))
+    rows = [(sid, rec) for sid, rec in snapshot.slots.items() if rec.chart != typed_chart]
+    rows.sort(key=lambda kv: (-degree.get(kv[0], 0),
+                              0 if kv[0] in near else 1,
+                              kv[0]))
     return rows[:limit]
 
 
@@ -178,26 +188,38 @@ def attach(text: str, snapshot: CorpusSnapshot, transport, chart: str = "english
            call_budget: int = CALL_BUDGET) -> AttachResult:
     """Ask the proposer where this input attaches. Its answer, in full, is the return value.
 
-    `transport(system, user) -> (raw, usage)` is the same callable the daemon uses, so an
-    attachment call is indistinguishable from a corpus call at the wire.
+    THE TYPED TEXT GOES TO THE PROPOSER RAW. It used to be segmented by the claim extractor
+    first, so a question or a topic phrase that yielded no spans bounced before the field was
+    ever consulted — and "the field did not respond" then meant a parser had filtered the
+    input, not that anything had been asked. That is an INGESTION rule governing the bias
+    path, the same class as attachment inheriting the identity rule. The extractor's
+    span-typing remains for corpus ingestion and for anything the operator proposes into the
+    tape; a bias is neither of those.
+
+    So the whole text is addressed as one surface — gate 1, exact, unchanged — and handed to
+    the proposer as the source side of every candidate pair. "The field did not respond" now
+    means one thing only: the proposer was consulted and declined.
     """
+    from .normalize import address
+
     out = AttachResult()
-    deltas = list(DeterministicExtractor("inbound", "typed").extract(
-        Document("inbound", chart, text, "typed")))
-    if not deltas or snapshot.empty:
-        out.error = ("the typed text produced no addressable claim" if not deltas
-                     else "the corpus is empty")
+    if snapshot.empty:
+        out.error = "the corpus is empty"
+        return out
+    if not text.strip():
+        out.error = "nothing was typed"
         return out
 
-    d = deltas[0]
-    out.typed_slot, out.typed_chart, out.typed_nu = d.slot, chart, d.nu
+    # One surface, addressed exactly. No segmentation, no claim-shape gate.
+    slot, nu_value = address(chart, text, "assert")
+    out.typed_slot, out.typed_chart, out.typed_nu = slot, chart, nu_value
 
-    pool = candidates(snapshot, chart, d.type, limit=BATCH * call_budget)
-    out.available = sum(1 for _, rec in snapshot.slots.items()
-                        if rec.chart != chart and rec.type == d.type)
+    near = frozenset()
+    pool = candidates(snapshot, chart, "assert", limit=BATCH * call_budget, near=near)
+    out.available = sum(1 for rec in snapshot.slots.values() if rec.chart != chart)
     if not pool:
-        out.error = (f"no corpus claim is both type-compatible ({d.type}) and in a different "
-                     f"chart, so there is no legal correspondence to propose")
+        out.error = (f"no corpus claim lives over a chart other than {chart}, so there is no "
+                     f"legal correspondence to propose")
         return out
 
     for start in range(0, len(pool), BATCH):
@@ -205,9 +227,9 @@ def attach(text: str, snapshot: CorpusSnapshot, transport, chart: str = "english
             out.budget_exhausted = True
             break
         chunk = pool[start:start + BATCH]
-        holes = [Hole(src_chart=chart, src_slot=d.slot, src_nu=d.nu,
+        holes = [Hole(src_chart=chart, src_slot=slot, src_nu=nu_value,
                       dst_chart=rec.chart, dst_slot=sid, dst_nu=rec.nu,
-                      type=d.type, restatement=0)
+                      type="assert", restatement=0)
                  for sid, rec in chunk]
         try:
             raw, _usage = transport(PROPOSE_SYSTEM, render_candidates(holes))
