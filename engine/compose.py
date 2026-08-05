@@ -50,14 +50,29 @@ from typing import Sequence
 from .correspondence import INSTANCE_OF, REFINES, SAME_CLAIM, Correspondence
 
 #: The partial composition table. Absent cells are UNDEFINED — see the module docstring.
-COMPOSITION: dict[tuple[str, str], str] = {
-    (SAME_CLAIM, SAME_CLAIM): SAME_CLAIM,
-    (SAME_CLAIM, REFINES): REFINES,
-    (REFINES, SAME_CLAIM): REFINES,
-    (REFINES, REFINES): REFINES,
-    (SAME_CLAIM, INSTANCE_OF): INSTANCE_OF,
-    (INSTANCE_OF, SAME_CLAIM): INSTANCE_OF,
-}
+def _load_composition() -> dict[tuple[str, str], str]:
+    """The composition table, READ FROM SEED rather than written here.
+
+    Closure over arrow kinds is a rule about the base category, and it was never declared —
+    the code carried a table nobody had ruled on. That is the attachment-law failure class
+    exactly: a rule inherited where none was specified. It now lives in
+    `seed/COMPOSITION.json`, where it can be read and disputed.
+
+    A pair absent from the table does NOT compose. The composite is UNDEFINED and yields no
+    implied arrow — never a weakest-kind default, because a residual measured against an
+    invented composite is measuring the invention.
+    """
+    import json
+
+    from .constants import SEED_DIR
+
+    raw = json.loads((SEED_DIR / "COMPOSITION.json").read_text(encoding="utf-8"))
+    return {(k1, k2): out
+            for k1, row in raw["compose"].items()
+            for k2, out in row.items()}
+
+
+COMPOSITION: dict[tuple[str, str], str] = _load_composition()
 
 #: How many composites one hub slot may contribute before the rest are dropped and counted.
 HUB_CAP = 64

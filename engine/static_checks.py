@@ -726,6 +726,13 @@ MECHANISM_CLAIMS: tuple[tuple[str, str, frozenset[str]], ...] = (
      r"|\bnever enumerat\w*\b|\bno enumeration\b|\bnot a scan\b|\bbuilt once\b",
      frozenset({"dict", "defaultdict", "setdefault", "Counter", "lru_cache", "cache",
                 "Index", "postings", "_index", "index"})),
+    # The LM is QUERIED over a region. "Relaxes"/"settles" applied to it is a motivating
+    # picture, not a mechanism: the wire format is justified by diagram-completion, and
+    # borrowed physics vocabulary is exactly how a picture hardens into a claimed mechanism.
+    ("lm_physics",
+     r"\b(?:the )?(?:LM|model|medium)\s+(?:relaxes|settles|equilibrat\w+)\b"
+     r"|\brelaxation medium\b|\bone settling\b",
+     frozenset()),
     ("propagation",
      r"\bpropagates? (?:through|over|across)\b|\breached through declared\b"
      r"|\bwhat moved\b",

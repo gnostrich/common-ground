@@ -225,14 +225,50 @@ class CompositionIsPrioritized(unittest.TestCase):
         finally:
             h.close()
 
-    def test_the_composition_table_is_partial_on_purpose(self):
-        self.assertNotIn(("refines", "instance_of"), COMPOSITION)
-        self.assertNotIn(("instance_of", "instance_of"), COMPOSITION)
+    def test_the_composition_table_is_the_one_declared_in_seed(self):
+        """This control used to assert that `refines o instance_of` was absent.
+
+        That was asserting an INVENTION. No composition table had ever been declared; the
+        code carried one I had written, and this control froze it — a rule inherited where
+        none was specified, which is the attachment-law failure class exactly one layer down.
+        The table now lives in seed/COMPOSITION.json and this asserts against the operator's
+        stated rule instead: same_claim o same_claim = same_claim; same_claim o refines =
+        refines either order; refines o refines = refines; anything o instance_of =
+        instance_of; and undefined compositions imply NOTHING.
+        """
+        declared = {
+            ("same_claim", "same_claim"): "same_claim",
+            ("same_claim", "refines"): "refines",
+            ("refines", "same_claim"): "refines",
+            ("refines", "refines"): "refines",
+            ("same_claim", "instance_of"): "instance_of",
+            ("refines", "instance_of"): "instance_of",
+            ("instance_of", "instance_of"): "instance_of",
+            ("instance_of", "same_claim"): "instance_of",
+        }
+        self.assertEqual(dict(COMPOSITION), declared)
+
+    def test_an_undefined_composite_implies_nothing(self):
+        """`instance_of o refines` is the one the operator left undefined. An undefined
+        composite must produce NO implied arrow — never a weakest-kind default, because a
+        residual measured against an invented composite measures the invention."""
         self.assertNotIn(("instance_of", "refines"), COMPOSITION)
         result = compose([arrow(EN, "A", LN, "B", "instance_of"),
-                          arrow(LN, "B", TB, "C", "instance_of")])
+                          arrow(LN, "B", TB, "C", "refines")])
         self.assertEqual(result.implied, [],
                          "an undefined composite must imply nothing, not the nearest kind")
+
+    def test_the_table_is_read_from_seed_not_written_in_code(self):
+        import ast
+
+        from engine.constants import REPO_ROOT
+
+        src = (REPO_ROOT / "engine" / "compose.py").read_text(encoding="utf-8")
+        self.assertIn("COMPOSITION.json", src, "the table must be seed data, not a literal")
+        tree = ast.parse(src)
+        literals = [n for n in ast.walk(tree) if isinstance(n, ast.Dict)
+                    and any(isinstance(k, ast.Tuple) for k in n.keys)]
+        self.assertEqual(literals, [], "a hand-written table in code is what was removed")
 
     def test_intra_chart_implication_is_residue_not_an_arrow(self):
         """Gate 1 owns intra-chart identity, so composition cannot manufacture one."""

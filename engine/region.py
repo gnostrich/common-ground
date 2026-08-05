@@ -1,6 +1,6 @@
-"""REGION RELAXATION: the unit of extraction is a region, not a pair.
+"""REGION QUERY: the unit of extraction is a region, not a pair.
 
-The LM is a relaxation medium, not a pairwise oracle. Asking "does A correspond to B?" runs a
+The LM completes diagrams, and it is not a pairwise oracle. Asking "does A correspond to B?" runs a
 full settling over the whole context and keeps one bit of it. Everything else the medium
 resolved in that same pass — which of the other claims in front of it state the same thing,
 which refine which — is computed and thrown away. That is the waste, and it is not a tuning
@@ -8,14 +8,14 @@ problem: it is the wrong unit.
 
 So a call carries a REGION: a clamp point, its declared arrows, and a batch of unattached
 corpus claims. The medium is asked to name every correspondence it sees inside that region,
-and all of them are read off one settling.
+and all of them are read off one call.
 
 -- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
 MOVE: ADD A MORPHISM — a proposer into D.
-Q1 motivated it: the object the medium relaxes over is a REGION, and a pair is a projection
+Q1 motivated it: the object the query ranges over is a REGION, and a pair is a projection
 of one. We were measuring the projection.
 Q3 is the prize. A region can name two arrows sharing one English endpoint into DIFFERENT
-charts in a single settling — the composition precondition, which has occurred zero times in
+charts in a single call — the composition precondition, which has occurred zero times in
 3,113 pairwise arrows because english x python and english x go are enumerated as separate
 populations and nothing ever steers the proposer to the same English slot in both. A shared
 endpoint across two charts is what turns stars into a graph with cycles, and cycles are the
@@ -46,6 +46,7 @@ counted separately.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from .correspondence import KINDS, Correspondence
@@ -66,29 +67,35 @@ NU_CAP = 300
 REGION_TIER = WarrantTier.EXTRACTION
 
 REGION_SYSTEM = (
-    "You are reading a REGION of a reconciliation engine's corpus: a set of claims, each with "
-    "an integer index, drawn from different charts (english prose, lean, python, go, tabular, "
-    "conversation transcripts).\n\n"
-    "Name every CORRESPONDENCE you see between claims in this region:\n"
-    "  same_claim   — they assert the SAME proposition\n"
-    "  refines      — the first is a strictly more specific form of the second (directed)\n"
-    "  instance_of  — the first is a particular instance of the second's general form\n\n"
-    "Rules that decide whether your answer is usable at all:\n"
-    "  * Answer ONLY with indices. Never write a claim's text, a name, or an identifier in "
-    "place of an index — an answer that does is discarded.\n"
-    "  * A correspondence is CROSS-CHART only. Two claims in the same chart are never a "
-    "correspondence here; the engine addresses identity exactly and will reject them.\n"
-    "  * Naming nothing is a legal and expected outcome. Most pairs in a region are unrelated, "
-    "and a region where you see nothing is a real answer about this corpus.\n"
-    "  * Superficial word overlap is NOT a correspondence. Two claims that share vocabulary, "
-    "or a claim and its negation, are not related. Do not reach for a relation because you "
-    "were asked to look; you are being measured on precision, not on yield.\n"
-    "  * Cite the specific spans that make each pair correspond. If you cannot cite them, do "
-    "not name the pair.\n\n"
-    'Return ONLY JSON: {"pairs":[{"i":int,"j":int,"kind":one of '
-    "['same_claim','refines','instance_of'],\"evidence\":str}]}, where i and j are indices "
-    "shown in the region and the relation runs FROM i TO j."
+    "You are completing a partial DIAGRAM: a finite subcategory of a reconciliation engine's "
+    "base. OBJECTS are claims, each living over a chart (english, lean, python, go, tabular, "
+    "conversation). ARROWS are typed translations between claims in DIFFERENT charts.\n\n"
+    "You are given the objects, the arrows already DECLARED among them, and the arrows those "
+    "declared arrows IMPLY by composition. Complete the diagram.\n\n"
+    "Emit only lines of the form  i -kind-> j  with i and j among the OBJECTS shown and kind "
+    "in {same_claim, refines, instance_of}. Nothing else: no prose, no JSON, no claim text, "
+    "no names.\n"
+    "  same_claim   — i and j assert the SAME proposition\n"
+    "  refines      — i is a strictly more specific form of j (directed)\n"
+    "  instance_of  — i is a particular instance of j\'s general form\n\n"
+    "Do not introduce new objects: an index not shown does not exist in this diagram.\n"
+    "Arrows are CROSS-CHART only; two claims over the same chart are never related here.\n"
+    "Pairs you do not name are UNMEASURED, not denied. Naming nothing is a legal completion, "
+    "and word overlap between two claims is not a reason to relate them."
 )
+
+#: The verbatim task line, kept separate so it can be asserted against.
+TASK_LINE = (
+    "Complete the diagram. Emit only lines of the form i -kind-> j with i,j in OBJECTS and "
+    "kind in {same_claim, refines, instance_of}. Do not introduce new objects. Pairs you do "
+    "not name are UNMEASURED, not denied."
+)
+
+#: `i -kind-> j`. The whole wire vocabulary on the way back.
+#: An index is a WHOLE token. Without the guards, `1.0 -same_claim-> 2` matched the `1` out
+#: of `1.0` and silently truncated a float into a valid index — a malformed answer resolving
+#: to a real address, which is the exact shape resolve-or-void exists to prevent.
+_ARROW_RE = re.compile(r"(?<![\w.])(-?\d+)\s*-\s*([a-z_]+)\s*->\s*(-?\d+)(?![\w.])")
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,7 +116,10 @@ class Region:
 
     clamp: str = ""                           # slot id of the perturbed claim, if any
     members: list[Member] = field(default_factory=list)
-    implied: set[tuple[str, str]] = field(default_factory=set)   # already-declared pairs
+    #: Declared, implied and proposed are THREE epistemic states of the same arrow type, and
+    #: the residual signal is defined as their difference — so the format keeps them apart.
+    declared: dict[tuple[str, str], str] = field(default_factory=dict)
+    implied: dict[tuple[str, str], str] = field(default_factory=dict)
 
     def by_index(self, i: object) -> Member | None:
         if not isinstance(i, int) or isinstance(i, bool):
@@ -151,93 +161,114 @@ def _display(nu: str) -> str:
 
 
 def render_region(region: Region) -> str:
-    """The prompt body: indexed claims, with truncation marked where it happened."""
-    lines = []
+    """The partial diagram on the wire: OBJECTS, declared ARROWS, implied ARROWS, task.
+
+    All three sections go in. "Complete a partial diagram" is only well-posed if the partial
+    diagram is given — withholding the declared arrows would force the medium to re-derive
+    structure the registry already holds, and would destroy the residual measurement, which is
+    defined as the difference between what is declared, what composition implies, and what the
+    medium names.
+    """
+    lines = ["OBJECTS"]
     for m in region.members:
         text = _display(m.nu)
         cut = len(text) > NU_CAP
-        body = text[:NU_CAP] + (" …[cut]" if cut else "")
-        lines.append(f"[{m.index}] ({m.chart}/{m.type}) {body}")
+        lines.append(f"[{m.index}|{m.chart}] {text[:NU_CAP]}{' …[cut]' if cut else ''}")
+
+    lines += ["", "ARROWS (declared)"]
+    idx = {m.slot: m.index for m in region.members}
+    declared = [f"{idx[a]} -{k}-> {idx[b]}" for (a, b), k in sorted(region.declared.items())
+                if a in idx and b in idx]
+    lines += declared or ["(none)"]
+
+    lines += ["", "ARROWS (implied by composition)"]
+    implied = [f"{idx[a]} -{k}-> {idx[b]}" for (a, b), k in sorted(region.implied.items())
+               if a in idx and b in idx]
+    lines += implied or ["(none)"]
+
+    lines += ["", TASK_LINE]
     return "\n".join(lines)
 
 
 def parse_region(raw: str, region: Region) -> list[Proposal]:
-    """Resolve every named pair to exact addresses, or VOID it with the reason.
+    """Read `i -kind-> j` lines. Resolution is an array lookup; anything else is VOID.
 
-    Nothing here compares text. An answer is an index or it is not, and the index is an array
-    lookup into the region that was rendered — which is why a fuzzy match has no surface to
-    attach to even in principle.
+    There are no names anywhere in the wire format — the medium never sees an address and
+    never writes one — so a fuzzy match has nothing to attach to even in principle. That is
+    the resolve-or-void property, and it is a fact about the format rather than a check bolted
+    onto it.
     """
-    from .propose_correspondence import _json_block, _salvage_objects
-
-    try:
-        body = _json_block(raw)
-    except Exception:
-        body = None
-    rows = []
-    if isinstance(body, dict) and isinstance(body.get("pairs"), list):
-        rows = body["pairs"]
-    else:
-        rows = [r for r in _salvage_objects(raw) if "i" in r and "j" in r]
-
     out: list[Proposal] = []
-    for row in rows:
-        if not isinstance(row, dict):
-            out.append(Proposal(kind="?", src=None, dst=None, evidence="",
-                                void="answer row is not an object"))
-            continue
-        kind = str(row.get("kind", ""))
-        evidence = str(row.get("evidence", ""))[:600]
-        i, j = row.get("i"), row.get("j")
+    for m in _ARROW_RE.finditer(raw or ""):
+        i, kind, j = int(m.group(1)), m.group(2), int(m.group(3))
         src, dst = region.by_index(i), region.by_index(j)
+        line = m.group(0)
         if src is None or dst is None:
-            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=evidence,
-                                void=f"index out of region or not an integer: i={i!r} j={j!r}"))
-            continue
-        if src.slot == dst.slot:
-            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=evidence,
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
+                                void=f"index outside the region: {line}"))
+        elif src.slot == dst.slot:
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
                                 void="i == j; one claim is not a correspondence"))
-            continue
-        if kind not in KINDS or kind == "none":
-            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=evidence,
+        elif kind not in KINDS or kind == "none":
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
                                 void=f"unknown correspondence kind {kind!r}"))
-            continue
-        if src.chart == dst.chart:
-            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=evidence,
+        elif src.chart == dst.chart:
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
                                 void="intra-chart; exact addressing owns intra-chart identity"))
-            continue
-        out.append(Proposal(kind=kind, src=src, dst=dst, evidence=evidence))
+        else:
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line))
     return out
 
 
 @dataclass(slots=True)
 class Residual:
-    """What the medium named against what declared structure already implies."""
+    """The reading discipline: what the medium named against what the registry already holds.
 
-    named_not_implied: list[Proposal] = field(default_factory=list)
-    implied_not_named: list[tuple[str, str]] = field(default_factory=list)
-    named_and_implied: int = 0
-    void: list[Proposal] = field(default_factory=list)
-    mentioned_pairs: int = 0
-    unmentioned_pairs: int = 0                # NOT `none` — never put to the medium
+    Five outcomes, and only one of them is a new proposal:
+
+      * a DECLARED arrow named        -> confirmation, recorded, not re-proposed
+      * an IMPLIED arrow named        -> composition confirmed; the arrow upgrades
+      * a NOVEL arrow named           -> proposal, extraction tier, through the inlet
+      * an IMPLIED arrow NOT named    -> RESIDUAL: prediction error, the walk's strongest
+                                         signal, and the thing the sampler steers toward
+      * a pair not named at all       -> UNMEASURED-IN-THIS-REGION. Never a `none`. Coverage
+                                         accumulates across overlapping regions; only repeated
+                                         non-naming across relaxations trends to a real negative
+    """
+
+    confirmed_declared: list = field(default_factory=list)
+    confirmed_implied: list = field(default_factory=list)
+    novel: list = field(default_factory=list)
+    residual: list = field(default_factory=list)      # implied, not named — prediction error
+    void: list = field(default_factory=list)
+    named_pairs: int = 0
+    unmeasured_pairs: int = 0
+
+    @property
+    def acceptance(self) -> float:
+        """Resolved over named. The guard: pairwise held ~50% on good bounds, and a region
+        trending toward ~90% is condensing noise rather than seeing more."""
+        total = self.named_pairs + len(self.void)
+        return (self.named_pairs / total) if total else 0.0
 
     def as_record(self) -> dict[str, object]:
         return {
-            "candidates": [p.as_record() for p in self.named_not_implied],
-            "implied_not_named": [[a[:16], b[:16]] for a, b in self.implied_not_named],
-            "named_and_implied": self.named_and_implied,
+            "confirmed_declared": len(self.confirmed_declared),
+            "confirmed_implied": len(self.confirmed_implied),
+            "novel": [p.as_record() for p in self.novel],
+            "residual": [[a[:16], b[:16]] for a, b in self.residual],
             "void": [p.as_record() for p in self.void],
-            "mentioned_pairs": self.mentioned_pairs,
-            "unmentioned_pairs": self.unmentioned_pairs,
-            "note": ("An unmentioned pair is NOT a `none`. In the pairwise loop `none` was an "
-                     "answer — the proposer was shown that pair and declined it. Here the pair "
-                     "was never put as a question, and recording it as a decline would "
-                     "manufacture refusals nobody made."),
+            "acceptance": round(self.acceptance, 3),
+            "named_pairs": self.named_pairs,
+            "unmeasured_pairs": self.unmeasured_pairs,
+            "note": ("An unmeasured pair is NOT a `none`: it was never put as a question. "
+                     "Coverage accumulates across overlapping regions of the walk, and only "
+                     "repeated non-naming across relaxations trends toward a real negative."),
         }
 
 
 def residuals(proposals: list[Proposal], region: Region) -> Residual:
-    """Split what was named against what was already declared. Both directions are facts."""
+    """Sort what was named into the five outcomes. Both mismatch directions are findings."""
     out = Residual()
     named: set[tuple[str, str]] = set()
     for p in proposals:
@@ -245,21 +276,24 @@ def residuals(proposals: list[Proposal], region: Region) -> Residual:
             out.void.append(p)
             continue
         key = (p.src.slot, p.dst.slot)
+        rev = (p.dst.slot, p.src.slot)
         named.add(key)
-        named.add((p.dst.slot, p.src.slot))
-        if key in region.implied or (p.dst.slot, p.src.slot) in region.implied:
-            out.named_and_implied += 1
+        if key in region.declared or rev in region.declared:
+            out.confirmed_declared.append(p)
+        elif key in region.implied or rev in region.implied:
+            out.confirmed_implied.append(p)
         else:
-            out.named_not_implied.append(p)
+            out.novel.append(p)
 
+    # The reverse arrow is a SEPARATE proposal, so asymmetry stays signal: an implied pair is
+    # residual only when the medium named neither direction of it.
     for pair in sorted(region.implied):
-        if pair not in named:
-            out.implied_not_named.append(pair)
+        if pair not in named and (pair[1], pair[0]) not in named:
+            out.residual.append(pair)
 
     n = len(region.members)
-    total = n * (n - 1) // 2
-    out.mentioned_pairs = len({tuple(sorted(k)) for k in named})
-    out.unmentioned_pairs = max(0, total - out.mentioned_pairs)
+    out.named_pairs = len({tuple(sorted(k)) for k in named})
+    out.unmeasured_pairs = max(0, n * (n - 1) // 2 - out.named_pairs)
     return out
 
 
@@ -283,23 +317,40 @@ def arrows_from(proposals: list[Proposal], proposer: str = "lm",
     return out
 
 
+def provenance_key(doc_id: str) -> str:
+    """The directory a claim came from. The only proximity unattached claims DECLARE.
+
+    Measured on the corpus: documents hold a median of 2 slots, which is too thin to relax
+    over, while 287 of 460 directories span two or more charts and their median size is 60 —
+    exactly one region. Forty-four span three or more, and those are the only places a shared
+    English endpoint can reach two different code charts, which is the composition
+    precondition that has never once occurred in pairwise proposing.
+    """
+    repo, _, path = doc_id.partition("||")
+    return f"{repo}||{path.rsplit('/', 1)[0] if '/' in path else ''}"
+
+
 def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_SIZE,
                  extra: list[str] | None = None) -> Region:
-    """Assemble a region: the clamp point, its declared neighbours, then unattached claims.
+    """Assemble the partial diagram: the clamp, its declared neighbours, then PROVENANCE-NEAR
+    claims — same directory, nothing else.
 
-    Neighbours first because they are the structure the medium should see — a region that
-    shows a claim without the arrows it already has invites the medium to re-name them, which
-    costs a call to learn something already recorded. Unattached claims fill the rest, and
-    they are ordered by declared degree so a region is aimed at the part of the graph that is
-    already connected rather than at a random slice of a 69,000-slot corpus.
+    The first real run filled this by declared degree, corpus-wide. That produced sixty claims
+    scattered across unrelated repositories with zero internally-declared pairs, and the medium
+    asked to complete an incoherent diagram produced a star: one Lean theorem fanned to
+    fifty-one unrelated Python declarations. Degree is not lexical, but it is not proximity
+    either — it is a global property that does not make two unattached claims near ANYTHING.
+    Provenance is the one relation they declare, and it is what this uses.
     """
-    degree: dict[str, int] = {}
     neighbours: dict[str, set[str]] = {}
     for a in snapshot.arrows:
-        degree[a.src_slot] = degree.get(a.src_slot, 0) + 1
-        degree[a.dst_slot] = degree.get(a.dst_slot, 0) + 1
         neighbours.setdefault(a.src_slot, set()).add(a.dst_slot)
         neighbours.setdefault(a.dst_slot, set()).add(a.src_slot)
+
+    near: dict[str, list[str]] = {}
+    for sid, rec in snapshot.slots.items():
+        for doc in rec.docs:
+            near.setdefault(provenance_key(doc), []).append(sid)
 
     chosen: list[str] = []
     seen: set[str] = set()
@@ -314,17 +365,41 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
         take(sid)
     for sid in (extra or ()):
         take(sid)
-    for sid, _ in sorted(degree.items(), key=lambda kv: (-kv[1], kv[0])):
-        take(sid)
-    if len(chosen) < size:
-        for sid in sorted(snapshot.slots):
+    keys = {provenance_key(d) for sid in list(seen)
+            for d in snapshot.slots[sid].docs} if seen else set()
+    if not keys:
+        # No clamp: start where the diagram can be richest — a directory spanning most charts.
+        by_charts = sorted(near, key=lambda k: (-len({snapshot.slots[s].chart
+                                                      for s in near[k]}), -len(near[k]), k))
+        keys = set(by_charts[:1])
+    for key in sorted(keys):
+        for sid in sorted(near.get(key, ())):
             take(sid)
 
     members = [Member(index=i, slot=sid, chart=snapshot.slots[sid].chart,
                       type=snapshot.slots[sid].type, nu=snapshot.slots[sid].nu,
-                      attached=degree.get(sid, 0) > 0)
+                      attached=bool(neighbours.get(sid)))
                for i, sid in enumerate(chosen)]
     inside = {m.slot for m in members}
-    implied = {(a.src_slot, a.dst_slot) for a in snapshot.arrows
-               if a.src_slot in inside and a.dst_slot in inside}
-    return Region(clamp=clamp, members=members, implied=implied)
+    declared = {(a.src_slot, a.dst_slot): a.kind for a in snapshot.arrows
+                if a.src_slot in inside and a.dst_slot in inside}
+    return Region(clamp=clamp, members=members, declared=declared,
+                  implied=_compose(declared, inside))
+
+
+def _compose(declared: dict[tuple[str, str], str], inside: set[str]
+             ) -> dict[tuple[str, str], str]:
+    """Composition closure, computed by the ENGINE before the call. If 1->2 and 2->3 are
+    declared, 1->3 is IMPLIED and is shown as such — a third epistemic state, distinct from
+    declared and from proposed, because the residual signal is their difference."""
+    from .compose import COMPOSITION
+
+    out: dict[tuple[str, str], str] = {}
+    for (a, b), k1 in declared.items():
+        for (c, d), k2 in declared.items():
+            if b != c or a == d:
+                continue
+            kind = COMPOSITION.get((k1, k2))
+            if kind and (a, d) not in declared and (d, a) not in declared:
+                out[(a, d)] = kind
+    return out
