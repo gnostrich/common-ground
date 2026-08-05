@@ -252,6 +252,23 @@ def cmd_measure_cross_repo() -> None:
     }, indent=2))
 
 
+def _read_view(base, arrows):
+    """Slots plus arrows, with NO global closure. The walk closes each region locally.
+
+    `with_arrows` is the window's read view: it recomputes fibers, blocks and loops over the
+    entire arrow graph so the header can report a floor. The walk needs none of that — it
+    builds one region at a time and computes that region's declared and implied sets from the
+    arrows inside it. Paying the global closure at startup cost four minutes at 6,343 arrows
+    and rises with every arrow the walk itself adds.
+    """
+    from engine.corpus_state import CorpusSnapshot
+
+    view = CorpusSnapshot(slots=base.slots, arrows=list(arrows), fibers=[], blocks={},
+                          contested=set(base.contested), floor_status=base.floor_status,
+                          loops=0, sources=dict(base.sources))
+    return view
+
+
 def cmd_walk(n: int) -> None:
     """The sampler. No pool: each position is drawn from what the last query produced.
 
@@ -268,12 +285,28 @@ def cmd_walk(n: int) -> None:
     from engine.walk import Walk, _seed_frontier, log_step, step
     from ui.current import _journal_arrows
 
+    def stage(msg: str) -> None:
+        """Every phase transition, announced. A process that cannot say what phase it is in
+        is the process-level version of a docstring claiming a mechanism it does not run —
+        and "silent" spent half an hour meaning "unknown whether loading or wedged"."""
+        print(f"[walk] {msg}", flush=True)
+
+    stage("opening transport")
     transport, model = _openrouter_transport()
+    stage(f"loading snapshot from {SNAPSHOT_PATH}")
     base = CorpusSnapshot.load(SNAPSHOT_PATH)
     if base.empty:
         raise SystemExit("no corpus snapshot — run `proposerd.py build-snapshot`")
+    stage(f"snapshot: {len(base.slots):,} slots — reading journal arrows")
     prior = _journal_arrows()
-    snapshot = with_arrows(base, prior)
+    stage(f"journal: {len(prior):,} arrows — assembling read view (arrows only, NO closure)")
+    # NOT `with_arrows`. That recomputes fibers, blocks and the LOOP set over the whole arrow
+    # graph, which took over four minutes at 6,343 arrows and grows with every walk — an
+    # eager global closure paid at startup for a walk that only ever looks at one region at a
+    # time. The walk needs the arrows and the slots; it computes each region's declared and
+    # implied sets locally, from those, when it gets there.
+    snapshot = _read_view(base, prior)
+    stage(f"read view ready: {len(snapshot.arrows):,} arrows over {len(snapshot.slots):,} slots")
     #: Arrows that predate the composition table. The walk's neighbourhood preference doubles
     #: as a re-audit of them, and confirmations on old stock are counted apart from new finds.
     old_stock = frozenset(tuple(sorted((a.src_slot, a.dst_slot))) for a in prior)
@@ -282,8 +315,8 @@ def cmd_walk(n: int) -> None:
     tape = FastTape()
     walk = Walk()
     _seed_frontier(walk, snapshot)
-    print(f"walk: model={model} corpus={len(snapshot.slots):,} slots "
-          f"{len(snapshot.arrows):,} arrows  old-stock={len(old_stock):,}", flush=True)
+    stage(f"seeded frontier: {len(walk.frontier):,} positions, old-stock {len(old_stock):,}")
+    stage(f"walking {n} step(s) with model={model}")
     try:
         for _ in range(n):
             s, proposals, region = step(walk, snapshot, transport, old_stock=old_stock)
