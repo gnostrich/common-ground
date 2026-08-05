@@ -207,46 +207,76 @@ def holes_by_provenance(
     return out
 
 
-def holes_by_declaration(slots: Sequence[Slot], deltas) -> dict[str, list[Hole]]:
-    """The TIGHTEST bound: a Lean declaration and the docstring written ON it.
+def declaration_key(delta) -> tuple[str, str] | None:
+    """`(file, declaration)` for one delta, or None if it names no declaration.
 
-    A `/-- ... -/` docstring documents the declaration that follows it, and the router
-    attaches that provenance (`meta['declaration']`, `meta['lean_file']`) to the English
-    document it derives. So a docstring-derived English slot and its Lean slot are co-located
-    at DECLARATION granularity — not merely the same directory, the same *declaration*.
+    Read from provenance in ONE way for every chart, which is what makes enumeration
+    chart-agnostic:
 
-    This needs no widening and no ranking: the pairing is given by where the author wrote the
-    words. Directory-level bounding covered 13.6% of Lean slots; this covers 52.1%.
+    - a doc-derived English slot carries it in its doc_id: `<file>#doc:<declaration>`;
+    - a code slot carries it in the locator its own segmenter wrote — `theorem:foo`,
+      `def:positive`, `func:Book.Match`.
+
+    Nothing is inferred from content. Both halves are the author's own structure: the doc
+    comment sits on the declaration, and the segmenter split on the declaration head.
     """
-    from .faces import declarations
+    doc_id = delta.provenance.doc_id
+    if "#doc:" in doc_id:
+        source_file, _, decl = doc_id.partition("#doc:")
+        return (source_file, decl) if decl else None
+    locator = delta.provenance.locator or ""
+    if ":" not in locator:
+        return None
+    head, _, name = locator.partition(":")
+    if not name or name.isdigit():
+        return None                     # a positional locator names no declaration
+    return (doc_id, name)
 
-    # english slots that came from a docstring, keyed by the declaration they document
-    en_by_decl: dict[tuple[str, str], set[str]] = defaultdict(set)
-    ln_by_decl: dict[tuple[str, str], set[str]] = defaultdict(set)
+
+def holes_by_declaration(slots: Sequence[Slot], deltas,
+                         chart_pairs: Sequence[tuple[str, str]] | None = None
+                         ) -> dict[str, list[Hole]]:
+    """The TIGHTEST bound, for ANY pair of charts: one declaration, two charts.
+
+    Two slots are candidates when they carry the same `(file, declaration)` key and sit in
+    different charts. That covers every pairing the corpus can actually express:
+
+    - `english x lean` — a `/-- -/` docstring and the theorem it documents;
+    - `english x python` — a PEP 257 docstring and its `def`/`class`;
+    - `english x go` — a `//` doc block and the declaration below it.
+
+    It does NOT cover `lean x python` or `lean x go`, and that is a fact about the bound
+    rather than a gap in the code: two different files never share a declaration key, and a
+    Lean spec and its Go implementation are always two files. Cross-language pairs are
+    reachable only by `holes_by_subtree`. Pairing them on a shared NAME would be a different
+    rule that nobody has ruled on, so it is not done here.
+
+    `chart_pairs` restricts the output; `None` means every cross-chart pair present.
+    """
+    by_key: dict[tuple[str, str], dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     for d in deltas:
-        doc_id = d.provenance.doc_id
-        if d.chart == "english" and "#doc:" in doc_id:
-            lean_file, _, decl = doc_id.partition("#doc:")
-            if decl:
-                en_by_decl[(lean_file, decl)].add(d.slot)
-        elif d.chart == "lean":
-            for _head, name in declarations(d.surface):
-                ln_by_decl[(doc_id, name)].add(d.slot)
-                break
+        key = declaration_key(d)
+        if key is not None:
+            by_key[key][d.chart].add(d.slot)
 
+    wanted = ({tuple(sorted(p)) for p in chart_pairs} if chart_pairs is not None else None)
     nu_of = {s.id: s.nu for s in slots}
     type_of = {s.id: s.type for s in slots}
-    chart_of = {s.id: s.chart for s in slots}
     out: dict[str, list[Hole]] = defaultdict(list)
-    for key, en_slots in en_by_decl.items():
-        for ln_slot in ln_by_decl.get(key, ()):    # same file, same declaration
-            for en_slot in en_slots:
-                if en_slot not in nu_of or ln_slot not in nu_of:
+    for charts in by_key.values():
+        present = sorted(charts)
+        for i, src_chart in enumerate(present):
+            for dst_chart in present[i + 1:]:
+                if wanted is not None and (src_chart, dst_chart) not in wanted:
                     continue
-                out[ln_slot].append(Hole(
-                    src_chart=chart_of[ln_slot], src_slot=ln_slot, src_nu=nu_of[ln_slot],
-                    dst_chart=chart_of[en_slot], dst_slot=en_slot, dst_nu=nu_of[en_slot],
-                    type=type_of[ln_slot], restatement=0))
+                for src in charts[src_chart]:
+                    for dst in charts[dst_chart]:
+                        if src not in nu_of or dst not in nu_of:
+                            continue
+                        out[src].append(Hole(
+                            src_chart=src_chart, src_slot=src, src_nu=nu_of[src],
+                            dst_chart=dst_chart, dst_slot=dst, dst_nu=nu_of[dst],
+                            type=type_of[src], restatement=0))
     return dict(out)
 
 
@@ -258,6 +288,36 @@ def _depth_below(prose_dir: str, src_dir: str) -> int | None:
         return None
     tail = src_dir[len(prose_dir) + 1:] if prose_dir else src_dir
     return len(tail.split("/")) if tail else 0
+
+
+def chart_pairs_present(slots: Sequence[Slot]) -> list[tuple[str, str]]:
+    """Every unordered cross-chart pair the corpus actually contains, `correspondence`
+    excluded — that chart holds the arrows themselves, not material to bridge."""
+    charts = sorted({s.chart for s in slots} - {"correspondence"})
+    return [(a, b) for i, a in enumerate(charts) for b in charts[i + 1:]]
+
+
+def holes_by_subtree_all(slots: Sequence[Slot], deltas, max_depth: int = 1,
+                         chart_pairs: Sequence[tuple[str, str]] | None = None
+                         ) -> dict[tuple[str, str], dict[str, list[Hole]]]:
+    """`holes_by_subtree` over EVERY chart pair, keyed by the pair.
+
+    The subtree relation is symmetric in what it means — two files near each other in the
+    tree — but `holes_by_subtree` treats one side as the document whose POSITION asserts
+    scope. Both directions are enumerated so a pair is not missed because the prose happened
+    to sit below the code rather than above it.
+    """
+    pairs = list(chart_pairs) if chart_pairs is not None else chart_pairs_present(slots)
+    out: dict[tuple[str, str], dict[str, list[Hole]]] = {}
+    for a, b in pairs:
+        merged: dict[str, list[Hole]] = defaultdict(list)
+        for src, dst in ((a, b), (b, a)):
+            for slot, holes in holes_by_subtree(slots, deltas, src_chart=src, dst_chart=dst,
+                                                max_depth=max_depth).items():
+                merged[slot].extend(holes)
+        if merged:
+            out[(a, b)] = dict(merged)
+    return out
 
 
 def holes_by_subtree(slots: Sequence[Slot], deltas,
@@ -293,7 +353,9 @@ def holes_by_subtree(slots: Sequence[Slot], deltas,
         if d.chart == src_chart:
             src_docs[d.slot].add(d.provenance.doc_id)
         elif d.chart == dst_chart and "#doc:" not in d.provenance.doc_id:
-            dst_docs[d.slot].add(d.provenance.doc_id)   # docstrings are already paired
+            # A doc-derived slot is already paired at declaration granularity, which is
+            # strictly tighter, so admitting it here would only duplicate that pairing.
+            dst_docs[d.slot].add(d.provenance.doc_id)
 
     nu_of = {s.id: s.nu for s in slots}
     type_of = {s.id: s.type for s in slots}

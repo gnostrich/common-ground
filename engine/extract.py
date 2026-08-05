@@ -59,13 +59,29 @@ def _segment_prose(text: str) -> list[tuple[str, str]]:
 
 
 def _segment_lean(text: str) -> list[tuple[str, str]]:
+    """One span per declaration, locator `<head>:<name>` — the NAME, not the position.
+
+    This used to emit `decl:<i>`, an ordinal. That made the Lean chart the only code chart
+    whose declaration name had to be re-derived downstream (`holes_by_declaration` called
+    `faces.declarations` on the surface to get it back), which is why hole enumeration could
+    only ever be written for Lean. Python and Go already reported `def:name` / `func:Name`.
+    All three now report the same shape, so a declaration key is readable from provenance in
+    exactly one way for every code chart.
+
+    The locator is provenance — a fact about where the claim was found — not part of the
+    address (gate 1) and not an input to any key (gate 7), so no slot id moves.
+    """
+    from .faces import declarations
+
     matches = list(_LEAN_DECL_RE.finditer(text))
     out: list[tuple[str, str]] = []
     for i, m in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         chunk = text[m.start():end].strip()
-        if chunk:
-            out.append((chunk, f"decl:{i}"))
+        if not chunk:
+            continue
+        named = next(iter(declarations(chunk)), None)
+        out.append((chunk, f"{named[0]}:{named[1]}" if named else f"decl:{i}"))
     return out
 
 

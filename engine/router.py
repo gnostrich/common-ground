@@ -40,6 +40,7 @@ from typing import Callable
 
 from .charts import is_chart
 from .hashing import sha256_text
+from .companions import doc_companions, lean_docstrings
 from .languages import CHART, REFERENCE, SHELF as SHELF_CLASS, rule_for
 from .types import Document
 
@@ -226,44 +227,6 @@ def _default_lean_elaborates(text: str) -> tuple[bool, str]:
     return False, "no pinned Lean toolchain (D6 unresolved); elaboration unverified"
 
 
-def lean_docstrings(name: str, text: str, source: str = "repo_docs") -> list[Document]:
-    """A Lean file's docstrings, as ENGLISH claims attached to their declaration.
-
-    `/-- ... -/` documents the declaration that follows it (Lean convention), so the derived
-    English document's id names that declaration: `<file>#doc:<declaration>`. `/-! ... -/` is a
-    section/module doc with no single owner, so it is attributed to the file.
-
-    This is ADDITIVE and NON-PLASTIC. The Lean document and its address are untouched — `nu`
-    still strips docstrings from the Lean surface, so every Lean slot id is byte-identical
-    before and after. What changes is that 293k characters of prose which used to be discarded
-    at the boundary now enter the English chart, carrying provenance that points at the exact
-    declaration they describe. That provenance is what makes them co-located at DECLARATION
-    granularity — tighter than any directory.
-    """
-    out: list[Document] = []
-    for match in _LEAN_DOCSTRING_RE.finditer(text):
-        body = match.group(1).strip()
-        if not body:
-            continue
-        owner = _NEXT_DECL_RE.match(text, match.end())
-        decl = owner.group(2) if owner else ""
-        doc_id = f"{name}#doc:{decl}" if decl else f"{name}#doc@{match.start()}"
-        doc = Document(doc_id, ENGLISH, _nfc(body), source)
-        doc.meta["lean_file"] = name
-        if decl:
-            doc.meta["declaration"] = decl
-            doc.meta["declaration_head"] = owner.group(1)
-        out.append(doc)
-    for match in _LEAN_SECTION_DOC_RE.finditer(text):
-        body = match.group(1).strip()
-        if not body:
-            continue
-        doc = Document(f"{name}#sectiondoc@{match.start()}", ENGLISH, _nfc(body), source)
-        doc.meta["lean_file"] = name
-        out.append(doc)
-    return out
-
-
 def route(
     name: str,
     text: str,
@@ -292,9 +255,11 @@ def route(
     if rule.cls == CHART and not is_lean_file:
         # Any OTHER manifest-declared chart entry. This branch is what makes the seam real:
         # standing up a python chart is a CHARTS.json row, a LANGUAGES.json row and three
-        # behavior functions — and no edit here.
+        # behavior functions — and no edit here. Doc companions come from DOC_COMPANIONS,
+        # also keyed by chart, so a new language's doc convention is a table entry too.
         return RoutedDoc(name, rule.chart, "chart by manifest extension", raw_hash,
-                         Document(name, rule.chart, normalized, source))
+                         Document(name, rule.chart, normalized, source),
+                         companions=doc_companions(rule.chart, name, normalized, source))
 
     # 1. Verbatim is a property of a SPAN. Fenced blocks are lifted out and pinned by hash;
     #    what remains is the document's prose and is routed on its own merits. A file that is
@@ -331,7 +296,7 @@ def route(
         # unresolved, zero clamps. The one line cost 407 GitHub .lean files their chart.
         elaborates, reason = (lean_elaborates or _default_lean_elaborates)(normalized)
         document = Document(name, LEAN, normalized, source)
-        companions = tuple(lean_docstrings(name, normalized, source))
+        companions = doc_companions(LEAN, name, normalized, source)
         if elaborates:
             return RoutedDoc(name, LEAN, "elaborates; clamp-eligible", raw_hash, document,
                              companions=companions)

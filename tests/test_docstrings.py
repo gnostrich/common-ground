@@ -148,10 +148,12 @@ class DeclarationGranularityBounding(unittest.TestCase):
         slots, deltas = self._pipeline()
         bounded = holes_by_declaration(slots, deltas)
         self.assertTrue(bounded, "the docstring and its declaration must pair")
-        for src, holes in bounded.items():
+        # Direction is no longer fixed: holes_by_declaration enumerates chart pairs in a
+        # stable order, so what is asserted is the PAIR, not which side happens to be src.
+        for _src, holes in bounded.items():
             for h in holes:
-                self.assertEqual(h.src_chart, "lean")
-                self.assertEqual(h.dst_chart, "english")
+                self.assertEqual({h.src_chart, h.dst_chart}, {"lean", "english"})
+
 
     def test_it_pairs_nothing_when_the_docstring_is_removed(self):
         from engine.constants import decisions
