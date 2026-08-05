@@ -116,6 +116,11 @@ class Walk:
     declines: dict[tuple[str, str], int] = field(default_factory=dict)
     drift: list[tuple[str, str]] = field(default_factory=list)
     old_stock: set[tuple[str, str]] = field(default_factory=set)   # arrows predating the table
+    #: Co-present sets already queried. `visited` tracks CLAMPS, but two different clamps in
+    #: one provenance directory assemble the SAME region — so steps 4,5,6 and 8 of an eight-
+    #: step walk came back byte-identical, and every drift and confirmation in them was one
+    #: measurement counted four times. Independence is a property of the region, not the clamp.
+    regions_seen: set[str] = field(default_factory=set)
 
     def push(self, slot: str, kind: str, reason: str) -> None:
         if slot and slot not in self.visited and slot not in self.frontier:
@@ -209,6 +214,17 @@ def step(walk: Walk, snapshot: CorpusSnapshot, transport, size: int = REGION_SIZ
     """One position: build the region, query it, read the outcomes, aim the next step."""
     clamp, kind, reason = walk.pop(snapshot)
     region = build_region(snapshot, clamp=clamp, size=size)
+    # Skip a co-present set already queried. Re-querying it re-measures, and re-measurement
+    # dressed as a new step inflates every count downstream of it.
+    tries = 0
+    while region.region_id in walk.regions_seen and tries < 24:
+        walk.visited.add(clamp)
+        clamp, kind, reason = walk.pop(snapshot)
+        if not clamp:
+            break
+        region = build_region(snapshot, clamp=clamp, size=size)
+        tries += 1
+    walk.regions_seen.add(region.region_id)
     body = render_region(region)
     raw, usage = transport(REGION_SYSTEM, body)
     proposals = parse_region(raw, region)

@@ -465,8 +465,9 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
     inside = {m.slot for m in members}
     declared = {(a.src_slot, a.dst_slot): a.kind for a in live
                 if a.src_slot in inside and a.dst_slot in inside}
+    chart_of = {m.slot: m.chart for m in members}
     return Region(clamp=clamp, members=members, declared=declared,
-                  implied=_compose(declared, inside))
+                  implied=_compose(declared, inside, chart_of))
 
 
 def _shuffle(slots: list[str]) -> list[str]:
@@ -483,17 +484,32 @@ def _shuffle(slots: list[str]) -> list[str]:
     return sorted(slots, key=lambda s: sha256_text(seed + s))
 
 
-def _compose(declared: dict[tuple[str, str], str], inside: set[str]
-             ) -> dict[tuple[str, str], str]:
-    """Composition closure, computed by the ENGINE before the call. If 1->2 and 2->3 are
-    declared, 1->3 is IMPLIED and is shown as such — a third epistemic state, distinct from
-    declared and from proposed, because the residual signal is their difference."""
+def _compose(declared: dict[tuple[str, str], str], inside: set[str],
+             chart_of: dict[str, str]) -> dict[tuple[str, str], str]:
+    """Composition closure — delegated to `engine.compose`, not reimplemented here.
+
+    This function used to compose A->B->C without checking that A and C live over DIFFERENT
+    charts. `Correspondence` refuses an intra-chart arrow outright, so every such composite
+    was an arrow that cannot exist — and the walk then counted the medium's correct refusal to
+    name it as prediction error. 100% of 640 measured drifts were this: english x english and
+    python x python composites manufactured between the leaves of 29 hubs, one of them 64
+    times over.
+
+    Two defects in one. The missing cross-chart guard, and the fact that a SECOND composition
+    existed at all: `engine.compose` already had the rule and a control asserting it
+    (`test_intra_chart_implication_is_residue_not_an_arrow`). Writing another was the Q5
+    violation this module's own docstring warns about.
+    """
     from .compose import COMPOSITION
 
     out: dict[tuple[str, str], str] = {}
     for (a, b), k1 in declared.items():
         for (c, d), k2 in declared.items():
             if b != c or a == d:
+                continue
+            # THE GUARD. Gate 1 owns intra-chart identity, so composition may not manufacture
+            # one; `engine.compose` calls the same case a residue rather than an arrow.
+            if chart_of.get(a) == chart_of.get(d):
                 continue
             kind = COMPOSITION.get((k1, k2))
             if kind and (a, d) not in declared and (d, a) not in declared:

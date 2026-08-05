@@ -94,7 +94,7 @@ class ThereIsNoPool(unittest.TestCase):
                         if isinstance(n, ast.ClassDef) and n.name == "Walk")
         fields = {n.target.id for n in walk_cls.body if isinstance(n, ast.AnnAssign)}
         self.assertEqual(fields, {"steps", "frontier", "visited", "declines", "drift",
-                                  "old_stock"})
+                                  "old_stock", "regions_seen"})
 
 
 class TheFrontierIsAimedByError(unittest.TestCase):
@@ -162,6 +162,57 @@ class TheWalkReachesDarkRegions(unittest.TestCase):
         snap, _ = _corpus([("english", "a claim about cones here"),
                            ("lean", "theorem t : True")])
         self.assertEqual(Walk()._jump(snap), Walk()._jump(snap))
+
+
+class CompositionCannotManufactureAnIllegalArrow(unittest.TestCase):
+    """PLANTED against the defect that made every drift measurement worthless.
+
+    A hub — one declaration with many English claims on it — makes composition fire A->B->C
+    for every PAIR of leaves, and both leaves are English. That composite is intra-chart, which
+    `Correspondence` refuses outright, so it is an arrow that cannot exist. The medium was told
+    cross-chart only and correctly declined to name any of them; the walk counted its
+    correctness as prediction error. 640 of 640 measured drifts were exactly this.
+    """
+
+    def test_planted_a_hub_implies_nothing_between_its_leaves(self):
+        from engine.region import build_region
+
+        snap, ids = _corpus(
+            [("english", "filenames are basename-sanitised with no path traversal"),
+             ("python", "def rebind(session, path): return path"),
+             ("english", "pointers only, no file is moved or deleted")],
+            arrows=[("english:filenames are basename-sanitised with no path traversal",
+                     "python:def rebind(session, path): return path", "refines"),
+                    ("python:def rebind(session, path): return path",
+                     "english:pointers only, no file is moved or deleted", "instance_of")])
+        region = build_region(snap, size=10)
+        chart = {m.slot: m.chart for m in region.members}
+        for a, b in region.implied:
+            self.assertNotEqual(chart.get(a), chart.get(b),
+                                "composition manufactured an intra-chart arrow, which gate 1 "
+                                "owns and Correspondence refuses to build")
+
+    def test_there_is_only_one_composition_rule(self):
+        """A second implementation is the Q5 violation, and it is what carried the defect."""
+        import ast
+
+        src = (REPO_ROOT / "engine" / "region.py").read_text(encoding="utf-8")
+        tree = ast.parse(src)
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef) and n.name == "_compose")
+        body = ast.unparse(fn)
+        self.assertIn("COMPOSITION", body, "the kind table must come from engine.compose")
+        self.assertNotIn("same_claim", body, "a kind literal here is a second rule")
+
+
+class TheWalkNeverRemeasuresTheSameRegion(unittest.TestCase):
+    def test_planted_two_clamps_in_one_directory_are_one_observation(self):
+        """Steps 4, 5, 6 and 8 of an eight-step walk came back byte-identical because
+        `visited` tracked clamps and the region is what carries independence."""
+        w = Walk()
+        w.regions_seen.add("abc123")
+        self.assertIn("abc123", w.regions_seen)
+        self.assertNotIn("regions_seen", ("steps", "frontier", "visited"))
 
 
 class TheGlueLawIsMeasured(unittest.TestCase):
