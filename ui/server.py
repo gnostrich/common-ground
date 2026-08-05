@@ -212,7 +212,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, json.dumps(_proposer_ledger()))
             elif path == "/ask":
                 question = str(b.get("question", ""))
-                compiled = ask_the_corpus(question, str(b.get("chart", "english")))
+                compiled = ask_the_corpus(question, str(b.get("chart", "english")), key=key)
                 # No branch on whether anything "landed". The compiled input already IS
                 # the field's response — the moved region with the declared path to each
                 # moved slot, or an explicit statement that nothing moved and why. There is

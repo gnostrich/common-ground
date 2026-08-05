@@ -43,7 +43,7 @@ from dataclasses import dataclass, field
 
 from .blocks import structural_edges
 from .constants import BVALUES
-from .corpus_state import CorpusSnapshot
+from .corpus_state import CorpusSnapshot, with_arrows
 from .energy import evidence_from_deltas, lexicon_prior
 from .extract import DeterministicExtractor
 from .settle import settle
@@ -79,6 +79,34 @@ MOVED_CAP = 24
 
 
 @dataclass(frozen=True, slots=True)
+class Hop:
+    """One declared arrow the perturbation travelled, with the warrant it travelled on.
+
+    Rendered as a string this was unreadable and, worse, unusable: "how far did it reach"
+    and "on what warrant" are different questions, and a reach of three hops on three
+    EXTRACTION arrows is a much weaker statement than one hop on a CI_RECEIPT. The tier
+    rides on every step so the strength of a path is visible rather than inferred from its
+    length.
+    """
+
+    kind: str                                 # same_claim | refines | instance_of
+    tier: str                                 # the ARROW's warrant tier, not the slot's
+    provisional: bool
+    to_slot: str
+    to_chart: str
+    to_nu: str
+
+    def as_record(self) -> dict[str, object]:
+        return {"kind": self.kind, "tier": self.tier, "provisional": self.provisional,
+                "to": self.to_slot[:16], "chart": self.to_chart, "nu": self.to_nu[:200]}
+
+    def render(self) -> str:
+        state = "provisional" if self.provisional else "confirmed"
+        return (f"{self.kind} ({state}, warrant {self.tier}) -> [{self.to_chart}] "
+                f"{self.to_nu[:110]}")
+
+
+@dataclass(frozen=True, slots=True)
 class Moved:
     """One slot that responded to the bias, and the declared path by which it was reached."""
 
@@ -92,13 +120,28 @@ class Moved:
     shift: float                              # L1 distance between settled and baseline
     before: tuple[float, ...]
     after: tuple[float, ...]
-    path: tuple[str, ...]                     # rendered declared arrows, bias-side first
+    path: tuple[Hop, ...]                     # declared arrows, bias-side first
     hops: int                                 # 0 = the bias landed on this slot itself
+
+    @property
+    def weakest_tier(self) -> str:
+        """The weakest arrow on the path — what the whole reach actually rests on.
+
+        A chain is no stronger than its weakest declared link, so reporting the path's tiers
+        without this invites reading the first hop's warrant as the path's.
+        """
+        if not self.path:
+            return ""
+        order = {"KERNEL": 0, "CI_RECEIPT": 1, "AUTHORSHIP": 2, "PREMINTED": 3,
+                 "REPO_DOC": 4, "EXTRACTION": 5}
+        return max((h.tier for h in self.path), key=lambda x: order.get(x, 99))
 
     def as_record(self) -> dict[str, object]:
         return {"slot": self.slot[:16], "chart": self.chart, "type": self.type,
                 "value": self.value, "tier": self.tier, "contested": self.contested,
-                "shift": round(self.shift, 6), "hops": self.hops, "path": list(self.path),
+                "shift": round(self.shift, 6), "hops": self.hops,
+                "path": [h.as_record() for h in self.path],
+                "weakest_tier": self.weakest_tier,
                 "reached_by": ("the bias landed on this slot" if self.hops == 0
                                else f"{self.hops} declared arrow(s) from a biased slot")}
 
@@ -183,37 +226,60 @@ def _blocks_touching(snapshot: CorpusSnapshot, seeds: set[str]) -> list[Block]:
 
 
 def _paths_from(block: Block, seeds: set[str], snapshot: CorpusSnapshot
-                ) -> dict[str, tuple[int, tuple[str, ...]]]:
+                ) -> dict[str, tuple[int, tuple[Hop, ...]]]:
     """Shortest declared-arrow path from any biased slot to every slot it can reach.
 
     Breadth-first over the block's edges. Those edges are exactly the declared arrows, so a
     path here IS a chain of correspondences somebody proposed — which is what makes it
-    showable as provenance rather than as an assertion that two things are related.
+    showable as provenance rather than as an assertion that two things are related. Each step
+    carries the ARROW's own kind and warrant tier, because how far a perturbation reached and
+    what it reached on are different facts and only one of them is the hop count.
     """
-    adj: dict[str, list[tuple[str, str]]] = {}
-    for e in block.edges:
-        adj.setdefault(e.u, []).append((e.v, e.origin))
-        adj.setdefault(e.v, []).append((e.u, e.origin))
+    by_pair: dict[tuple[str, str], object] = {}
+    for a in snapshot.arrows:
+        by_pair.setdefault((a.src_slot, a.dst_slot), a)
+        by_pair.setdefault((a.dst_slot, a.src_slot), a)
 
-    out: dict[str, tuple[int, tuple[str, ...]]] = {}
-    queue: deque[tuple[str, int, tuple[str, ...]]] = deque()
+    adj: dict[str, list[str]] = {}
+    for e in block.edges:
+        adj.setdefault(e.u, []).append(e.v)
+        adj.setdefault(e.v, []).append(e.u)
+
+    out: dict[str, tuple[int, tuple[Hop, ...]]] = {}
+    queue: deque[tuple[str, int, tuple[Hop, ...]]] = deque()
     for sid in sorted(seeds & set(block.slots)):
         out[sid] = (0, ())
         queue.append((sid, 0, ()))
     while queue:
         cur, hops, path = queue.popleft()
-        for nxt, origin in sorted(adj.get(cur, ())):
+        for nxt in sorted(adj.get(cur, ())):
             if nxt in out:
                 continue
+            arrow = by_pair.get((cur, nxt))
             rec = snapshot.slots.get(nxt)
-            step = (f"{origin} -> [{rec.chart if rec else '?'}] "
-                    f"{(rec.nu[:70] if rec else nxt[:16])}")
+            step = Hop(
+                kind=getattr(arrow, "kind", "?"),
+                tier=getattr(getattr(arrow, "tier", None), "name", "EXTRACTION"),
+                provisional=bool(getattr(arrow, "provisional", True)),
+                to_slot=nxt, to_chart=rec.chart if rec else "?",
+                to_nu=_display(rec.nu) if rec else nxt[:16])
             out[nxt] = (hops + 1, path + (step,))
             queue.append((nxt, hops + 1, path + (step,)))
     return out
 
 
-def relax(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> Relaxation:
+def _display(nu: str) -> str:
+    """Strip the chart tag for READING. Addressing keeps it; this never feeds an address."""
+    if nu.startswith("\x01"):
+        end = nu.find("\x01", 1)
+        if end != -1:
+            return nu[end + 1:]
+    return nu
+
+
+def relax(text: str, snapshot: CorpusSnapshot, chart: str = "english",
+          seeds_from: set[str] | None = None,
+          extra_arrows: list | None = None) -> Relaxation:
     """Apply the typed text as a soft constraint and report what the field did.
 
     Settlement runs twice per affected block — corpus alone, then corpus plus bias — and the
@@ -232,11 +298,32 @@ def relax(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> Relaxa
         out.silence = "the typed text produced no addressable claim, so there is no bias."
         return out
 
-    seeds = {d.slot for d in deltas}
+    # Where the bias attaches. By default its own address — which is only ever right when
+    # the typed text already exists verbatim. `seeds_from` carries the ATTACHMENT the
+    # proposer accepted, which is how a bias reaches a corpus that does not contain it
+    # word for word. Either way the seeds are addresses, and everything after this point
+    # travels declared arrows only.
+    seeds = set(seeds_from) if seeds_from else {d.slot for d in deltas}
     out.bias_in_field = tuple(sorted(seeds & set(snapshot.slots)))
+    if extra_arrows:
+        # The attachment arrows themselves, laid over the read view so the perturbation can
+        # travel them. They are EXTRACTION tier and are not written anywhere.
+        snapshot = with_arrows(snapshot, list(snapshot.arrows) + list(extra_arrows))
 
-    bias = {s: [c * BIAS_WEIGHT for c in vec]
-            for s, vec in evidence_from_deltas(deltas).items()}
+    # WHERE THE PUSH IS APPLIED. Keyed by the typed claim's own address, the bias only ever
+    # lands when the typed text already exists verbatim — the slot is otherwise absent from
+    # every block and the perturbation is silently applied to nothing. When the proposer has
+    # ATTACHED the input to corpus claims, the push belongs on those claims: that is what the
+    # correspondence asserts, and it is the whole point of proposing one.
+    raw_bias = evidence_from_deltas(deltas)
+    summed = [0.0] * NBV
+    for vec in raw_bias.values():
+        for i, x in enumerate(vec):
+            summed[i] += x
+    if seeds_from:
+        bias = {sid: [c * BIAS_WEIGHT for c in summed] for sid in seeds}
+    else:
+        bias = {s: [c * BIAS_WEIGHT for c in vec] for s, vec in raw_bias.items()}
 
     for block in _blocks_touching(snapshot, seeds):
         if len(block.slots) > BLOCK_CAP:

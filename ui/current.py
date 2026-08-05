@@ -172,7 +172,27 @@ class Current:
         }
 
 
-def ask_the_corpus(question: str, chart: str = "english") -> dict:
+def _attach_transport(key: str | None):
+    """The proposer's transport, for attachment. The SAME one the daemon uses.
+
+    Returns None with no key: attachment is an LM proposal, and without a model the bias can
+    only attach at its own address — which the window then reports honestly rather than
+    pretending the field was consulted.
+    """
+    from .lm import LMClient, api_key, lm_available, model_for
+
+    resolved = api_key(key)
+    if not lm_available(resolved):
+        return None
+    client = LMClient(resolved, model_for(resolved))
+
+    def transport(system: str, user: str):
+        return client.complete(system, user, 0.0, max_tokens=16000), dict(client.last_usage)
+
+    return transport
+
+
+def ask_the_corpus(question: str, chart: str = "english", key: str | None = None) -> dict:
     """Compile the LM's input FROM THE FIELD, and hand back both sides of the compilation.
 
     The answer is not retrieval-with-receipts and not a lookup. The typed question enters the
@@ -181,7 +201,8 @@ def ask_the_corpus(question: str, chart: str = "english") -> dict:
     field side by side. When nothing moves, the compiler says so and names the structural
     reason; there is no second mechanism that produces words anyway.
     """
-    compiled = compile_input(question, corpus_snapshot(), chart)
+    compiled = compile_input(question, corpus_snapshot(), chart,
+                             transport=_attach_transport(key))
     return compiled.as_record()
 
 

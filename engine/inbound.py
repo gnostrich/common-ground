@@ -52,6 +52,7 @@ from typing import Sequence
 
 from .corpus_state import CorpusSnapshot
 from .extract import DeterministicExtractor
+from .attach import attach
 from .relax import Relaxation, relax
 from .types import Document
 
@@ -93,6 +94,7 @@ class CompiledInput:
     field_status: str = ""
     conditioned: bool = False                  # did the FIELD respond to the bias?
     relaxation: Relaxation | None = None
+    attachment: object | None = None           # attach.AttachResult — the bridge, shown
 
     @property
     def reached(self) -> int:
@@ -118,6 +120,7 @@ class CompiledInput:
             "facts": self.facts,
             "landings": [l.as_record() for l in self.landings],
             "relaxation": self.relaxation.as_record() if self.relaxation else None,
+            "attachment": self.attachment.as_record() if self.attachment else None,
         }
 
 
@@ -183,6 +186,57 @@ def land(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> list[La
     return out
 
 
+def _attachment_block(att) -> str:
+    """The bridge, shown rather than implied: what the proposer said, and at what tier.
+
+    A bias that reaches the field through a proposed correspondence is standing on a claim
+    somebody's model made, at extraction tier, which could be wrong. Printing the result
+    without printing the bridge would present a relaxation as though the attachment were
+    given. So every proposal is listed — including the `none`s, which are the proposer
+    declining to force a match and are as informative as the acceptances.
+    """
+    lines = [
+        "HOW THIS INPUT ATTACHED. The typed text is not in this corpus verbatim, so the "
+        "proposer was asked which corpus claims it CORRESPONDS to — the same proposer, "
+        "prompt and three kinds the corpus's own arrows use, with `none` legal and expected. "
+        "Every accepted attachment below is a correspondence at EXTRACTION tier: proposed, "
+        "not confirmed, and the relaxation that follows rests on it.",
+    ]
+    for a in att.proposed:
+        if not a.accepted:
+            continue
+        lines.append(f"ATTACHED via {a.kind} (warrant {a.tier}) -> [{a.dst_chart}] "
+                     f"{display(a.dst_nu)[:200]}")
+        if a.evidence:
+            lines.append(f"  BECAUSE {a.evidence[:300]}")
+    declined = sum(1 for a in att.proposed if not a.accepted)
+    lines.append(f"({len(att.accepted)} attachment(s) accepted, {declined} declined as none, "
+                 f"out of {att.considered} candidate(s) asked over {att.calls} call(s).)")
+    if att.budget_exhausted:
+        lines.append(f"(The call budget stopped the search at {att.considered} of "
+                     f"{att.available} type-compatible candidates. The rest are UNMEASURED, "
+                     f"not ruled out.)")
+    if att.error:
+        lines.append(f"(Attachment reported an error: {att.error})")
+    return "\n".join(lines)
+
+
+def _no_attachment(att) -> str:
+    """Why nothing attached. Never a bare zero."""
+    if att.error:
+        return f"the input could not be attached: {att.error}"
+    if not att.proposed:
+        return ("the proposer returned no usable answer over "
+                f"{att.considered} candidate(s) in {att.calls} call(s).")
+    tail = ""
+    if att.budget_exhausted:
+        tail = (f" The budget stopped at {att.considered} of {att.available} "
+                f"type-compatible candidates, so the rest are UNMEASURED, not ruled out.")
+    return (f"the proposer was asked about {att.considered} corpus claim(s) and answered "
+            f"`none` to every one. It declines to force a match, so there is no bridge from "
+            f"this input into the field and nothing to propagate.{tail}")
+
+
 def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot) -> tuple[list[str], list[dict]]:
     """The moved region, each row carrying the declared path the bias reached it by.
 
@@ -203,11 +257,12 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot) -> tuple[list[str]
     for m in rel.moved:
         mark = "CONTESTED" if m.contested else "settled"
         origin = ("the bias landed on this address" if m.hops == 0
-                  else f"reached in {m.hops} declared hop(s)")
+                  else f"reached in {m.hops} declared hop(s), weakest arrow "
+                       f"{m.weakest_tier}")
         lines.append(f"MOVED [{m.chart}/{m.type}] value={m.value} warrant={m.tier} ({mark}) "
                      f"shift={m.shift:.4f} — {origin} :: {display(m.nu)[:220]}")
         for step in m.path:
-            lines.append(f"  VIA {step}")
+            lines.append(f"  VIA {step.render()}")
         facts.append({"kind": "moved", **m.as_record()})
     if rel.moved_dropped:
         lines.append(f"({rel.moved_dropped} further slot(s) moved and are not shown — the "
@@ -220,7 +275,7 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot) -> tuple[list[str]
 
 
 def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
-                  index=None) -> CompiledInput:
+                  index=None, transport=None) -> CompiledInput:
     """Compile the LM's input FROM WHAT THE FIELD DID, not from what the text resembles.
 
     The typed text is applied to the real corpus as a soft constraint, settlement runs, and
@@ -235,13 +290,32 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     that reads like an unrelated bug.
     """
     landings = land(text, snapshot, chart)
-    rel = relax(text, snapshot, chart)
+
+    # WHERE THE BIAS ATTACHES. With a transport, the proposer is asked which corpus claims
+    # the typed input corresponds to, and the accepted proposals are the seeds. Without one,
+    # the bias can only attach at its own address — which is right only when the typed text
+    # already exists verbatim, and is the inherited defect this parameter exists to fix.
+    att = None
+    seeds, extra = None, None
+    if transport is not None:
+        att = attach(text, snapshot, transport, chart)
+        seeds, extra = att.seeds, att.arrows(att.typed_slot)
+        if not seeds:
+            status = ("THE FIELD DID NOT RESPOND — " + _no_attachment(att))
+            return CompiledInput(
+                typed=text, compiled=f"{status}\n\n{_attachment_block(att)}\n\n"
+                                     f"BOUNDARY CONDITION:\n{text}",
+                landings=landings, field_status=status, conditioned=False,
+                relaxation=None, attachment=att)
+
+    rel = relax(text, snapshot, chart, seeds_from=seeds, extra_arrows=extra)
 
     if not rel.responded:
         status = f"THE FIELD DID NOT RESPOND — {rel.silence}"
         return CompiledInput(
             typed=text, compiled=f"{status}\n\nBOUNDARY CONDITION:\n{text}",
-            landings=landings, field_status=status, conditioned=False, relaxation=rel)
+            landings=landings, field_status=status, conditioned=False, relaxation=rel,
+            attachment=att)
 
     lines: list[str] = [
         "FIELD STATE after relaxation. The boundary condition below was applied to this "
@@ -250,6 +324,9 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         f"floor: {snapshot.floor_status}",
         "",
     ]
+    if att is not None:
+        lines.extend(_attachment_block(att).splitlines())
+        lines.append("")
     moved_lines, facts = _relaxed_block(rel, snapshot)
     lines.extend(moved_lines)
     lines.append("")
@@ -270,7 +347,8 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     lines.append(text)
 
     return CompiledInput(typed=text, compiled="\n".join(lines), landings=landings,
-                         facts=facts, field_status=status, conditioned=True, relaxation=rel)
+                         facts=facts, field_status=status, conditioned=True, relaxation=rel,
+                         attachment=att)
 
 
 INBOUND_SYSTEM = (

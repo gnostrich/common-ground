@@ -194,8 +194,9 @@ class EveryCompiledFactTracesToDeclaredStructure(unittest.TestCase):
                 self.assertEqual(len(fact["path"]), fact["hops"],
                                  "a reached slot must show one declared step per hop")
                 for step in fact["path"]:
-                    self.assertIn("correspondence:", step,
+                    self.assertIn(step["kind"], ("same_claim", "refines", "instance_of"),
                                   "every step must name the arrow kind that carried it")
+                    self.assertTrue(step["tier"], "and the warrant it travelled on")
 
     def test_a_moved_slot_with_no_declared_path_is_not_compiled(self):
         """The rule that keeps this honest: provenance that cannot be shown is not stated."""
@@ -215,8 +216,8 @@ class EveryCompiledFactTracesToDeclaredStructure(unittest.TestCase):
         kinds = {a.kind for a in wired.arrows}
         for m in rel.moved:
             for step in m.path:
-                self.assertTrue(any(f"correspondence:{k}" in step for k in kinds),
-                                f"path step {step!r} names no arrow this corpus declares")
+                self.assertIn(step.kind, kinds,
+                              f"path step {step.kind!r} names no arrow this corpus declares")
 
     def test_what_is_cut_is_counted_not_dropped(self):
         from engine.relax import MOVED_CAP
