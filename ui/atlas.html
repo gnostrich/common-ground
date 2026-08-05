@@ -1,0 +1,333 @@
+<title>common-ground — the atlas</title>
+<style>
+:root{
+  --paper:#EDF1F3; --ink:#101820; --ink-2:#3D4A56; --ink-3:#6B7A88;
+  --line:#D2DADF; --card:#F6F8F9; --accent:#0E7C6B; --gap:#B23A2E;
+  --shadow:0 1px 2px rgba(16,24,32,.05);
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#0B1015; --ink:#E4EAEF; --ink-2:#A6B4C0; --ink-3:#6E7F8D;
+  --line:#1E2A33; --card:#111921; --accent:#3FBFA8; --gap:#E0705F;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}}
+:root[data-theme=dark]{
+  --paper:#0B1015; --ink:#E4EAEF; --ink-2:#A6B4C0; --ink-3:#6E7F8D;
+  --line:#1E2A33; --card:#111921; --accent:#3FBFA8; --gap:#E0705F;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+:root[data-theme=light]{
+  --paper:#EDF1F3; --ink:#101820; --ink-2:#3D4A56; --ink-3:#6B7A88;
+  --line:#D2DADF; --card:#F6F8F9; --accent:#0E7C6B; --gap:#B23A2E;
+  --shadow:0 1px 2px rgba(16,24,32,.05);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:960px;margin:0 auto;padding:3rem 1.4rem 5rem;display:flex;flex-direction:column;gap:3.2rem}
+h1,h2{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  font-weight:600;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(2rem,5vw,2.9rem);line-height:1.12}
+h2{font-size:1.35rem;line-height:1.25}
+.eyebrow{font:600 11.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.lede{color:var(--ink-2);max-width:62ch;font-size:1.06rem;margin:0}
+section{display:flex;flex-direction:column;gap:1.1rem}
+.note{color:var(--ink-3);font-size:.9rem;max-width:66ch;margin:0}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+
+/* ── live strip ──────────────────────────────── */
+.live{display:flex;align-items:center;gap:.55rem;font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-3)}
+.pulse{width:8px;height:8px;border-radius:99px;background:var(--accent);flex:none}
+.pulse.off{background:var(--gap)}
+
+/* ── readout strip ───────────────────────────── */
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.cell{background:var(--card);padding:.9rem 1rem;display:flex;flex-direction:column;gap:.15rem}
+.cell .v{font:600 1.5rem/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.cell .k{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.cell.good .v{color:var(--accent)}
+.cell.flat .v{color:var(--gap);font-size:1.02rem;padding-top:.3rem}
+
+/* ── the atlas ───────────────────────────────── */
+.atlas{display:flex;flex-direction:column;gap:1.15rem}
+.chart{display:grid;grid-template-columns:1fr;gap:.32rem}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;gap:1rem}
+.chart-name{font:600 14.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.02em;color:var(--hue)}
+.chart-n{font:600 14px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.track{height:9px;background:var(--line);border-radius:99px;overflow:hidden}
+.fill{height:100%;background:var(--hue);border-radius:99px}
+
+/* ── bridges ─────────────────────────────────── */
+.bridges{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.7rem}
+.bridge{display:flex;align-items:center;gap:.5rem;font-size:13.5px;flex-wrap:wrap}
+.dot{width:9px;height:9px;border-radius:99px;flex:none}
+.pn{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-2);font-size:12.5px}
+.arrowline{flex:1;height:2px;background:var(--line);position:relative;min-width:40px}
+.al{position:absolute;left:0;top:0;height:100%;background:var(--accent)}
+.pc{margin-left:.3rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+
+/* ── census table ────────────────────────────── */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:.62rem .95rem;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:none}
+th{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3)}
+.pair{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.num{text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.num.strong{color:var(--accent);font-weight:600}
+.num.dim{color:var(--ink-3)}
+
+/* ── examples ────────────────────────────────── */
+.examples{display:flex;flex-direction:column;gap:.85rem}
+.ex{border:1px solid var(--line);border-radius:9px;background:var(--card);
+  padding:.85rem 1rem;display:flex;flex-direction:column;gap:.45rem;box-shadow:var(--shadow)}
+.ex header{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap}
+.kind{font:600 10.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);
+  border-radius:4px;padding:.22rem .42rem}
+.route{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-3)}
+.route i{font-style:normal;font-weight:600}
+.side{margin:0;font:12.7px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
+  color:var(--ink-2);padding-left:.75rem;border-left:2px solid var(--line);
+  overflow-wrap:anywhere}
+.side.alt{border-left-color:var(--accent)}
+
+/* ── what was read ───────────────────────────── */
+.read{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.4rem;
+  font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-3)}
+.read li{padding-left:1rem;position:relative}
+.read li::before{content:"·";position:absolute;left:.25rem;color:var(--accent)}
+
+/* ── search ──────────────────────────────────── */
+.searchbar{display:flex;flex-direction:column;gap:.7rem}
+#q{width:100%;padding:.8rem 1rem;border:1px solid var(--line);border-radius:9px;
+  background:var(--card);color:var(--ink);font:15px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+#q:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.pills{display:flex;flex-wrap:wrap;gap:.4rem}
+.pill{font:600 11.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;
+  padding:.38rem .6rem;border-radius:99px;border:1px solid var(--line);background:transparent;
+  color:var(--ink-3);cursor:pointer}
+.pill[aria-pressed=true]{border-color:var(--hue,var(--accent));color:var(--hue,var(--accent));
+  background:color-mix(in srgb,var(--hue,var(--accent)) 12%,transparent)}
+.pill:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.count{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-3);margin:0}
+.results{display:flex;flex-direction:column;gap:.55rem;max-height:60vh;overflow-y:auto}
+.hit{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:.6rem .85rem;
+  display:flex;flex-direction:column;gap:.35rem}
+.hit .meta{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;
+  font:11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase}
+.tag{padding:.2rem .4rem;border-radius:4px;border:1px solid currentColor}
+.hit .txt{font:12.7px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-2);
+  overflow-wrap:anywhere;margin:0}
+.hit .txt.alt{padding-left:.7rem;border-left:2px solid var(--accent)}
+mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:var(--ink);
+  border-radius:2px;padding:0 .1em}
+
+footer{border-top:1px solid var(--line);padding-top:1.4rem;color:var(--ink-3);font-size:13px}
+</style>
+
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:.9rem">
+  <span class="eyebrow">common-ground · read off disk at render time</span>
+  <h1>An atlas of every chart over one corpus, and the arrows found between them.</h1>
+  <p class="lede">Every claim in your repositories is addressed exactly — <span class="mono">hash(ν(surface), type)</span> — and lands in exactly one chart. A correspondence is a directed, typed arrow between two addresses, proposed by a model and entered as a claim at extraction tier. Nothing here is promoted. Nothing here grounds.</p>
+  <p class="live"><span class="pulse"></span> proposer: {{STATE}} · pool position {{POOLPOS}} of {{POOLTOTAL}}</p>
+</header>
+
+<section>
+  <div class="readout">
+    <div class="cell"><span class="v">{{SLOTS}}</span><span class="k">slots</span></div>
+    <div class="cell"><span class="v">{{ASKED}}</span><span class="k">pairs asked</span></div>
+    <div class="cell good"><span class="v">{{ARROWS}}</span><span class="k">arrows found</span></div>
+    <div class="cell"><span class="v">{{NONE}}%</span><span class="k">answered none</span></div>
+    <div class="cell"><span class="v">${{COST}}</span><span class="k">spent</span></div>
+    <div class="cell flat"><span class="v">{{FLOOR}}</span><span class="k">floor</span></div>
+  </div>
+  <p class="note">{{CALLS}} calls, {{ERR}} errors. “None” is a legal and expected answer — a proposer that never says it is forcing matches. {{FLOORNOTE}}</p>
+</section>
+
+<section>
+  <span class="eyebrow">the atlas</span>
+  <h2>Charts, sized by what they hold</h2>
+  <div class="atlas">
+{{BARS}}
+  </div>
+  <p class="note">Charts are disjoint by construction: the chart tag rides inside every address, so two charts can never share one. Python and Go were added as a manifest row plus three behavior functions, with no edit to the router.</p>
+</section>
+
+<section>
+  <span class="eyebrow">what has been bridged</span>
+  <h2>Arrows, by the pair they connect</h2>
+  <ul class="bridges">
+{{BRIDGES}}
+  </ul>
+  <p class="note">Each rate is arrows over pairs actually asked for that chart pair, not over the pool — a pair the daemon has not reached yet cannot have found anything, and averaging it in would understate the ones it has.</p>
+</section>
+
+<section>
+  <span class="eyebrow">where the bridges can live</span>
+  <h2>Candidate census, measured before spending</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>chart pair</th><th class="num">by declaration</th><th class="num">by depth-1 subtree</th></tr></thead>
+      <tbody>
+{{CENSUS}}
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Declaration granularity is one declaration seen in two charts — a doc comment and the thing it sits on. Depth-1 subtree lets a document’s position assert its scope, which is far larger and far looser: most of it is prose against prose, where “one directory” can mean a whole repository of markdown. A pair that shows no candidates at all is a real absence, not a gap in the measurement.</p>
+</section>
+
+<section>
+  <span class="eyebrow">the actual claims</span>
+  <h2>Bridges it found, in your own words</h2>
+  <div class="examples">
+{{EXAMPLES}}
+  </div>
+</section>
+
+<section id="search">
+  <span class="eyebrow">search the corpus</span>
+  <h2>Every slot and every arrow, in this page</h2>
+  <p class="note">This page carries the corpus rather than pointing at it, so the box below works with nothing running anywhere. Type a word; matches come back from all {{SLOTS}} slots and every arrow found so far.</p>
+  <div class="searchbar">
+    <input id="q" type="search" placeholder="positivity, order book, Hankel, funding rate…" autocomplete="off" spellcheck="false">
+    <div class="pills" id="pills"></div>
+  </div>
+  <p class="count" id="count">type to search</p>
+  <div class="results" id="results"></div>
+  <p class="note">Slot surfaces longer than {{NUBUDGET}} characters are cut and marked with an ellipsis — {{TRUNCATED}} of them — so a search that misses a long tail is a limit you can see rather than one you cannot. Arrows are never cut: reading half a bridge is not reading it.</p>
+</section>
+
+<section>
+  <span class="eyebrow">what this page read, and what it could not</span>
+  <h2>Provenance of every figure above</h2>
+  <ul class="read">
+{{MISSING}}
+  </ul>
+  <p class="note">{{COVERAGE}}</p>
+</section>
+
+<footer>
+  Extraction tier throughout. K has promoted nothing. Every pair asked and every answer — including each <span class="mono">none</span> — is in an append-only ledger you can read at any time.
+</footer>
+
+</div>
+
+<script id="corpus" type="application/json">{{PAYLOAD}}</script>
+<script>
+(function(){
+  var DATA = JSON.parse(document.getElementById('corpus').textContent);
+  var HUE = {english:'#0E7C6B',lean:'#7C3AED',python:'#2563EB',go:'#0891B2',
+             conversation:'#B45309',tabular:'#BE185D',correspondence:'#4B5563'};
+  var hue = function(c){ return HUE[c] || '#6B7A88'; };
+
+  // Chart filter pills, built from what the corpus actually holds — a hard-coded list
+  // would go stale the first time a chart is added, which is the whole failure this
+  // project is about.
+  var charts = [];
+  DATA.slots.forEach(function(s){ if(charts.indexOf(s[1])<0) charts.push(s[1]); });
+  charts.sort();
+  var active = {};
+  var pills = document.getElementById('pills');
+  pills.appendChild(mkPill('arrows only','__arrows'));
+  charts.forEach(function(c){ pills.appendChild(mkPill(c,c)); });
+
+  function mkPill(label,key){
+    var b = document.createElement('button');
+    b.className = 'pill'; b.textContent = label; b.type = 'button';
+    b.setAttribute('aria-pressed','false');
+    if(key!=='__arrows') b.style.setProperty('--hue', hue(key));
+    b.addEventListener('click', function(){
+      active[key] = !active[key];
+      b.setAttribute('aria-pressed', active[key] ? 'true' : 'false');
+      run();
+    });
+    return b;
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(ch){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]; }); }
+
+  function hi(text, q){
+    if(!q) return esc(text);
+    var out = '', low = text.toLowerCase(), i = 0, at;
+    while((at = low.indexOf(q, i)) >= 0){
+      out += esc(text.slice(i, at)) + '<mark>' + esc(text.slice(at, at+q.length)) + '</mark>';
+      i = at + q.length;
+    }
+    return out + esc(text.slice(i));
+  }
+
+  var LIMIT = 200;                     // enough to read; the count always states the truth
+  var qEl = document.getElementById('q');
+  var countEl = document.getElementById('count');
+  var resEl = document.getElementById('results');
+
+  function run(){
+    var q = qEl.value.trim().toLowerCase();
+    var chartFilter = charts.filter(function(c){ return active[c]; });
+    var arrowsOnly = !!active.__arrows;
+    if(!q && !chartFilter.length && !arrowsOnly){
+      countEl.textContent = 'type to search'; resEl.innerHTML = ''; return;
+    }
+    var hits = [], nArrow = 0, nSlot = 0;
+
+    for(var i=0;i<DATA.arrows.length;i++){
+      var a = DATA.arrows[i];                       // [src,dst,kind,srcText,dstText]
+      if(chartFilter.length && chartFilter.indexOf(a[0])<0 && chartFilter.indexOf(a[1])<0) continue;
+      if(q && (a[3]+' '+a[4]).toLowerCase().indexOf(q)<0) continue;
+      nArrow++;
+      if(hits.length<LIMIT) hits.push(arrowCard(a,q));
+    }
+    if(!arrowsOnly){
+      for(var j=0;j<DATA.slots.length;j++){
+        var s = DATA.slots[j];                      // [id,chart,type,nu]
+        if(chartFilter.length && chartFilter.indexOf(s[1])<0) continue;
+        if(q && s[3].toLowerCase().indexOf(q)<0) continue;
+        nSlot++;
+        if(hits.length<LIMIT) hits.push(slotCard(s,q));
+      }
+    }
+    var total = nArrow + (arrowsOnly?0:nSlot);
+    countEl.textContent = total
+      ? nArrow.toLocaleString()+' arrow'+(nArrow===1?'':'s')+' · '
+        + (arrowsOnly ? 'slots hidden' : nSlot.toLocaleString()+' slot'+(nSlot===1?'':'s'))
+        + (total>LIMIT ? ' — showing the first '+LIMIT : '')
+      : 'nothing matches. That is an answer too.';
+    resEl.innerHTML = hits.join('');
+  }
+
+  function arrowCard(a,q){
+    return '<div class="hit">'
+      + '<div class="meta">'
+      +   '<span class="tag" style="color:'+hue(a[0])+'">'+esc(a[0])+'</span>'
+      +   '<span style="color:var(--ink-3)">&rarr;</span>'
+      +   '<span class="tag" style="color:'+hue(a[1])+'">'+esc(a[1])+'</span>'
+      +   '<span style="color:var(--accent)">'+esc(a[2])+'</span></div>'
+      + '<p class="txt">'+hi(a[3],q)+'</p>'
+      + '<p class="txt alt">'+hi(a[4],q)+'</p></div>';
+  }
+
+  function slotCard(s,q){
+    return '<div class="hit">'
+      + '<div class="meta">'
+      +   '<span class="tag" style="color:'+hue(s[1])+'">'+esc(s[1])+'</span>'
+      +   '<span style="color:var(--ink-3)">'+esc(s[2])+'</span>'
+      +   '<span style="color:var(--ink-3)">'+esc(s[0])+'</span></div>'
+      + '<p class="txt">'+hi(s[3],q)+'</p></div>';
+  }
+
+  var timer = null;
+  qEl.addEventListener('input', function(){
+    clearTimeout(timer); timer = setTimeout(run, 120);
+  });
+})();
+</script>

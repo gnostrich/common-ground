@@ -91,16 +91,23 @@ def coverage_caveat() -> str:
     """What this corpus DOES NOT contain, stated wherever its figures are stated.
 
     Every number this build produces is a number about the material the router admits. The
-    languages manifest says which extensions are held with no chart, so the caveat is derived
-    from it rather than written by hand — it cannot drift out of date while the manifest
-    changes underneath it.
+    caveat is DERIVED from the languages manifest rather than written by hand, so it cannot
+    drift out of date while the manifest changes underneath it — which is exactly what it
+    did do. This function used to read "source code is NOT ingested ... every figure here is
+    about prose and Lean only", a sentence that was true when it was written and false the
+    moment the Python and Go charts landed. It was attached to every figure the whole time.
+    A caveat that states a fact instead of computing one is a claim like any other, and this
+    one had gone stale without a single check firing.
     """
-    from .languages import REFERENCE, SHELF, rules
+    from .languages import CHART, REFERENCE, SHELF, rules
 
+    charted = sorted(f"{r.ext}→{r.chart}" for r in rules().values() if r.cls == CHART)
     held = sorted(r.ext for r in rules().values() if r.cls == REFERENCE)
     shelved = sorted(r.ext for r in rules().values() if r.cls == SHELF)
-    return (f"COVERAGE: source code is NOT ingested. Held with no chart: {', '.join(held)}. "
-            f"Shelved: {', '.join(shelved)}. Every figure here is about prose and Lean only.")
+    return (f"COVERAGE: prose is classified by content; source enters by extension "
+            f"({', '.join(charted)}). Held with no chart, read and counted but never "
+            f"ingested: {', '.join(held)}. Shelved: {', '.join(shelved)}. Every figure "
+            f"here is about that material and nothing else.")
 
 
 def source_bucket(doc_id: str) -> str:

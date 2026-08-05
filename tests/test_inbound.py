@@ -55,11 +55,20 @@ class AnEmptyFieldDegradesAndSaysSo(unittest.TestCase):
         self.assertIn("near-passthrough", out.compiled)
 
     def test_novel_phrasing_lands_nowhere_and_is_reported(self):
+        """Novel phrasing must never CONDITION, however much material it retrieves.
+
+        This control used to assert the string "NO FIELD TO CONDITION ON". That wording
+        conflated two facts the read path now separates: nothing addressed (always true here,
+        gate 1) and nothing was found to read (true only sometimes). The property under test
+        is the first one, so it is asserted on `conditioned` rather than on prose.
+        """
         out = compile_input("a sentence that appears in no corpus whatsoever",
                             _snapshot([_TEXT_A]))
-        self.assertFalse(out.conditioned)
-        self.assertIn("NO FIELD TO CONDITION ON", out.compiled)
+        self.assertFalse(out.conditioned, "term overlap must never count as addressing")
+        self.assertEqual(out.reached, 0)
+        self.assertIn("NOTHING ADDRESSED", out.compiled)
         self.assertIn("EXACT", out.compiled, "landing is exact; that must be stated")
+        self.assertNotIn("LANDED", out.compiled)
 
     def test_landing_is_exact_not_similar(self):
         snap = _snapshot([_TEXT_A])

@@ -35,6 +35,7 @@ from typing import Sequence
 
 from .corpus_state import CorpusSnapshot
 from .extract import DeterministicExtractor
+from .retrieval import retrieve
 from .types import Document
 
 #: How many neighbouring slots a single landing may contribute. A landing inside a large
@@ -73,19 +74,34 @@ class CompiledInput:
     landings: list[Landing] = field(default_factory=list)
     facts: list[dict[str, object]] = field(default_factory=list)   # one per compiled fact
     field_status: str = ""
-    conditioned: bool = False                  # did the field supply anything at all?
+    conditioned: bool = False                  # did a span ADDRESS to a claim? (exact, gate 1)
+    retrieved: list = field(default_factory=list)                  # list[retrieval.Retrieved]
 
     @property
     def reached(self) -> int:
         return sum(1 for l in self.landings if l.hit)
 
+    @property
+    def grounded(self) -> bool:
+        """Is there ANY corpus material in front of the model — landed or merely retrieved?
+
+        Deliberately a second property rather than a widening of `conditioned`. Conditioning
+        is the strong claim (a span IS a claim in this corpus); grounding is the weak one
+        (the model is reading this corpus rather than its own memory). Collapsing them would
+        let a term-overlap match be reported as an address match, which is the one thing
+        retrieval must never be able to do.
+        """
+        return self.conditioned or bool(self.retrieved)
+
     def as_record(self) -> dict[str, object]:
         return {
             "typed": self.typed, "compiled": self.compiled,
-            "conditioned": self.conditioned, "field_status": self.field_status,
+            "conditioned": self.conditioned, "grounded": self.grounded,
+            "field_status": self.field_status,
             "spans": len(self.landings), "landed": self.reached,
             "facts": self.facts,
             "landings": [l.as_record() for l in self.landings],
+            "retrieved": [r.as_record() for r in self.retrieved],
         }
 
 
@@ -104,14 +120,26 @@ def display(nu: str) -> str:
 
 
 def _arrows_for(snapshot: CorpusSnapshot, slot: str) -> list[str]:
+    """Every declared correspondence touching this slot, once each.
+
+    Two arrows can land on the same neighbour — the proposer asks a pair in both directions,
+    and both answers are kept in the ledger on purpose. Rendering both prints the same line
+    twice, which reads as two independent corroborations of one thing when it is one thing
+    seen twice.
+    """
     out: list[str] = []
+    seen: set[str] = set()
     for a in snapshot.arrows:
         if a.src_slot == slot or a.dst_slot == slot:
             other = a.dst_slot if a.src_slot == slot else a.src_slot
             rec = snapshot.slots.get(other)
             tier = "provisional" if a.provisional else "confirmed"
-            out.append(f"{a.kind} ({tier}) -> [{rec.chart if rec else '?'}] "
-                       f"{(display(rec.nu)[:110] if rec else other[:16])}")
+            line = (f"{a.kind} ({tier}) -> [{rec.chart if rec else '?'}] "
+                    f"{(display(rec.nu)[:110] if rec else other[:16])}")
+            if line in seen:
+                continue
+            seen.add(line)
+            out.append(line)
     return out
 
 
@@ -139,6 +167,30 @@ def land(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> list[La
     return out
 
 
+def _retrieved_block(found: Sequence, snapshot: CorpusSnapshot) -> list[str]:
+    """The retrieved claims, under a heading that cannot be mistaken for a landing.
+
+    The heading is the safety property. Everything in this block is a real claim with a real
+    address and a real warrant tier — but its presence here says only "it shares words with
+    the query", and the model must not read proximity as correspondence. So the block says
+    that in its own first line rather than relying on the section title.
+    """
+    lines = [
+        "RETRIEVED FOR READING — these are existing claims in this corpus that share "
+        "discriminating terms with the query. Term overlap is NOT an address match and NOT a "
+        "declared correspondence: nothing below asserts that it means the same as what was "
+        "typed, or that any two of these mean the same as each other. Each carries its own "
+        "exact address, warrant tier and contest status.",
+    ]
+    for r in found:
+        mark = "CONTESTED" if r.contested else "settled"
+        lines.append(f"RETRIEVED [{r.chart}/{r.type}] value={r.value} warrant={r.tier} "
+                     f"({mark}) matched={'+'.join(r.matched)} :: {display(r.nu)[:220]}")
+        for rendered in _arrows_for(snapshot, r.slot)[:3]:
+            lines.append(f"  CORRESPONDENCE {rendered}")
+    return lines
+
+
 def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> CompiledInput:
     """Compile the LM's input FROM THE RELAXED STATE, not from the raw text.
 
@@ -154,13 +206,25 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english") -
         return CompiledInput(typed=text, compiled=f"{status}\n\nBOUNDARY CONDITION:\n{text}",
                              landings=landings, field_status=status, conditioned=False)
 
+    found = retrieve(text, snapshot, chart, exclude=frozenset(l.slot for l in hits))
+
     if not hits:
-        status = (f"NO FIELD TO CONDITION ON — none of the {len(landings)} span(s) address to a "
-                  f"claim in this corpus ({len(snapshot.slots)} slots). Landing is EXACT "
-                  "(gate 1: hash(nu, type)); novel phrasing lands nowhere. This is a "
-                  "near-passthrough and is reported as one.")
-        return CompiledInput(typed=text, compiled=f"{status}\n\nBOUNDARY CONDITION:\n{text}",
-                             landings=landings, field_status=status, conditioned=False)
+        status = (f"NOTHING ADDRESSED — none of the {len(landings)} span(s) address to a claim "
+                  f"in this corpus ({len(snapshot.slots)} slots). Landing is EXACT "
+                  "(gate 1: hash(nu, type)); novel phrasing lands nowhere, and no amount of "
+                  "resemblance changes that.")
+        if not found:
+            status += (" Nothing was retrieved either: no claim in the corpus shares a "
+                       "discriminating term with the query. This is a near-passthrough and is "
+                       "reported as one.")
+            return CompiledInput(typed=text, compiled=f"{status}\n\nBOUNDARY CONDITION:\n{text}",
+                                 landings=landings, field_status=status, conditioned=False)
+        lines = [status, ""] + _retrieved_block(found, snapshot)
+        lines += ["", "BOUNDARY CONDITION (what was typed; nothing above is a restatement "
+                      "of it):", text]
+        return CompiledInput(typed=text, compiled="\n".join(lines), landings=landings,
+                             facts=[{"kind": "retrieved", **r.as_record()} for r in found],
+                             field_status=status, conditioned=False, retrieved=found)
 
     lines: list[str] = []
     facts: list[dict[str, object]] = []
@@ -197,11 +261,17 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english") -
                           "value": n.value, "contested": nid in snapshot.contested})
         lines.append("")
 
+    if found:
+        lines.extend(_retrieved_block(found, snapshot))
+        facts.extend({"kind": "retrieved", **r.as_record()} for r in found)
+        lines.append("")
+
     contested_here = sum(1 for l in hits if l.contested)
     arrows_here = sum(len(l.arrows) for l in hits)
     status = (f"CONDITIONED on {len(hits)} landed span(s) of {len(landings)}; "
               f"{arrows_here} declared correspondence(s); "
-              f"{contested_here} contested; floor is {snapshot.floor_status}")
+              f"{contested_here} contested; {len(found)} retrieved for reading only; "
+              f"floor is {snapshot.floor_status}")
     lines.append(status)
     if arrows_here == 0:
         lines.append("NOTE: no declared cross-chart correspondence reaches this region — the "
@@ -221,5 +291,19 @@ INBOUND_SYSTEM = (
     "only from that state. Where the field says CONTESTED, do not resolve it — report the "
     "contest. Where the field says GAP or reports no correspondence, say the relation is "
     "unmeasured rather than supplying one. If the field does not cover the boundary condition, "
-    "say so plainly; that is a fact about the corpus, not a failure to answer."
+    "say so plainly; that is a fact about the corpus, not a failure to answer.\n\n"
+    "Two kinds of line appear, and the difference is load-bearing. A LANDED line means the "
+    "typed text IS that claim — it addressed to it exactly. A RETRIEVED line means only that "
+    "the claim shares words with what was typed: material to read, asserting nothing about "
+    "the question. Never describe a RETRIEVED claim as what the user said, as agreeing with "
+    "them, or as corresponding to another retrieved claim — co-occurrence in this list is a "
+    "fact about a search, not about the corpus. Only a CORRESPONDENCE line is a declared "
+    "relation, and only at the tier it states.\n\n"
+    "WRITE AN ANSWER, NOT AN INVENTORY. Do not walk the field line by line and describe each "
+    "one; the user can already see them. Read what is there, then say in prose what it "
+    "amounts to and where it does not reach. Quote or name a specific claim when it carries "
+    "your point, and otherwise leave it out. If the retrieved material is thin or is mostly "
+    "incidental word matches rather than substance, say THAT — 'the corpus does not have much "
+    "on this' is a real answer and a useful one. If everything you used was RETRIEVED and "
+    "nothing LANDED, open with one short sentence saying so, then answer anyway."
 )

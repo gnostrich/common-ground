@@ -251,19 +251,24 @@ class TheWindowIsHonestAboutTheCorpus(unittest.TestCase):
         finally:
             server.shutdown()
 
-    def test_an_unlanded_question_is_reported_as_a_passthrough(self):
+    def test_an_unlanded_question_is_never_reported_as_conditioned(self):
         """PLANTED: a question that cannot address to anything in the corpus.
 
         Landing is EXACT (gate 1). A string this specific has no chance of matching a stored
-        address, so the compiler must say NO FIELD TO CONDITION ON rather than quietly
-        answering from the model's own knowledge and calling it grounded.
+        address. It may well RETRIEVE material — "boundary condition" is common in this
+        corpus — and that is fine and is the point of retrieval; what must never happen is
+        the compiler reporting it as conditioned, or labelling a retrieved claim LANDED.
         """
         from ui.current import ask_the_corpus
 
         out = ask_the_corpus("zzq unlikely boundary condition 84619 that lands nowhere at all")
         self.assertFalse(out["conditioned"])
-        self.assertIn("NO FIELD TO CONDITION ON", out["compiled"])
         self.assertEqual(out["landed"], 0)
+        self.assertIn("NOTHING ADDRESSED", out["compiled"])
+        self.assertNotIn("LANDED", out["compiled"],
+                         "nothing addressed, so no line may carry the landing label")
+        for row in out.get("retrieved", ()):
+            self.assertIn("TERM OVERLAP ONLY", row["relation_to_query"])
 
     def test_the_floor_is_never_rendered_as_a_number_when_it_is_a_gap(self):
         """A window that printed `floor: 0.0` would report agreement where there is absence."""

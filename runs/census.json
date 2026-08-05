@@ -1,0 +1,21 @@
+{
+  "measured_at": "2026-08-05T06:05Z",
+  "measured_by": "engine.holes.holes_by_subtree_all(max_depth=1) over the build at runs/corpus.snapshot",
+  "note": "Depth-1 subtree candidates per chart pair. Recorded rather than recomputed on each render: the enumeration is ~11 minutes over the full corpus, and a page that recomputed it would either be slow or quietly show a stale number without saying which.",
+  "subtree": {
+    "conversation x english": 32198817,
+    "english x tabular": 20807153,
+    "conversation x tabular": 11076003,
+    "english x python": 1507932,
+    "english x lean": 809005,
+    "conversation x python": 714217,
+    "english x go": 632775,
+    "go x tabular": 333510,
+    "python x tabular": 229013,
+    "lean x tabular": 116102,
+    "conversation x lean": 109815,
+    "conversation x go": 67006,
+    "lean x python": 942,
+    "go x python": 373
+  }
+}

@@ -43,7 +43,7 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
   <textarea id="text" placeholder="Type a claim, a Lean statement, a markdown table, or a Speaker: transcript…"></textarea>
   <div class="row">
     <label>chart <select id="chart">
-      <option>english</option><option>lean</option><option>tabular</option><option>conversation</option>
+      <option>english</option><option>lean</option><option>python</option><option>go</option><option>tabular</option><option>conversation</option>
     </select></label>
     <label>temperature <input id="temp" type="range" min="0" max="1" step="0.1" value="0.3"></label>
     <span id="tempv" class="muted">0.3</span>
@@ -94,7 +94,7 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
   <div class="row">
     <input id="q" placeholder="ask a question; it will be addressed against the real corpus" style="flex:1">
     <label>chart <select id="qchart">
-      <option>english</option><option>lean</option><option>tabular</option><option>conversation</option>
+      <option>english</option><option>lean</option><option>python</option><option>go</option><option>tabular</option><option>conversation</option>
     </select></label>
     <button class="go" onclick="ask()">ask</button>
   </div>
@@ -104,6 +104,7 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
     <div><h2 style="border:none">What was compiled from the field</h2><pre id="compiled" class="nu"></pre></div>
   </div>
   <div id="landings"></div>
+  <div id="retrieved"></div>
 </div>
 
 <script>
@@ -111,10 +112,25 @@ const $ = id => document.getElementById(id);
 $('temp').oninput = e => $('tempv').textContent = e.target.value;
 const tagcls = s => s.startsWith('instance') ? 'inst' : (s === 'lm' ? 'lm' : (s === 'me' ? 'me' : 'inst'));
 
+// The access token, if this window is gated. Taken from ?t= once and kept for the session
+// so the token is not left sitting in the address bar of a shared screen. sessionStorage,
+// not localStorage: it should not outlive the tab.
+const TOKEN = (() => {
+  const fromUrl = new URLSearchParams(location.search).get('t');
+  if(fromUrl){
+    try { sessionStorage.setItem('cg_t', fromUrl); } catch(e) {}
+    history.replaceState(null, '', location.pathname);
+    return fromUrl;
+  }
+  try { return sessionStorage.getItem('cg_t') || ''; } catch(e) { return ''; }
+})();
+const withToken = path => TOKEN ? path + (path.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(TOKEN) : path;
+
 async function post(path, body){
-  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const r = await fetch(withToken(path), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
   return r.json();
 }
+async function get(path){ return (await fetch(withToken(path))).json(); }
 function esc(s){return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 
 async function propose(){
@@ -173,7 +189,7 @@ function render(st){
       <b class="b ${p.value}">${p.value}</b> <span class="muted">${esc(p.reason)} · top ${p.hankel_top.toExponential(2)} vs thr ${p.threshold.toExponential(2)}</span></div>`).join('');
 }
 
-async function ledger(){ renderLedger(await (await fetch('/proposer')).json()); }
+async function ledger(){ renderLedger(await get('/proposer')); }
 async function ctl(body){ renderLedger(await post('/proposer/control', body)); }
 
 function renderLedger(L){
@@ -217,7 +233,7 @@ function renderLedger(L){
 }
 
 async function corpus(){
-  const h = await (await fetch('/corpus')).json();
+  const h = await get('/corpus');
   renderCorpus(h);
 }
 function renderCorpus(h){
@@ -235,11 +251,18 @@ async function ask(){
   if(r.error){ $('answer').innerHTML = `<span class="err">${esc(r.error)}</span>`; return; }
   if(r.corpus_header) renderCorpus(r.corpus_header);
   const c = r.compiled || {};
-  const cls = c.conditioned ? 'promoted' : 'err';
-  $('answer').innerHTML = `<div class="prop"><span class="${cls}">`
-    + (c.conditioned ? 'CONDITIONED ON THE FIELD' : 'NOT CONDITIONED — near-passthrough')
-    + `</span> <span class="muted">${c.landed||0} of ${c.spans||0} typed spans landed on a real address</span>`
-    + `<br><br><b>answer</b> ${esc(r.answer)}</div>`;
+  const R = c.retrieved || [];
+  // Three states, not two. Conditioned is the strong one (a span IS a claim here);
+  // retrieved-only is real grounding in this corpus but asserts nothing about the question;
+  // neither is a passthrough. Collapsing the middle into "not conditioned" is what made the
+  // window look broken on every question a person would actually type.
+  const state = c.conditioned ? ['promoted','CONDITIONED ON THE FIELD']
+              : (R.length ? ['inst','RETRIEVED ONLY — nothing addressed exactly']
+                          : ['err','NOT GROUNDED — near-passthrough']);
+  $('answer').innerHTML = `<div class="prop"><span class="${state[0]}">${state[1]}</span>`
+    + ` <span class="muted">${c.landed||0} of ${c.spans||0} typed spans landed on a real address`
+    + (R.length ? ` · ${R.length} claims retrieved for reading` : '')
+    + `</span><br><br><b>answer</b> ${esc(r.answer)}</div>`;
   $('typed').textContent = c.typed || $('q').value;
   $('compiled').textContent = r.grounded_on || '';
   const L = c.landings || [];
@@ -250,6 +273,19 @@ async function ask(){
                  + (l.contested?' <b class="F">CONTESTED</b>':'')
                  + ` <span class="muted">fiber ${l.fiber} · block ${l.block} · arrows ${(l.arrows||[]).length}</span>` : '')
         + `<br><span class="nu">${esc(l.surface)}</span></div>`).join('')
+    : '';
+  $('retrieved').innerHTML = R.length
+    ? '<h2 style="border:none">Retrieved for reading — term overlap, not an address match</h2>'
+      + '<p class="muted">These are real claims in your corpus that share discriminating words '
+      + 'with what you typed. Sharing words is <b>not</b> the same as being the same claim, and '
+      + 'nothing here declares a correspondence — each row carries its own address, tier and '
+      + 'contest status.</p>'
+      + R.map(x =>
+        `<div class="prop"><span class="tag inst">${esc(x.chart)}</span>`
+        + ` <b class="b ${x.value}">${x.value}</b> <span class="tier">${esc(x.tier)}</span>`
+        + (x.contested?' <b class="F">CONTESTED</b>':'')
+        + ` <span class="muted">matched ${esc((x.matched||[]).join(' + '))}</span>`
+        + `<br><span class="nu">${esc(x.nu_display || '')}</span></div>`).join('')
     : '';
 }
 corpus();

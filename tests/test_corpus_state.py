@@ -273,5 +273,64 @@ class TheDirectBuildIsNotQuadratic(unittest.TestCase):
                              "the index pass reads each delta a bounded number of times")
 
 
+class TheCoverageCaveatIsComputedNotRemembered(unittest.TestCase):
+    """A caveat is a claim, and this one went stale with nothing firing.
+
+    `coverage_caveat()` is attached to every figure the corpus produces. It read "source code
+    is NOT ingested ... every figure here is about prose and Lean only" — true when written,
+    false the moment the Python and Go charts landed, and unchallenged by all twelve controls
+    in this file because none of them asked what it SAID. These do.
+    """
+
+    def test_every_charted_extension_in_the_manifest_appears_in_the_caveat(self):
+        from engine.corpus_state import coverage_caveat
+        from engine.languages import CHART, rules
+
+        caveat = coverage_caveat()
+        for rule in rules().values():
+            if rule.cls == CHART:
+                self.assertIn(rule.ext, caveat,
+                              f"{rule.ext} routes to the {rule.chart} chart but the caveat "
+                              f"does not mention it — the caveat is out of date")
+                self.assertIn(rule.chart, caveat)
+
+    def test_every_held_extension_appears_so_the_gap_carries_a_name(self):
+        from engine.corpus_state import coverage_caveat
+        from engine.languages import REFERENCE, rules
+
+        caveat = coverage_caveat()
+        for rule in rules().values():
+            if rule.cls == REFERENCE:
+                self.assertIn(rule.ext, caveat)
+
+    def test_planted_a_new_chart_row_changes_the_caveat(self):
+        """PLANTED: the exact drift that happened. Add a charted language, and the caveat
+        must move on its own. A hand-written sentence would not."""
+        from unittest import mock
+
+        from engine import corpus_state
+        from engine.languages import CHART, LanguageRule, rules
+
+        before = corpus_state.coverage_caveat()
+        self.assertNotIn(".rb", before)
+        planted = dict(rules())
+        planted[".rb"] = LanguageRule(ext=".rb", cls=CHART, chart="ruby", why="planted")
+        with mock.patch("engine.languages.rules", return_value=planted):
+            after = corpus_state.coverage_caveat()
+        self.assertIn(".rb", after, "the caveat did not follow the manifest — it is "
+                                    "remembering rather than computing, which is how the "
+                                    "Lean-only sentence survived two new charts")
+        self.assertIn("ruby", after)
+        self.assertNotEqual(before, after)
+
+    def test_the_retired_sentence_is_gone(self):
+        """The specific false claim, named, so it cannot quietly come back."""
+        from engine.corpus_state import coverage_caveat
+
+        caveat = coverage_caveat()
+        self.assertNotIn("source code is NOT ingested", caveat)
+        self.assertNotIn("prose and Lean only", caveat)
+
+
 if __name__ == "__main__":
     unittest.main()

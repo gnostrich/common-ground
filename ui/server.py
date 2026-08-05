@@ -75,6 +75,46 @@ def _engine_facts(state: dict, term: str = "") -> str:
     return "\n".join(lines)
 
 
+#: When set, every request must carry this token. Unset on a laptop; REQUIRED for a deploy,
+#: enforced in `serve()` below rather than left to whoever runs it. The literal string
+#: `none` is the deliberate opt-out — spelling it is an act, forgetting the variable is not.
+_RAW_TOKEN = os.environ.get("COMMON_GROUND_TOKEN", "").strip()
+OPEN_ON_PURPOSE = _RAW_TOKEN == "none"
+ACCESS_TOKEN = "" if OPEN_ON_PURPOSE else _RAW_TOKEN
+
+#: Paths served without a token. Only the page shell, which holds no corpus and spends
+#: nothing — everything it then asks for is gated.
+OPEN_PATHS = frozenset({"/", "/index.html", "/healthz"})
+
+
+def _authorized(path: str, raw_path: str, headers) -> bool:
+    """Two things are behind this gate, and the second is the one that costs money.
+
+    The corpus is somebody's private material. But `/ask` and `/propose` call OpenRouter with
+    the SERVER's key, so an open deploy is not merely a disclosure — it is an unmetered spend
+    against the operator's account by anyone who has the URL. A deploy therefore refuses to
+    start without a token (see `serve`), rather than trusting the deployer to remember.
+    """
+    if not ACCESS_TOKEN or path in OPEN_PATHS:
+        return True
+    from urllib.parse import parse_qs, urlparse
+
+    supplied = (parse_qs(urlparse(raw_path).query).get("t") or [""])[0]
+    if not supplied:
+        cookie = headers.get("Cookie") or ""
+        for part in cookie.split(";"):
+            name, _, value = part.strip().partition("=")
+            if name == "cg_t":
+                supplied = value
+                break
+    if not supplied:
+        supplied = (headers.get("X-Common-Ground-Token") or "").strip()
+    # Constant-time: a token checked with `==` leaks its prefix to a patient caller.
+    import hmac
+
+    return hmac.compare_digest(supplied, ACCESS_TOKEN)
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "common-ground-window/1"
 
@@ -101,10 +141,26 @@ class Handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             return {}
 
+    def _gate(self, path: str) -> bool:
+        if _authorized(path, self.path, self.headers):
+            return True
+        self._send(401, json.dumps({
+            "error": "this window is token-gated",
+            "how": "open the URL with ?t=<token> once; the page stores it for the session.",
+            "why": ("/ask and /propose spend the operator's OpenRouter credits and read a "
+                    "private corpus, so an ungated deploy is an open tab on both."),
+        }))
+        return False
+
     def do_GET(self):
         path = self.path.split("?")[0]
-        if path in ("/", "/index.html"):
-            self._send(200, INDEX.read_text(encoding="utf-8"), "text/html; charset=utf-8")
+        if not self._gate(path):
+            return
+        if path == "/healthz":
+            self._send(200, json.dumps({"ok": True, "gated": bool(ACCESS_TOKEN)}))
+        elif path in ("/", "/index.html"):
+            body = INDEX.read_text(encoding="utf-8")
+            self._send(200, body, "text/html; charset=utf-8")
         elif path == "/corpus":
             try:
                 self._send(200, json.dumps(corpus_header()))
@@ -120,6 +176,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?")[0]
+        if not self._gate(path):
+            return
         b = self._body()
         key = api_key(b.get("key"))          # request key or env; never logged
         try:
@@ -195,6 +253,18 @@ def serve(host: str | None = None, port: int | None = None) -> None:
     if host not in ("127.0.0.1", "localhost", "::1", "0.0.0.0") and not deploy:
         raise SystemExit("refusing to bind a non-localhost host; set COMMON_GROUND_BIND_ALL=1 "
                          "or $PORT to deploy")
+    if deploy and not ACCESS_TOKEN and not OPEN_ON_PURPOSE:
+        # Refused here rather than warned about, because the thing being protected is not
+        # only a private corpus: /ask and /propose spend the operator's OpenRouter credits,
+        # and an ungated public URL is an unmetered charge against their account. A deployer
+        # who forgets gets a service that will not start, which is recoverable; the other
+        # way round is not.
+        raise SystemExit(
+            "refusing to serve a reachable window with no COMMON_GROUND_TOKEN.\n"
+            "This binds 0.0.0.0 and serves a loaded corpus, and /ask spends the operator's\n"
+            "OpenRouter credits on every request. Set COMMON_GROUND_TOKEN to a secret and\n"
+            "open the URL once with ?t=<that secret>. To run wide open on purpose, set\n"
+            "COMMON_GROUND_TOKEN to the literal string 'none'.")
     have = "yes" if os.environ.get("OPENROUTER_API_KEY") else "no — LM source omitted, engine runs live"
     print(f"common-ground window on http://{host}:{port}  (OPENROUTER_API_KEY set: {have})")
     HTTPServer((host, port), Handler).serve_forever()

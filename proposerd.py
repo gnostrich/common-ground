@@ -5,6 +5,8 @@
     python3 proposerd.py build-snapshot      # the window's read view over the whole corpus
     python3 proposerd.py run                 # the daemon: runs until stopped or a gate reddens
     python3 proposerd.py sources             # what corpus is plugged in (or that none is)
+    python3 proposerd.py atlas [out.html]    # ONE self-contained page: charts, arrows, search
+    python3 proposerd.py census              # record the depth-1 subtree candidate count
     python3 proposerd.py status              # totals, gates, last records — safe any time
     python3 proposerd.py checkpoint          # write the REDACTED ledger, safe to commit
     python3 proposerd.py rate 20             # calls/hour, takes effect next batch
@@ -248,6 +250,36 @@ def cmd_measure_cross_repo() -> None:
     }, indent=2))
 
 
+def cmd_census() -> None:
+    """Record the depth-1 subtree candidate count per chart pair, to `runs/census.json`.
+
+    Recorded rather than recomputed at render time: the enumeration is minutes over the full
+    corpus, so a page that recomputed it would either be slow or would quietly show whatever
+    it had cached without saying how old that was. Writing it to a file with a timestamp makes
+    the age of the number part of the number.
+    """
+    from engine.holes import holes_by_subtree_all
+
+    started = time.time()
+    slots, deltas = build_corpus()
+    subtree: dict[str, int] = {}
+    for key, holes in holes_by_subtree_all(slots, deltas, max_depth=1).items():
+        for hole in holes:
+            pair = " x ".join(sorted((hole.src_chart, hole.dst_chart)))
+            subtree[pair] = subtree.get(pair, 0) + 1
+    out = {
+        "measured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "measured_by": "engine.holes.holes_by_subtree_all(max_depth=1)",
+        "elapsed_seconds": round(time.time() - started, 1),
+        "note": ("Depth-1 subtree candidates per chart pair. A pair absent from this table "
+                 "has NO candidates at that granularity — that is a measured zero, not a "
+                 "gap in the measurement."),
+        "subtree": dict(sorted(subtree.items(), key=lambda kv: -kv[1])),
+    }
+    Path("runs/census.json").write_text(json.dumps(out, indent=2), encoding="utf-8")
+    print(json.dumps(out, indent=2))
+
+
 def _openrouter_transport():
     from ui.lm import LMClient, _is_openrouter, model_for
 
@@ -342,6 +374,13 @@ def main(argv: list[str]) -> int:
         cmd_checkpoint()
     elif command == "sources":
         print(json.dumps(corpus_status(), indent=2))
+    elif command == "atlas":
+        from engine.atlas import write as write_atlas
+
+        out = rest[0] if rest else "runs/atlas.html"
+        print(json.dumps(write_atlas(out), indent=2))
+    elif command == "census":
+        cmd_census()
     elif command == "status":
         cmd_status()
     elif command == "contradictions":

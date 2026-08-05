@@ -220,6 +220,54 @@ runs/          JSONL logs; every record carries seed_hash
 reports/       one-pagers
 ```
 
+## Run it on your own material
+
+Python 3.11+, **no dependencies** — the engine ships its own SVD, RNG and simplex arithmetic,
+and CI asserts nothing third-party creeps in. Nothing here names a path, an account or a
+private directory: where your corpus lives is one gitignored file, so the mechanism forks
+without the material.
+
+```bash
+git clone https://github.com/gnostrich/common-ground && cd common-ground
+cp seed/CORPUS.example.json corpus.local.json    # then edit "path" to point at your own
+python3 proposerd.py sources                     # what resolved, and what did NOT
+
+export OPENROUTER_API_KEY=sk-or-...              # OpenRouter only; no other transport exists
+python3 proposerd.py build-snapshot              # the read view the window loads
+python3 -m ui.server                             # http://127.0.0.1:8848
+```
+
+`sources` is worth running first. A source that is not there is **reported** with a reason
+rather than skipped, so a fork nobody has pointed anywhere says "0 sources resolved" instead
+of ingesting nothing and printing a confident zero — an empty corpus and an unconfigured one
+produce the same number, and only one of them means the run was meaningful.
+
+Optional, and the slow half — the continuous proposer that finds arrows between charts:
+
+```bash
+python3 proposerd.py build-pool                  # enumerate candidates once (minutes)
+python3 proposerd.py run                         # rate-limited, stoppable, EXTRACTION only
+python3 proposerd.py status                      # totals, gates, cost as a running sum
+python3 proposerd.py atlas atlas.html            # one self-contained page of the whole state
+```
+
+It halts itself if any gate reddens or the test suite goes red, and it promotes nothing.
+
+### Serving it somewhere other than your laptop
+
+`python -m ui.server` binds localhost. It binds `0.0.0.0` only when a platform sets `$PORT`
+(Railway/Render/Fly) or you set `COMMON_GROUND_BIND_ALL=1` — and in that case it **refuses to
+start** without `COMMON_GROUND_TOKEN`. That refusal is deliberate and is not only about the
+corpus: `/ask` and `/propose` call OpenRouter with the *server's* key, so an ungated public
+URL is an unmetered charge against your account by anyone holding the link. Open the URL once
+as `?t=<token>`; the page takes it out of the address bar and keeps it for the tab. To run
+wide open on purpose, set the token to the literal string `none` — spelling it is an act,
+forgetting a variable is not.
+
+Deploy from a directory rather than from GitHub if your corpus is private: the snapshot is
+gitignored, so `railway up` from a working tree carries it to the service without it ever
+entering the repository.
+
 ## Usage
 
 ```bash
