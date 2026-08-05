@@ -45,3 +45,9 @@ runs/corpus.snapshot
 runs/proposer.journal.jsonl
 runs/proposer.control.json
 runs/proposer.status.json
+
+# seed_runs/ is the DEPLOY staging copy of exactly the three files above. It is ignored for
+# the same reason they are: it holds the corpus's nu-strings, and this repo is public.
+# `railway up` uploads the working TREE, not the git tree, so deploying does not need these
+# tracked — and a `git add -A` that swept them in is how they reached a public branch once.
+seed_runs/
