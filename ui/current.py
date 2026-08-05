@@ -172,12 +172,12 @@ class Current:
         }
 
 
-def _attach_transport(key: str | None):
-    """The proposer's transport, for attachment. The SAME one the daemon uses.
+def _region_transport(key: str | None):
+    """The proposer's transport. The SAME one the daemon's sampler uses.
 
-    Returns None with no key: attachment is an LM proposal, and without a model the bias can
-    only attach at its own address — which the window then reports honestly rather than
-    pretending the field was consulted.
+    Returns None with no key: a perturbation is a region completion, and without a model the
+    bias can only attach at its own address — which the window then reports honestly rather
+    than pretending the field was consulted.
     """
     from .lm import LMClient, api_key, lm_available, model_for
 
@@ -195,14 +195,15 @@ def _attach_transport(key: str | None):
 def ask_the_corpus(question: str, chart: str = "english", key: str | None = None) -> dict:
     """Compile the LM's input FROM THE FIELD, and hand back both sides of the compilation.
 
-    The answer is not retrieval-with-receipts and not a lookup. The typed question enters the
-    real corpus's energy as a soft constraint, settlement runs, and what the model receives is
-    the region that moved — which is why the window shows the typed text and the compiled
-    field side by side. When nothing moves, the compiler says so and names the structural
-    reason; there is no second mechanism that produces words anyway.
+    The answer is not retrieval-with-receipts and not a lookup. The typed question enters a
+    REGION of the real corpus as one more object in the diagram, one call completes it, the
+    arrows drawn to that object seed the corpus's energy as a soft constraint, and what the
+    model receives is the region that moved — which is why the window shows the typed text and
+    the compiled field side by side. When nothing moves, the compiler says so and names the
+    structural reason; there is no second mechanism that produces words anyway.
     """
     compiled = compile_input(question, corpus_snapshot(), chart,
-                             transport=_attach_transport(key))
+                             transport=_region_transport(key))
     return compiled.as_record()
 
 

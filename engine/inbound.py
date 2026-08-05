@@ -3,13 +3,22 @@
 The outbound direction is built: material -> claims -> proposer -> settlement. This is the
 other direction, and the accumulated structure determines what the LM actually receives:
 
-    typed text -> addressed by the ordinary extractor (not privileged)
-               -> entered into the CORPUS's energy as soft evidence
+    typed text -> addressed exactly (gate 1, unchanged)
+               -> entered into a REGION as one more object, [0|bias] (`engine/perturb`)
+               -> ONE call completes the diagram; arrows to [0] are the attachment points
+               -> entered into the CORPUS's energy as soft evidence, at those points
                -> settlement runs on the real corpus, twice: without the bias and with it
                -> what MOVED is the response, reached over declared correspondences
                -> the moved region, with its path, is compiled into the LM's input
 
 The typed text is the boundary condition. The field supplies the content.
+
+**ONE MECHANISM, and it is the sampler's.** This path used to run a candidate list — degree-
+ordered, budget-capped, interrogated twelve pairs at a time — while the walk ran region
+relaxation. Two mechanisms for one job, and this one was the worse half: forty-eight claims
+out of thirty-seven thousand, each asked in isolation, which reads as lookup because it is
+one. The list is deleted. A perturbation is a region with a boundary condition in it, and
+every wire-level step is `engine/region` code the walk calls too.
 
 **Exact addressing governs claim identity, never how a bias reaches the field.** Gate 1 says
 two claims are the same claim iff `hash(nu(surface), type)` agrees. That is right and is
@@ -52,7 +61,7 @@ from typing import Sequence
 
 from .corpus_state import CorpusSnapshot
 from .extract import DeterministicExtractor
-from .attach import attach
+from .perturb import perturb, relax_from
 from .relax import Relaxation, relax
 from .types import Document
 
@@ -94,7 +103,7 @@ class CompiledInput:
     field_status: str = ""
     conditioned: bool = False                  # did the FIELD respond to the bias?
     relaxation: Relaxation | None = None
-    attachment: object | None = None           # attach.AttachResult — the bridge, shown
+    attachment: object | None = None           # perturb.Perturbation — the diagram, shown
 
     @property
     def reached(self) -> int:
@@ -186,69 +195,74 @@ def land(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> list[La
     return out
 
 
-def _attachment_block(att) -> str:
-    """The bridge, shown rather than implied: what the proposer said, and at what tier.
+def _region_block(pert) -> str:
+    """The diagram the boundary condition entered, and what the medium drew in it.
 
-    A bias that reaches the field through a proposed correspondence is standing on a claim
-    somebody's model made, at extraction tier, which could be wrong. Printing the result
-    without printing the bridge would present a relaxation as though the attachment were
-    given. So every proposal is listed — including the `none`s, which are the proposer
-    declining to force a match and are as informative as the acceptances.
+    A bias that reaches the field through a proposed arrow is standing on a claim somebody's
+    model made, at extraction tier, which could be wrong. Printing the result without printing
+    the bridge would present a relaxation as though the attachment were given.
+
+    It also states, unprompted, that the region is a SAMPLE. Sixty claims came back and 69,000
+    did not, and an operator who is not told how those sixty were chosen will infer that they
+    were the relevant ones — which is the inference the whole engine exists to refuse.
     """
-    from .attach import BEARS_ON
+    from .region import BEARS_ON
 
-    bias_only = [a for a in att.accepted if a.kind == BEARS_ON]
-    corresponds = [a for a in att.accepted if a.kind != BEARS_ON]
+    bias_only = [a for a in pert.attachment if a.kind == BEARS_ON]
+    corresponds = [a for a in pert.attachment if a.kind != BEARS_ON]
     lines = [
-        "HOW THIS INPUT ATTACHED. The typed text is not in this corpus verbatim, so the same "
-        "proposer that builds the corpus's own arrows was asked how it relates to corpus "
-        "claims — with `none` legal and expected. TWO QUESTIONS are available and the answer "
-        "says which was answered:",
-        "  CORRESPONDS  — the input asserts the same proposition, refines it, or instances "
-        "it. A real correspondence at EXTRACTION tier: proposed, not confirmed, and it "
-        "becomes structure.",
-        "  BEARS ON     — the input is ABOUT what the claim is about. A question or a topic "
-        "asserts nothing, so it cannot correspond; it can still be about something. This is "
-        "EPHEMERAL: it conditions this one perturbation, is never journalled, never composes, "
-        "and never becomes an arrow.",
+        f"THE DIAGRAM. The typed text entered a REGION of this corpus as one more object — "
+        f"[0|bias] — beside {pert.members - 1} corpus claim(s), with "
+        f"{len(pert.region.declared)} declared arrow(s) and {len(pert.region.implied)} "
+        f"composition-implied arrow(s) already in it. One call asked the medium to complete "
+        f"the diagram. This is the same region, wire format and prompt the sampler runs; "
+        f"there is no candidate list and no interrogation budget anywhere in this path.",
+        f"WHICH REGION: sampled by declared structure — an arrow-rich neighbourhood, chosen "
+        f"by a hash of the input's address, then filled provenance-near and chart-balanced. "
+        f"A hash is not a similarity. These claims are NOT the part of the corpus that "
+        f"matches the question; nothing here could compute that, and no text was compared. "
+        f"The rest of the corpus is UNMEASURED IN THIS REGION, which is what a sample means.",
+        "TWO KINDS OF ARROW came back, and they are not the same fact:",
+        "  CORRESPONDS  — the input asserts the same proposition as a claim, refines it, or "
+        "instances it.",
+        "  BEARS ON     — a claim is ABOUT what the input is about. A question or a topic "
+        "asserts nothing, so it cannot correspond; it can still be about something.",
+        "BOTH are EPHEMERAL here: they condition this one perturbation, are never journalled, "
+        "never compose, and never become arrows. An arrow to a boundary condition is not "
+        "structure.",
     ]
     if corresponds:
         lines.append(f"-- {len(corresponds)} CORRESPONDENCE attachment(s) --")
     for a in corresponds:
         lines.append(f"ATTACHED via {a.kind} (warrant {a.tier}) -> [{a.dst_chart}] "
                      f"{display(a.dst_nu)[:200]}")
-        if a.evidence:
-            lines.append(f"  BECAUSE {a.evidence[:300]}")
     if bias_only:
-        lines.append(f"-- {len(bias_only)} BEARS-ON attachment(s), ephemeral --")
+        lines.append(f"-- {len(bias_only)} BEARS-ON attachment(s) --")
     for a in bias_only:
         lines.append(f"BEARS ON -> [{a.dst_chart}] {display(a.dst_nu)[:200]}")
-    declined = sum(1 for a in att.proposed if not a.accepted)
-    lines.append(f"({len(att.accepted)} attachment(s) accepted, {declined} declined as none, "
-                 f"out of {att.considered} candidate(s) asked over {att.calls} call(s).)")
-    if att.budget_exhausted:
-        lines.append(f"(The call budget stopped the search at {att.considered} of "
-                     f"{att.available} type-compatible candidates. The rest are UNMEASURED, "
-                     f"not ruled out.)")
-    if att.error:
-        lines.append(f"(Attachment reported an error: {att.error})")
+    if pert.extracted:
+        lines.append(f"({len(pert.extracted)} arrow(s) among the CORPUS objects came back in "
+                     f"the same call. Those are ordinary extraction at the same tier the "
+                     f"sampler produces — asking a question does the sampler's work — and "
+                     f"they are offered to the inlet, not written by this read path.)")
+    if pert.void:
+        lines.append(f"({pert.void} line(s) were VOID: outside the region, self-paired, "
+                     f"intra-chart, or an unknown kind. Discarded with the reason, never "
+                     f"repaired into a nearby address.)")
+    if pert.error:
+        lines.append(f"(The region call reported an error: {pert.error})")
     return "\n".join(lines)
 
 
-def _no_attachment(att) -> str:
+def _no_attachment(pert) -> str:
     """Why nothing attached. Never a bare zero."""
-    if att.error:
-        return f"the input could not be attached: {att.error}"
-    if not att.proposed:
-        return ("the proposer returned no usable answer over "
-                f"{att.considered} candidate(s) in {att.calls} call(s).")
-    tail = ""
-    if att.budget_exhausted:
-        tail = (f" The budget stopped at {att.considered} of {att.available} "
-                f"type-compatible candidates, so the rest are UNMEASURED, not ruled out.")
-    return (f"the proposer was asked about {att.considered} corpus claim(s) and answered "
-            f"`none` to every one. It declines to force a match, so there is no bridge from "
-            f"this input into the field and nothing to propagate.{tail}")
+    if pert.error:
+        return f"the input could not be put to the field: {pert.error}"
+    return (f"the medium was shown one region of {pert.members - 1} corpus claim(s) with the "
+            f"typed text as an object in it, and drew no arrow to it. It declines to relate "
+            f"a boundary condition it does not see a relation to, so there is nothing to "
+            f"propagate from. The rest of the corpus was not in this region and is UNMEASURED, "
+            f"not ruled out — a different sample may answer differently.")
 
 
 def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot) -> tuple[list[str], list[dict]]:
@@ -305,24 +319,24 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     """
     landings = land(text, snapshot, chart)
 
-    # WHERE THE BIAS ATTACHES. With a transport, the proposer is asked which corpus claims
-    # the typed input corresponds to, and the accepted proposals are the seeds. Without one,
-    # the bias can only attach at its own address — which is right only when the typed text
-    # already exists verbatim, and is the inherited defect this parameter exists to fix.
+    # WHERE THE BIAS ATTACHES. With a transport, the typed input enters a REGION as one more
+    # object and one call completes the diagram; the arrows the medium draws to it are the
+    # seeds. Without one, the bias can only attach at its own address — which is right only
+    # when the typed text already exists verbatim, and is the inherited defect the region
+    # path exists to fix.
     att = None
-    seeds, extra = None, None
     if transport is not None:
-        att = attach(text, snapshot, transport, chart)
-        seeds, extra = att.seeds, att.arrows(att.typed_slot)
-        if not seeds:
+        att = perturb(text, snapshot, transport, chart)
+        if not att.seeds:
             status = ("THE FIELD DID NOT RESPOND — " + _no_attachment(att))
             return CompiledInput(
-                typed=text, compiled=f"{status}\n\n{_attachment_block(att)}\n\n"
+                typed=text, compiled=f"{status}\n\n{_region_block(att)}\n\n"
                                      f"BOUNDARY CONDITION:\n{text}",
                 landings=landings, field_status=status, conditioned=False,
                 relaxation=None, attachment=att)
-
-    rel = relax(text, snapshot, chart, seeds_from=seeds, extra_arrows=extra)
+        rel = relax_from(att, text, snapshot, chart)
+    else:
+        rel = relax(text, snapshot, chart)
 
     if not rel.responded:
         status = f"THE FIELD DID NOT RESPOND — {rel.silence}"
@@ -339,7 +353,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         "",
     ]
     if att is not None:
-        lines.extend(_attachment_block(att).splitlines())
+        lines.extend(_region_block(att).splitlines())
         lines.append("")
     moved_lines, facts = _relaxed_block(rel, snapshot)
     lines.extend(moved_lines)

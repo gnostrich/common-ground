@@ -806,7 +806,7 @@ CLAIMED_PROPERTY_SITES: tuple[dict[str, str], ...] = (
 #: because "is this mechanism?" is exactly the judgement the protocol exists to stop people
 #: making on the fly.
 MECHANISM_MODULES: frozenset[str] = frozenset({
-    "engine/attach.py",        # ADD A MORPHISM — attachment proposer
+    "engine/perturb.py",       # ADD A MORPHISM — the boundary condition, as an object
     "engine/region.py",        # ADD A MORPHISM — the region proposer
     "engine/walk.py",          # ADD A MORPHISM — the sampler that aims it
     "engine/relax.py",         # the read-side dynamics

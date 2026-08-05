@@ -42,6 +42,16 @@ that pair and declined it. In a region, a pair the medium simply did not mention
 put to it as a question. Recording those as `none` would manufacture tens of thousands of
 declines nobody made. They are recorded as UNMENTIONED, which is a different fact and is
 counted separately.
+
+**A PERTURBATION IS A REGION, and that is why there is only one of these.** Typed input used
+to reach the field by a second route: a candidate list ordered by degree, cut to a call budget,
+interrogated pairwise. Two mechanisms for one job — the forbidden shape — and the window got
+the worse one, which is why it felt like lookup. The typed input is now ONE MORE OBJECT in the
+diagram, over the pseudo-chart `bias`, and the same region goes out on the same wire in one
+call. Arrows the medium draws to the bias object are ATTACHMENT: ephemeral, conditioning-only,
+never journalled, never composable, never an arrow. Arrows it draws among the corpus objects
+are ordinary extraction, indistinguishable from the walk's, because they came from the same
+call. There is no candidate list left to be truncated, so there is no truncation to disclaim.
 """
 
 from __future__ import annotations
@@ -59,12 +69,33 @@ from .types import WarrantTier
 #: degrades and a truncated tail costs the whole region rather than one candidate.
 REGION_SIZE = 60
 
+#: How many arrow-rich hubs a perturbation may be aimed at. Wide enough that successive
+#: questions land in different neighbourhoods, narrow enough that every one of them is a place
+#: where declared structure exists and a perturbation can actually travel.
+HUBS = 64
+
 #: Each claim is cut to this for rendering. Cutting is MARKED, because a medium shown half a
 #: claim and not told so is being asked about something other than the claim.
 NU_CAP = 300
 
 #: Region proposals enter where every LM proposal enters. Nothing here can ground or clamp.
 REGION_TIER = WarrantTier.EXTRACTION
+
+#: The pseudo-chart the typed input lives over inside a diagram. Not one of B's objects: no
+#: corpus claim can ever carry it, so an arrow touching it is cross-chart by construction and
+#: the intra-chart refusal can never fire on an attachment. It is also the marker that keeps
+#: attachment ephemeral — `arrows_from` drops anything touching it, structurally rather than
+#: by anyone remembering to.
+BIAS_CHART = "bias"
+
+#: The BIAS relation. Not a corpus morphism — the base's kinds stay exactly three.
+#:
+#: A topic or a question cannot correspond to anything: "does `holonomy` state the same
+#: proposition as this Lean theorem?" has one correct answer forever, so asking the identity
+#: question of a bias guarantees `none` and the field is never reached. The aboutness question
+#: is a different question and it gets a different relation — legal ONLY on an arrow touching
+#: the bias object, and discarded between two corpus objects.
+BEARS_ON = "bears_on"
 
 REGION_SYSTEM = (
     "You are completing a partial DIAGRAM: a finite subcategory of a reconciliation engine's "
@@ -81,7 +112,18 @@ REGION_SYSTEM = (
     "Do not introduce new objects: an index not shown does not exist in this diagram.\n"
     "Arrows are CROSS-CHART only; two claims over the same chart are never related here.\n"
     "Pairs you do not name are UNMEASURED, not denied. Naming nothing is a legal completion, "
-    "and word overlap between two claims is not a reason to relate them."
+    "and word overlap between two claims is not a reason to relate them.\n\n"
+    "A diagram MAY contain exactly one object over the chart `bias`. That is a BOUNDARY "
+    "CONDITION an operator typed, not a corpus claim, and it may be a question or a bare topic "
+    "rather than an assertion. One extra kind is available for it:\n"
+    "  bears_on     — the corpus claim is ABOUT what the bias is about: a question it would "
+    "help answer, or a topic it falls under. A question asserts nothing, so it cannot "
+    "correspond to anything; it can still be about something.\n"
+    "Emit those as  b -bears_on-> j  with b the bias object's index. `bears_on` is legal ONLY "
+    "on an arrow touching the bias object; between two corpus objects it is not a relation and "
+    "is discarded. If the bias really is a claim, the three kinds above apply to it too. "
+    "Relate the corpus objects to EACH OTHER in the same answer — that is the diagram, and the "
+    "bias is one object in it, not the question being asked about it."
 )
 
 #: The verbatim task line, kept separate so it can be asserted against.
@@ -120,6 +162,19 @@ class Region:
     #: the residual signal is defined as their difference — so the format keeps them apart.
     declared: dict[tuple[str, str], str] = field(default_factory=dict)
     implied: dict[tuple[str, str], str] = field(default_factory=dict)
+    #: Address of the typed input when this region carries one. Empty for a walk region, and
+    #: the walk's regions are byte-identical to what they were before the bias object existed.
+    bias: str = ""
+
+    @property
+    def bias_member(self) -> Member | None:
+        for m in self.members:
+            if m.chart == BIAS_CHART:
+                return m
+        return None
+
+    def touches_bias(self, p: "Proposal") -> bool:
+        return bool(p.src and p.dst) and BIAS_CHART in (p.src.chart, p.dst.chart)
 
     @property
     def region_id(self) -> str:
@@ -255,15 +310,27 @@ def parse_region(raw: str, region: Region) -> list[Proposal]:
         i, kind, j = int(m.group(1)), m.group(2), int(m.group(3))
         src, dst = region.by_index(i), region.by_index(j)
         line = m.group(0)
+        bias_arrow = (src is not None and dst is not None
+                      and BIAS_CHART in (src.chart, dst.chart))
         if src is None or dst is None:
             out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
                                 void=f"index outside the region: {line}"))
         elif src.slot == dst.slot:
             out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
                                 void="i == j; one claim is not a correspondence"))
-        elif kind not in KINDS or kind == "none":
+        elif kind == BEARS_ON and not bias_arrow:
+            # The one extra kind exists for the boundary condition and nowhere else. Between
+            # two corpus claims it is not a morphism of B, and letting it through would put a
+            # fourth kind into the corpus vocabulary by the back door.
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
+                                void="bears_on is legal only on an arrow touching the bias "
+                                     "object; it is not a corpus morphism"))
+        elif kind not in KINDS and kind != BEARS_ON:
             out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
                                 void=f"unknown correspondence kind {kind!r}"))
+        elif kind == "none":
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
+                                void="unknown correspondence kind 'none'"))
         elif src.chart == dst.chart:
             out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
                                 void="intra-chart; exact addressing owns intra-chart identity"))
@@ -293,6 +360,10 @@ class Residual:
     novel: list = field(default_factory=list)
     residual: list = field(default_factory=list)      # implied, not named — prediction error
     void: list = field(default_factory=list)
+    #: Arrows the medium drew to the BIAS object. A sixth outcome, kept out of the five above
+    #: because it is not a corpus finding: it is ephemeral, conditions one perturbation and is
+    #: gone. Empty for every walk region, so the walk's accounting is unchanged.
+    attachment: list = field(default_factory=list)
     named_pairs: int = 0
     unmeasured_pairs: int = 0
 
@@ -310,6 +381,7 @@ class Residual:
             "novel": [p.as_record() for p in self.novel],
             "residual": [[a[:16], b[:16]] for a, b in self.residual],
             "void": [p.as_record() for p in self.void],
+            "attachment": [p.as_record() for p in self.attachment],
             "acceptance": round(self.acceptance, 3),
             "named_pairs": self.named_pairs,
             "unmeasured_pairs": self.unmeasured_pairs,
@@ -326,6 +398,12 @@ def residuals(proposals: list[Proposal], region: Region) -> Residual:
     for p in proposals:
         if not p.ok:
             out.void.append(p)
+            continue
+        if region.touches_bias(p):
+            # ATTACHMENT. Routed out before the five outcomes, because it is not a corpus
+            # arrow: it can neither confirm a declared one nor be residual against an implied
+            # one, and counting it as novel would put it in the extraction stream.
+            out.attachment.append(p)
             continue
         key = (p.src.slot, p.dst.slot)
         rev = (p.dst.slot, p.src.slot)
@@ -351,12 +429,20 @@ def residuals(proposals: list[Proposal], region: Region) -> Residual:
 
 def arrows_from(proposals: list[Proposal], proposer: str = "lm",
                 prompt_hash: str = "region") -> list[Correspondence]:
-    """Accepted proposals as Correspondences at EXTRACTION tier. Refused ones are dropped."""
+    """Accepted proposals as Correspondences at EXTRACTION tier. Refused ones are dropped.
+
+    THE EPHEMERALITY GUARD lives here, at the one place a region proposal becomes a
+    Correspondence, so an arrow to the bias object cannot become structure by any route: not
+    by a caller forgetting to filter, not by a new caller that never knew to. `bias` is not an
+    object of B, so a Correspondence over it would be ill-typed even if one were minted.
+    """
     from . import EngineError
 
     out = []
     for p in proposals:
         if not p.ok:
+            continue
+        if BIAS_CHART in (p.src.chart, p.dst.chart):
             continue
         try:
             out.append(Correspondence(
@@ -382,9 +468,47 @@ def provenance_key(doc_id: str) -> str:
     return f"{repo}||{path.rsplit('/', 1)[0] if '/' in path else ''}"
 
 
+def anchor_for(snapshot: CorpusSnapshot, seed: str,
+               quarantined: frozenset = frozenset()) -> str:
+    """Which arrow-rich neighbourhood a PERTURBATION samples. Structure picks it; a hash orders it.
+
+    A typed input has no position in the corpus — that is what Q2 says about an object with no
+    morphisms — so a region has to be chosen for it, and the choice must not be a search. It is
+    made in two parts, and neither part reads the corpus's text:
+
+      * the ELIGIBLE set is the arrow-richest slots, by declared degree. That is the walk's own
+        seeding rule (`_seed_frontier`): a claim no arrow touches can only ever report that
+        nothing moved, so a perturbation aimed there is a wasted call.
+      * WHICH of them is a rotation keyed on the typed input's ADDRESS. A hash is not a
+        similarity: it carries no relation to what the text means, two nearly identical inputs
+        land in unrelated neighbourhoods, and a control asserts exactly that. What it buys is
+        that successive questions probe different parts of the corpus instead of every question
+        re-measuring one hub forever.
+
+    So the region is a SAMPLE, stated as one. It is not the part of the corpus that matches the
+    question — nothing here could compute that — and the window says so rather than letting the
+    operator infer relevance from the fact that these sixty claims and not others came back.
+    """
+    from .hashing import sha256_text
+
+    live = [a for a in snapshot.arrows
+            if (a.src_slot, a.dst_slot) not in quarantined
+            and (a.dst_slot, a.src_slot) not in quarantined]
+    degree: dict[str, int] = {}
+    for a in live:
+        degree[a.src_slot] = degree.get(a.src_slot, 0) + 1
+        degree[a.dst_slot] = degree.get(a.dst_slot, 0) + 1
+    hubs = [s for s, _ in sorted(degree.items(), key=lambda kv: (-kv[1], kv[0]))[:HUBS]
+            if s in snapshot.slots]
+    if not hubs:
+        return ""
+    return min(hubs, key=lambda s: sha256_text(seed + s))
+
+
 def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_SIZE,
                  extra: list[str] | None = None,
-                 quarantined: frozenset = frozenset()) -> Region:
+                 quarantined: frozenset = frozenset(),
+                 bias: tuple[str, str] | None = None) -> Region:
     """Assemble the partial diagram: the clamp, its declared neighbours, then PROVENANCE-NEAR
     claims — same directory, nothing else.
 
@@ -394,7 +518,19 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
     fifty-one unrelated Python declarations. Degree is not lexical, but it is not proximity
     either — it is a global property that does not make two unattached claims near ANYTHING.
     Provenance is the one relation they declare, and it is what this uses.
+
+    `bias` is `(address, nu)` for a typed input, and it makes this the WINDOW's region rather
+    than the walk's. It is one more object, over the pseudo-chart `bias`, and everything
+    downstream — the renderer, the wire grammar, the parser, the reading discipline — is the
+    same code the walk runs. With `bias=None` this function returns exactly what it returned
+    before the boundary condition existed, which is the property that makes it one path and
+    not two.
     """
+    # The bias occupies an index, so it costs one corpus object rather than widening the
+    # region: a diagram the medium was measured on at sixty stays sixty.
+    if bias:
+        size = max(1, size - 1)
+
     # QUARANTINED arrows do not act. They are not neighbours, they do not raise a claim's
     # degree, and they imply nothing — otherwise the walk aims itself at its own bad output
     # and measures residuals against composites built on leads.
@@ -466,8 +602,24 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
     declared = {(a.src_slot, a.dst_slot): a.kind for a in live
                 if a.src_slot in inside and a.dst_slot in inside}
     chart_of = {m.slot: m.chart for m in members}
-    return Region(clamp=clamp, members=members, declared=declared,
-                  implied=_compose(declared, inside, chart_of))
+    implied = _compose(declared, inside, chart_of)
+
+    if bias:
+        # INDEX 0, and the shuffle argument does not reach it. Order is shuffled because
+        # position is attention-salient and a systematic order leaks an UNDECLARED ranking.
+        # The bias's role is not undeclared: it is written on the object, `[0|bias]`, so its
+        # position tells the medium nothing its own chart tag has not already said. It is the
+        # distinguished object of the diagram and it is rendered as one.
+        b_slot, b_nu = bias
+        members = ([Member(index=0, slot=b_slot, chart=BIAS_CHART, type="bias", nu=b_nu,
+                           attached=False)]
+                   + [Member(index=m.index + 1, slot=m.slot, chart=m.chart, type=m.type,
+                             nu=m.nu, attached=m.attached) for m in members])
+        # The bias carries no declared arrow — it is new, and Q2 is the whole point — so it
+        # cannot appear in `declared` and therefore cannot compose. Nothing to exclude.
+        return Region(clamp=clamp, members=members, declared=declared, implied=implied,
+                      bias=b_slot)
+    return Region(clamp=clamp, members=members, declared=declared, implied=implied)
 
 
 def _shuffle(slots: list[str]) -> list[str]:

@@ -347,6 +347,25 @@ def cmd_walk(n: int) -> None:
     print(json.dumps(walk.report(), indent=2))
 
 
+def cmd_battery() -> None:
+    """THE STANDING BATTERY, live: pinned inputs, real corpus, real medium.
+
+    The suite gates the three properties that are pure mechanism. This is the fourth — whether
+    the grade is actually there on this model and this corpus — plus the other three measured
+    against the real thing rather than a fixture.
+    """
+    from engine.battery import run_live
+
+    print("battery: loading the read view (with journal arrows) — this is slow",
+          flush=True)
+    report = run_live()
+    print(json.dumps(report.as_record(), indent=2))
+    print()
+    for k, v in report.properties.items():
+        print(f"  {v:<5} {k:<16} {report.reasons[k]}")
+    print(f"\nVERDICT {report.verdict}")
+
+
 def cmd_census() -> None:
     """Record the depth-1 subtree candidate count per chart pair, to `runs/census.json`.
 
@@ -487,6 +506,8 @@ def main(argv: list[str]) -> int:
 
         out = rest[0] if rest else "runs/atlas.html"
         print(json.dumps(write_atlas(out), indent=2))
+    elif command == "battery":
+        cmd_battery()
     elif command == "census":
         cmd_census()
     elif command == "walk":
