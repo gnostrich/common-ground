@@ -1,11 +1,11 @@
 {
   "schema": "common-ground/languages/v0",
-  "note": "Which chart an artifact's EXTENSION sends it to. Added 2026-08-04 to close the router seam. The chart manifest (seed/CHARTS.json) said adding a chart takes 'a manifest row plus (if the behavior is new) three registered functions - no dispatch edit', and that was true for addressing and false for ROUTING: engine/router.py keyed Lean off a hardcoded `name.endswith('.lean')`, so no manifest row could ever route a file anywhere. This file is the missing half. Shape follows adapters/language_registry.py on claude/repo-intake-adapter, but it is wired into engine/router.py itself rather than into a parallel adapter path, because a second intake path is a second set of rules to keep in agreement.",
+  "note": "Which chart an artifact's EXTENSION sends it to. Added 2026-08-04 to close the router seam. The chart manifest (seed/CHARTS.json) said adding a chart takes 'a manifest row plus (if the behavior is new) three registered functions - no dispatch edit', and that was true for addressing and false for ROUTING: engine/router.py keyed Lean off a hardcoded `name.endswith('.lean')`, so no manifest row could ever route a file anywhere. This file is the missing half. Shape follows adapters/language_registry.py on claude/repo-intake-adapter, but it is wired into engine/router.py itself rather than into a parallel adapter path, because a second intake path is a second set of rules to keep in agreement. 2026-08-05: the default was `classify`, which meant an UNDECLARED extension was read as prose. On the real repositories that sent six .npz files — NumPy binary archives — into the English chart as ~1.9M characters of decoded garbage each, about 3,500 fabricated claims apiece. The default is now `shelf` and NO extension at all is `classify`, which is what a chat message id needs.",
   "classes": {
     "chart": "enters the named chart on the strength of its extension alone, before any content rule. `chart` must name a chart declared in seed/CHARTS.json.",
     "classify": "content decides - transcript, table, or prose. This is what every non-Lean artifact did before this manifest existed.",
     "reference": "READ AND COUNTED, NEVER INGESTED. A held language: the engine has no chart for it, and saying so with a count is the honest form of that. Silently walking past the file is not.",
-    "shelf": "skipped; hashed and counted only."
+    "shelf": "skipped; hashed and counted only. This is also the default for an extension nobody declared — see the '*' row."
   },
   "rules": [
     {
@@ -94,9 +94,19 @@
       "class": "shelf"
     },
     {
-      "ext": "*",
+      "ext": ".log",
       "class": "classify",
-      "why": "the DEFAULT, declared here rather than hidden in code. An artifact with no extension - a chat message id like `claude||<uuid>:3` - is classified by content, which is exactly what the router did before this manifest existed. Silence in the manifest therefore changes nothing."
+      "why": "a log has no chart of its own, but the CONTENT rules recognise log lines and pin it as a verbatim artifact. Shelving it by extension would skip that and lose the pin."
+    },
+    {
+      "ext": "",
+      "class": "classify",
+      "why": "NO extension at all. A chat message id (`claude||<uuid>:3`) has no name to key on, so content decides — exactly what the router did before any manifest existed."
+    },
+    {
+      "ext": "*",
+      "class": "shelf",
+      "why": "the DEFAULT for an extension nobody declared, written here rather than hidden in code. SHELVED, not read: an undeclared extension is far more likely to be binary than prose, and reading a NumPy archive as prose manufactures thousands of claims out of decoded noise. Declaring a new text format is a row above this one."
     }
   ]
 }

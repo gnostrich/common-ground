@@ -261,3 +261,61 @@ class VerbatimIsASpanNotADocument(unittest.TestCase):
         routed2 = route("repo||plain2.md", withfence, "repo")
         ids2 = [d.slot for d in DeterministicExtractor("t", "p").extract(routed2.document)]
         self.assertEqual(ids, ids2, "removing a fence must not move a prose address")
+
+
+class BinaryIsNotADocument(unittest.TestCase):
+    """A lossy decode of binary must never reach an extractor.
+
+    Found by measurement, not by review: six `.npz` NumPy archives in the operator's repos
+    were decoding to ~1.9M characters each, routing to ENGLISH, and producing roughly 3,500
+    claims apiece out of noise. Two independent guards, because either alone has a hole: the
+    manifest keys on the EXTENSION and cannot know a declared-text file holds binary, and the
+    content check cannot know that `.npz` was never meant to be read.
+    """
+
+    def test_an_undeclared_extension_is_shelved_not_read_as_prose(self):
+        from engine.languages import rule_for
+
+        self.assertEqual(rule_for("r||x.npz").cls, "shelf")
+        self.assertEqual(route("r||x.npz", "some text").destination, SHELF)
+
+    def test_an_artifact_with_no_extension_still_classifies_by_content(self):
+        """A chat message id has no name to key on; shelving it would lose the export."""
+        from engine.languages import rule_for
+
+        self.assertEqual(rule_for("claude||3f2a-11bb:7").cls, "classify")
+        self.assertEqual(route("claude||3f2a-11bb:7", "The cone is positive.").destination,
+                         ENGLISH)
+
+    def test_a_declared_text_extension_holding_binary_is_still_shelved(self):
+        """PLANTED: the manifest says .txt, the bytes say otherwise. The manifest is wrong."""
+        blob = "header\x00\x00\x01\x02binary payload"
+        got = route("r||dump.txt", blob)
+        self.assertEqual(got.destination, SHELF)
+        self.assertIn("decode lost information", got.reason)
+        self.assertIsNone(got.document, "binary must not reach an extractor")
+
+    def test_a_replacement_character_means_the_decode_lost_information(self):
+        got = route("r||dump.md", "prose then �� undecodable bytes")
+        self.assertEqual(got.destination, SHELF)
+
+    def test_ordinary_unicode_prose_is_not_mistaken_for_binary(self):
+        """The check is a FACT about the decode, not a ratio — real text must pass."""
+        from engine.router import is_binary
+
+        for text in ("Café — naïve ✓", "数学は美しい", "σ, the ill-posed set",
+                     "emoji 🙂 and math ∀x∈ℝ", "a" * 100000):
+            self.assertFalse(is_binary(text), text[:20])
+            self.assertEqual(route("r||n.md", text).destination, ENGLISH)
+
+    def test_the_two_guards_are_independent(self):
+        """Neither subsumes the other, which is why both exist."""
+        from engine.languages import rule_for
+        from engine.router import is_binary
+
+        # extension guard catches it, content guard would not (this .npz decodes cleanly)
+        self.assertEqual(rule_for("r||a.npz").cls, "shelf")
+        self.assertFalse(is_binary("clean text that happens to be named .npz"))
+        # content guard catches it, extension guard would not (.txt is declared text)
+        self.assertEqual(rule_for("r||a.txt").cls, "classify")
+        self.assertTrue(is_binary("x\x00y"))

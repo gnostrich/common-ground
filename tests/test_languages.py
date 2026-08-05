@@ -56,7 +56,13 @@ class TheManifestDecidesRouting(unittest.TestCase):
 
     def test_the_default_is_declared_in_the_manifest_not_in_code(self):
         self.assertIn("*", rules(), "the '*' row is what makes the default auditable")
-        self.assertEqual(rules()["*"].cls, CLASSIFY)
+        self.assertEqual(rules()["*"].cls, SHELF,
+                         "an UNDECLARED extension is shelved: it is far more likely binary "
+                         "than prose, and reading a NumPy archive as prose manufactured "
+                         "~3,500 claims per file out of decoded noise")
+        self.assertEqual(rules()[""].cls, CLASSIFY,
+                         "NO extension at all still classifies by content — a chat message "
+                         "id has no name to key on")
         # a chat message id has no extension and must behave exactly as it did before
         self.assertEqual(route("claude||3f2a-11bb:7", "A claim about the cone.").destination,
                          "english")

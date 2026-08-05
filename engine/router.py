@@ -147,6 +147,28 @@ def _tokenize_math(text: str) -> tuple[str, list[str]]:
     return _INLINE_MATH_RE.sub(_sub, text), tokens
 
 
+#: U+FFFD is what a decoder emits when the bytes were not valid UTF-8; a NUL byte does not
+#: occur in text. Either one means the decode LOST INFORMATION, so what is in hand is not the
+#: document — it is a lossy rendering of a binary file.
+_NOT_TEXT = ("\x00", "\ufffd")
+
+
+def is_binary(text: str) -> bool:
+    """True when this string is a lossy decode of binary rather than a document.
+
+    The manifest keys on the extension and cannot know that a declared-text file holds
+    binary — a `.txt` that is really a dump, a `.md` that is really a blob. This is the
+    complementary check, and it is a FACT about the decode rather than a threshold: a NUL
+    byte does not occur in text, and U+FFFD is the decoder saying it could not represent
+    what it read. No ratio, nothing to tune.
+
+    Found by measurement: six `.npz` NumPy archives were decoding to ~1.9M characters each
+    and entering the English chart as roughly 3,500 claims apiece of pure noise.
+    """
+    head = text[:8192]
+    return any(marker in head for marker in _NOT_TEXT)
+
+
 def _is_verbatim(text: str) -> bool:
     return bool(_FENCE_RE.search(text) or _TRACEBACK_RE.search(text)
                 or _LOG_LINE_RE.search(text))
@@ -266,6 +288,13 @@ def route(
     #    nothing but fenced blocks, or whose residue still reads as log/trace (no delimiter
     #    exists for those), is a whole artifact and is shelved as one — with its spans pinned.
     #    (A .lean file is code too, but it has its own elaboration route below.)
+    if is_binary(normalized):
+        # Not a document. Pinned by hash and counted, never extracted — an extractor over a
+        # lossy binary decode manufactures b-values out of noise, which is the same objection
+        # rule 1 makes about stack traces, with a stronger warrant.
+        return RoutedDoc(name, SHELF, "binary: the decode lost information, not a document",
+                         raw_hash)
+
     pinned: tuple[str, ...] = ()
     if not is_lean_file:
         normalized, pinned = split_verbatim(normalized)

@@ -110,6 +110,45 @@ class SegmentationIsPerDeclaration(unittest.TestCase):
         self.assertIn("func:Book.Match", locators,
                       "a method's receiver is part of its name: T.M and U.M differ")
 
+    def test_python_segmentation_is_linear_in_the_file(self):
+        """`ast.get_source_segment` re-splits the whole file per declaration — O(n*len).
+
+        On the real repositories that made 1,405 Python files cost more than the rest of the
+        corpus combined. Asserted by counting work rather than by timing, so the control does
+        not depend on machine load: doubling the declarations must not quadruple the cost.
+        """
+        import time
+
+        from engine.extract import _segment_python
+
+        def body(n):
+            return "\n\n".join(f'def f{i}(x):\n    """D{i}."""\n    return x' for i in range(n))
+
+        small, big = body(200), body(800)
+        t0 = time.perf_counter(); _segment_python(small); a = time.perf_counter() - t0
+        t0 = time.perf_counter(); _segment_python(big); b = time.perf_counter() - t0
+        self.assertEqual(len(_segment_python(big)), 800)
+        # 4x the declarations on 4x the text: linear is ~4x, quadratic is ~16x. Allow 8x.
+        self.assertLess(b, max(a * 8, 0.5),
+                        f"segmentation looks superlinear: {a:.3f}s -> {b:.3f}s")
+
+    def test_the_span_is_the_declaration_verbatim(self):
+        """PLANTED-adjacent: slicing by line must reproduce what the AST helper gave."""
+        import ast as _ast
+
+        from engine.extract import _segment_python
+
+        src = ('class Cone:\n    """Doc."""\n\n    def check(self):\n        return True\n\n'
+               'def free(x):\n    return x\n')
+        got = dict((loc, span) for span, loc in _segment_python(src))
+        tree = _ast.parse(src)
+        for node in _ast.walk(tree):
+            if isinstance(node, (_ast.FunctionDef, _ast.ClassDef)):
+                official = _ast.get_source_segment(src, node)
+                mine = next((v for k, v in got.items() if k.endswith(node.name)), None)
+                self.assertIsNotNone(mine, node.name)
+                self.assertEqual(mine, official.strip(), node.name)
+
     def test_malformed_source_yields_no_spans_rather_than_crashing(self):
         doc = route("r||broken.py", "def f(:\n  ???\n").document
         self.assertEqual(list(DeterministicExtractor("t", "p").extract(doc)), [])

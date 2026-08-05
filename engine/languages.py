@@ -75,7 +75,9 @@ def rules() -> dict[str, LanguageRule]:
     for row in raw.get("rules", ()):
         ext = str(row.get("ext", "")).lower()
         cls = str(row.get("cls") or row.get("class", ""))
-        if not ext or cls not in _CLASSES:
+        # `""` is a LEGAL key — it is the row for an artifact with no extension at all, which
+        # is what a chat message id is. Rejecting a falsy ext would silently drop it.
+        if "ext" not in row or cls not in _CLASSES:
             raise EngineError(f"LANGUAGES.json: bad row {row!r}; class must be one of "
                               f"{sorted(_CLASSES)}")
         chart = str(row.get("chart", ""))
@@ -105,9 +107,19 @@ def extension_of(name: str) -> str:
 
 
 def rule_for(name: str) -> LanguageRule:
-    """The rule governing this artifact. Falls back to the declared `*` row, never to code."""
+    """The rule governing this artifact. Falls back to the declared rows, never to code.
+
+    An artifact with NO extension takes the `""` row — a chat message id has no name to key
+    on, and content decides, which is what the router always did. An artifact with an
+    extension nobody declared takes `*`, which is `shelf`: an undeclared extension is far
+    more likely to be binary than prose.
+    """
     table = rules()
-    return table.get(extension_of(name), table[WILDCARD])
+    ext = extension_of(name)
+    hit = table.get(ext)
+    if hit is not None:
+        return hit
+    return table.get("", table[WILDCARD]) if not ext else table[WILDCARD]
 
 
 def report() -> list[dict[str, object]]:

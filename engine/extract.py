@@ -178,13 +178,26 @@ def _segment_python(text: str) -> list[tuple[str, str]]:
     except (SyntaxError, ValueError, RecursionError):
         return []
 
+    # `ast.get_source_segment` splits the WHOLE file into lines on every call, so a module
+    # with n declarations costs O(n * len(text)). On the operator's repositories that made
+    # ingest of 1,405 Python files take longer than the entire rest of the corpus. The line
+    # table is built once here and sliced; the spans are byte-identical.
+    lines = text.splitlines(keepends=True)
+
+    def segment(node: ast.AST) -> str:
+        lo = getattr(node, "lineno", 0)
+        hi = getattr(node, "end_lineno", lo)
+        if not lo:
+            return ""
+        return "".join(lines[lo - 1:hi]).strip()
+
     out: list[tuple[str, str]] = []
 
     def walk(node: ast.AST, prefix: str) -> None:
         for child in ast.iter_child_nodes(node):
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 qual = f"{prefix}.{child.name}" if prefix else child.name
-                span = ast.get_source_segment(text, child)
+                span = segment(child)
                 if span:
                     kind = "class" if isinstance(child, ast.ClassDef) else "def"
                     out.append((span, f"{kind}:{qual}"))
