@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import json
 import os
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from engine.inbound import INBOUND_SYSTEM
@@ -273,7 +274,29 @@ def serve(host: str | None = None, port: int | None = None) -> None:
         print("[boot] continuous proposer running in-process; pause/stop/rate/cap in the "
               "window control it exactly as they control a local one.", flush=True)
 
-    HTTPServer((host, port), Handler).serve_forever()
+    # THREADED, and the reason is not throughput. `/ask` builds the arrow read view over the
+    # whole corpus on its first call, which takes minutes; on a single-threaded server that
+    # one request blocks EVERY other request, so the window went completely dead — the page
+    # would not even load — and it read as a broken deploy rather than as a slow query.
+    #
+    # The read view is also WARMED here, off-thread, so that first slow call happens before
+    # anyone types rather than inside their first question.
+    import threading
+
+    def _warm() -> None:
+        try:
+            from .current import corpus_snapshot
+
+            t0 = time.time()
+            snap = corpus_snapshot()
+            print(f"[boot] read view warm: {len(snap.slots):,} slots, "
+                  f"{len(snap.arrows):,} arrows in {time.time() - t0:.0f}s", flush=True)
+        except Exception as exc:                  # a cold window still serves; it is just slow
+            print(f"[boot] read view could not be warmed: {type(exc).__name__}: {exc}",
+                  flush=True)
+
+    threading.Thread(target=_warm, daemon=True).start()
+    ThreadingHTTPServer((host, port), Handler).serve_forever()
 
 
 if __name__ == "__main__":

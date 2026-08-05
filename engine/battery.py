@@ -65,6 +65,9 @@ class Reading:
     moved: int = 0
     reached: int = 0                          # moved through a declared arrow, not biased directly
     region_id: str = ""
+    #: Declared arrows per corpus object in the region this input was put into. The structural
+    #: quantity the curve is testing: a richer field should mean a denser diagram to complete.
+    density: float = 0.0
     trace: dict = field(default_factory=dict)
     error: str = ""
 
@@ -86,7 +89,7 @@ class Reading:
                 "attached": self.attached, "bears_on": self.bears_on,
                 "corresponds": self.corresponds, "extracted": self.extracted,
                 "moved": self.moved, "reached": self.reached, "region": self.region_id,
-                "trace": self.trace, "error": self.error}
+                "density": round(self.density, 4), "trace": self.trace, "error": self.error}
 
 
 @dataclass(slots=True)
@@ -117,6 +120,8 @@ def read_one(text: str, ident: str, snapshot: CorpusSnapshot, transport,
     r.region_id = p.region_id
     r.error = p.error
     r.trace = p.trace()
+    objects = max(1, p.members - 1)
+    r.density = (len(p.region.declared) / objects) if p.region else 0.0
     r.attached = len(p.attachment)
     r.bears_on = sum(1 for a in p.attachment if a.kind == BEARS_ON)
     r.corresponds = r.attached - r.bears_on
@@ -255,6 +260,124 @@ def run(snapshot: CorpusSnapshot, transport, chart: str = "english",
     v, why = check_one_code_path()
     report.properties["one_code_path"], report.reasons["one_code_path"] = v, why
     return report
+
+
+#: The longitudinal sample's cadence. t0, then weekly.
+SAMPLE_EVERY_DAYS = 7
+
+
+@dataclass(slots=True)
+class Sample:
+    """ONE POINT ON THE CURVE. Does daemon time turn into perturbation richness?
+
+    The claim the daemon is running on is that hours spent extracting arrows make the window
+    better — that a corpus with more structure answers a typed input more richly. That is a
+    claim about a TREND, and a trend needs a series measured the same way each time, which is
+    what the pinned battery is for. Two numbers per point:
+
+      * ATTACHMENTS FOUND — how many arrows the medium drew to the boundary condition, summed
+        over the three pinned inputs. Directly the thing the window delivers.
+      * MEAN REGION ARROW-DENSITY — declared arrows per object, averaged over the battery's
+        regions. The structural quantity the first number is supposed to depend on. Logging
+        both is the point: if attachments rise while density is flat, the gain came from the
+        model and not from the corpus, and the daemon's hours are not what bought it.
+
+    Recorded with the corpus's own size so a rise cannot be read as growth when it was
+    ingestion. A curve that does not move is a real answer about the daemon.
+    """
+
+    at: str                                    # ISO date; passed in, never read from a clock
+    attachments: dict = field(default_factory=dict)      # input id -> arrows drawn to the bias
+    attachments_total: int = 0
+    bears_on_total: int = 0
+    corresponds_total: int = 0
+    mean_arrow_density: float = 0.0            # declared arrows per object, over the regions
+    regions: int = 0
+    corpus_slots: int = 0
+    corpus_arrows: int = 0
+    verdict: str = ""
+
+    def as_record(self) -> dict[str, object]:
+        return {"record": "battery", "at": self.at, "attachments": dict(self.attachments),
+                "attachments_total": self.attachments_total,
+                "bears_on_total": self.bears_on_total,
+                "corresponds_total": self.corresponds_total,
+                "mean_arrow_density": round(self.mean_arrow_density, 4),
+                "regions": self.regions, "corpus_slots": self.corpus_slots,
+                "corpus_arrows": self.corpus_arrows, "verdict": self.verdict,
+                "note": ("Attachment quality on the PINNED battery. A rise in attachments "
+                         "without a rise in arrow-density did not come from the daemon.")}
+
+
+def sample_from(report: BatteryReport, snapshot: CorpusSnapshot, at: str,
+                densities: list[float] | None = None) -> Sample:
+    """Reduce a battery run to one point on the curve."""
+    pinned = {"sharp", "question", "vague"}
+    rows = [r for r in report.readings if r.id in pinned]
+    s = Sample(at=at, verdict=report.verdict)
+    s.attachments = {r.id: r.attached for r in rows}
+    s.attachments_total = sum(r.attached for r in rows)
+    s.bears_on_total = sum(r.bears_on for r in rows)
+    s.corresponds_total = sum(r.corresponds for r in rows)
+    dens = densities if densities is not None else [r.density for r in rows]
+    s.regions = len(dens)
+    s.mean_arrow_density = (sum(dens) / len(dens)) if dens else 0.0
+    s.corpus_slots = len(snapshot.slots)
+    s.corpus_arrows = len(snapshot.arrows)
+    return s
+
+
+def log_sample(sample: Sample, path: str | Path | None = None) -> None:
+    """Append one point to the WALK LOG, tagged so a reader can tell it from a step.
+
+    It goes in the walk's own log rather than beside it because it is the same question the
+    walk is asking, measured from the other end: the walk records what the sampler found, and
+    this records whether any of it reached the window. Step records predate the `record` key,
+    so a reader must treat its absence as `step`.
+    """
+    from .walk import WALK_PATH
+
+    p = Path(path or WALK_PATH)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(sample.as_record(), sort_keys=True) + "\n")
+        fh.flush()
+
+
+def curve(path: str | Path | None = None) -> list[dict]:
+    """The series, oldest first. Steps are skipped; only battery points come back."""
+    from .walk import WALK_PATH
+
+    p = Path(path or WALK_PATH)
+    if not p.exists():
+        return []
+    out = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict) and row.get("record") == "battery":
+            out.append(row)
+    return sorted(out, key=lambda r: r.get("at", ""))
+
+
+def due(at: str, path: str | Path | None = None,
+        every_days: int = SAMPLE_EVERY_DAYS) -> bool:
+    """Is a new point due? True at t0 — an empty curve is always due."""
+    from datetime import date
+
+    series = curve(path)
+    if not series:
+        return True
+    try:
+        last = date.fromisoformat(series[-1]["at"])
+        now = date.fromisoformat(at)
+    except (ValueError, KeyError):
+        return True
+    return (now - last).days >= every_days
 
 
 def run_live(key: str | None = None, chart: str = "english") -> BatteryReport:

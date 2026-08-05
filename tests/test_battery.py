@@ -268,6 +268,81 @@ class OneCodePath(unittest.TestCase):
             self.assertIn("stopped sharing", why)
 
 
+class TheCurveMeasuresTheDaemonsClaim(unittest.TestCase):
+    """Do daemon-hours turn into perturbation richness? The series either shows it or it does not."""
+
+    def _sample(self, at: str, snap, ids):
+        r = battery.run(snap, _grader(), battery=_spec(), extra_arrow=_extra_arrow(ids))
+        return battery.sample_from(r, snap, at)
+
+    def test_a_point_carries_both_numbers_and_the_corpus_size(self):
+        snap, ids = _corpus()
+        s = self._sample("2026-08-05", snap, ids)
+        self.assertEqual(set(s.attachments), {"sharp", "question", "vague"})
+        self.assertEqual(s.attachments_total, sum(s.attachments.values()))
+        self.assertEqual(s.attachments_total, s.bears_on_total + s.corresponds_total)
+        self.assertGreater(s.corpus_slots, 0)
+        self.assertEqual(s.corpus_arrows, len(snap.arrows))
+
+    def test_planted_attachments_alone_cannot_be_read_as_daemon_progress(self):
+        """The structural number must be recorded beside the outcome number, or a rise from a
+        better model is indistinguishable from a rise from a richer corpus."""
+        snap, ids = _corpus()
+        s = self._sample("2026-08-05", snap, ids)
+        self.assertIn("mean_arrow_density", s.as_record())
+        self.assertGreater(s.mean_arrow_density, 0.0,
+                           "a region with declared arrows must report nonzero density")
+
+    def test_the_series_round_trips_through_the_walk_log(self):
+        import tempfile
+        from pathlib import Path
+
+        snap, ids = _corpus()
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "walk.jsonl"
+            battery.log_sample(self._sample("2026-08-05", snap, ids), p)
+            battery.log_sample(self._sample("2026-08-12", snap, ids), p)
+            series = battery.curve(p)
+            self.assertEqual([r["at"] for r in series], ["2026-08-05", "2026-08-12"])
+
+    def test_planted_a_step_record_is_not_mistaken_for_a_curve_point(self):
+        """The walk log holds both. Step records predate the `record` key entirely."""
+        import json as _json
+        import tempfile
+        from pathlib import Path
+
+        snap, ids = _corpus()
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "walk.jsonl"
+            p.write_text(_json.dumps({"n": 1, "kind": "residual", "clamp": "x"}) + "\n",
+                         encoding="utf-8")
+            battery.log_sample(self._sample("2026-08-05", snap, ids), p)
+            self.assertEqual(len(battery.curve(p)), 1, "a step leaked into the curve")
+
+    def test_t0_is_always_due_and_a_fresh_point_is_not(self):
+        import tempfile
+        from pathlib import Path
+
+        snap, ids = _corpus()
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "walk.jsonl"
+            self.assertTrue(battery.due("2026-08-05", p), "an empty curve must record t0")
+            battery.log_sample(self._sample("2026-08-05", snap, ids), p)
+            self.assertFalse(battery.due("2026-08-06", p))
+            self.assertFalse(battery.due("2026-08-11", p))
+            self.assertTrue(battery.due("2026-08-12", p), "weekly means weekly")
+
+    def test_planted_an_unparseable_last_point_does_not_silence_the_curve(self):
+        """A corrupt tail must make the next sample DUE, not skip it forever."""
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "walk.jsonl"
+            p.write_text('{"record": "battery", "at": "not-a-date"}\n', encoding="utf-8")
+            self.assertTrue(battery.due("2026-08-05", p))
+
+
 class TheBatterySpecIsPinned(unittest.TestCase):
     """Wording that drifts measures a different thing each run and detects no regression."""
 

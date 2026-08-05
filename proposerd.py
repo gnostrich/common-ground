@@ -358,12 +358,63 @@ def cmd_battery() -> None:
 
     print("battery: loading the read view (with journal arrows) — this is slow",
           flush=True)
+    from datetime import date, timezone, datetime
+    from engine.battery import due, log_sample, sample_from
+    from ui.current import corpus_snapshot
+
     report = run_live()
     print(json.dumps(report.as_record(), indent=2))
     print()
     for k, v in report.properties.items():
         print(f"  {v:<5} {k:<16} {report.reasons[k]}")
     print(f"\nVERDICT {report.verdict}")
+
+    # ONE POINT ON THE CURVE, appended only when one is DUE. A battery run is cheap to
+    # repeat and the curve is a weekly series; sampling it every time it is run would make
+    # a dense line out of an operator's debugging and hide the trend it exists to show.
+    today = datetime.now(timezone.utc).date().isoformat()
+    if due(today):
+        s = sample_from(report, corpus_snapshot(), today)
+        log_sample(s)
+        print(f"\nCURVE POINT logged for {today}: "
+              f"attachments={s.attachments_total} (bears_on {s.bears_on_total}, "
+              f"corresponds {s.corresponds_total}), "
+              f"mean region arrow-density={s.mean_arrow_density:.4f}, "
+              f"corpus {s.corpus_slots:,} slots / {s.corpus_arrows:,} arrows")
+    else:
+        print("\n(no curve point: the last one is less than a week old)")
+
+
+def cmd_curve() -> None:
+    """THE CLAIM, plotted: do daemon-hours turn into perturbation richness?
+
+    Two columns and they must be read together. If attachments rise while arrow-density is
+    flat, the gain came from the model rather than from the corpus, and the daemon's hours are
+    not what bought it. A flat curve is a real answer.
+    """
+    from engine.battery import curve
+
+    series = curve()
+    if not series:
+        print("no curve yet — run `python3 proposerd.py battery` to record t0")
+        return
+    print(f"{'date':<12} {'attach':>7} {'bears':>6} {'corr':>5} {'density':>8} "
+          f"{'slots':>9} {'arrows':>8}  verdict")
+    for row in series:
+        print(f"{row.get('at',''):<12} {row.get('attachments_total',0):>7} "
+              f"{row.get('bears_on_total',0):>6} {row.get('corresponds_total',0):>5} "
+              f"{row.get('mean_arrow_density',0):>8.4f} {row.get('corpus_slots',0):>9,} "
+              f"{row.get('corpus_arrows',0):>8,}  {row.get('verdict','')}")
+    if len(series) < 2:
+        print("\n(one point is not a trend. The claim needs the next weekly sample.)")
+    else:
+        a, b = series[0], series[-1]
+        da = b.get("attachments_total", 0) - a.get("attachments_total", 0)
+        dd = b.get("mean_arrow_density", 0) - a.get("mean_arrow_density", 0)
+        print(f"\nt0 -> now: attachments {da:+d}, mean arrow-density {dd:+.4f}")
+        if da > 0 and dd <= 0:
+            print("READ THIS CAREFULLY: attachments rose while the field did not get denser. "
+                  "That gain did not come from the daemon.")
 
 
 def cmd_census() -> None:
@@ -508,6 +559,8 @@ def main(argv: list[str]) -> int:
         print(json.dumps(write_atlas(out), indent=2))
     elif command == "battery":
         cmd_battery()
+    elif command == "curve":
+        cmd_curve()
     elif command == "census":
         cmd_census()
     elif command == "walk":
