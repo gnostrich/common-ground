@@ -111,6 +111,18 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   identical"). Gate 10 — extend to MECHANISM claims.
 - A rule inherited where none was specified (attachment ← identity). **THE AMENDMENT.**
 - Refining a wrong mechanism instead of asking the diagram whether it can work.
+- **A malformed region extracts REPETITIVELY, not merely badly.** The 2.7%-acceptance run
+  wrote 1,455 journal records over only 63 distinct pairs — it named the same handful again
+  and again. Repetition is the signature; counting records rather than pairs is what hid it,
+  and reported the quarantine set as twenty-three times its real size.
+- **A tally kept where the finding belonged.** Twice in one day: a drift COUNT logged without
+  the drifting triple, and an answer journalled without the region it was named in. Both made
+  a real measurement unrecoverable after the process exited. If a number is worth logging, the
+  thing it counts is worth logging.
+- **A process that cannot say what phase it is in.** The walk burned four minutes in an eager
+  global closure before its first print, and "silent" meant "unknown whether loading or
+  wedged" for twenty-two minutes. This is the process-level form of a docstring claiming a
+  mechanism the call graph does not contain.
 
 ## WHAT IS OURS vs OCCUPIED (keep honest)
 
