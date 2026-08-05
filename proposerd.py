@@ -45,6 +45,7 @@ from engine.constants import decisions
 from engine.corpus_sources import status as corpus_status
 from engine.continuous import (
     CONTROL_PATH,
+    LEDGER_PATH,
     JOURNAL_PATH,
     POOL_PATH,
     STATUS_PATH,
@@ -296,6 +297,14 @@ def _openrouter_transport():
 
 
 def cmd_run(max_batches: int | None) -> None:
+    # A reclaim destroys the working journal (gitignored — it quotes the corpus). The
+    # redacted ledger is committed and carries every field the resume path needs, so a
+    # daemon starting with no journal rebuilds its memory rather than re-asking, and
+    # re-paying for, thousands of pairs. Copy-if-absent: a live journal always wins.
+    restored = Journal.restore_from_ledger(JOURNAL_PATH, LEDGER_PATH)
+    if restored:
+        print(f"restored {restored:,} records from {LEDGER_PATH} — the journal was lost, "
+              f"the ledger was not", flush=True)
     transport, model = _openrouter_transport()
     if not Path(POOL_PATH).exists():
         raise SystemExit(f"no pool at {POOL_PATH}; run `build-pool` first")

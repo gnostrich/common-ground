@@ -721,6 +721,11 @@ MECHANISM_CLAIMS: tuple[tuple[str, str, frozenset[str]], ...] = (
      r"|\benters? the .{0,24}\benergy\b|\bmirror descent\b",
      frozenset({"settle", "anneal", "relax", "FreeEnergy", "evidence_from_deltas",
                 "lexicon_prior", "BIAS_WEIGHT"})),
+    ("index",
+     r"\bindex-driven\b|\binverted index\b|\blookup,? not\b|\blookup rather than\b"
+     r"|\bnever enumerat\w*\b|\bno enumeration\b|\bnot a scan\b|\bbuilt once\b",
+     frozenset({"dict", "defaultdict", "setdefault", "Counter", "lru_cache", "cache",
+                "Index", "postings", "_index", "index"})),
     ("propagation",
      r"\bpropagates? (?:through|over|across)\b|\breached through declared\b"
      r"|\bwhat moved\b",
@@ -783,6 +788,92 @@ CLAIMED_PROPERTY_SITES: tuple[dict[str, str], ...] = (
      "claim": "the daemon cannot promote; enforced on the source, not promised in prose",
      "control": "tests/test_continuous.py:ProposerDisciplineIsStatic"},
 )
+
+
+# --- the amendment: a mechanism fix cites its MOVE and its Q (OBJECT-AMENDED.md) ---------
+
+#: The modules that ARE the object's mechanism — where the base, the measure, the dynamics
+#: and the morphisms live. A change here is a change to the thing itself, not to a report
+#: about it, so `seed/OBJECT-AMENDED.md` requires it to say which of the three moves it is
+#: and which diagnostic question motivated it. The list is explicit rather than pattern-matched
+#: because "is this mechanism?" is exactly the judgement the protocol exists to stop people
+#: making on the fly.
+MECHANISM_MODULES: frozenset[str] = frozenset({
+    "engine/attach.py",        # ADD A MORPHISM — attachment proposer
+    "engine/relax.py",         # the read-side dynamics
+    "engine/settle.py",        # the dynamics
+    "engine/energy.py",        # the measure
+    "engine/blocks.py",        # the base's morphisms, as a graph
+    "engine/correspondence.py",# the morphisms themselves
+    "engine/mint_tape.py",     # K: fast -> slow
+    "engine/meter.py",         # the invariant
+})
+
+#: The only legal moves. Verbatim from the amendment; a citation naming anything else is
+#: creep, which is the whole point of requiring the citation.
+LEGAL_MOVES: frozenset[str] = frozenset({
+    "SWAP THE BASE", "ADD A MEASURE", "ADD A MORPHISM",
+})
+
+#: The diagnostic questions a citation may name.
+DIAGNOSTIC_QUESTIONS: frozenset[str] = frozenset({"Q1", "Q2", "Q3", "Q4", "Q5"})
+
+_MOVE_RE = r"MOVE:\s*([A-Z][A-Z ]+[A-Z])"
+_Q_RE = r"\b(Q[1-5])\b"
+
+
+def check_move_citation(root: Path | None = None) -> StaticCheckResult:
+    """Every mechanism module cites its MOVE and the diagnostic question behind it.
+
+    `seed/OBJECT-AMENDED.md` makes the three moves and the diagnostic protocol binding rather
+    than advisory, and this is where "binding" is cashed out. A module that changes the object
+    must say, in its own docstring, which of the three legal moves it is and which question in
+    the protocol motivated it. A citation naming a fourth move is creep and fails; a module
+    with no citation fails; a citation naming no question fails.
+
+    This does not check that the citation is TRUE — no static check could. It checks that the
+    author was made to answer the question before landing, which is the failure the protocol
+    was written for: refining a wrong mechanism instead of asking the diagram whether it can
+    work at all.
+    """
+    import re as _re
+
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+    for rel in sorted(MECHANISM_MODULES):
+        path = base / rel
+        if not path.exists():
+            # A named module that is not there is a violation, not a skip. The first draft of
+            # this list named `engine/mint.py`, which does not exist; the check passed and
+            # quietly covered seven modules while claiming eight.
+            result.violations.append(Violation(
+                rel, 1, "amendment: mechanism module missing",
+                f"{rel} is listed in MECHANISM_MODULES but does not exist — the list has "
+                f"rotted and this gate is covering less than it names"))
+            continue
+        result.checked_files += 1
+        doc = ast.get_docstring(ast.parse(path.read_text(encoding="utf-8"))) or ""
+
+        moves = _re.findall(_MOVE_RE, doc)
+        if not moves:
+            result.violations.append(Violation(
+                rel, 1, "amendment: no MOVE cited",
+                f"{rel} is a mechanism module and must cite one of {sorted(LEGAL_MOVES)} "
+                f"in its module docstring as `MOVE: <move>`"))
+            continue
+        illegal = [m.strip() for m in moves if m.strip() not in LEGAL_MOVES]
+        if illegal:
+            result.violations.append(Violation(
+                rel, 1, "amendment: illegal MOVE cited",
+                f"{rel} cites {illegal}; the only legal moves are {sorted(LEGAL_MOVES)}. "
+                f"A fix that is none of the three is creep and is REJECTED."))
+        if not _re.search(_Q_RE, doc):
+            result.violations.append(Violation(
+                rel, 1, "amendment: no diagnostic question cited",
+                f"{rel} cites a MOVE but names no diagnostic question. The protocol is "
+                f"answered IN ORDER before the code is read; say which of "
+                f"{sorted(DIAGNOSTIC_QUESTIONS)} motivated this."))
+    return result
 
 
 # --- the unattended-proposer discipline (GATES 3 + 10, on the source) --------------------

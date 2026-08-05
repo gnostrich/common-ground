@@ -94,6 +94,56 @@ class TheLiveJournalIsNeverOverWritten(unittest.TestCase):
             d.close()
 
 
+class OverwritingIsAnActNotAFlag(unittest.TestCase):
+    """Copy-if-absent is right almost always and wrong exactly once.
+
+    A volume that took a STUB on its first boot refuses the real file forever afterwards, by
+    the very rule that protects it — which is what happened: an 801-byte journal blocked a
+    2 MB one, and the deployed daemon started from zero. So overwriting must be possible, and
+    must be an act: a NAMED file, logged with what it replaced.
+    """
+
+    def test_a_named_file_is_replaced_and_the_replacement_is_logged(self):
+        from ui.boot import FORCE_ENV
+
+        d = _Deploy(shipped={"proposer.journal.jsonl": "the real thing"},
+                    live={"proposer.journal.jsonl": "stub"})
+        try:
+            with mock.patch.dict(os.environ, {FORCE_ENV: "proposer.journal.jsonl"}):
+                report = seed_state(d.root)
+            self.assertEqual(d.read("proposer.journal.jsonl"), "the real thing")
+            self.assertIn("FORCED", report["proposer.journal.jsonl"])
+            self.assertIn("replaced", report["proposer.journal.jsonl"])
+        finally:
+            d.close()
+
+    def test_planted_an_unnamed_file_is_still_kept(self):
+        """The flag is per-file on purpose: "overwrite whatever" would undo the protection."""
+        from ui.boot import FORCE_ENV
+
+        d = _Deploy(shipped={"proposer.journal.jsonl": "shipped", "census.json": "shipped"},
+                    live={"proposer.journal.jsonl": "live", "census.json": "live"})
+        try:
+            with mock.patch.dict(os.environ, {FORCE_ENV: "census.json"}):
+                seed_state(d.root)
+            self.assertEqual(d.read("proposer.journal.jsonl"), "live",
+                             "a file not named must never be overwritten")
+            self.assertEqual(d.read("census.json"), "shipped")
+        finally:
+            d.close()
+
+    def test_with_the_variable_unset_nothing_is_overwritten(self):
+        d = _Deploy(shipped={"proposer.journal.jsonl": "shipped"},
+                    live={"proposer.journal.jsonl": "live"})
+        try:
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("CG_SEED_FORCE", None)
+                seed_state(d.root)
+            self.assertEqual(d.read("proposer.journal.jsonl"), "live")
+        finally:
+            d.close()
+
+
 class TheDaemonDoesNotStartByAccident(unittest.TestCase):
     """A process that spends money must not begin because somebody deployed a web service."""
 

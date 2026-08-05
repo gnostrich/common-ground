@@ -229,6 +229,41 @@ class Journal:
 
     # --- the committable half -------------------------------------------------------
 
+    @staticmethod
+    def restore_from_ledger(journal_path: str | Path, ledger_path: str | Path) -> int:
+        """Rebuild a lost journal from the committed, hash-redacted ledger.
+
+        The working journal is gitignored — it quotes the corpus verbatim — so a container
+        reclaim destroys it, and with it every record of which pairs have been asked. The
+        daemon then re-asks thousands of pairs it has already paid for. The REDACTED ledger is
+        committed and survives, and it keeps every field the resume path actually needs: the
+        directed pair, the answer, the kind, the call timestamps. Only the quoted evidence was
+        replaced by a hash.
+
+        So a restore loses the quotations and keeps the memory. That is the right trade: the
+        evidence is re-derivable from the corpus, and the spend is not.
+
+        Refuses to overwrite an existing journal. A live journal is always the better record,
+        and clobbering it with an older checkpoint is the one way this could destroy the thing
+        it exists to protect.
+        """
+        target, source = Path(journal_path), Path(ledger_path)
+        if target.exists():
+            return 0
+        if not source.exists():
+            return 0
+        target.parent.mkdir(parents=True, exist_ok=True)
+        n = 0
+        with source.open("r", encoding="utf-8") as src, target.open("w", encoding="utf-8") as dst:
+            for line in src:
+                try:
+                    json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                dst.write(line if line.endswith("\n") else line + "\n")
+                n += 1
+        return n
+
     def export_redacted(self, path: str | Path) -> dict[str, int]:
         """Write the journal WITHOUT the quoted corpus, so it can live in the repository.
 

@@ -20,6 +20,13 @@ inverse temperature. The PREREG arms are 1x and 4x. It enters F as the coefficie
 entropic term, so a larger budget resolves more of the contest and leaves less mass
 undetermined, while a smaller budget keeps more of it open. The mechanism is unchanged by
 the reading; the reading is what the number means.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MEASURE — E itself, the Gibbs energy the state is scored by.
+Q1 motivated its boundary. Priors and correspondences are ENERGY, never clamps (gate 2);
+confusing a term in E with a boundary condition is the constitutional error this file
+exists to make impossible.
+
 """
 
 from __future__ import annotations

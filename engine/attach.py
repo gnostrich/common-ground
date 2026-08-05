@@ -35,6 +35,16 @@ exact addressing already owns intra-chart identity and an intra-chart arrow woul
 similarity by the back door. So a claim typed in the english chart attaches to lean, python,
 go, tabular or conversation claims, and reaches english claims through them. That is the
 engine working as specified, not a limitation of this file.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MORPHISM — a proposer into D, for attaching a typed object.
+Q2 motivated it. A typed input is an OBJECT WITH NO MORPHISMS until morphisms are proposed
+for it; it has no image under any functor, lies outside the fundamental groupoid, and
+cannot propagate. Nothing will move no matter how the code is tuned. The fix is to propose
+morphisms, which is what this module does.
+Q5 checked: this creates NO second mechanism. It is the SAME proposer, prompt and three
+kinds the corpus's own arrows use — a different job, not a different rule.
+
 """
 
 from __future__ import annotations

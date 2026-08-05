@@ -1,3 +1,11 @@
+# common-ground — CORE SCHEMATIC (SUPERSEDED)
+
+> **SUPERSEDED by `seed/OBJECT-AMENDED.md`.** That document adds the ATTACHMENT LAW — identity
+> and attachment are different questions and must not share a rule — and the mandatory
+> DIAGNOSTIC PROTOCOL, both of which are binding and enforced in code. This file is kept
+> because the structure below is unchanged and its history is worth reading; where the two
+> differ, the amended one governs. Nothing here is a licence to skip the protocol.
+
 # common-ground — CORE SCHEMATIC (canonical, singular object)
 
 **North-star. Constitutional.** The whole system is ONE object read at different

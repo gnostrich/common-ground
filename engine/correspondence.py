@@ -27,6 +27,14 @@ its whole life deleting.
 functorial thing. The designed v-next is TERM-LEVEL: a lexicon-entry ~ Lean-name correspondence
 that *induces* slot correspondences compositionally. Recorded in `seed/DECISIONS.json` as
 `correspondence_granularity`, not left implicit.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MORPHISM — the typed arrows of the base.
+Q5 motivated its refusals. Intra-chart arrows are rejected because exact addressing already
+owns intra-chart identity: allowing them would be a SECOND identity rule, which is the
+forbidden shape. `approximates` does not exist for the same reason — uncertainty is warrant,
+never a fuzzy morphism type.
+
 """
 
 from __future__ import annotations

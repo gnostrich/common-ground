@@ -19,6 +19,12 @@ residual below the floor never promotes. `MINT_ENABLED` is the master switch (no
 seed); with it false `act_on_mint` still refuses, so the quarantine is one seed-flip away in
 either direction. Null cell (v) uses the tape's effective rank: ingesting the same corpus
 twice under distinct provenance must produce zero rank growth.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MORPHISM — K : fast -> slow, the memory kernel.
+Q5 motivated its singularity. There is ONE write path into the corpus. A second promoter,
+however well gated, is the failure mode that produces NELL.
+
 """
 
 from __future__ import annotations

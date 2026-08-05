@@ -34,6 +34,14 @@ There is no gate on whether the bias "hit" anything. A typed claim whose address
 the corpus simply joins the graph with no edges, so nothing is coupled to it and nothing
 moves — and that is REPORTED as a property of the field ("nothing responded, and here is
 why") rather than treated as a failed lookup with a keyword list for consolation.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MEASURE — the read-side relaxation over the same D the corpus settles on.
+Q1 motivated it. A typed query was being treated as an OBJECT to look up when it is a bias
+on the measure; the question is what MOVES, not what matches.
+Q5 checked: no second dynamics. It calls engine/settle, the same mirror descent the meter
+runs, on the same blocks.
+
 """
 
 from __future__ import annotations

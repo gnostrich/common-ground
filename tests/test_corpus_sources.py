@@ -184,6 +184,29 @@ class AMalformedManifestIsAnErrorNotAnEmptyCorpus(unittest.TestCase):
             d.cleanup()
 
 
+def _in_a_git_work_tree() -> bool:
+    """Is there a repository here at all?
+
+    A DEPLOYED artifact is a directory of files with no `.git`, so `git check-ignore` cannot
+    answer and reports every path as not-ignored — which turns a true property of the
+    repository into a false failure about the container. The daemon runs the suite as a gate,
+    so that false failure HALTS a deployed proposer. Skipping with a reason is honest;
+    asserting a repository property where there is no repository is not.
+    """
+    try:
+        got = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"],
+                             cwd=REPO_ROOT, capture_output=True, text=True)
+    except (FileNotFoundError, NotADirectoryError, OSError):
+        # git is not installed at all — a slim runtime image has no reason to carry it. An
+        # uncaught FileNotFoundError here would take down the whole module at import time,
+        # which reads as a broken build rather than as "there is no repository to ask about".
+        return False
+    return got.returncode == 0 and got.stdout.strip() == "true"
+
+
+@unittest.skipUnless(_in_a_git_work_tree(),
+                     "no git work tree — this asserts a property of the REPOSITORY, and a "
+                     "deployed artifact has no repository to assert it about")
 class ThePointerFileNeverEntersTheRepository(unittest.TestCase):
     """The whole point of the seam is that the mechanism can be forked, shared or made public
     while every corpus stays wherever its owner keeps it. That only holds if the file naming

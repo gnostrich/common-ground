@@ -44,6 +44,12 @@ SEED_DIR_NAME = "seed_runs"
 SEEDED = ("corpus.snapshot", "pool.jsonl", "proposer.journal.jsonl", "census.json")
 
 
+#: Files the operator has explicitly authorised overwriting, comma-separated. The escape
+#: hatch for the one case copy-if-absent gets wrong: a volume that took a STUB on its first
+#: boot and then refuses the real thing forever, correctly, by its own rule.
+FORCE_ENV = "CG_SEED_FORCE"
+
+
 def seed_state(root: Path | None = None) -> dict[str, str]:
     """Copy shipped state into `runs/` for anything the volume does not already hold.
 
@@ -56,11 +62,22 @@ def seed_state(root: Path | None = None) -> dict[str, str]:
     out: dict[str, str] = {}
     if not src.is_dir():
         return {"seed": "absent — nothing shipped with the image"}
+    forced = {n.strip() for n in os.environ.get(FORCE_ENV, "").split(",") if n.strip()}
     dst.mkdir(parents=True, exist_ok=True)
     for name in SEEDED:
         shipped, live = src / name, dst / name
         if not shipped.exists():
             out[name] = "not shipped"
+        elif live.exists() and name in forced:
+            # Named explicitly by the operator. Copy-if-absent is right almost always and
+            # wrong exactly once: a volume seeded with a stub on its first boot will refuse
+            # the real file forever, by the rule that protects it. Overwriting therefore has
+            # to be possible, and has to be an ACT — a named file in an environment variable,
+            # logged with what it replaced, never a flag that means "overwrite whatever".
+            was = live.stat().st_size
+            shutil.copy2(shipped, live)
+            out[name] = (f"FORCED (replaced {was:,} bytes with {live.stat().st_size:,}; "
+                         f"named in {FORCE_ENV})")
         elif live.exists():
             out[name] = f"kept (volume has {live.stat().st_size:,} bytes)"
         else:

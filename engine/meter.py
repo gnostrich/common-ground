@@ -46,6 +46,13 @@ the floor. Warm is reported alongside as path debt, per the paired-loop-side inv
 
 `read_floor` requires a `NullBatteryReport` that passed **on the same seed hash**. There
 is no other function in this module that returns a floor.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MEASURE — the invariant read off the settled measure; hol on Pi_1(B).
+Q3 motivated it. Holonomy is only measurable where the subgraph has cycles; on a forest it
+is necessarily zero, and reporting that zero as agreement would be reporting a fact about
+the graph's shape as a fact about the corpus.
+
 """
 
 from __future__ import annotations

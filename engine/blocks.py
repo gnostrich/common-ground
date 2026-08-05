@@ -5,6 +5,14 @@ licenses a Q edge, a Q edge is a quadratic coupling, and neither can fix a slot'
 Fiber construction is deterministic and its parameters are frozen in CONSTANTS.json, so
 its influence is measurable — which is precisely what PREREG R4 measures by dropping 10%
 of Q edges and checking whether the cold floor moves beyond surrogate noise.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MORPHISM — the base's morphisms, materialised as the Q graph settlement runs on.
+Q3 motivated it. The SHAPE of this graph decides whether holonomy can be nonzero at all:
+stars and forests give trivial Pi_1 and a necessarily-zero floor, so an edge that no arrow
+declared would manufacture a cycle and with it a fake invariant. Hence loop_edges is exactly
+the declared same_claim pairs and never a clique over a fiber.
+
 """
 
 from __future__ import annotations

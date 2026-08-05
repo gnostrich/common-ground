@@ -82,6 +82,9 @@ JOURNAL_PATH = "runs/proposer.journal.jsonl"
 CONTROL_PATH = "runs/proposer.control.json"
 STATUS_PATH = "runs/proposer.status.json"
 POOL_PATH = "runs/pool.jsonl"
+#: The committable, hash-redacted half of the journal. Survives a reclaim because
+#: it is in git; the working journal is not, because it quotes the corpus.
+LEDGER_PATH = "runs/proposer.ledger.jsonl"
 
 
 # --- the operator's hand ---------------------------------------------------------------
@@ -212,6 +215,10 @@ def static_gate_report() -> list[dict[str, object]]:
         ("span_discipline", static_checks.check_span_discipline),
         ("claim_discipline", static_checks.check_claim_discipline),
         ("proposer_discipline", static_checks.check_proposer_discipline),
+        # The amendment (seed/OBJECT-AMENDED.md) is binding, so it is a LIVE gate:
+        # a mechanism module that lands without citing its move and its
+        # diagnostic question stops the daemon, exactly like any other red gate.
+        ("move_citation", static_checks.check_move_citation),
     )
     out = []
     for name, fn in checks:

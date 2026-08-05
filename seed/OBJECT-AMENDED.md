@@ -1,6 +1,11 @@
-# common-ground — CORE SCHEMATIC (canonical)
+# common-ground — CORE SCHEMATIC, AMENDED (canonical)
 
-**AMENDMENT: attachment law + diagnostic protocol.**
+**THIS SUPERSEDES `seed/OBJECT.md`.** The attachment law and the diagnostic protocol below
+are **binding, not advisory** — they are enforced in code by `engine/static_checks.py`
+(`check_move_citation`, `MECHANISM_CLAIMS`) and by `tests/test_amendment.py`, in the same
+shape as the rest of the gate suite. Where this document and `OBJECT.md` differ, this one
+governs; `OBJECT.md` is kept for its history and carries a superseded banner.
+
 Authoritative. Read this BEFORE debugging anything. Recorded verbatim from the operator;
 the commentary at the end is Claude's and is labelled as such.
 
@@ -130,6 +135,7 @@ occupied; the enforcement is not. That is the only headline.
 | mechanism claims need the machinery | `engine/static_checks.py:MECHANISM_CLAIMS`; `tests/test_relax.py:GateTenCatchesAMechanismClaim` |
 | relaxation travels declared arrows only | `tests/test_relax.py:EveryCompiledFactTracesToDeclaredStructure` |
 | only top tier may clamp | `engine/settle.py` re-checks gate 3 at every settle |
+| a mechanism fix cites its MOVE and its Q | `engine/static_checks.py:check_move_citation`; `tests/test_amendment.py` |
 
 **One open reading, flagged rather than assumed.** The amendment says morphisms enter
 "through the one inlet at EXTRACTION tier, gated". Attachment arrows are built by the
