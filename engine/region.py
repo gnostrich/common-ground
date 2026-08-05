@@ -121,6 +121,21 @@ class Region:
     declared: dict[tuple[str, str], str] = field(default_factory=dict)
     implied: dict[tuple[str, str], str] = field(default_factory=dict)
 
+    @property
+    def region_id(self) -> str:
+        """Identity of the CO-PRESENT SET. Two regions with the same members are the same
+        observation context; a re-naming inside one is not independent evidence."""
+        from .hashing import sha256_text
+
+        return sha256_text("".join(sorted(m.slot for m in self.members)))[:16]
+
+    def overlap(self, other_members: set[str]) -> float:
+        """Jaccard overlap of membership. High overlap means the same measurement twice."""
+        mine = {m.slot for m in self.members}
+        if not mine or not other_members:
+            return 0.0
+        return len(mine & other_members) / len(mine | other_members)
+
     def by_index(self, i: object) -> Member | None:
         if not isinstance(i, int) or isinstance(i, bool):
             return None

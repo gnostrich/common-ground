@@ -51,6 +51,8 @@ def quarantined_pairs(journal_path: str | Path, path: str | Path = QUARANTINE_PA
         return set()
     out: set[tuple[str, str]] = set()
     reconfirmed: set[tuple[str, str]] = set()
+    unresolved: set[tuple[str, str]] = set()
+    origin: dict[tuple[str, str], set[str]] = {}
     p = Path(journal_path)
     if not p.exists():
         return out
@@ -63,9 +65,19 @@ def quarantined_pairs(journal_path: str | Path, path: str | Path = QUARANTINE_PA
             if rec.get("kind") != "ask" or rec.get("relation") != "region":
                 continue
             pair = (rec.get("src_slot", ""), rec.get("dst_slot", ""))
+            region = rec.get("region_id", "")
             if float(rec.get("t", 0)) <= cut:
                 out.add(pair)
+                origin.setdefault(pair, set()).add(region)
             else:
-                # Named again by a healthy-run region relaxation: it re-enters as confirmed.
-                reconfirmed.add(pair)
-    return out - reconfirmed
+                # A re-confirmation counts ONLY from a genuinely different region. Re-naming
+                # inside the same co-present set is one measurement counted twice, and
+                # independence is the whole reason a re-confirmation is evidence.
+                if region and region not in origin.get(pair, set()):
+                    reconfirmed.add(pair)
+                else:
+                    unresolved.add(pair)
+    # An arrow whose re-confirmation cannot be shown to be independent stays quarantined.
+    # Records written before `region_id` existed carry no context, so they resolve to
+    # UNRESOLVED rather than to confirmed — absence of evidence is not evidence.
+    return (out - reconfirmed) | (out & unresolved)

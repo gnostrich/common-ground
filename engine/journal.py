@@ -201,13 +201,25 @@ class Journal:
 
     def record_ask(self, *, src_chart: str, src_slot: str, dst_chart: str, dst_slot: str,
                    type: str, answer: str, evidence: str, relation: str,
-                   proposer: str, prompt_hash: str, tier: str) -> dict:
-        return self._write({
+                   proposer: str, prompt_hash: str, tier: str,
+                   region_id: str = "") -> dict:
+        """One answered candidate. `region_id` identifies the CO-PRESENT SET it was named in.
+
+        Without it, re-confirmation cannot be told from re-measurement. An arrow named twice
+        in the same assembly is one observation counted twice; independence is what makes a
+        re-confirmation evidence. The journal previously stored the answer and not the
+        context, so 1,426 apparent re-confirmations could not be checked at all — the same
+        defect as logging a drift count without the drifting triple.
+        """
+        rec = {
             "kind": ASK, "src_chart": src_chart, "src_slot": src_slot,
             "dst_chart": dst_chart, "dst_slot": dst_slot, "type": type,
             "answer": answer, "evidence": evidence[:300], "relation": relation,
             "proposer": proposer, "prompt_hash": prompt_hash, "tier": tier,
-        })
+        }
+        if region_id:
+            rec["region_id"] = region_id
+        return self._write(rec)
 
     def record_call(self, *, candidates: int, ok: bool, tokens_in: int = 0,
                     tokens_out: int = 0, cost: float | None = None,
