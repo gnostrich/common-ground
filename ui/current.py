@@ -204,7 +204,27 @@ def ask_the_corpus(question: str, chart: str = "english", key: str | None = None
     """
     compiled = compile_input(question, corpus_snapshot(), chart,
                              transport=_region_transport(key))
-    return compiled.as_record()
+    out = compiled.as_record()
+
+    # THE READING SURFACE. A view: the trace is unchanged and still in `compiled`, and the
+    # surface is checked against it rather than trusted — a view's two failure modes are
+    # showing what the measurement did not contain and dropping a warning it did.
+    from engine.reading import check_faithful, read as read_surface
+
+    surface = read_surface(compiled)
+    out["surface"] = {
+        "text": surface.render(),
+        "entered": {"corresponds": surface.entered_corresponds,
+                    "bears_on": surface.entered_bears_on,
+                    "declined": surface.declined},
+        "movers": [{"nu": m.nu, "chart": m.chart, "shift": round(m.shift, 4),
+                    "hops": m.hops, "path": m.path, "contested": m.contested,
+                    "tier": m.tier} for m in surface.movers],
+        "field": surface.field_lines,
+        "strength": surface.strength,
+        "faithful": check_faithful(surface, compiled),
+    }
+    return out
 
 
 def run_current(text: str, chart: str = "english", temperature: float = 0.3,
