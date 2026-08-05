@@ -19,6 +19,27 @@ from unittest import mock
 from ui.boot import SEED_DIR_NAME, seed_state, start_proposer_if_asked
 
 
+_SAVED_FORCE: str | None = None
+
+
+def setUpModule():
+    """These tests must not depend on the operator's environment.
+
+    `CG_SEED_FORCE` names files seeding may overwrite. A DEPLOY sets it, and the daemon runs
+    this suite as a gate there — so an ambient value turned the copy-if-absent controls into
+    force-overwrite controls and halted a deployed proposer with a message about a defect
+    that was not present. Same shape as the ambient OPENROUTER_API_KEY that broke test_ui:
+    a control that reads the environment is testing the environment.
+    """
+    global _SAVED_FORCE
+    _SAVED_FORCE = os.environ.pop("CG_SEED_FORCE", None)
+
+
+def tearDownModule():
+    if _SAVED_FORCE is not None:
+        os.environ["CG_SEED_FORCE"] = _SAVED_FORCE
+
+
 class _Deploy:
     """An image directory with shipped state, and a runs/ dir standing in for a volume."""
 
