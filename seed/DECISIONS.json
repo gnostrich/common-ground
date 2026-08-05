@@ -299,6 +299,36 @@
    "not_a_threshold": "is_binary is a FACT about the decode, not a ratio. A NUL byte does not occur in text and U+FFFD is the decoder reporting that it could not represent what it read — either means the decode lost information, so what is in hand is not the document. Nothing to tune.",
    "controls": "tests/test_router.py:BinaryIsNotADocument — undeclared extension shelved; no-extension still classifies; a .txt holding NULs shelved anyway; ordinary unicode prose (CJK, emoji, maths) never mistaken for binary; and the two guards shown independent.",
    "also_found": "engine/extract._segment_python called ast.get_source_segment per declaration, which re-splits the whole file each time — O(n * len(text)). Fixed to build the line table once; spans are unchanged and a control asserts both the linearity and that the slices match ast.get_source_segment exactly."
+  },
+  "F-candidate-census-per-chart-pair": {
+   "measured": "2026-08-05, 11 repositories only (no Aristotle, no Claude export — neither carries a code chart). 12,449 docs, 70,241 slots: english 32,614, conversation 20,549, tabular 9,840, python 3,377, go 2,052, lean 1,809. Held and never ingested: 1,267 shelf, 225 reference.",
+   "declaration_granularity": {
+    "english x python": 2675,
+    "english x go": 1919,
+    "english x lean": 1429,
+    "TOTAL": 6023
+   },
+   "depth1_subtree": {
+    "conversation x english": 32198817,
+    "english x tabular": 20807153,
+    "conversation x tabular": 11076003,
+    "english x python": 1507932,
+    "english x lean": 809005,
+    "conversation x python": 714217,
+    "english x go": 632775,
+    "go x tabular": 333510,
+    "python x tabular": 229013,
+    "lean x tabular": 116102,
+    "conversation x lean": 109815,
+    "conversation x go": 67006,
+    "lean x python": 942,
+    "go x python": 373,
+    "TOTAL": 68602663
+   },
+   "reading_1_python_outweighs_lean": "english x python (2,675) is now the LARGEST declaration-granularity pair, ahead of go (1,919) and lean (1,429) — the chart this project was built around is the SMALLEST of the three. 3,377 python slots yield 2,675 paired declarations because Python is densely docstringed; 1,809 lean slots yield 1,429.",
+   "reading_2_subtree_is_unusable_at_this_scale": "68.6M candidates, 11,000x declaration granularity. 64.1M of it (93%) is prose-against-prose — conversation x english, english x tabular, conversation x tabular — where 'a document's position asserts its scope' degenerates because a whole repository of markdown shares one directory. Depth-1 was already the conservative reading; the relation does not survive contact with a repo whose docs live at the root.",
+   "reading_3_the_code_x_code_bridge_is_structurally_thin": "lean x python is 942 and go x python is 373. lean x go DOES NOT APPEAR AT ALL — no repository has a Lean file and a Go file within one directory level of each other. The 'Lean spec with a code implementation' pairing the operator asked about is nearly absent from these repositories, and that is a fact about where the files sit, not a limitation of the enumeration.",
+   "recommendation": "declaration granularity is the whole tractable surface: 6,023 candidates is ~502 calls at batch 12, about $0.23 at the measured $0.00046/call. Subtree needs a tighter bound than depth-1 before it can be spent on at all."
   }
  },
  "D10_continuous_proposer": {
