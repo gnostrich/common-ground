@@ -51,24 +51,27 @@ class AnEmptyFieldDegradesAndSaysSo(unittest.TestCase):
     def test_it_reports_no_field_rather_than_behaving_like_a_prompt(self):
         out = compile_input("anything at all", CorpusSnapshot())
         self.assertFalse(out.conditioned)
-        self.assertIn("NO FIELD TO CONDITION ON", out.compiled)
-        self.assertIn("near-passthrough", out.compiled)
+        self.assertIn("THE FIELD DID NOT RESPOND", out.compiled)
+        self.assertIn("corpus is empty", out.compiled)
+        self.assertIn("passthrough", out.compiled)
 
-    def test_novel_phrasing_lands_nowhere_and_is_reported(self):
-        """Novel phrasing must never CONDITION, however much material it retrieves.
+    def test_novel_phrasing_moves_nothing_and_the_reason_is_structural(self):
+        """What the read path reports about novel phrasing, and why the wording moved twice.
 
-        This control used to assert the string "NO FIELD TO CONDITION ON". That wording
-        conflated two facts the read path now separates: nothing addressed (always true here,
-        gate 1) and nothing was found to read (true only sometimes). The property under test
-        is the first one, so it is asserted on `conditioned` rather than on prose.
+        This control first asserted "NO FIELD TO CONDITION ON", then "NOTHING ADDRESSED".
+        Both were prose about a lookup. The property now under test is the one that matters:
+        an uncoupled bias moves nothing, `conditioned` is False, no fact is emitted, and the
+        silence names a STRUCTURAL reason rather than a failed match.
         """
         out = compile_input("a sentence that appears in no corpus whatsoever",
                             _snapshot([_TEXT_A]))
-        self.assertFalse(out.conditioned, "term overlap must never count as addressing")
+        self.assertFalse(out.conditioned)
         self.assertEqual(out.reached, 0)
-        self.assertIn("NOTHING ADDRESSED", out.compiled)
-        self.assertIn("EXACT", out.compiled, "landing is exact; that must be stated")
-        self.assertNotIn("LANDED", out.compiled)
+        self.assertEqual(out.facts, [])
+        self.assertIn("THE FIELD DID NOT RESPOND", out.compiled)
+        self.assertIn("no declared arrow touching it", out.compiled)
+        self.assertIn("no words were compared", out.compiled)
+        self.assertNotIn("MOVED [", out.compiled)
 
     def test_landing_is_exact_not_similar(self):
         snap = _snapshot([_TEXT_A])

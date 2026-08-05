@@ -1,42 +1,48 @@
-"""INBOUND: my input is a BIAS on the field, not a prompt to the model.
+"""INBOUND: my input is a BIAS on the field, not a prompt and not a lookup key.
 
-The outbound direction is built: material → claims → proposer → settlement. The window's
-"ask" was retrieval-with-receipts — fetch relevant facts, staple them to a prompt. That is
-not this. Here the accumulated structure determines what the LM actually receives:
+The outbound direction is built: material -> claims -> proposer -> settlement. This is the
+other direction, and the accumulated structure determines what the LM actually receives:
 
-    typed text → normalized and ADDRESSED like any input
-               → the addresses it LANDS ON in the field (exact, gate 1)
-               → their fibers, declared correspondences, contest status, warrant tiers
-               → settlement runs with the input as soft evidence
-               → the RELAXED STATE is compiled into the LM's input
+    typed text -> addressed by the ordinary extractor (not privileged)
+               -> entered into the CORPUS's energy as soft evidence
+               -> settlement runs on the real corpus, twice: without the bias and with it
+               -> what MOVED is the response, reached over declared correspondences
+               -> the moved region, with its path, is compiled into the LM's input
 
 The typed text is the boundary condition. The field supplies the content.
 
-**Landing is EXACT, never similar.** A span lands on a slot iff `hash(nu(surface), type)`
-matches one already in the corpus — gate 1, the same addressing everything else uses. No
-similarity score can make two addresses one; the similarity FIBER relation this build deleted
-stays deleted, and nothing in the read path may reintroduce it.
+**Exact addressing governs claim identity, never how a bias reaches the field.** Gate 1 says
+two claims are the same claim iff `hash(nu(surface), type)` agrees. That is right and is
+untouched. It is not a gate on whether the field may be consulted — and making it one is what
+produced a window that answered every real question with "nothing addressed", then reached for
+word matching to fill the silence.
 
-**Retrieval is a separate thing, and the separation is the safety property.** Addressing asks
-*is this the same claim*, and the answer is a hash. Retrieval (`engine/retrieval.py`) asks
-*which existing claims should be read*, and asserts nothing — no address created, no
-correspondence declared, nothing entered, nothing promoted. Each retrieved claim keeps its own
-exact address, warrant tier and contest status; retrieval only chooses the order they are read
-in. So the compiled field carries two labels that must never blur: LANDED means the typed text
-IS that claim; RETRIEVED means only that it shares words with it. `conditioned` keeps the
-strong meaning; `grounded` carries the weak one.
+**No string comparison anywhere in this path.** Propagation is over `engine/blocks`'s Q edges,
+which are exactly the declared correspondences: an edge exists iff an arrow declared it. A
+compiled fact names a slot the bias REACHED, and carries the chain of arrows it was reached
+by; a moved slot with no path is not compiled, because a fact whose provenance cannot be shown
+is not a fact this engine may state.
 
-An earlier version of this docstring said "no token overlap", which was true when written and
-false the moment retrieval landed. It is corrected here rather than left to be discovered,
-because a comment that describes a property the code no longer has is worse than no comment.
+**Silence is a result.** A corpus where nothing responds says so and names the structural
+reason — the biased address carries no declared arrow, or the corpus's own evidence outweighs
+a soft constraint. It does not degrade into a keyword list. That degradation is what a
+previous build did, and it made the two modes indistinguishable from the outside.
 
 **Status conditions as much as content.** Whether the region is settled, provisional, contested
 or a GAP is compiled in, so the answer is shaped by the epistemic state and not only by the
 subject matter.
 
-**Read-side only.** Nothing here writes to the corpus or touches the tape. The response may be
-proposed back through the one inlet at extraction tier, but only if the operator explicitly
-chooses; never automatically. The one-write-path assertion is untouched.
+**Read-side only.** Nothing here writes to the corpus or touches the tape. Settlement runs on
+a reconstructed read view; the snapshot on disk is untouched, the bias is soft and could not
+clamp even if it tried, since extraction never grounds. The response may be proposed back
+through the one inlet at extraction tier, but only if the operator explicitly chooses.
+
+A NOTE ON THIS FILE'S OWN HISTORY, kept because the pattern recurred three times in one day:
+this docstring claimed "settlement runs with the input as soft evidence" from the day it was
+written, while the code did a dict lookup and called `settle` nowhere. Gate 10 now treats a
+mechanism claim like any other claimed property — see `MECHANISM_CLAIMS` in
+`engine/static_checks.py` — so a docstring can no longer describe a call graph that does not
+exist.
 """
 
 from __future__ import annotations
@@ -46,7 +52,7 @@ from typing import Sequence
 
 from .corpus_state import CorpusSnapshot
 from .extract import DeterministicExtractor
-from .retrieval import retrieve
+from .relax import Relaxation, relax
 from .types import Document
 
 #: How many neighbouring slots a single landing may contribute. A landing inside a large
@@ -85,34 +91,33 @@ class CompiledInput:
     landings: list[Landing] = field(default_factory=list)
     facts: list[dict[str, object]] = field(default_factory=list)   # one per compiled fact
     field_status: str = ""
-    conditioned: bool = False                  # did a span ADDRESS to a claim? (exact, gate 1)
-    retrieved: list = field(default_factory=list)                  # list[retrieval.Retrieved]
+    conditioned: bool = False                  # did the FIELD respond to the bias?
+    relaxation: Relaxation | None = None
 
     @property
     def reached(self) -> int:
-        return sum(1 for l in self.landings if l.hit)
+        """Slots the bias reached over declared arrows, having moved when it was applied."""
+        return len(self.relaxation.moved) if self.relaxation else 0
 
     @property
-    def grounded(self) -> bool:
-        """Is there ANY corpus material in front of the model — landed or merely retrieved?
+    def addressed(self) -> int:
+        """Biased addresses the corpus already carried. Reported, never gated on.
 
-        Deliberately a second property rather than a widening of `conditioned`. Conditioning
-        is the strong claim (a span IS a claim in this corpus); grounding is the weak one
-        (the model is reading this corpus rather than its own memory). Collapsing them would
-        let a term-overlap match be reported as an address match, which is the one thing
-        retrieval must never be able to do.
+        This is the number the old build branched on: no exact hit meant no field at all.
+        It is kept because it is informative — a bias on an address the corpus does not hold
+        has nothing coupled to it — but nothing in this module reads it to decide anything.
         """
-        return self.conditioned or bool(self.retrieved)
+        return len(self.relaxation.bias_in_field) if self.relaxation else 0
 
     def as_record(self) -> dict[str, object]:
         return {
             "typed": self.typed, "compiled": self.compiled,
-            "conditioned": self.conditioned, "grounded": self.grounded,
-            "field_status": self.field_status,
-            "spans": len(self.landings), "landed": self.reached,
+            "conditioned": self.conditioned, "field_status": self.field_status,
+            "spans": len(self.landings), "landed": self.addressed,
+            "moved": self.reached,
             "facts": self.facts,
             "landings": [l.as_record() for l in self.landings],
-            "retrieved": [r.as_record() for r in self.retrieved],
+            "relaxation": self.relaxation.as_record() if self.relaxation else None,
         }
 
 
@@ -178,145 +183,116 @@ def land(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> list[La
     return out
 
 
-def _retrieved_block(found: Sequence, snapshot: CorpusSnapshot) -> list[str]:
-    """The retrieved claims, under a heading that cannot be mistaken for a landing.
+def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot) -> tuple[list[str], list[dict]]:
+    """The moved region, each row carrying the declared path the bias reached it by.
 
-    The heading is the safety property. Everything in this block is a real claim with a real
-    address and a real warrant tier — but its presence here says only "it shares words with
-    the query", and the model must not read proximity as correspondence. So the block says
-    that in its own first line rather than relying on the section title.
+    A row here is not "a claim that resembles the query". It is a claim whose settled
+    distribution CHANGED when the query was applied as a soft constraint, and the path is the
+    chain of declared correspondences the perturbation travelled along to reach it. Nothing
+    was compared as a string.
     """
-    lines = [
-        "RETRIEVED FOR READING — these are existing claims in this corpus that share "
-        "discriminating terms with the query. Term overlap is NOT an address match and NOT a "
-        "declared correspondence: nothing below asserts that it means the same as what was "
-        "typed, or that any two of these mean the same as each other. Each carries its own "
-        "exact address, warrant tier and contest status.",
+    lines: list[str] = [
+        "WHAT MOVED. The typed text entered this corpus's energy as a soft constraint and "
+        "settlement was run twice — once on the corpus alone, once with the bias. Every line "
+        "below is a claim whose settled distribution CHANGED, listed with how far it moved "
+        "and the declared correspondences the bias reached it through. Nothing here was "
+        "matched by words; a slot that moved but could not be reached over a declared arrow "
+        "is not listed, because its provenance could not be shown.",
     ]
-    for r in found:
-        mark = "CONTESTED" if r.contested else "settled"
-        lines.append(f"RETRIEVED [{r.chart}/{r.type}] value={r.value} warrant={r.tier} "
-                     f"({mark}) matched={'+'.join(r.matched)} :: {display(r.nu)[:220]}")
-        for rendered in _arrows_for(snapshot, r.slot)[:3]:
-            lines.append(f"  CORRESPONDENCE {rendered}")
-    return lines
+    facts: list[dict] = []
+    for m in rel.moved:
+        mark = "CONTESTED" if m.contested else "settled"
+        origin = ("the bias landed on this address" if m.hops == 0
+                  else f"reached in {m.hops} declared hop(s)")
+        lines.append(f"MOVED [{m.chart}/{m.type}] value={m.value} warrant={m.tier} ({mark}) "
+                     f"shift={m.shift:.4f} — {origin} :: {display(m.nu)[:220]}")
+        for step in m.path:
+            lines.append(f"  VIA {step}")
+        facts.append({"kind": "moved", **m.as_record()})
+    if rel.moved_dropped:
+        lines.append(f"({rel.moved_dropped} further slot(s) moved and are not shown — the "
+                     f"list is cut at the least-responsive end, and the count is stated "
+                     f"rather than the cut being silent.)")
+    if rel.blocks_skipped:
+        lines.append(f"({rel.blocks_skipped} block(s) exceeded the settling cap and were NOT "
+                     f"relaxed. Anything they hold is unmeasured here, not absent.)")
+    return lines, facts
 
 
 def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
                   index=None) -> CompiledInput:
-    """Compile the LM's input FROM THE RELAXED STATE, not from the raw text.
+    """Compile the LM's input FROM WHAT THE FIELD DID, not from what the text resembles.
 
-    Every line of the result traces to a slot or an arrow that exists in the field. The typed
-    text appears only as the boundary condition it is.
+    The typed text is applied to the real corpus as a soft constraint, settlement runs, and
+    the compiled result is the moved region with the declared path to each moved slot. When
+    nothing moves, that is stated together with the structural reason — a biased address the
+    corpus does not carry, a block over the settling cap, or a field whose own evidence
+    outweighed the bias. There is no fallback: silence is a result about the corpus, and a
+    second mechanism that produced words anyway would make the two indistinguishable.
+
+    `index` is accepted and ignored. It is the last parameter of the deleted retrieval layer,
+    kept for one release so an old caller fails loudly on behaviour rather than on a TypeError
+    that reads like an unrelated bug.
     """
     landings = land(text, snapshot, chart)
-    hits = [l for l in landings if l.hit]
+    rel = relax(text, snapshot, chart)
 
-    if snapshot.empty:
-        status = ("NO FIELD TO CONDITION ON — the corpus is empty. This is a near-passthrough: "
-                  "the answer is the model's own, not the field's.")
-        return CompiledInput(typed=text, compiled=f"{status}\n\nBOUNDARY CONDITION:\n{text}",
-                             landings=landings, field_status=status, conditioned=False)
+    if not rel.responded:
+        status = f"THE FIELD DID NOT RESPOND — {rel.silence}"
+        return CompiledInput(
+            typed=text, compiled=f"{status}\n\nBOUNDARY CONDITION:\n{text}",
+            landings=landings, field_status=status, conditioned=False, relaxation=rel)
 
-    found = retrieve(text, snapshot, chart, exclude=frozenset(l.slot for l in hits),
-                     index=index)
-
-    if not hits:
-        status = (f"NOTHING ADDRESSED — none of the {len(landings)} span(s) address to a claim "
-                  f"in this corpus ({len(snapshot.slots)} slots). Landing is EXACT "
-                  "(gate 1: hash(nu, type)); novel phrasing lands nowhere, and no amount of "
-                  "resemblance changes that.")
-        if not found:
-            status += (" Nothing was retrieved either: no claim in the corpus shares a "
-                       "discriminating term with the query. This is a near-passthrough and is "
-                       "reported as one.")
-            return CompiledInput(typed=text, compiled=f"{status}\n\nBOUNDARY CONDITION:\n{text}",
-                                 landings=landings, field_status=status, conditioned=False)
-        lines = [status, ""] + _retrieved_block(found, snapshot)
-        lines += ["", "BOUNDARY CONDITION (what was typed; nothing above is a restatement "
-                      "of it):", text]
-        return CompiledInput(typed=text, compiled="\n".join(lines), landings=landings,
-                             facts=[{"kind": "retrieved", **r.as_record()} for r in found],
-                             field_status=status, conditioned=False, retrieved=found)
-
-    lines: list[str] = []
-    facts: list[dict[str, object]] = []
-    seen: set[str] = set()
-
-    lines.append("FIELD STATE around the boundary condition. Every line below is a claim or a "
-                 "declared correspondence that exists in this corpus, with its status.")
-    lines.append(f"floor: {snapshot.floor_status}")
+    lines: list[str] = [
+        "FIELD STATE after relaxation. The boundary condition below was applied to this "
+        "corpus as a soft constraint and the field was allowed to settle; what follows is "
+        "what moved.",
+        f"floor: {snapshot.floor_status}",
+        "",
+    ]
+    moved_lines, facts = _relaxed_block(rel, snapshot)
+    lines.extend(moved_lines)
     lines.append("")
 
-    for l in hits:
-        rec = snapshot.slots.get(l.slot)
-        status = "CONTESTED" if l.contested else "settled"
-        lines.append(f"LANDED [{rec.chart}/{l.type}] value={l.value} warrant={l.tier} "
-                     f"({status}) :: {display(rec.nu)[:200]}")
-        facts.append({"kind": "landing", "slot": l.slot, "chart": rec.chart,
-                      "value": l.value, "tier": l.tier, "contested": l.contested,
-                      "docs": list(l.docs)})
-        seen.add(l.slot)
-        for rendered in l.arrows:
-            lines.append(f"  CORRESPONDENCE {rendered}")
-            facts.append({"kind": "arrow", "slot": l.slot, "rendered": rendered})
-        for nid in l.block:
-            if nid in seen:
-                continue
-            n = snapshot.slots.get(nid)
-            if n is None:
-                continue
-            seen.add(nid)
-            mark = "CONTESTED" if nid in snapshot.contested else "settled"
-            lines.append(f"  NEIGHBOUR [{n.chart}/{n.type}] value={n.value} ({mark}) "
-                         f":: {display(n.nu)[:160]}")
-            facts.append({"kind": "neighbour", "slot": nid, "chart": n.chart,
-                          "value": n.value, "contested": nid in snapshot.contested})
-        lines.append("")
-
-    if found:
-        lines.extend(_retrieved_block(found, snapshot))
-        facts.extend({"kind": "retrieved", **r.as_record()} for r in found)
-        lines.append("")
-
-    contested_here = sum(1 for l in hits if l.contested)
-    arrows_here = sum(len(l.arrows) for l in hits)
-    status = (f"CONDITIONED on {len(hits)} landed span(s) of {len(landings)}; "
-              f"{arrows_here} declared correspondence(s); "
-              f"{contested_here} contested; {len(found)} retrieved for reading only; "
-              f"floor is {snapshot.floor_status}")
+    contested_here = sum(1 for m in rel.moved if m.contested)
+    reached = sum(1 for m in rel.moved if m.hops > 0)
+    status = (f"RELAXED: {len(rel.moved)} slot(s) moved across {rel.blocks_settled} settled "
+              f"block(s) covering {rel.slots_considered} slot(s); {reached} were reached "
+              f"through declared correspondence rather than biased directly; "
+              f"{contested_here} contested; floor is {snapshot.floor_status}")
     lines.append(status)
-    if arrows_here == 0:
-        lines.append("NOTE: no declared cross-chart correspondence reaches this region — the "
-                     "conditioning is single-chart, and the cross-chart relation here is a GAP.")
+    if reached == 0:
+        lines.append("NOTE: everything that moved was biased directly — no declared "
+                     "correspondence carried the perturbation further. The cross-chart "
+                     "relation around this region is a GAP.")
     lines.append("")
     lines.append("BOUNDARY CONDITION (what was typed; it is the constraint, not the content):")
     lines.append(text)
 
     return CompiledInput(typed=text, compiled="\n".join(lines), landings=landings,
-                         facts=facts, field_status=status, conditioned=True)
+                         facts=facts, field_status=status, conditioned=True, relaxation=rel)
 
 
 INBOUND_SYSTEM = (
-    "You are answering from a FIELD, not from your own knowledge. The input below is compiled "
-    "from a reconciliation engine's settled state: every claim, correspondence and status line "
-    "is something that engine actually holds, with its warrant tier and contest status. Answer "
-    "only from that state. Where the field says CONTESTED, do not resolve it — report the "
-    "contest. Where the field says GAP or reports no correspondence, say the relation is "
-    "unmeasured rather than supplying one. If the field does not cover the boundary condition, "
-    "say so plainly; that is a fact about the corpus, not a failure to answer.\n\n"
-    "Two kinds of line appear, and the difference is load-bearing. A LANDED line means the "
-    "typed text IS that claim — it addressed to it exactly. A RETRIEVED line means only that "
-    "the claim shares words with what was typed: material to read, asserting nothing about "
-    "the question. Never describe a RETRIEVED claim as what the user said, as agreeing with "
-    "them, or as corresponding to another retrieved claim — co-occurrence in this list is a "
-    "fact about a search, not about the corpus. Only a CORRESPONDENCE line is a declared "
-    "relation, and only at the tier it states.\n\n"
-    "WRITE AN ANSWER, NOT AN INVENTORY. Do not walk the field line by line and describe each "
-    "one; the user can already see them. Read what is there, then say in prose what it "
-    "amounts to and where it does not reach. Quote or name a specific claim when it carries "
-    "your point, and otherwise leave it out. If the retrieved material is thin or is mostly "
-    "incidental word matches rather than substance, say THAT — 'the corpus does not have much "
-    "on this' is a real answer and a useful one. If everything you used was RETRIEVED and "
-    "nothing LANDED, open with one short sentence saying so, then answer anyway."
+    "You are answering from a FIELD, not from your own knowledge. The input below is not a "
+    "search result. The user's text was applied to a reconciliation engine's corpus as a soft "
+    "constraint, the field was allowed to settle, and every MOVED line is a claim whose "
+    "settled state CHANGED as a result — listed with how far it moved and the chain of "
+    "declared correspondences the perturbation reached it through (the VIA lines).\n\n"
+    "This means a moved claim need not share any wording with what the user typed, and a "
+    "claim that shares wording is absent unless the field actually moved it. Do not treat the "
+    "list as keyword matches and do not apologise for lines that look unrelated — being "
+    "reached through structure IS the relation, and the VIA lines say what that structure "
+    "was. A hop count of 0 means the constraint applied to that claim directly.\n\n"
+    "Answer only from that state. Where the field says CONTESTED, do not resolve it — report "
+    "the contest. Where it reports a GAP or says no correspondence carried the perturbation "
+    "further, say the relation is unmeasured rather than supplying one. Where it says blocks "
+    "exceeded the settling cap, treat their contents as unmeasured, not as absent.\n\n"
+    "If the field DID NOT RESPOND, say so in one sentence and give the structural reason the "
+    "input states. Do not fill the silence: 'nothing in this corpus moved when that was "
+    "applied' is a real answer about the corpus, and inventing a plausible one would be a "
+    "claim the engine did not make.\n\n"
+    "WRITE AN ANSWER, NOT AN INVENTORY. The user can already see the field. Read what moved, "
+    "then say in prose what it amounts to and where it does not reach. Name a specific claim "
+    "when it carries your point; otherwise leave it out."
 )

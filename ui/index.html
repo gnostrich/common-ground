@@ -87,10 +87,12 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
   <div id="proposer" class="muted">not loaded — press refresh.</div>
 
   <h2>Ask the corpus — the field conditions the answer</h2>
-  <p class="muted">What you type is a <b>boundary condition</b>, not a prompt. It is addressed
-  exactly (gate 1: <span class="nu">hash(nu, type)</span>), the addresses it lands on supply
-  the content, and the model receives the compiled field state. Novel phrasing lands nowhere
-  and the compiler says so rather than degrading into a plain prompt.</p>
+  <p class="muted">What you type is a <b>boundary condition</b>, not a prompt and not a search.
+  It enters the corpus's energy as a <b>soft constraint</b>, settlement runs, and what the
+  model receives is the region that <b>moved</b> — reached over declared correspondences, with
+  every hop shown. Exact addressing (gate 1: <span class="nu">hash(nu, type)</span>) decides
+  claim identity; it does not decide whether the field is consulted. If nothing moves, the
+  window says so and names the structural reason rather than matching words to fill it.</p>
   <div class="row">
     <input id="q" placeholder="ask a question; it will be addressed against the real corpus" style="flex:1">
     <label>chart <select id="qchart">
@@ -251,17 +253,18 @@ async function ask(){
   if(r.error){ $('answer').innerHTML = `<span class="err">${esc(r.error)}</span>`; return; }
   if(r.corpus_header) renderCorpus(r.corpus_header);
   const c = r.compiled || {};
-  const R = c.retrieved || [];
-  // Three states, not two. Conditioned is the strong one (a span IS a claim here);
-  // retrieved-only is real grounding in this corpus but asserts nothing about the question;
-  // neither is a passthrough. Collapsing the middle into "not conditioned" is what made the
-  // window look broken on every question a person would actually type.
-  const state = c.conditioned ? ['promoted','CONDITIONED ON THE FIELD']
-              : (R.length ? ['inst','RETRIEVED ONLY — nothing addressed exactly']
-                          : ['err','NOT GROUNDED — near-passthrough']);
+  const X = (c.relaxation || {});
+  const R = X.rows || [];
+  // Two states, and both are results. The field responded, or it did not and the reason is
+  // structural. There is no third "we found some words anyway" state to report.
+  const state = c.conditioned ? ['promoted','THE FIELD RELAXED']
+                              : ['inst','THE FIELD DID NOT RESPOND'];
   $('answer').innerHTML = `<div class="prop"><span class="${state[0]}">${state[1]}</span>`
-    + ` <span class="muted">${c.landed||0} of ${c.spans||0} typed spans landed on a real address`
-    + (R.length ? ` · ${R.length} claims retrieved for reading` : '')
+    + ` <span class="muted">`
+    + (c.conditioned
+        ? `${X.moved||0} slot(s) moved across ${X.blocks_settled||0} settled block(s); `
+          + `${R.filter(m=>m.hops>0).length} reached through declared correspondence`
+        : esc(X.silence || ''))
     + `</span><br><br><b>answer</b> ${esc(r.answer)}</div>`;
   $('typed').textContent = c.typed || $('q').value;
   $('compiled').textContent = r.grounded_on || '';
@@ -275,17 +278,20 @@ async function ask(){
         + `<br><span class="nu">${esc(l.surface)}</span></div>`).join('')
     : '';
   $('retrieved').innerHTML = R.length
-    ? '<h2 style="border:none">Retrieved for reading — term overlap, not an address match</h2>'
-      + '<p class="muted">These are real claims in your corpus that share discriminating words '
-      + 'with what you typed. Sharing words is <b>not</b> the same as being the same claim, and '
-      + 'nothing here declares a correspondence — each row carries its own address, tier and '
-      + 'contest status.</p>'
+    ? '<h2 style="border:none">What moved, and the declared path it moved along</h2>'
+      + '<p class="muted">Each row is a claim whose settled distribution <b>changed</b> when '
+      + 'what you typed was applied to the corpus as a soft constraint. Nothing was matched by '
+      + 'words. A row at 0 hops was biased directly; the rest were reached over declared '
+      + 'correspondences, and every hop is shown — a slot that moved but had no showable path '
+      + 'is not listed at all.</p>'
       + R.map(x =>
         `<div class="prop"><span class="tag inst">${esc(x.chart)}</span>`
         + ` <b class="b ${x.value}">${x.value}</b> <span class="tier">${esc(x.tier)}</span>`
         + (x.contested?' <b class="F">CONTESTED</b>':'')
-        + ` <span class="muted">matched ${esc((x.matched||[]).join(' + '))}</span>`
-        + `<br><span class="nu">${esc(x.nu_display || '')}</span></div>`).join('')
+        + ` <span class="muted">shift ${x.shift} · ${esc(x.reached_by||'')}</span>`
+        + `<br><span class="nu">${esc(x.nu_display || '')}</span>`
+        + (x.path||[]).map(s=>`<br><span class="nu">&nbsp;&nbsp;VIA ${esc(s)}</span>`).join('')
+        + `</div>`).join('')
     : '';
 }
 corpus();

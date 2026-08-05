@@ -35,10 +35,7 @@ from .lm import LMClient, LMProposer, api_key, lm_available
 #: When the file is absent the window says the corpus is not loaded rather than answering
 #: against an empty current and calling it the corpus.
 _SNAPSHOT: CorpusSnapshot | None = None
-#: The retrieval index, built beside the snapshot it belongs to. Building it walks every
-#: surface in the corpus (~4s at 69k slots), so it is built once and invalidated together
-#: with the snapshot — never rebuilt per question, and never reused across a reload.
-_INDEX = None
+
 
 
 def _journal_arrows() -> list:
@@ -78,23 +75,12 @@ def corpus_snapshot(reload: bool = False) -> CorpusSnapshot:
     Reloaded on demand rather than cached forever, because the daemon is still running: a
     window that cached the arrow set at startup would show a frozen picture of a live process.
     """
-    global _SNAPSHOT, _INDEX
+    global _SNAPSHOT
     if _SNAPSHOT is None or reload:
         base = CorpusSnapshot.load(SNAPSHOT_PATH)
         _SNAPSHOT = with_arrows(base, _journal_arrows()) if not base.empty else base
-        _INDEX = None
     return _SNAPSHOT
 
-
-def retrieval_index():
-    """The inverted index for the loaded corpus, built on first use and then kept."""
-    from engine.retrieval import Index
-
-    global _INDEX
-    snap = corpus_snapshot()
-    if _INDEX is None or _INDEX.stale_for(snap):
-        _INDEX = Index.build(snap)
-    return _INDEX
 
 
 def corpus_header() -> dict:
@@ -189,13 +175,13 @@ class Current:
 def ask_the_corpus(question: str, chart: str = "english") -> dict:
     """Compile the LM's input FROM THE FIELD, and hand back both sides of the compilation.
 
-    The answer is not retrieval-with-receipts. The typed question is addressed like any other
-    input (gate 1, exact), the addresses it LANDS ON supply the content, and what the model
-    receives is the compiled field state — which is why the window shows the typed text and
-    the compiled input side by side. When nothing addresses, the compiler says so, and any
-    claims it RETRIEVES for reading are labelled as term overlap rather than as landings.
+    The answer is not retrieval-with-receipts and not a lookup. The typed question enters the
+    real corpus's energy as a soft constraint, settlement runs, and what the model receives is
+    the region that moved — which is why the window shows the typed text and the compiled
+    field side by side. When nothing moves, the compiler says so and names the structural
+    reason; there is no second mechanism that produces words anyway.
     """
-    compiled = compile_input(question, corpus_snapshot(), chart, index=retrieval_index())
+    compiled = compile_input(question, corpus_snapshot(), chart)
     return compiled.as_record()
 
 

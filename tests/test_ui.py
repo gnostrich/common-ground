@@ -251,24 +251,24 @@ class TheWindowIsHonestAboutTheCorpus(unittest.TestCase):
         finally:
             server.shutdown()
 
-    def test_an_unlanded_question_is_never_reported_as_conditioned(self):
-        """PLANTED: a question that cannot address to anything in the corpus.
+    def test_an_uncoupled_question_is_never_reported_as_conditioned(self):
+        """PLANTED: a question whose addresses this corpus does not carry.
 
-        Landing is EXACT (gate 1). A string this specific has no chance of matching a stored
-        address. It may well RETRIEVE material — "boundary condition" is common in this
-        corpus — and that is fine and is the point of retrieval; what must never happen is
-        the compiler reporting it as conditioned, or labelling a retrieved claim LANDED.
+        The bias joins the coupling graph with no declared arrow touching it, so nothing
+        propagates and nothing moves. That must be reported as a structural fact with no
+        facts emitted — never as conditioning, and never filled in by a second mechanism.
         """
         from ui.current import ask_the_corpus
 
         out = ask_the_corpus("zzq unlikely boundary condition 84619 that lands nowhere at all")
         self.assertFalse(out["conditioned"])
-        self.assertEqual(out["landed"], 0)
-        self.assertIn("NOTHING ADDRESSED", out["compiled"])
-        self.assertNotIn("LANDED", out["compiled"],
-                         "nothing addressed, so no line may carry the landing label")
-        for row in out.get("retrieved", ()):
-            self.assertIn("TERM OVERLAP ONLY", row["relation_to_query"])
+        self.assertEqual(out["moved"], 0)
+        self.assertEqual(out["facts"], [])
+        self.assertIn("THE FIELD DID NOT RESPOND", out["compiled"])
+        self.assertNotIn("MOVED [", out["compiled"],
+                         "nothing moved, so no line may carry the moved label")
+        self.assertIsNone(out.get("retrieved"),
+                          "the retrieval layer is deleted; a key here means it came back")
 
     def test_the_floor_is_never_rendered_as_a_number_when_it_is_a_gap(self):
         """A window that printed `floor: 0.0` would report agreement where there is absence."""

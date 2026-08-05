@@ -213,18 +213,13 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/ask":
                 question = str(b.get("question", ""))
                 compiled = ask_the_corpus(question, str(b.get("chart", "english")))
-                if compiled["conditioned"]:
-                    # The field supplied the content; the typed text was the boundary
-                    # condition. The system prompt is the inbound one, not the window's.
-                    system, grounded_on = INBOUND_SYSTEM, compiled["compiled"]
-                else:
-                    # Nothing landed. Fall back to the typed current's own facts and SAY so —
-                    # a near-passthrough reported as one is honest; one reported as a
-                    # corpus-grounded answer is not.
-                    state = CURRENT.state(lm_used=lm_available(key))
-                    system, grounded_on = INBOUND_SYSTEM, (
-                        compiled["compiled"] + "\n\nTYPED CURRENT (not the corpus):\n"
-                        + _engine_facts(state, term=question))
+                # No branch on whether anything "landed". The compiled input already IS
+                # the field's response — the moved region with the declared path to each
+                # moved slot, or an explicit statement that nothing moved and why. There is
+                # nothing to fall back TO: the empty typed current that used to be stapled
+                # on here reported `charts: {}` and `corpus size 0`, which read as a fact
+                # about the corpus and was a fact about an unrelated object.
+                system, grounded_on = INBOUND_SYSTEM, compiled["compiled"]
                 if lm_available(key):
                     client = LMClient(key)
                     reply = client.complete(system, grounded_on,

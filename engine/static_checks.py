@@ -702,6 +702,40 @@ CLAIM_PATTERNS: tuple[tuple[str, str], ...] = (
     ("exactness", r"\bexact(?:ly)? equivalent\b|\bno .{0,24} is dropped\b"),
 )
 
+#: MECHANISM claims: a docstring saying the code RUNS something — settles, relaxes, perturbs
+#: an energy — is a claim about the call graph, and the call graph is decidable. This category
+#: exists because `engine/inbound.py` said "settlement runs with the input as soft evidence"
+#: from the day it was written while calling `settle` nowhere; it did a dict lookup and fell
+#: back to word matching. Two earlier instances the same day (a coverage caveat naming charts
+#: that had since changed, an atlas note asserting no cycle had closed after one had) were
+#: stale FACTS, which derivation fixes. This one is different in kind: it described a
+#: mechanism the module did not contain, and no amount of deriving a number would catch it.
+#: So the check is: if you claim the mechanism, your module must reference it.
+MECHANISM_CLAIMS: tuple[tuple[str, str, frozenset[str]], ...] = (
+    ("settlement",
+     r"\bsettlement runs?\b|\bruns? settlement\b|\bsettles? the\b"
+     r"|\brelaxation runs?\b|\bruns? (?:the )?relaxation\b|\brelaxes? the\b",
+     frozenset({"settle", "anneal", "relax", "FreeEnergy", "SettledBlock"})),
+    ("energy",
+     r"\bperturbs? the (?:field|energy|corpus)\b|\bas soft (?:evidence|constraint)\b"
+     r"|\benters? the .{0,24}\benergy\b|\bmirror descent\b",
+     frozenset({"settle", "anneal", "relax", "FreeEnergy", "evidence_from_deltas",
+                "lexicon_prior", "BIAS_WEIGHT"})),
+    ("propagation",
+     r"\bpropagates? (?:through|over|across)\b|\breached through declared\b"
+     r"|\bwhat moved\b",
+     frozenset({"settle", "relax", "structural_edges", "loop_edges", "build_blocks",
+                "build_fibers", "Moved"})),
+)
+
+#: Modules exempt from the mechanism check because they DEFINE the machinery rather than
+#: claim to use it. Naming them here is itself auditable; an empty set would be a lie and a
+#: wildcard would make the check vacuous.
+MECHANISM_DEFINERS: frozenset[str] = frozenset({
+    "engine/settle.py", "engine/energy.py", "engine/meter.py", "engine/blocks.py",
+})
+
+
 #: Every site that makes such a claim, and the CONTROL that verifies it. A claim with no
 #: control is a violation: either the property is asserted by a test, or the claim comes out
 #: of the prose. `control` names a test that must exist.
@@ -736,6 +770,15 @@ CLAIMED_PROPERTY_SITES: tuple[dict[str, str], ...] = (
     {"site": "engine/continuous.py:wait_for_slot",
      "claim": "a restart cannot reset the rate budget (window read off the durable log)",
      "control": "tests/test_continuous.py:RateLimitSurvivesRestart"},
+    {"site": "engine/relax.py:relax",
+     "claim": "settlement runs on the real corpus; the response is what moved",
+     "control": "tests/test_relax.py:TheFieldIsActuallyRelaxed"},
+    {"site": "engine/relax.py:_paths_from",
+     "claim": "propagation is over declared arrows only; every reached slot carries its path",
+     "control": "tests/test_relax.py:EveryCompiledFactTracesToDeclaredStructure"},
+    {"site": "engine/inbound.py:compile_input",
+     "claim": "compiled from what the field did, with no fallback mechanism",
+     "control": "tests/test_relax.py:SilenceIsAResultNotADegradation"},
     {"site": "engine/static_checks.py:check_proposer_discipline",
      "claim": "the daemon cannot promote; enforced on the source, not promised in prose",
      "control": "tests/test_continuous.py:ProposerDisciplineIsStatic"},
@@ -830,6 +873,29 @@ def _claims_in(text: str) -> list[tuple[str, str]]:
     return found
 
 
+
+def _mechanism_claims_in(text: str, rel: str, mentioned: set[str]) -> list[tuple[str, str]]:
+    """Mechanism claims in `text` that the module has no machinery to back.
+
+    A claim is UNBACKED when the phrase appears and the module references none of the names
+    that could carry it out. That is deliberately weak — referencing `settle` is not proof it
+    is called on the right thing — but it is decidable, and it is exactly strong enough to
+    catch the defect that occurred: prose describing a call graph that does not exist.
+    """
+    import re as _re
+
+    if rel in MECHANISM_DEFINERS:
+        return []
+    out: list[tuple[str, str]] = []
+    for kind, pattern, evidence in MECHANISM_CLAIMS:
+        if evidence & mentioned:
+            continue
+        m = _re.search(pattern, text, _re.IGNORECASE)
+        if m:
+            out.append((kind, m.group(0)))
+    return out
+
+
 def check_claim_discipline(root: Path | None = None) -> StaticCheckResult:
     """Gate 10: any function claiming a complexity bound, an index, an exactness property or
     an equivalence must have that property enforced by a named control — or not claim it.
@@ -863,11 +929,36 @@ def check_claim_discipline(root: Path | None = None) -> StaticCheckResult:
         except tokenize.TokenError:
             pass
 
+        # Every NAME the module mentions anywhere. A mechanism claim is a claim about the
+        # call graph, so the evidence for it is whether the machinery is referenced at all —
+        # decidable on the AST rather than argued about in review.
+        mentioned = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+        mentioned |= {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+        for n in ast.walk(tree):
+            if isinstance(n, ast.ImportFrom):
+                mentioned |= {a.name for a in n.names}
+            elif isinstance(n, ast.Import):
+                mentioned |= {a.name.split(".")[-1] for a in n.names}
+
+        # The MODULE docstring, checked like any other. This is where the false claim lived:
+        # `engine/inbound.py` asserted "settlement runs with the input as soft evidence" at
+        # module level for the whole life of the file, and a function-only sweep never saw it.
+        for kind, phrase in _mechanism_claims_in(ast.get_docstring(tree) or "", rel, mentioned):
+            result.violations.append(Violation(
+                rel, 1, f"gate 10: unbacked {kind} claim",
+                f"module docstring claims [{phrase}] but {rel} references none of the "
+                f"machinery that would perform it"))
+
         for qualname, node in _top_level_functions(tree):
             result.checked_functions += 1
             text = ast.get_docstring(node) or ""
             lo, hi = node.lineno, getattr(node, "end_lineno", node.lineno)
             text += "\n" + "\n".join(c for ln, c in comments.items() if lo <= ln <= hi)
+            for kind, phrase in _mechanism_claims_in(text, rel, mentioned):
+                result.violations.append(Violation(
+                    rel, node.lineno, f"gate 10: unbacked {kind} claim",
+                    f"{qualname} claims [{phrase}] but {rel} references none of the "
+                    f"machinery that would perform it"))
             claims = _claims_in(text)
             if not claims:
                 continue
