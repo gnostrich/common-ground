@@ -770,3 +770,48 @@ class TheLedgerIsCommittableAndCarriesNoCorpus(unittest.TestCase):
             j.close()
         finally:
             shutil.rmtree(d, ignore_errors=True)
+
+
+class ATornReadIsNotARegression(unittest.TestCase):
+    """The daemon reads a working tree a human may be editing.
+
+    It halted once on `OSError: lineno is out of bounds` — a module imported from a longer
+    version of a file that had just been shortened. The gate was right to stop; the cause was
+    an edit underneath it. Re-running once distinguishes the two without masking either.
+    """
+
+    def test_a_transient_red_does_not_halt(self):
+        import engine.continuous as continuous
+
+        h = Harness(holes=[hole(LN, "l1", EN, "e1")])
+        calls = {"n": 0}
+
+        def flaky(root=None, timeout=900):
+            calls["n"] += 1
+            return (calls["n"] > 1, "torn read" if calls["n"] == 1 else "")
+
+        original, h.proposer.run_suite = continuous.suite_green, True
+        continuous.suite_green = flaky
+        try:
+            self.assertTrue(h.proposer._check_gates(), "a transient red halted the daemon")
+            self.assertEqual(calls["n"], 2, "it must re-run exactly once")
+            self.assertEqual(h.journal.totals()["halts"], 0)
+        finally:
+            continuous.suite_green = original
+            h.close()
+
+    def test_a_real_red_still_halts(self):
+        """PLANTED: red twice. The retry must not become a way past the gate."""
+        import engine.continuous as continuous
+
+        h = Harness(holes=[hole(LN, "l1", EN, "e1")])
+        original, h.proposer.run_suite = continuous.suite_green, True
+        continuous.suite_green = lambda root=None, timeout=900: (False, "genuinely broken")
+        try:
+            self.assertFalse(h.proposer._check_gates(), "a real red gate did not halt")
+            self.assertEqual(h.journal.totals()["halts"], 1)
+            halt = [r for r in h.journal.tail(10) if r["kind"] == "halt"][-1]
+            self.assertIn("confirmed on re-run", halt["reason"])
+        finally:
+            continuous.suite_green = original
+            h.close()

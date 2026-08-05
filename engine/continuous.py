@@ -534,9 +534,18 @@ class ContinuousProposer:
             return False
         if self.run_suite:
             green, tail = suite_green()
+            if not green:
+                # Re-run once before halting. The daemon reads the working tree while a
+                # human may be editing it, and a half-written file reads as a regression:
+                # this halted on `OSError: lineno is out of bounds` because a module was
+                # imported from a longer version of a file that had just been shortened.
+                # A retry does NOT mask anything — a real red gate is red twice — it only
+                # distinguishes a torn read from a broken build.
+                green, retry = suite_green()
+                tail = tail if green else f"{tail}\n--- confirmed on re-run ---\n{retry}"
             self.status.suite = "green" if green else f"RED\n{tail}"
             if not green:
-                self._halt("test suite red", tail)
+                self._halt("test suite red (confirmed on re-run)", tail)
                 return False
         return True
 

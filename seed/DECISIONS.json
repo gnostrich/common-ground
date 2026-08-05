@@ -329,6 +329,12 @@
    "reading_2_subtree_is_unusable_at_this_scale": "68.6M candidates, 11,000x declaration granularity. 64.1M of it (93%) is prose-against-prose — conversation x english, english x tabular, conversation x tabular — where 'a document's position asserts its scope' degenerates because a whole repository of markdown shares one directory. Depth-1 was already the conservative reading; the relation does not survive contact with a repo whose docs live at the root.",
    "reading_3_the_code_x_code_bridge_is_structurally_thin": "lean x python is 942 and go x python is 373. lean x go DOES NOT APPEAR AT ALL — no repository has a Lean file and a Go file within one directory level of each other. The 'Lean spec with a code implementation' pairing the operator asked about is nearly absent from these repositories, and that is a fact about where the files sit, not a limitation of the enumeration.",
    "recommendation": "declaration granularity is the whole tractable surface: 6,023 candidates is ~502 calls at batch 12, about $0.23 at the measured $0.00046/call. Subtree needs a tighter bound than depth-1 before it can be spent on at all."
+  },
+  "F-the-daemon-reads-a-tree-a-human-is-editing": {
+   "finding": "the continuous proposer halted itself with `test suite red: OSError: lineno is out of bounds`. The suite was green on three consecutive re-runs immediately after, with no stale bytecode. The cause was an edit underneath it: the gate subprocess ran while AnthropicExtractor was being deleted from engine/extract.py, so a module imported from the longer version had line numbers past the end of the shorter file.",
+   "the_gate_was_right": "halting and recording was correct behaviour — an unattended process that cannot verify its gates must stop. The defect was not the halt, it was that a torn read and a real regression were indistinguishable in the record.",
+   "repair": "the suite is re-run ONCE before halting. This masks nothing: a real red gate is red twice, and the halt reason now says 'confirmed on re-run'. Two controls — a transient red must not halt and must re-run exactly once; a persistent red must still halt and must say it was confirmed.",
+   "operational_note": "the daemon runs against the live working tree. Editing engine/ while it runs will produce transient reds; that is inherent, and the retry bounds the cost rather than removing the cause."
   }
  },
  "D10_continuous_proposer": {
