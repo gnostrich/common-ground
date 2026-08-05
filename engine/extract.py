@@ -10,7 +10,6 @@ Two implementations:
 - `DeterministicExtractor` — offline, rule-based, hash-seeded. This is what the null
   battery and every dry run use. It has no network dependency, so a run's addressing and
   settlement are reproducible from the seed hash without an API key.
-- `AnthropicExtractor` — the real k=3 arm from D4. Refuses to construct unless live
   extraction is explicitly enabled *and* a spend cap is set, so leaving D4's spend cap
   blank keeps it off rather than defaulting it to unlimited.
 """
@@ -381,101 +380,24 @@ _EXTRACTION_SCHEMA = {
 }
 
 
-class AnthropicExtractor(Extractor):
-    """The live k=3 arm. Off unless explicitly enabled with a spend cap (D4).
-
-    Both conditions are required, and neither has a permissive default: an unset
-    `COMMON_GROUND_ENABLE_LLM` keeps it off, and an unset spend cap keeps it off even if
-    the flag is set. D4's spend cap being blank therefore blocks live extraction rather
-    than silently meaning "no limit".
-    """
-
-    ENABLE_ENV = "COMMON_GROUND_ENABLE_LLM"
-
-    def __init__(
-        self,
-        extractor_id: str,
-        prompt_id: str,
-        model: str,
-        prompt_text: str,
-        spend_cap_usd: float | None,
-        max_tokens: int = 16000,
-    ) -> None:
-        if os.environ.get(self.ENABLE_ENV, "").strip().lower() not in {"1", "true", "yes", "on"}:
-            raise EngineError(
-                f"live extraction is off: set {self.ENABLE_ENV}=1 to enable it. "
-                "The offline DeterministicExtractor is what P0-P2 and the null battery use."
-            )
-        if spend_cap_usd is None:
-            raise EngineError(
-                "D4 spend cap is unresolved. Live extraction refuses to run without an "
-                "explicit cap; an unset cap is not an unlimited cap."
-            )
-        super().__init__(extractor_id, prompt_id)
-        self.model = model
-        self.prompt_text = prompt_text
-        self.spend_cap_usd = float(spend_cap_usd)
-        self.max_tokens = max_tokens
-        self._client = None
-
-    def _get_client(self):
-        if self._client is None:
-            try:
-                import anthropic  # imported lazily so the offline path needs no SDK
-            except ImportError as exc:  # pragma: no cover - environment dependent
-                raise EngineError(
-                    "the anthropic SDK is not installed; live extraction is unavailable"
-                ) from exc
-            self._client = anthropic.Anthropic()
-        return self._client
-
-    def _spans(self, doc: Document) -> Iterable[Span]:
-        client = self._get_client()
-        response = client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            system=self.prompt_text,
-            output_config={"format": {"type": "json_schema", "schema": _EXTRACTION_SCHEMA}},
-            messages=[
-                {
-                    "role": "user",
-                    # The document's *identity* is deliberately not in the prompt. A
-                    # doc_id here would let the model's reading depend on what the file
-                    # was called, so the same text under two labels could extract
-                    # differently — the live-path form of the defect the offline seeding
-                    # carried. Identity labels evidence in `Provenance`; it never reaches
-                    # anything that generates.
-                    "content": (
-                        f"chart: {doc.chart}\ncontent: {doc.content_hash[:16]}"
-                        f"\n\n---\n{doc.text}"
-                    ),
-                }
-            ],
-        )
-        if response.stop_reason == "refusal":
-            raise EngineError(
-                f"extraction refused for doc {doc.doc_id}; the run's k-coverage is "
-                "incomplete and the result must not be treated as a full extraction"
-            )
-        text = next((b.text for b in response.content if b.type == "text"), "")
-        payload = json.loads(text)
-        for i, claim in enumerate(payload.get("claims", [])):
-            yield Span(
-                surface=claim["surface"],
-                type=claim["type"],
-                value=claim["value"],
-                confidence=float(claim["confidence"]),
-                locator=claim.get("locator") or f"claim:{i}",
-            )
-
-
 def build_k_extractors(decisions: dict, offline: bool = True) -> list[Extractor]:
-    """Construct the k=3 bank described by D4.
+    """Construct the k=3 bank described by D4. Deterministic extractors, always.
 
-    Offline is the default everywhere in P0-P2. The three offline extractors are given
-    distinct ids and distinct selectivity so that they disagree the way three real
-    (model, prompt) pairs would, rather than agreeing trivially.
+    `offline` is kept in the signature because every caller passes it explicitly and a
+    silent signature change is the kind of thing that reads as working until it doesn't.
+    It no longer selects anything: the live arm was an `AnthropicExtractor` and it is
+    DELETED, not disabled. The operator's rule is that every LM call the engine makes goes
+    through OpenRouter, and a dormant second provider in the extractor bank is a rule
+    enforced by nobody calling it — which stops being true after one edit.
+
+    Live LM extraction, when it returns, goes through `ui/lm.py:LMProposer`, which is the
+    OpenRouter path and refuses a non-`sk-or-` key outright.
     """
+    if not offline:
+        raise EngineError(
+            "live extraction was an Anthropic path and has been deleted. Every LM call "
+            "goes through OpenRouter (ui/lm.py:LMProposer); there is no second provider."
+        )
     specs = decisions.get("D4", {}).get("extractors", [])
     if not specs:
         raise EngineError("D4 declares no extractors")
@@ -490,22 +412,6 @@ def build_k_extractors(decisions: dict, offline: bool = True) -> list[Extractor]
             for i, spec in enumerate(specs)
         ]
 
-    from .constants import SEED_DIR
-
-    cap = decisions.get("D4", {}).get("spend_cap_usd")
-    out: list[Extractor] = []
-    for spec in specs:
-        prompt_path = SEED_DIR / "PROMPTS" / f"{spec['prompt']}.md"
-        out.append(
-            AnthropicExtractor(
-                extractor_id=spec["id"],
-                prompt_id=spec["prompt"],
-                model=spec["model"],
-                prompt_text=prompt_path.read_text(encoding="utf-8"),
-                spend_cap_usd=cap,
-            )
-        )
-    return out
 
 
 def slots_from_deltas(deltas: Sequence[Delta]):

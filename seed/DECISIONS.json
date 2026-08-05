@@ -65,8 +65,8 @@
     "prompt": "extract_v1"
    }
   ],
-  "spend_cap_usd": null,
-  "live_extraction_default": "off"
+  "live_extraction_default": "off",
+  "live_extraction": "DELETED 2026-08-05, not disabled. The live arm was an AnthropicExtractor and the operator's rule is OpenRouter only; a dormant second provider is a rule enforced by nobody calling it. build_k_extractors raises if asked for it. When live extraction returns it goes through ui/lm.py:LMProposer."
  },
  "D5": {
   "status": "unresolved",

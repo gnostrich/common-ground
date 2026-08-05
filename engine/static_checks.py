@@ -397,13 +397,6 @@ GENERATIVE_KEY_SITES: tuple[dict[str, object], ...] = (
                 "its ensemble variance; only composition-variance died.",
     },
     {
-        "site": "engine/extract.py:AnthropicExtractor._spans",
-        "key": "prompt carries chart + content hash, never doc_id",
-        "keying": "content",
-        "note": "Repaired alongside. The prompt used to state `doc_id`, so the model's "
-                "reading could depend on the label — the live-path form of the same defect.",
-    },
-    {
         "site": "engine/cast.py:cast",
         "key": "DRNG('cast', seed_hash, block.id)",
         "keying": "content",

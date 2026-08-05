@@ -693,16 +693,22 @@ class GenerativeKeysAreContentAndSeedOnly(unittest.TestCase):
         self.assertNotIn("DRNG(\"extract\", self.extractor_id, self.prompt_id, doc.doc_id)",
                          source)
 
-    def test_the_live_prompt_carries_no_document_identity(self):
-        import inspect
+    def test_the_live_anthropic_arm_is_deleted_not_disabled(self):
+        """The operator's rule is OpenRouter only. A dormant second provider is a rule
+        enforced by nobody calling it, which stops being true after one edit."""
+        import engine.extract as mod
+        from engine import EngineError
+        from engine.constants import decisions
 
-        from engine.extract import AnthropicExtractor
+        self.assertFalse(hasattr(mod, "AnthropicExtractor"),
+                         "the Anthropic extractor is back")
+        with self.assertRaises(EngineError):
+            mod.build_k_extractors(decisions(), offline=False)
+        from engine.constants import REPO_ROOT
 
-        source = inspect.getsource(AnthropicExtractor._spans)
-        prompt = source.split('"content": (')[1].split(")")[0]
-        self.assertNotIn("doc.doc_id", prompt,
-                         "a doc_id in the prompt lets the model read the label")
-        self.assertIn("content_hash", prompt)
+        source = (REPO_ROOT / "engine" / "extract.py").read_text(encoding="utf-8")
+        self.assertNotIn("anthropic.Anthropic(", source)
+        self.assertNotIn("import anthropic", source)
 
     def test_every_generative_key_is_classified_and_none_is_identity_keyed(self):
         from engine.static_checks import GENERATIVE_KEY_SITES, check_generative_keys
