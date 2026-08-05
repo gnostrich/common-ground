@@ -242,6 +242,132 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
     return out
 
 
+#: THE PERSISTENCE FLAG. Ask and propose are one act; this is the only thing that differs.
+RELEASE, RETAIN = "release", "retain"
+MODES = (RELEASE, RETAIN)
+
+
+@dataclass(slots=True)
+class Retention:
+    """What committing a perturbation kept, and what it let go — with the reason for each.
+
+    ASK and PROPOSE were two mechanisms doing overlapping work: `propose` ran the extractor
+    and the LM proposer against a fresh Current that knew nothing about the corpus, while
+    `ask` ran a region relaxation against the real one. So a proposed claim arrived with no
+    position in the field, and the relaxation that could have situated it had already been
+    run and thrown away by the other button.
+
+    They are one act with a persistence flag. The call is BYTE-IDENTICAL in both modes — same
+    region, same prompt, same parse — and the flag decides only what survives it. That is
+    strictly better under Q5 than two mechanisms that agree: there is nothing left to drift.
+
+      RELEASE (ask)     — everything about [0] evaporates. The answer was conditioned by it
+                          and that is all it was for.
+      RETAIN (propose)  — [0] enters the fast tape as a claim at EXTRACTION tier, and its
+                          correspondence-kind attachments are retained as proposals. A
+                          proposed claim therefore arrives PRE-SITUATED, by the same
+                          relaxation that conditioned the answer.
+
+    `bears_on` is released in BOTH modes, and that is not an oversight. It is not a morphism
+    of the base; retaining one would put a fourth kind into the corpus vocabulary by the back
+    door, which is the exact thing the attachment law exists to prevent. An aboutness relation
+    between a question and a claim is a boundary condition, and boundary conditions do not
+    persist. When that is all a perturbation produced, this says so rather than retaining
+    nothing quietly.
+
+    Corpus-to-corpus arrows are kept in BOTH modes, unchanged: they are ordinary extraction
+    and have nothing to do with [0].
+    """
+
+    mode: str = RELEASE
+    claim: object | None = None                # the Delta [0] entered as, when retained
+    arrows: tuple = ()                         # attachment arrows retained as proposals
+    released: tuple = ()                       # attachments deliberately not retained
+    released_reason: str = ""
+    extracted: int = 0                         # corpus arrows — kept either way
+    note: str = ""
+
+    def as_record(self) -> dict[str, object]:
+        return {"mode": self.mode, "retained_claim": bool(self.claim),
+                "retained_arrows": len(self.arrows), "released": len(self.released),
+                "released_reason": self.released_reason, "extracted": self.extracted,
+                "note": self.note}
+
+
+def commit(pert: Perturbation, tape=None, mode: str = RELEASE,
+           source: str = "me") -> Retention:
+    """Apply the persistence flag. The perturbation itself is already done and is not re-run.
+
+    Retained material lands on the FAST tape at extraction tier, which is where it must land:
+    only `K` promotes to the slow side, and nothing here confers warrant. It then AGES —
+    see `engine/aging` — because retention without decay is the tape becoming a second corpus
+    by accretion, which is NELL at one remove and is what the memory kernel was the answer to.
+    """
+    from . import EngineError
+    from .correspondence import Correspondence
+    from .region import BEARS_ON
+
+    if mode not in MODES:
+        raise EngineError(f"mode must be one of {MODES}, not {mode!r}")
+
+    out = Retention(mode=mode, extracted=len(pert.extracted))
+    bias_only = [a for a in pert.attachment if a.kind == BEARS_ON]
+    out.released = tuple(bias_only)
+    out.released_reason = (
+        "`bears_on` is not a morphism of the base. It is an aboutness relation between a "
+        "boundary condition and a claim, and retaining one would put a fourth kind into the "
+        "corpus vocabulary. Released in both modes, by rule rather than by budget.")
+
+    if mode == RELEASE:
+        out.note = ("perturb-and-release: [0] and every arrow to it evaporated. The answer "
+                    "was conditioned by them and that is all they were for.")
+        return out
+
+    corresponds = [a for a in pert.attachment if a.kind != BEARS_ON]
+    if tape is not None and pert.typed_slot:
+        out.claim = _bias_delta(pert)
+        tape.propose(out.claim, source)
+
+    kept = []
+    for a in corresponds:
+        try:
+            kept.append(Correspondence(
+                src_chart=pert.typed_chart, src_slot=pert.typed_slot,
+                dst_chart=a.dst_chart, dst_slot=a.dst_slot, kind=a.kind,
+                tier=ATTACH_TIER, proposer="lm", prompt_hash="region",
+                evidence=(a.evidence,)))
+        except EngineError:
+            continue          # refused (intra-chart, self-pair) — dropped, never coerced
+    out.arrows = tuple(kept)
+    out.note = (
+        f"perturb-and-retain: [0] entered the fast tape as a claim at EXTRACTION tier and "
+        f"{len(kept)} attachment arrow(s) were retained as proposals, so it arrives "
+        f"pre-situated by the same relaxation that conditioned the answer. Nothing here is "
+        f"promoted — only K crosses to the slow side — and everything retained AGES.")
+    if not kept and bias_only:
+        out.note += (" NOTE: every attachment was `bears_on`, so the claim was retained with "
+                     "no arrows. It is on the tape and it is isolated: an object with no "
+                     "morphisms cannot propagate, which is what Q2 says and is a real state "
+                     "rather than a failure.")
+    return out
+
+
+def _bias_delta(pert: Perturbation):
+    """[0] as a Delta at EXTRACTION tier, at the address the region already used.
+
+    The SAME address the medium saw — not a re-extraction. Running the claim extractor here
+    would segment the text into spans and retain something other than the object that was in
+    the diagram, so the thing retained would not be the thing the relaxation was about.
+    """
+    from .types import Delta, Provenance, Warrant
+
+    return Delta(
+        slot=pert.typed_slot, chart=pert.typed_chart, type="assert", value="T",
+        confidence=0.5, warrant=Warrant(ATTACH_TIER),
+        provenance=Provenance(source="me", doc_id="typed", locator="perturb[0]"),
+        surface=pert.typed_nu, nu=pert.typed_nu)
+
+
 def relax_from(perturbation: Perturbation, text: str, snapshot: CorpusSnapshot,
                chart: str = "english") -> Relaxation:
     """Settle the corpus with the boundary condition applied at its attachment points.
