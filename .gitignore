@@ -17,9 +17,12 @@ venv/
 #                           Lean source and repo prose verbatim, which is corpus content
 #   corpus.snapshot         the settled corpus itself
 #   proposer.control.json / status.json   per-machine runtime state, not evidence
-# The ledger is visible where it is meant to be visible: on disk, via `proposerd.py status`,
-# and in the window at GET /proposer. Being readable at any time is not the same as being
-# published, and only the first was asked for.
+# The COMMITTABLE half is runs/proposer.ledger.jsonl, written by `proposerd.py checkpoint`:
+# the same record with every quoted span replaced by its sha256. `evidence` is the only
+# field carrying corpus text and it is explanatory — resume needs the directed pair and the
+# verdict, which are slot hashes. Leaving the whole journal out cost 737 answered pairs to a
+# container reclaim; that was a real loss and splitting the file is the fix, not a
+# relaxation of the privacy rule.
 runs/pool.jsonl
 runs/corpus.snapshot
 runs/proposer.journal.jsonl

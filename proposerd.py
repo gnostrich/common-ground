@@ -5,6 +5,7 @@
     python3 proposerd.py build-snapshot      # the window's read view over the whole corpus
     python3 proposerd.py run                 # the daemon: runs until stopped or a gate reddens
     python3 proposerd.py status              # totals, gates, last records — safe any time
+    python3 proposerd.py checkpoint          # write the REDACTED ledger, safe to commit
     python3 proposerd.py rate 20             # calls/hour, takes effect next batch
     python3 proposerd.py pause | resume | stop
     python3 proposerd.py cost-cap 5.0        # halt when provider-reported spend reaches this
@@ -273,6 +274,25 @@ def cmd_run(max_batches: int | None) -> None:
                       "totals": status.totals}, indent=2))
 
 
+#: The committable ledger: the journal with every quoted span replaced by its hash.
+LEDGER_PATH = "runs/proposer.ledger.jsonl"
+
+
+def cmd_checkpoint() -> None:
+    """Write the redacted ledger so the journal survives a container reclaim.
+
+    The full journal quotes the corpus and stays out of the repository. This is the same
+    record with the quotes hashed: enough to know what was asked and what was answered,
+    which is everything resume needs, and no corpus text at all.
+    """
+    journal = Journal(JOURNAL_PATH)
+    try:
+        counts = journal.export_redacted(LEDGER_PATH)
+        print(json.dumps({"ledger": LEDGER_PATH, **counts, **journal.totals()}, indent=2))
+    finally:
+        journal.close()
+
+
 def cmd_status() -> None:
     status = (json.loads(Path(STATUS_PATH).read_text(encoding="utf-8"))
               if Path(STATUS_PATH).exists() else {"note": "never run"})
@@ -311,6 +331,8 @@ def main(argv: list[str]) -> int:
         cmd_measure_cross_repo()
     elif command == "run":
         cmd_run(int(rest[0]) if rest else None)
+    elif command == "checkpoint":
+        cmd_checkpoint()
     elif command == "status":
         cmd_status()
     elif command == "contradictions":

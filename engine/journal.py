@@ -227,6 +227,45 @@ class Journal:
     def record_halt(self, reason: str, detail: object = None) -> dict:
         return self._write({"kind": HALT, "reason": reason, "detail": detail})
 
+    # --- the committable half -------------------------------------------------------
+
+    def export_redacted(self, path: str | Path) -> dict[str, int]:
+        """Write the journal WITHOUT the quoted corpus, so it can live in the repository.
+
+        The full journal cannot be committed and that is not a formality: its `evidence`
+        field is the proposer quoting Lean source and repo prose verbatim, which is the
+        operator's private corpus. But `evidence` is the only field that carries corpus text,
+        and it is *explanatory* — nothing in resume depends on it. What resume needs is which
+        directed pair was asked and what came back, and those are slot HASHES and a verdict.
+
+        So the quote is replaced by its content hash. The record stays complete and
+        verifiable — anyone holding the corpus can recompute the hash and confirm the quote —
+        while the repository holds no corpus text. This is the difference between a container
+        reclaim costing time and costing 737 answered pairs, which is what it cost once.
+        """
+        from .hashing import sha256_text
+
+        counts = {"records": 0, "redacted": 0}
+        out = Path(path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with out.open("w", encoding="utf-8") as fh:
+            for line in (self.path.read_text(encoding="utf-8").splitlines()
+                         if self.path.exists() else ()):
+                if not line.strip():
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                for field in ("evidence", "note", "error", "detail"):
+                    value = rec.get(field)
+                    if isinstance(value, str) and value:
+                        rec[field] = f"sha256:{sha256_text(value)[:16]}"
+                        counts["redacted"] += 1
+                fh.write(json.dumps(rec, sort_keys=True) + "\n")
+                counts["records"] += 1
+        return counts
+
     def close(self) -> None:
         try:
             self._fh.close()

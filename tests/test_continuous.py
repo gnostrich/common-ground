@@ -685,3 +685,88 @@ class AMalformedAnswerCannotKillTheDaemon(unittest.TestCase):
             self.assertIn("planted", halt["detail"])
         finally:
             h.close()
+
+
+class TheLedgerIsCommittableAndCarriesNoCorpus(unittest.TestCase):
+    """The journal quotes the corpus; the ledger is the half that may enter the repository.
+
+    Leaving the whole journal out of git cost 737 answered pairs to a container reclaim. The
+    fix is a split, not a relaxation: `evidence` is the only field carrying corpus text, and
+    resume needs the directed pair and the verdict, which are slot hashes.
+    """
+
+    QUOTE = "theorem cone_pos : 0 < cone.det := by simpa using h.le"
+
+    def _journal_with_a_quote(self, d):
+        j = Journal(d / "j.jsonl")
+        j.record_ask(src_chart=LN, src_slot="l1", dst_chart=EN, dst_slot="e1", type="assert",
+                     answer="same_claim", evidence=self.QUOTE, relation="declaration",
+                     proposer="lm", prompt_hash="p", tier="EXTRACTION")
+        j.record_ask(src_chart=LN, src_slot="l2", dst_chart=EN, dst_slot="e2", type="assert",
+                     answer="none", evidence="", relation="pool", proposer="lm",
+                     prompt_hash="p", tier="EXTRACTION")
+        j.record_call(candidates=2, ok=True, cost=0.001, error="")
+        return j
+
+    def test_no_quoted_span_survives_into_the_ledger(self):
+        d = Path(tempfile.mkdtemp())
+        try:
+            j = self._journal_with_a_quote(d)
+            counts = j.export_redacted(d / "ledger.jsonl")
+            body = (d / "ledger.jsonl").read_text(encoding="utf-8")
+            self.assertNotIn(self.QUOTE, body, "the corpus quote reached the committable file")
+            self.assertNotIn("cone_pos", body, "a fragment of the quote reached it")
+            self.assertIn("sha256:", body, "the quote must be replaced by its hash, not dropped")
+            self.assertEqual(counts["records"], 3)
+            j.close()
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_the_ledger_is_enough_to_resume(self):
+        """The whole point: a reclaim must cost time, not answers."""
+        d = Path(tempfile.mkdtemp())
+        try:
+            j = self._journal_with_a_quote(d)
+            j.export_redacted(d / "ledger.jsonl")
+            j.close()
+
+            revived = Journal(d / "ledger.jsonl")       # as if the journal itself were lost
+            self.assertTrue(revived.asked("l1", "e1"))
+            self.assertEqual(revived.answer_for("l2", "e2"), "none")
+            self.assertEqual(len(revived.arrows), 1)
+            self.assertEqual(revived.arrows[0].answer, "same_claim")
+            self.assertEqual(revived.totals()["calls"], 1)
+            self.assertAlmostEqual(revived.spend, 0.001)
+            revived.close()
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_the_hash_is_verifiable_by_someone_holding_the_corpus(self):
+        """Redacted is not the same as discarded: the quote is still attested."""
+        from engine.hashing import sha256_text
+
+        d = Path(tempfile.mkdtemp())
+        try:
+            j = self._journal_with_a_quote(d)
+            j.export_redacted(d / "ledger.jsonl")
+            j.close()
+            rows = [json.loads(l) for l in (d / "ledger.jsonl").read_text().splitlines() if l]
+            arrow = next(r for r in rows if r.get("answer") == "same_claim")
+            self.assertEqual(arrow["evidence"], f"sha256:{sha256_text(self.QUOTE)[:16]}")
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_a_free_text_field_added_later_is_redacted_too(self):
+        """PLANTED: `note`, `error` and `detail` also carry free text and must be covered."""
+        d = Path(tempfile.mkdtemp())
+        try:
+            j = Journal(d / "j.jsonl")
+            j.record_call(candidates=1, ok=False, error=f"no parsable answers; raw: {self.QUOTE}")
+            j.record_halt("crashed", f"traceback quoting {self.QUOTE}")
+            j.export_redacted(d / "ledger.jsonl")
+            body = (d / "ledger.jsonl").read_text(encoding="utf-8")
+            self.assertNotIn(self.QUOTE, body,
+                             "a quote reached the ledger through a field other than evidence")
+            j.close()
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
