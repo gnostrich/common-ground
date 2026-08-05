@@ -276,7 +276,7 @@ class ContinuousProposer:
                  proposer: str = "lm", prompt_hash: str = "continuous",
                  gate_every: int = 25, sleeper: Callable[[float], None] = time.sleep,
                  clock: Callable[[], float] = time.time,
-                 run_suite: bool = True):
+                 run_suite: bool = True, suite_once: bool = False):
         self.journal = journal
         self.transport = transport
         self.pool_path = Path(pool_path)
@@ -288,6 +288,14 @@ class ContinuousProposer:
         self.sleep = sleeper
         self.now = clock
         self.run_suite = run_suite
+        # In a deployed image the working tree is IMMUTABLE between deploys, so re-running
+        # 650 tests every `gate_every` batches measures the same unchanged input over and
+        # over. `suite_once` runs it at startup and then trusts that result — which is not a
+        # weakened gate but a recognition that the gate's input is constant. It must stay
+        # False anywhere a human can edit the tree under the running process, which is
+        # exactly where the torn-read halt came from.
+        self.suite_once = suite_once
+        self._suite_ran = False
 
         self.tape = FastTape()
         self.status = ProposerStatus()
@@ -532,7 +540,10 @@ class ContinuousProposer:
         if red:
             self._halt("static gate red", red)
             return False
+        if self.suite_once and self._suite_ran:
+            return True
         if self.run_suite:
+            self._suite_ran = True
             green, tail = suite_green()
             if not green:
                 # Re-run once before halting. The daemon reads the working tree while a

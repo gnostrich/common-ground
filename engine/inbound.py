@@ -13,11 +13,22 @@ not this. Here the accumulated structure determines what the LM actually receive
 The typed text is the boundary condition. The field supplies the content.
 
 **Landing is EXACT, never similar.** A span lands on a slot iff `hash(nu(surface), type)`
-matches one already in the corpus — gate 1, the same addressing everything else uses. There is
-no nearest-neighbour search, no token overlap, no threshold: this build deleted a similarity
-fiber relation and is not going to reintroduce one in the read path. The honest consequence is
-that novel phrasing lands nowhere, and when that happens the compiler SAYS so rather than
-quietly degrading into a plain prompt.
+matches one already in the corpus — gate 1, the same addressing everything else uses. No
+similarity score can make two addresses one; the similarity FIBER relation this build deleted
+stays deleted, and nothing in the read path may reintroduce it.
+
+**Retrieval is a separate thing, and the separation is the safety property.** Addressing asks
+*is this the same claim*, and the answer is a hash. Retrieval (`engine/retrieval.py`) asks
+*which existing claims should be read*, and asserts nothing — no address created, no
+correspondence declared, nothing entered, nothing promoted. Each retrieved claim keeps its own
+exact address, warrant tier and contest status; retrieval only chooses the order they are read
+in. So the compiled field carries two labels that must never blur: LANDED means the typed text
+IS that claim; RETRIEVED means only that it shares words with it. `conditioned` keeps the
+strong meaning; `grounded` carries the weak one.
+
+An earlier version of this docstring said "no token overlap", which was true when written and
+false the moment retrieval landed. It is corrected here rather than left to be discovered,
+because a comment that describes a property the code no longer has is worse than no comment.
 
 **Status conditions as much as content.** Whether the region is settled, provisional, contested
 or a GAP is compiled in, so the answer is shaped by the epistemic state and not only by the
@@ -191,7 +202,8 @@ def _retrieved_block(found: Sequence, snapshot: CorpusSnapshot) -> list[str]:
     return lines
 
 
-def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> CompiledInput:
+def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
+                  index=None) -> CompiledInput:
     """Compile the LM's input FROM THE RELAXED STATE, not from the raw text.
 
     Every line of the result traces to a slot or an arrow that exists in the field. The typed
@@ -206,7 +218,8 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english") -
         return CompiledInput(typed=text, compiled=f"{status}\n\nBOUNDARY CONDITION:\n{text}",
                              landings=landings, field_status=status, conditioned=False)
 
-    found = retrieve(text, snapshot, chart, exclude=frozenset(l.slot for l in hits))
+    found = retrieve(text, snapshot, chart, exclude=frozenset(l.slot for l in hits),
+                     index=index)
 
     if not hits:
         status = (f"NOTHING ADDRESSED — none of the {len(landings)} span(s) address to a claim "

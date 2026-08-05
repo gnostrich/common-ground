@@ -155,6 +155,60 @@ class RetrievalSurfacesTheWholeAtlas(unittest.TestCase):
         self.assertEqual(len({r.nu for r in got}), len(got))
 
 
+class AMatchIsAWordNotASubstring(unittest.TestCase):
+    """The bug that shipped, and the reason it was dangerous: it looked right.
+
+    `retrieve` first matched with `term in surface`. "most" matched *almost*-complex-structure;
+    "math" matched *math*lib, for*mat* and `math.Abs`. Every query with a short common term
+    pulled back a page of claims that did not contain it — and because the page highlighted
+    the matched terms, the false hits read as real ones.
+    """
+
+    def test_planted_most_does_not_match_almost(self):
+        snap = _snap([("english", "almost complex structure and nijenhuis machinery"),
+                      ("english", "overstatement is the most common defect")])
+        got = retrieve("most common", snap)
+        self.assertEqual(len(got), 1)
+        self.assertIn("overstatement", got[0].nu)
+
+    def test_planted_math_does_not_match_mathlib_or_format(self):
+        snap = _snap([("english", "mathlib provides the formatting"),
+                      ("english", "the math is sound")])
+        got = retrieve("math topics", snap)
+        self.assertEqual([r.nu.endswith("the math is sound") for r in got], [True])
+
+    def test_a_word_inside_an_identifier_still_matches(self):
+        """Word boundaries must not cost reach: `order_book` and `OrderBook` are still hit,
+        because the INDEX tokenizes surfaces the same way the query is tokenized."""
+        snap = _snap([("python", "def order_book_depth(): pass"),
+                      ("go", "func OrderBookDepth() int")])
+        got = retrieve("order book", snap)
+        self.assertEqual(len(got), 2)
+
+
+class TheIndexIsBuiltOnceAndInvalidatedHonestly(unittest.TestCase):
+    def test_an_index_from_a_different_corpus_is_refused(self):
+        """PLANTED: a stale index would silently retrieve from a corpus that is gone."""
+        from engine.retrieval import Index
+
+        old = _snap([("english", "the funding rate curve is convex")])
+        new = _snap([("english", "the funding rate curve is convex"),
+                     ("english", "positivity fails at the third certificate")])
+        idx = Index.build(old)
+        self.assertTrue(idx.stale_for(new))
+        got = retrieve("positivity certificate", new, index=idx)
+        self.assertTrue(got, "a stale index must be rebuilt, not used")
+
+    def test_a_matching_index_is_reused_and_gives_the_same_answer(self):
+        from engine.retrieval import Index
+
+        snap = _snap([("english", "the funding rate curve is convex near the boundary")])
+        idx = Index.build(snap)
+        self.assertFalse(idx.stale_for(snap))
+        self.assertEqual([r.slot for r in retrieve("funding curve boundary", snap, index=idx)],
+                         [r.slot for r in retrieve("funding curve boundary", snap)])
+
+
 class QueryTermsAreDiscriminating(unittest.TestCase):
     def test_stopwords_and_short_tokens_are_dropped(self):
         self.assertEqual(terms("what is the a of in"), [])

@@ -103,8 +103,45 @@ class Retrieved:
                                      "declared correspondence"}
 
 
+@dataclass(slots=True)
+class Index:
+    """An inverted index over the corpus's surfaces: term -> the slots containing it.
+
+    Built because the first version of `retrieve` matched with `term in surface`, and a
+    substring is not a word. "most" matched *almost*-complex-structure; "math" matched
+    *math*lib, for*mat* and `math.Abs`; every query with a short common term pulled back a
+    page of things that did not contain it. The results looked plausible, which is the worst
+    property a retrieval bug can have — the words were highlighted, so the matches read as
+    real.
+
+    Tokenizing 69,446 surfaces on every keystroke is not affordable, and matching each term
+    with a word-boundary regex over the whole corpus is worse. So it is done once and kept:
+    the index is a pure function of the snapshot, and the caller holds it beside the snapshot
+    it was built from.
+    """
+
+    postings: dict[str, set[str]]
+    slots: int
+
+    @staticmethod
+    def build(snapshot: CorpusSnapshot) -> "Index":
+        postings: dict[str, set[str]] = {}
+        for sid, rec in snapshot.slots.items():
+            for token in set(terms(rec.nu)):
+                postings.setdefault(token, set()).add(sid)
+        return Index(postings=postings, slots=len(snapshot.slots))
+
+    def matches(self, term: str) -> set[str]:
+        return self.postings.get(term, set())
+
+    def stale_for(self, snapshot: CorpusSnapshot) -> bool:
+        """A cheap tripwire: an index built for a different corpus must not be reused."""
+        return self.slots != len(snapshot.slots)
+
+
 def retrieve(text: str, snapshot: CorpusSnapshot, chart: str = "",
-             limit: int = DEFAULT_LIMIT, exclude: frozenset[str] = frozenset()) -> list[Retrieved]:
+             limit: int = DEFAULT_LIMIT, exclude: frozenset[str] = frozenset(),
+             index: "Index | None" = None) -> list[Retrieved]:
     """Claims whose surface shares discriminating terms with the query.
 
     Scoring is deliberately legible rather than clever: the fraction of query terms present,
@@ -119,13 +156,23 @@ def retrieve(text: str, snapshot: CorpusSnapshot, chart: str = "",
     query = terms(text)
     if not query or snapshot.empty:
         return []
+    if index is None or index.stale_for(snapshot):
+        index = Index.build(snapshot)
     wanted = set(query)
+
+    # Only slots that contain at least one query term as a WORD. The corpus is 69k slots and
+    # a query touches a few hundred of them; scanning all of them was both slower and wrong.
+    candidates: set[str] = set()
+    for term in wanted:
+        candidates |= index.matches(term)
+    candidates -= exclude
+
     scored: list[Retrieved] = []
-    for sid, rec in snapshot.slots.items():
-        if sid in exclude:
+    for sid in candidates:
+        rec = snapshot.slots.get(sid)
+        if rec is None:
             continue
-        surface = rec.nu.lower()
-        matched = tuple(t for t in query if t in surface)
+        matched = tuple(t for t in query if sid in index.matches(t))
         if not matched:
             continue
         coverage = len(matched) / len(wanted)

@@ -267,6 +267,17 @@ def serve(host: str | None = None, port: int | None = None) -> None:
             "COMMON_GROUND_TOKEN to the literal string 'none'.")
     have = "yes" if os.environ.get("OPENROUTER_API_KEY") else "no — LM source omitted, engine runs live"
     print(f"common-ground window on http://{host}:{port}  (OPENROUTER_API_KEY set: {have})")
+
+    # A deploy carries its state in the image and reads it from a volume; seeding is
+    # copy-if-absent, so a redeploy never rolls the live journal back to upload time.
+    from .boot import seed_state, start_proposer_if_asked
+
+    if deploy:
+        print(f"[boot] state: {seed_state()}", flush=True)
+    if start_proposer_if_asked() is not None:
+        print("[boot] continuous proposer running in-process; pause/stop/rate/cap in the "
+              "window control it exactly as they control a local one.", flush=True)
+
     HTTPServer((host, port), Handler).serve_forever()
 
 
