@@ -240,3 +240,65 @@ class TheBuildNamesItsMATERIALNotOnlyItsCode(unittest.TestCase):
         import ui.current as cur
         src = inspect.getsource(cur._snapshot_stamp)
         self.assertIn("getmtime", src)
+
+
+class EveryRecordTheServerReturnsMustSERIALIZE(unittest.TestCase):
+    """THE BOUNDARY CONTROL. A record that cannot cross the wire is a 500 on every request.
+
+    `group_provenance` read `getattr(a, "id", "")` off a `Correspondence`, where `id` is a
+    METHOD. The bound method is truthy, so it sailed through every branch, landed in the
+    record, and `json.dumps` refused it at the server boundary — /ask returned
+    `TypeError: Object of type method is not JSON serializable` on the deployed build while
+    1,059 tests were green.
+
+    The control that existed used a stub with no `id` attribute at all, so it took the
+    fallback branch and never touched a real object. That is the shape of the miss: a fixture
+    simpler than the thing it stands for. So this control asserts the property that actually
+    matters at the boundary — the record serialises — rather than any one field's type, and
+    plants a bound method to prove it fires.
+    """
+
+    def test_a_compiled_record_serialises(self):
+        import json
+
+        from engine.inbound import compile_input
+        from tests.test_relax import _corpus  # the same fixtures the relax suite builds
+        got = compile_input("the cone is positive under composition",
+                            _corpus([("english", "the cone is positive under composition")]),
+                            "english")
+        json.dumps(got.as_record())          # raises if any field cannot cross the wire
+
+    def test_a_planted_bound_method_in_the_record_is_caught(self):
+        import json
+
+        class HasMethodId:
+            def id(self):
+                return "x"
+        with self.assertRaises(TypeError):
+            json.dumps({"arrows": [getattr(HasMethodId(), "id", "")]})
+
+    def test_group_provenance_resolves_a_callable_id(self):
+        # The real Correspondence exposes `id` as a method; the stub in the earlier control
+        # did not. This asserts the resolution, not the fallback.
+        from engine.inbound import _fiber_arrows
+
+        class A:
+            kind, src_slot, dst_slot = "same_claim", "u", "v"
+
+            def id(self):
+                return "arrow-1"
+
+        class Snap:
+            arrows = [A()]
+        self.assertEqual(["arrow-1"], _fiber_arrows(Snap(), {"u", "v"}))
+
+    def test_an_arrow_with_no_id_falls_back_to_its_endpoints(self):
+        from engine.inbound import _fiber_arrows
+
+        class A:
+            kind, src_slot, dst_slot = "same_claim", "uuuuuuuuuu", "vvvvvvvvvv"
+
+        class Snap:
+            arrows = [A()]
+        self.assertEqual(["uuuuuuuu~vvvvvvvv"], _fiber_arrows(Snap(), {"uuuuuuuuuu",
+                                                                      "vvvvvvvvvv"}))

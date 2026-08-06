@@ -346,7 +346,14 @@ def _fiber_arrows(snapshot, members: set) -> list[str]:
     out = []
     for a in (getattr(snapshot, "arrows", None) or []):
         if a.kind == "same_claim" and a.src_slot in members and a.dst_slot in members:
-            out.append(getattr(a, "id", "") or f"{a.src_slot[:8]}~{a.dst_slot[:8]}")
+            # `Correspondence.id` is a METHOD, not an attribute. `getattr(a, "id", "")`
+            # returned the bound method — truthy, so it sailed through — and the record then
+            # failed JSON serialisation at the server boundary, 500-ing every /ask on the
+            # deployed build. The control that existed used a stub with no `id` at all, so it
+            # took the fallback branch and never touched a real Correspondence.
+            ident = getattr(a, "id", None)
+            ident = ident() if callable(ident) else ident
+            out.append(str(ident) if ident else f"{a.src_slot[:8]}~{a.dst_slot[:8]}")
     return out
 
 
