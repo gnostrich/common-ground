@@ -14,6 +14,7 @@ Run:  OPENROUTER_API_KEY=sk-or-... python -m ui.server   (open http://127.0.0.1:
 from __future__ import annotations
 
 import json
+import time
 import os
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -213,19 +214,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, json.dumps(_proposer_ledger()))
             elif path == "/ask":
                 question = str(b.get("question", ""))
-                # STREAMED PHASES. 76-94% of a perturbation is the one attachment call, so a
-                # blank wait of half a minute is indistinguishable from a wedge. Progress
-                # lines go out as stages are ENTERED — the walk's rule, on the request path.
-                self.send_response(200)
-                self.send_header("Content-Type", "application/x-ndjson")
-                self.send_header("Cache-Control", "no-cache")
-                self.end_headers()
+                # PHASES ARE RECORDED, NOT STREAMED — and that is a retreat, recorded as one.
+                # Streaming NDJSON worked under curl and HUNG THE BROWSER: the handler speaks
+                # HTTP/1.0 with no Content-Length, so the response is close-delimited, and
+                # behind a keep-alive proxy `fetch().body.getReader()` never sees `done`. The
+                # operator waited five minutes on a request that completed in twenty-four
+                # seconds. A progress channel that can hang the thing it reports on is worse
+                # than no progress channel, so this is buffered again until chunked framing is
+                # done properly and verified in a browser rather than in curl.
+                phases: list[dict] = []
 
                 def _phase(name: str) -> None:
-                    self.wfile.write(
-                        (json.dumps({"stage": name}) + "\n").encode("utf-8"))
-                    self.wfile.flush()
+                    phases.append({"stage": name, "at": round(time.time() - _t_req, 3)})
 
+                _t_req = time.time()
                 compiled = ask_the_corpus(question, str(b.get("chart", "english")), key=key,
                                           on_stage=_phase)
                 # No branch on whether anything "landed". The compiled input already IS
@@ -243,11 +245,10 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     reply = ("(no key — the LM is not answering. What it would have received "
                              "is below, compiled from the field.)")
-                self.wfile.write((json.dumps({"result": {
+                self._send(200, json.dumps({
                     "answer": reply, "grounded_on": grounded_on,
                     "lm_available": lm_available(key), "compiled": compiled,
-                    "corpus_header": corpus_header()}}) + "\n").encode("utf-8"))
-                self.wfile.flush()
+                    "phases": phases, "corpus_header": corpus_header()}))
             else:
                 self._send(404, json.dumps({"error": "not found"}))
         except Exception as exc:   # keep the window alive; surface the error in the panel
