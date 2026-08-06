@@ -241,7 +241,7 @@ class TheDECOMPOSITIONIsThePRESENTATION(unittest.TestCase):
 
     def test_members_of_one_fiber_land_in_ONE_group(self):
         body = self._block()
-        self.assertEqual(1, body.count("== ONE PROPOSITION"))
+        self.assertEqual(1, body.count("ONE PROPOSITION carried across"))
         self.assertIn("2 claim(s)", body)
 
     def test_the_group_names_the_charts_it_spans(self):
@@ -314,3 +314,201 @@ class TheLabelIsTheIrreducibleResidue(unittest.TestCase):
         import engine.medium as m
         m._LOADED, m._LABELS = True, {}
         self.assertEqual("", m.fiber_label("nothing-cached", "m"))
+
+
+class GroupsAreFIBERSNotClusters(unittest.TestCase):
+    """CONTROL 1. A grouping that produced the same groups by similarity would be a different
+    mechanism wearing this one's output — identical on a demo, banned underneath."""
+
+    def _snap(self):
+        return TheDECOMPOSITIONIsThePRESENTATION._Snap()
+
+    def test_group_membership_is_byte_identical_to_the_fiber_registry(self):
+        from engine.inbound import _fiber_index
+        snap = self._snap()
+        idx = _fiber_index(snap)
+        for fib in snap.fibers:
+            for slot in fib:
+                self.assertEqual(tuple(fib), idx[slot])
+
+    def test_a_slot_in_no_fiber_maps_to_nothing_rather_than_being_placed(self):
+        from engine.inbound import _fiber_index
+        self.assertNotIn("x", _fiber_index(self._snap()))
+
+    def test_the_compile_module_holds_no_similarity_machinery(self):
+        """AST NAMES AND IMPORTS, never the source prose.
+
+        A substring scan over the file convicts the module's own docstring for SAYING it does
+        not cluster — the use-versus-mention trap, which has now caught three controls in this
+        repository. What is checked is what the code REFERS TO.
+        """
+        import ast
+        from pathlib import Path
+        tree = ast.parse((Path(__file__).resolve().parent.parent / "engine"
+                          / "inbound.py").read_text())
+        names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+        names |= {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+        names |= {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef,
+                                                                   ast.AsyncFunctionDef))}
+        mods = set()
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                mods |= {a.name.split(".")[0] for a in n.names}
+            elif isinstance(n, ast.ImportFrom) and n.module:
+                mods.add(n.module.split(".")[0])
+        for banned in ("difflib", "sklearn", "numpy", "scipy"):
+            self.assertNotIn(banned, mods, f"similarity machinery imported: {banned!r}")
+        for banned in ("SequenceMatcher", "jaccard", "cosine", "embedding", "similarity",
+                       "ratio", "distance"):
+            self.assertNotIn(banned, names, f"similarity machinery referenced: {banned!r}")
+
+    def test_the_compile_module_is_swept_as_a_referee(self):
+        from engine.referee_sweep import REFEREES, sweep_module, ENGINE
+        self.assertIn("inbound.py", REFEREES)
+        self.assertEqual([], sweep_module(ENGINE / "inbound.py"))
+
+
+class HeadersAreREADNotComputed(unittest.TestCase):
+    """CONTROL 2. A generated header would be medium-written prose in the operator's voice,
+    sitting above the operator's own verbatim claims — where it is least visible."""
+
+    def _block(self):
+        return TheDECOMPOSITIONIsThePRESENTATION()._block()
+
+    def test_the_header_names_the_fiber_by_its_id(self):
+        self.assertIn("== FIBER ", self._block())
+
+    def test_the_header_states_counts_and_charts_and_nothing_else(self):
+        body = self._block()
+        self.assertIn("ONE PROPOSITION carried across 2 claim(s) [english+lean]", body)
+
+    def test_no_summarisation_call_exists_on_the_compile_path(self):
+        """AST again. The header may be built from counts; it may not be WRITTEN by anything."""
+        import ast
+        from pathlib import Path
+        tree = ast.parse((Path(__file__).resolve().parent.parent / "engine"
+                          / "inbound.py").read_text())
+        names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+        names |= {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+        names |= {f.name for f in ast.walk(tree) if isinstance(f, ast.FunctionDef)}
+        for banned in ("summarise", "summarize", "describe_group", "headline",
+                       "SUMMARY_SYSTEM", "GROUP_SYSTEM"):
+            self.assertNotIn(banned, names, f"a generated header is back: {banned!r}")
+        # And the ONE transport the compile may use is the region call, before settlement.
+        self.assertNotIn("label_fiber", names,
+                         "the compile must read a CACHED label, never request one")
+
+    def test_group_headers_are_not_citable(self):
+        from engine.inbound import _relaxed_block
+        cls = TheDECOMPOSITIONIsThePRESENTATION
+        rel = cls._Rel([cls._Moved("a", "english", "the term itself"),
+                        cls._Moved("b", "lean", "the term in lean")])
+        cites = []
+        _relaxed_block(rel, cls._Snap(), cites)
+        self.assertEqual({"moved"}, {c.kind for c in cites})
+        self.assertEqual(2, len(cites), "one citable per MEMBER, none for the header")
+
+
+class OrderCarriesNoSignal(unittest.TestCase):
+    """CONTROL 3. Position is attention-salient and must not encode an undeclared ranking."""
+
+    def _lines(self, salt):
+        from engine.inbound import _relaxed_block
+        cls = TheDECOMPOSITIONIsThePRESENTATION
+        moved = [cls._Moved(f"s{i}", "english", f"claim {i}") for i in range(6)]
+        return _relaxed_block(cls._Rel(moved), cls._Snap(), [], salt)[0]
+
+    def test_two_sheets_of_the_same_region_differ_in_order(self):
+        a, b = self._lines("saltone"), self._lines("salttwo")
+        self.assertNotEqual(a, b, "the order is systematic — position is ranking something")
+
+    def test_the_content_is_identical_across_orders(self):
+        a, b = self._lines("saltone"), self._lines("salttwo")
+        self.assertEqual(sorted(a), sorted(b))
+
+    def test_the_same_salt_reproduces_the_same_sheet(self):
+        # An unrecorded random order would make a sheet unreproducible; the salt is on the
+        # record for exactly this.
+        self.assertEqual(self._lines("fixed"), self._lines("fixed"))
+
+    def test_the_salt_travels_on_the_compiled_record(self):
+        import inspect
+
+        from engine.inbound import CompiledInput
+        self.assertIn("order_salt", inspect.getsource(CompiledInput))
+
+    def test_order_is_not_alphabetical_or_by_size(self):
+        from engine.inbound import _sheet_order
+        keys = [f"s{i}" for i in range(12)]
+        got = _sheet_order(keys, "some-salt")
+        self.assertNotEqual(keys, got)
+        self.assertNotEqual(sorted(keys), got)
+
+
+class LabelsNeverSpeakContent(unittest.TestCase):
+    """CONTROL 4. The label is garnish; the grouping is the mechanism."""
+
+    def test_a_label_is_never_citable(self):
+        from engine.inbound import _relaxed_block
+        import engine.medium as m
+        cls = TheDECOMPOSITIONIsThePRESENTATION
+        m._LOADED, m._LABELS = True, {"a": Gloss(term=_term(), label="a concept",
+                                                 model="", status=VALIDATED)}
+        cites = []
+        _relaxed_block(cls._Rel([cls._Moved("a", "english", "x")]), cls._Snap(), cites)
+        self.assertTrue(all(c.kind != "gloss" for c in cites))
+
+    def test_an_absent_label_changes_nothing_but_the_missing_line(self):
+        import engine.medium as m
+        cls = TheDECOMPOSITIONIsThePRESENTATION
+        m._LOADED, m._LABELS = True, {}
+        without = cls()._block()
+        m._LABELS = {"a": Gloss(term=_term(), label="a concept", model="", status=VALIDATED)}
+        with_ = cls()._block()
+        m._LOADED, m._LABELS = True, {}
+        self.assertEqual(len(without.splitlines()), len(with_.splitlines()))
+
+    def test_a_label_in_content_settlement_or_K_is_RED(self):
+        self.assertEqual(2, len(firewall_violations(settled_charts=[MEDIUM_CHART],
+                                                    k_candidates=[{"chart": MEDIUM_CHART}])))
+
+
+class TheEnergyPathIsUntouched(unittest.TestCase):
+    """CONTROL 5. Grouping is a view over results, never an input to them."""
+
+    def test_grouping_does_not_alter_the_moved_records(self):
+        from engine.inbound import _relaxed_block
+        cls = TheDECOMPOSITIONIsThePRESENTATION
+        moved = [cls._Moved("a", "english", "x"), cls._Moved("b", "lean", "y")]
+        before = [(m.slot, m.shift, m.hops) for m in moved]
+        _relaxed_block(cls._Rel(moved), cls._Snap(), [], "s1")
+        _relaxed_block(cls._Rel(moved), cls._Snap(), [], "s2")
+        self.assertEqual(before, [(m.slot, m.shift, m.hops) for m in moved])
+
+    def test_the_facts_are_identical_whatever_the_order(self):
+        from engine.inbound import _relaxed_block
+        cls = TheDECOMPOSITIONIsThePRESENTATION
+        moved = [cls._Moved(f"s{i}", "english", f"c{i}") for i in range(5)]
+        f1 = _relaxed_block(cls._Rel(moved), cls._Snap(), [], "a")[1]
+        f2 = _relaxed_block(cls._Rel(moved), cls._Snap(), [], "b")[1]
+        self.assertEqual(sorted(map(str, f1)), sorted(map(str, f2)))
+
+
+class EveryGroupProducesItsArrows(unittest.TestCase):
+    """CONTROL 7. A group that cannot produce its arrows is a group nobody can audit."""
+
+    def test_a_fiber_group_lists_the_arrows_that_constitute_it(self):
+        from engine.inbound import group_provenance
+        cls = TheDECOMPOSITIONIsThePRESENTATION
+        rel = cls._Rel([cls._Moved("a", "english", "x"), cls._Moved("b", "lean", "y")])
+        prov = group_provenance(rel, cls._Snap())
+        self.assertEqual(1, len(prov))
+        self.assertFalse(prov[0]["singleton"])
+        self.assertTrue(prov[0]["arrows"], "a fiber group produced no constituting arrow")
+
+    def test_a_singleton_says_it_is_one_rather_than_producing_no_arrows_silently(self):
+        from engine.inbound import group_provenance
+        cls = TheDECOMPOSITIONIsThePRESENTATION
+        prov = group_provenance(cls._Rel([cls._Moved("z", "english", "x")]), cls._Snap())
+        self.assertTrue(prov[0]["singleton"])
+        self.assertEqual([], prov[0]["arrows"])

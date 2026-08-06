@@ -136,6 +136,10 @@ class CompiledInput:
     #: Why the structural layer was or was not compiled. Both branches are stated, so a reader
     #: never has to infer from an absent block that the question was not structural.
     signature: object | None = None
+    #: The per-sheet permutation salt. Recorded so a shuffled sheet is still reproducible.
+    order_salt: str = ""
+    #: Per group: the arrow ids that constitute the fiber. Auditable back to the journal.
+    groups: list = field(default_factory=list)
 
     @property
     def reached(self) -> int:
@@ -165,6 +169,7 @@ class CompiledInput:
             "stages": dict(self.stages),
             "citations": [c.as_record() for c in self.citations],
             "signature": self.signature.as_record() if self.signature else None,
+            "order_salt": self.order_salt, "groups": list(self.groups),
         }
 
 
@@ -320,12 +325,28 @@ def _no_attachment(pert) -> str:
 
 
 def _fiber_index(snapshot) -> dict:
-    """slot -> the fiber it belongs to. Built once per compile, read off the snapshot."""
+    """slot -> the fiber it belongs to. READ off the fiber registry, computed from nothing.
+
+    This is the whole grouping rule and it is one dictionary lookup. Groups are `same_claim`
+    equivalence classes exactly as the journal declared them; there is no clustering step, no
+    distance, and no comparison of claim text anywhere on this path. A grouping that produced
+    the same groups on a fixture by any other means would be a different mechanism wearing
+    this one's output, which is why `engine/referee_sweep` now sweeps this module too.
+    """
     out: dict[str, tuple] = {}
     for fib in (getattr(snapshot, "fibers", None) or []):
         members = tuple(fib)
         for slot in members:
             out[slot] = members
+    return out
+
+
+def _fiber_arrows(snapshot, members: set) -> list[str]:
+    """The arrow ids that CONSTITUTE this fiber, so a group is auditable back to the journal."""
+    out = []
+    for a in (getattr(snapshot, "arrows", None) or []):
+        if a.kind == "same_claim" and a.src_slot in members and a.dst_slot in members:
+            out.append(getattr(a, "id", "") or f"{a.src_slot[:8]}~{a.dst_slot[:8]}")
     return out
 
 
@@ -349,8 +370,25 @@ def _links_for(snapshot, slot: str, inside: set) -> list[str]:
     return out[:4]
 
 
+def _sheet_order(keys: list, salt: str) -> list:
+    """THE SHUFFLE LAW, EXTENDED TO GROUPS. Position is attention-salient; it may not rank.
+
+    A group list ordered by size, recency or chart would put an undeclared ranking in front of
+    the reader in the one channel nobody reads as a claim. So order is permuted per SHEET —
+    two compiles of the same region come out in different orders with identical content.
+
+    The salt is RECORDED on the compiled input, which is what keeps this replayable. A
+    content-derived permutation (what `engine/region._shuffle` uses) is stable for a given
+    region and therefore cannot vary per sheet; an unrecorded random one would make a sheet
+    unreproducible. A recorded salt is both.
+    """
+    from .hashing import sha256_text
+
+    return sorted(keys, key=lambda k: sha256_text(salt + str(k)))
+
+
 def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
-                   cites: list | None = None) -> tuple[list[str], list[dict]]:
+                   cites: list | None = None, salt: str = "") -> tuple[list[str], list[dict]]:
     """The moved region, GROUPED BY FIBER, each row carrying the path the bias reached it by.
 
     THE FLAT LIST WAS THE DEFECT. A numbered list of claims presents a corpus as an
@@ -361,10 +399,15 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
     that fiber say what the proposition refines, instances and bears on. That structure has
     been in the snapshot the whole time and was flattened away on the way into the prompt.
 
-    So a group is the presentation of a span: the shared term at the head, its members
-    beneath with their charts, and the declared links out. No glossary is stored to achieve
-    this and no model is asked for it — it is the live structure, formatted honestly. A claim
-    in no fiber is its own group of one, stated as such rather than quietly mixed in.
+    THIS IS A VIEW AND HAPPENS AFTER SETTLEMENT. Every number here — which slots moved, how
+    far, over which arrows — was computed before this function was called, and a control
+    asserts a grouped compile and a flat one produce byte-identical movers. A view that
+    changed what moved would be the presentation leaking into the physics.
+
+    THE HEADER IS READ, NOT COMPUTED. It names the fiber by its id and states counts. There is
+    no summarisation step and no call: a generated group header would be medium-written prose
+    in the operator's voice, sitting above the operator's own verbatim claims, which is the
+    one place a confabulation would be least visible.
     """
     from .medium import fiber_label
 
@@ -377,7 +420,10 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
         "across several charts, followed by the declared arrows leaving it — what it refines, "
         "what it instances, what it bears on. The group is the unit to relate to; its members "
         "are the same thing written differently, and attaching to all of them is attaching "
-        "once, not several times.",
+        "once, not several times. GROUP HEADERS ARE NOT CITABLE: they are display labels, not "
+        "claims. Cite the numbered members.",
+        "ORDER CARRIES NO SIGNAL. Groups and members are permuted per sheet, so position "
+        "encodes nothing about size, recency or importance.",
     ]
     facts: list[dict] = []
     index = _fiber_index(snapshot)
@@ -385,16 +431,21 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
     for m in rel.moved:
         groups.setdefault(index.get(m.slot, (m.slot,)), []).append(m)
 
-    for members, moved in groups.items():
+    for members in _sheet_order(list(groups), salt):
+        moved = _sheet_order(groups[members], salt)
         inside = set(members)
         charts = sorted({m.chart for m in moved})
-        head = ("ONE PROPOSITION carried across " if len(members) > 1
-                else "A CLAIM in no declared fiber — its own group of one; ")
         label = fiber_label(members[0])
         lines.append("")
-        lines.append(f"== {head}{len(members)} claim(s) [{'+'.join(charts)}], "
-                     f"{len(moved)} of which moved"
-                     + (f" — the medium reads this as: {label}" if label else "") + " ==")
+        if len(members) > 1:
+            head = (f"== FIBER {members[0][:12]} — ONE PROPOSITION carried across "
+                    f"{len(members)} claim(s) [{'+'.join(charts)}], {len(moved)} of which "
+                    f"moved")
+        else:
+            head = (f"== A CLAIM in no declared fiber — its own group of one; "
+                    f"{len(members)} claim(s) [{'+'.join(charts)}], {len(moved)} of which "
+                    f"moved")
+        lines.append(head + (f" — the medium reads this as: {label}" if label else "") + " ==")
         for m in moved:
             n = len(cites) + 1 if cites is not None else 0
             if cites is not None:
@@ -414,7 +465,7 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
         for slot in members:
             links.extend(_links_for(snapshot, slot, inside))
         if links:
-            lines.append(f"   WHAT THIS PROPOSITION IS LINKED TO, by declared arrows:")
+            lines.append("   WHAT THIS PROPOSITION IS LINKED TO, by declared arrows:")
             lines.extend(links[:6])
 
     if rel.moved_dropped:
@@ -425,6 +476,25 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
         lines.append(f"({rel.blocks_skipped} block(s) exceeded the settling cap and were NOT "
                      f"relaxed. Anything they hold is unmeasured here, not absent.)")
     return lines, facts
+
+
+def group_provenance(rel, snapshot) -> list[dict]:
+    """Per group: the arrow ids that constitute the fiber, for the collapsed scope.
+
+    A group that cannot produce its arrows is a group nobody can audit back to the journal
+    entries — proposer, model served, era tags — that formed it. Every group answers.
+    """
+    index = _fiber_index(snapshot)
+    seen: dict[tuple, list] = {}
+    for m in (getattr(rel, "moved", None) or []):
+        seen.setdefault(index.get(m.slot, (m.slot,)), []).append(m.slot)
+    out = []
+    for members, moved in seen.items():
+        out.append({"fiber_id": members[0][:16], "members": len(members),
+                    "moved": len(moved),
+                    "arrows": _fiber_arrows(snapshot, set(members)),
+                    "singleton": len(members) == 1})
+    return out
 
 
 def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
@@ -458,8 +528,13 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
             except Exception:
                 pass                    # a progress channel must never break the answer
 
+    import secrets
+
     stages: dict[str, float] = {}
     cites: list[Citable] = []
+    # THE ORDER SALT, recorded. Groups are permuted per sheet so position ranks nothing, and
+    # the salt travels on the record so the sheet stays reproducible from it.
+    salt = secrets.token_hex(8)
     _t0 = _time.time()
     _phase("addressing")
     landings = land(text, snapshot, chart)
@@ -512,7 +587,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         lines.extend(_region_block(att, cites).splitlines())
         lines.append("")
 
-    moved_lines, facts = _relaxed_block(rel, snapshot, cites)
+    moved_lines, facts = _relaxed_block(rel, snapshot, cites, salt)
     lines.extend(moved_lines)
     lines.append("")
 
@@ -550,6 +625,8 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
                         attachment=att, citations=cites)
     out.stages = stages
     out.signature = out_signature
+    out.order_salt = salt
+    out.groups = group_provenance(rel, snapshot)
     return out
 
 

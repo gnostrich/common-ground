@@ -78,6 +78,9 @@ REFEREES = {
     "structure_trace.py": "decides when a question is about shape rather than displacement",
     "export_sheet.py": "renders the portable context sheet",
     "medium.py": "decides which glosses survive the behavioural gate",
+    "inbound.py": "GROUPS the compiled sheet — groups must be fibers, never clusters. A "
+                  "grouping that produced the same groups by similarity would be a different "
+                  "mechanism wearing this one's output.",
 }
 
 #: Exemptions. Each carries the reason it is a declared grammar rather than a resemblance.
