@@ -82,6 +82,43 @@ def corpus_snapshot(reload: bool = False) -> CorpusSnapshot:
 
 
 
+def _snapshot_stamp(snap) -> dict:
+    """WHICH MATERIAL is being served, and how old it is. `unknown` is a state, not a pass.
+
+    Age is taken from the snapshot FILE's mtime rather than from anything written inside it:
+    a field the writer fills in can be stale in the same way the snapshot is, and the one
+    thing that cannot lie about when a file was last written is the file.
+    """
+    import os
+    import time
+
+    out: dict[str, object] = {}
+    try:
+        mtime = os.path.getmtime(SNAPSHOT_PATH)
+        age = time.time() - mtime
+        out["age_seconds"] = int(age)
+        out["age"] = (f"{age/86400:.1f} days" if age >= 86400 else
+                      f"{age/3600:.1f} hours" if age >= 3600 else
+                      f"{age/60:.0f} min")
+        out["stale"] = age > SNAPSHOT_STALE_AFTER
+    except OSError:
+        out["age"] = "unknown"
+        out["stale"] = True
+        out["warning"] = ("THIS BUILD CANNOT SAY HOW OLD ITS CORPUS IS. A deploy that names "
+                          "its commit but not its material can serve months-old numbers "
+                          "under a current stamp.")
+    out["slots"] = len(getattr(snap, "slots", None) or {})
+    out["arrows"] = len(getattr(snap, "arrows", None) or [])
+    return out
+
+
+#: When a served snapshot starts announcing its age. Six hours: the daemon appends
+#: continuously, so a snapshot older than a working session is materially behind whatever the
+#: walk has since accumulated. Stated rather than tuned, and the age is shown either way — the
+#: threshold decides only whether it is shown as a WARNING.
+SNAPSHOT_STALE_AFTER = 6 * 3600
+
+
 def corpus_header() -> dict:
     """What the window must display so a missing corpus is never mistaken for an empty one."""
     from .build import stamp
@@ -100,6 +137,12 @@ def corpus_header() -> dict:
     b["model_drift"] = bool(_lm.LAST_SERVED
                             and _lm.LAST_SERVED != _lm.OPENROUTER_MODEL
                             and _lm.OPENROUTER_MODEL != "openrouter/auto")
+    # SNAPSHOT DRIFT, ANNOUNCED — the same discipline as commit drift, one layer down.
+    # The skew check caught stale CODE and said nothing about stale STATE: the deploy served
+    # a snapshot 10,000 slots and 50,000 arrows behind local while its commit stamp matched
+    # HEAD exactly. A build that can name its commit and not its material can still be
+    # serving numbers that are months old, and every figure on the page inherits that.
+    b["snapshot"] = _snapshot_stamp(snap)
     head["build"] = b
     if snap.empty:
         head["note"] = ("NO CORPUS LOADED — run `python3 proposerd.py build-snapshot`. "

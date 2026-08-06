@@ -148,6 +148,38 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   run's n is fed to the gate as ZERO rather than as a small movement. **An indistinguishable
   delta is not a small improvement and not a small worsening; it is no measurement, and
   passing one to a conjunction lets noise decide.**
+- **THE FIBER-FLATTENING DEFECT. Found FOUR times, one cause, one cure — and the last two by
+  sweep rather than by failure.** A `same_claim` fiber is a QUOTIENT: several claims declared
+  to be one proposition. Four separate consumers took the PAIRS instead.
+    1. *Presentation.* `_relaxed_block` rendered the region as a numbered list, so a medium
+       shown 60 claims that were 3 propositions attached to all 60. Found by the operator
+       asking why the window felt unnatural.
+    2. *Energy.* `edges_from_fibers` emitted one QEdge per within-fiber pair at full declared
+       weight — n(n-1)/2 couplings from a single equivalence assertion. One 120-member fiber
+       carried **73% of the corpus's entire fiber-coupling energy**; corpus-wide
+       over-coupling factor 5.6x. Found by the operator asking what hypergraph the energy
+       actually runs over.
+    3. *Kernel support.* `boundary_sites` gathered by slot degree, so **61 of K's top 64
+       sites were one proposition restated**. Every Hankel statistic reported as "wrong three
+       times" was computed over a support with no per-site variation to find.
+    4. *The declarations themselves.* The fiber IS the transitive closure of declared pairs,
+       and closure asserts equivalences nobody declared. Measured: the 120-member fiber has
+       **6.1% declared coverage** — 93.9% of what it asserts was manufactured by closure —
+       and across all 357 fibers of size >=3 the median is 66.7% with **not one at 100%**.
+  ONE CAUSE: consuming the pairs where the quotient was declared, or the closure where the
+  pairs were. ONE CURE: the coequalizer — an apex the faces couple to once.
+  **THE RULE:** every consumer of a fiber must be audited for whether it consumes the
+  quotient or the pairs, and the audit is part of adding a consumer, not a later discovery.
+  Instances 3 and 4 were found by sweeping the remaining consumers on the operator's order,
+  before either cost anything. That is the discipline running AHEAD of the failure instead of
+  behind it, which is the whole point of it, and it is recorded here as the first time that
+  happened rather than as a routine result.
+- **COUNTING RECORDS INSTEAD OF PAIRS. Again — and I had already ledgered it.** Reading the
+  120-member fiber I reported "two hubs at degree 605 and 451" from 4,214 arrow records. The
+  distinct pairs are 434; the repetition factor is 9.7x and the real maximum degree is 31.
+  The entry above this one records the identical mistake in the acceptance guard, and it did
+  not stop me making it in a new place. A ledgered failure mode is not a fixed one: it is
+  fixed where a control runs, and there was no control on this reading path.
 - Similarity substituted for a declared relation (Jaccard fibers). **DELETED.**
 - Term overlap in the ANSWER path. **DELETED.** (Navigation is not evidence.)
 - Docstrings claiming mechanisms the call graph lacks ("index", "settlement runs", "provably

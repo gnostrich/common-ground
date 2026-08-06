@@ -183,3 +183,60 @@ class TheBuildIdentifiesItself(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheBuildNamesItsMATERIALNotOnlyItsCode(unittest.TestCase):
+    """SNAPSHOT DRIFT, announced like commit drift.
+
+    The skew check caught stale CODE and said nothing about stale STATE. The deploy served a
+    snapshot 10,000 slots and 50,000 arrows behind local while its commit stamp matched HEAD
+    exactly — so every figure on the page was months of walking out of date under a current
+    stamp, and nothing on the surface could say so.
+    """
+
+    def test_the_header_carries_the_snapshots_age_and_counts(self):
+        from ui.current import corpus_header
+        snap = (corpus_header().get("build") or {}).get("snapshot") or {}
+        self.assertIn("age", snap)
+        self.assertIn("slots", snap)
+        self.assertIn("arrows", snap)
+
+    def test_an_unreadable_snapshot_reports_unknown_AND_stale_never_fresh(self):
+        # `unknown` is not a pass. The same rule engine/staleness applies: a build that
+        # cannot say how old its material is must not read as current.
+        import ui.current as cur
+        keep = cur.SNAPSHOT_PATH
+        try:
+            cur.SNAPSHOT_PATH = "/nonexistent/snapshot"
+            stamp = cur._snapshot_stamp(type("S", (), {"slots": {}, "arrows": []})())
+        finally:
+            cur.SNAPSHOT_PATH = keep
+        self.assertEqual("unknown", stamp["age"])
+        self.assertTrue(stamp["stale"])
+        self.assertIn("CANNOT SAY HOW OLD", stamp["warning"])
+
+    def test_the_staleness_threshold_is_stated_not_incidental(self):
+        from ui.current import SNAPSHOT_STALE_AFTER
+        self.assertEqual(6 * 3600, SNAPSHOT_STALE_AFTER)
+
+    def test_the_age_is_shown_whether_or_not_it_is_stale(self):
+        # The threshold decides only whether it is shown as a WARNING. An age hidden until it
+        # crosses a line is an age nobody can watch approaching one.
+        from ui.current import corpus_header
+        snap = (corpus_header().get("build") or {}).get("snapshot") or {}
+        self.assertTrue(snap.get("age"))
+
+    def test_the_page_renders_the_material_line(self):
+        from engine.constants import REPO_ROOT
+        page = (REPO_ROOT / "ui" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("corpus material:", page)
+        self.assertIn("b.snapshot.stale", page)
+
+    def test_age_comes_from_the_file_not_from_a_field_inside_it(self):
+        # A field the writer fills in goes stale exactly the way the snapshot does. The one
+        # thing that cannot lie about when a file was last written is the file.
+        import inspect
+
+        import ui.current as cur
+        src = inspect.getsource(cur._snapshot_stamp)
+        self.assertIn("getmtime", src)

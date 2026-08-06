@@ -260,7 +260,18 @@ function renderBuild(b){
   $('buildhdr').innerHTML = (b.warning
     ? `<span class="err">build: ${esc(b.served||'unknown')} — ${esc(b.warning)}</span>`
     : `build: <span class="nu">${esc(b.served)}</span>`)
-    + ` &nbsp; model served: <span class="nu">${esc(model)}</span>${drift}`;
+    + ` &nbsp; model served: <span class="nu">${esc(model)}</span>${drift}`
+    // SNAPSHOT DRIFT. Stale CODE announced itself and stale STATE did not: the deploy served
+    // a corpus 10,000 slots behind local under a commit stamp that matched HEAD exactly.
+    + (b.snapshot
+        ? ` &nbsp; corpus material: <span class="nu">${esc(b.snapshot.age||'?')} old</span>`
+          + ` (${(b.snapshot.slots||0).toLocaleString()} slots, `
+          + `${(b.snapshot.arrows||0).toLocaleString()} arrows)`
+          + (b.snapshot.stale
+              ? ` <span class="err">— STALE: this build names its commit but is serving `
+                + `material the walk has moved past</span>` : '')
+          + (b.snapshot.warning ? ` <span class="err">— ${esc(b.snapshot.warning)}</span>` : '')
+        : '');
 }
 function renderCorpus(h){
   renderBuild(h && h.build);
