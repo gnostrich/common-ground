@@ -25,6 +25,7 @@ from engine.export_sheet import sheet
 from engine.corpus_state import SNAPSHOT_PATH
 from engine.grounded import check_answer
 from engine.transcript import CURRENT as TRANSCRIPT, start as start_transcript
+from engine.claim import claim as make_claim
 from engine.mode import cell as mode_cell, normalize as normalize_mode, stamp as mode_stamp
 from engine.inbound import INBOUND_SYSTEM
 
@@ -337,6 +338,23 @@ class Handler(BaseHTTPRequestHandler):
                     ctl.max_cost = None if b["max_cost"] in (None, "") else float(b["max_cost"])
                 ctl.write(CONTROL_PATH)
                 self._send(200, json.dumps(_proposer_ledger()))
+            elif path == "/claim":
+                # THE AUTHORSHIP PULLBACK. The one arrow the operator can fire at something
+                # the medium said. Not an approval — a NEW object with the operator's warrant,
+                # the same surface verbatim, and the source on the record. There is no
+                # /accept beside it and there cannot be: warrant rises by K-measurement or by
+                # authorship, and a third arrow is not in the diagram (OI-41).
+                try:
+                    c = make_claim(surface=str(b.get("surface", "")),
+                                   chart=str(b.get("chart", "english")),
+                                   claimed_from=str(b.get("claimed_from", "")),
+                                   source_mode=str(b.get("source_mode", "")))
+                except ValueError as exc:
+                    return self._send(400, json.dumps({"error": str(exc)}))
+                state = CURRENT.propose_text(text=c.surface, chart=c.chart,
+                                             key=key or None, instance_id=None)
+                state["claim"] = c.as_record()
+                self._send(200, json.dumps(state))
             elif path == "/ask":
                 question = str(b.get("question", ""))
                 # PHASES ARE RECORDED, NOT STREAMED — and that is a retreat, recorded as one.

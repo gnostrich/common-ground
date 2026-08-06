@@ -1,7 +1,7 @@
 {
  "schema": "common-ground/oi-registry/v0",
  "note": "Machine-readable per CONSTITUTION.md B1. An OI with no [C:] control is WEAK and listed for mechanization; the auditor FAILS if any entry is unresolvable, because a registry naming controls that do not exist is the map-not-territory failure applied to the constitution itself.",
- "count": 40,
+ "count": 42,
  "weak": [
   "OI-2",
   "OI-5",
@@ -430,6 +430,32 @@
    "enforcement_sites": [],
    "controls": [],
    "process_only": true,
+   "unresolved": []
+  },
+  "OI-41": {
+   "statement": "**NO WARRANT LIFT EXCEPT K-MEASUREMENT OR OPERATOR-AUTHORSHIP.** The tier poset has exactly two lift mechanisms: K promotes by measurement, authorship enters by assertion. An \"accept\" or \"approve\" control would be a THIRD arrow up the poset \u2014 warrant increasing by approval without authorship \u2014 and it does not exist in the diagram. **Its absence is constitutional, not an omission.** Any UI or API s",
+   "enforcement_sites": [
+    "engine/claim.py",
+    "engine/mz.py:consider_site"
+   ],
+   "controls": [
+    "tests/test_claim.py:ThereIsNoThirdLift",
+    "tests/test_claim.py:TheLaunderingLock"
+   ],
+   "process_only": false,
+   "unresolved": []
+  },
+  "OI-42": {
+   "statement": "**THE INTERACTION SURFACE IS TWO BINARY COORDINATES PLUS ONE ARROW, and it is CLOSED.** Objecthood (AUTHORSHIP or nothing \u2014 assert/brainstorm) and persistence (discard or keep \u2014 retain) are independent and binary, so the 2\u00d72 is the product of two two-element sets: forced and complete, no fifth state constructible. The one constructible arrow is the authorship pullback (claim), which is a VERB and ",
+   "enforcement_sites": [
+    "engine/mode.py",
+    "engine/claim.py"
+   ],
+   "controls": [
+    "tests/test_claim.py:TheTwoByTwoIsForcedAndComplete",
+    "tests/test_mode.py:AllFourCellsAreMeaningful"
+   ],
+   "process_only": false,
    "unresolved": []
   }
  }

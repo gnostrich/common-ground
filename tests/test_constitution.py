@@ -25,11 +25,18 @@ class TheDocumentIsPresentAndComplete(unittest.TestCase):
     def test_the_constitution_is_in_seed(self):
         self.assertTrue(DOC.exists(), "CONSTITUTION.md is normative and must be in seed/")
 
-    def test_all_forty_invariants_are_present(self):
+    def test_every_invariant_is_numbered_contiguously_from_one(self):
+        """Counted from the DOCUMENT, not pinned to 40.
+
+        The registry grows: every operator catch appends an OI-n+1 the same day, so a control
+        asserting a fixed count fails the moment the discipline it defends is followed. What
+        must hold is that the numbering has no gaps — a missing OI-n means an invariant was
+        deleted or never written, and both are findings.
+        """
         s = statements()
-        self.assertEqual(40, len(s))
-        for i in range(1, 41):
-            self.assertIn(f"OI-{i}", s)
+        self.assertGreaterEqual(len(s), 41)
+        for i in range(1, len(s) + 1):
+            self.assertIn(f"OI-{i}", s, f"the registry skips OI-{i}")
 
     def test_every_invariant_carries_a_statement(self):
         for oi, text in statements().items():
@@ -46,7 +53,7 @@ class B1EveryEntryRESOLVES(unittest.TestCase):
 
     def test_every_invariant_has_an_entry(self):
         reg = build()
-        self.assertEqual(40, reg["count"])
+        self.assertEqual(len(statements()), reg["count"])
         self.assertEqual(set(statements()), set(reg["entries"]))
 
     def test_the_committed_registry_matches_the_document(self):

@@ -33,6 +33,9 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
 .rests{font-size:13.5px;color:var(--mut);border-left:3px solid var(--acc);padding:.15rem .7rem;margin:.5rem 0 1rem}
 .verdict{font-size:12px;margin:.5rem 0}
 .verdict.ok{color:var(--acc)}.verdict.bad{color:#d5566b}
+.sent{}
+.claimbtn{font-size:10.5px;padding:0 .3rem;margin:0 .3rem;opacity:.35;vertical-align:super}
+.claimbtn:hover{opacity:1}
 .viol{border-left:3px solid #d5566b;background:var(--card);padding:.3rem .6rem;margin:.3rem 0;font-size:12.5px}
 details.scope{margin:1rem 0;border-top:1px solid var(--line);padding-top:.6rem}
 details.scope>summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:600;list-style:revert}
@@ -339,6 +342,21 @@ async function act(){
 // THE COMPILED SHEET, portable. A VIEW over the record the last perturbation produced —
 // nothing is recomputed, so the sheet always describes the answer on screen.
 let LAST_SHEET = '';
+let LAST_RECORD = null;
+async function claimSentence(i){
+  if(!LAST_RECORD) return;
+  const sentences = (LAST_RECORD.answer || '').split(/(?<=[.!?])(?:\s*(?:\[[^\]]*\]\s*)*)\s+/)
+                                              .filter(x => x.trim().length > 20);
+  const surface = (sentences[i] || '').trim();
+  if(!surface) return;
+  const r = await post('/claim', {surface, chart: $('chart').value,
+                                  claimed_from: (LAST_RECORD.compiled||{}).order_salt || 'answer',
+                                  source_mode: ((LAST_RECORD.mode||{}).mode) || 'assert'});
+  if(r.error){ $('err').textContent = r.error; return; }
+  render(r);
+  $('err').textContent = '';
+}
+
 async function exportSheet(){
   if(!LAST_SHEET) return;
   const b = $('exportbtn'), was = b.textContent;
@@ -432,7 +450,22 @@ function renderAnswer(r){
             + (v.warrant ? ` [${esc(v.warrant)}]` : '')
             + `</b> — ${esc(v.sentence)}</div>`).join('');
   }
-  $('answer').innerHTML = rests + `<div class="answer">${esc(r.answer)}</div>` + gate;
+  // THE CLAIM AFFORDANCE, per sentence. A VERB the operator fires, not a state the system
+  // sits in: it constructs a NEW object with the operator's authorship, the same surface
+  // byte-for-byte, and the source record on the provenance. There is deliberately no
+  // "accept" beside it — warrant rises by K-measurement or by authorship, and a third
+  // arrow up the tier poset is not in the diagram (OI-41).
+  LAST_RECORD = r;
+  const sentences = (r.answer || '').split(/(?<=[.!?])(?:\s*(?:\[[^\]]*\]\s*)*)\s+/)
+                                    .filter(x => x.trim().length > 20);
+  const body = sentences.length
+    ? sentences.map((sn, i) =>
+        `<span class="sent">${esc(sn)}</span>`
+        + `<button class="claimbtn" title="claim this sentence as your own: it enters at `
+        + `AUTHORSHIP with this record named as its source. Not an approval — a new object."`
+        + ` onclick="claimSentence(${i})">claim</button> `).join('')
+    : esc(r.answer);
+  $('answer').innerHTML = rests + `<div class="answer">${body}</div>` + gate;
 }
 
 // THE SCOPE. Inspection surface, one click below: what moved, how far, and by which declared

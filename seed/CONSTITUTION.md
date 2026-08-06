@@ -209,6 +209,16 @@ declared coincidences (whole-input, contiguous-term) that strengthen coupling. *
 proposed. *VIOLATED:* exact-landing-required made novel input an isolated object — THE
 amendment. `[E: perturb path; C: battery no-silent-zero]`
 
+**OI-42** **THE INTERACTION SURFACE IS TWO BINARY COORDINATES PLUS ONE ARROW, and it is
+CLOSED.** Objecthood (AUTHORSHIP or nothing — assert/brainstorm) and persistence (discard or
+keep — retain) are independent and binary, so the 2×2 is the product of two two-element sets:
+forced and complete, no fifth state constructible. The one constructible arrow is the
+authorship pullback (claim), which is a VERB and not a state, always retains, and invokes the
+EXISTING perturb-retain write-point rather than adding one. *VIOLATED BY OMISSION:* the mode
+shipped in code, tests and UI with zero mentions in either normative document — built
+machinery, unwritten law, which is B5's definition of unconstitutional.
+`[E: engine/mode.py, engine/claim.py, SPEC.md Part I §10; C: tests/test_claim.py:TheTwoByTwoIsForcedAndComplete, tests/test_mode.py:AllFourCellsAreMeaningful]`
+
 **OI-21** The ETS feel is the acceptance bar: no silence without a consulted-and-declined
 trace; response graded with bias sharpness; stateful; no phrasing cliffs.
 `[C: the battery — no_silent_zero/graded/no_cliff/stateful/one_path]`
@@ -294,6 +304,17 @@ concurrent; his findings jump every queue. `[P: concurrency order]`
 **OI-39** Anything the operator re-explains twice becomes a named fixture the same day; the
 goal metric is operator-caught regressions/week → ZERO via the auditor. **His nose built this
 registry; the registry retires his nose.** `[P+C]`
+
+**OI-41** **NO WARRANT LIFT EXCEPT K-MEASUREMENT OR OPERATOR-AUTHORSHIP.** The tier poset has
+exactly two lift mechanisms: K promotes by measurement, authorship enters by assertion. An
+"accept" or "approve" control would be a THIRD arrow up the poset — warrant increasing by
+approval without authorship — and it does not exist in the diagram. **Its absence is
+constitutional, not an omission.** Any UI or API surface implying a third lift = RED. The
+three fates of anything on the tape are each an existing arrow and nothing new: IGNORED (the
+aging endomorphism contracts it toward zero), EARNING (K measures its residual and reweights
+iff it qualifies), CLAIMED (the authorship pullback — a new object, same surface, operator
+warrant, `claimed_from` provenance).
+`[E: engine/claim.py, engine/mz.py; C: tests/test_claim.py:ThereIsNoThirdLift]`
 
 **OI-40** Honest-thin beats fluent-fake, always: smaller true numbers over impressive
 fabrications; *"the corpus grows only by what survives the physics."* The whole project in one

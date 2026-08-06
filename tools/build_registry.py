@@ -78,6 +78,12 @@ MAP: dict[str, dict] = {
     "OI-38": {"P": True},
     "OI-39": {"C": ["tests/test_fixtures.py"], "E": ["tools/auditor.py"]},
     "OI-40": {"P": True},
+    "OI-42": {"C": ["tests/test_claim.py:TheTwoByTwoIsForcedAndComplete",
+                    "tests/test_mode.py:AllFourCellsAreMeaningful"],
+              "E": ["engine/mode.py", "engine/claim.py"]},
+    "OI-41": {"C": ["tests/test_claim.py:ThereIsNoThirdLift",
+                    "tests/test_claim.py:TheLaunderingLock"],
+              "E": ["engine/claim.py", "engine/mz.py:consider_site"]},
 }
 
 
