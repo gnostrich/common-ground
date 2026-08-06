@@ -225,9 +225,13 @@ function renderBuild(b){
   // The SERVED commit, on the page. Deploy skew has been invisible twice; a build that
   // cannot name itself cannot be caught serving a stale page.
   if(!b) return;
-  $('buildhdr').innerHTML = b.warning
+  const model = b.model || 'not yet called';
+  const drift = b.model_drift
+    ? ` <span class="err">— PIN DRIFT: configured ${esc(b.model_configured||'?')}</span>` : '';
+  $('buildhdr').innerHTML = (b.warning
     ? `<span class="err">build: ${esc(b.served||'unknown')} — ${esc(b.warning)}</span>`
-    : `build: <span class="nu">${esc(b.served)}</span>`;
+    : `build: <span class="nu">${esc(b.served)}</span>`)
+    + ` &nbsp; model served: <span class="nu">${esc(model)}</span>${drift}`;
 }
 function renderCorpus(h){
   if(!h || h.error){ $('corpushdr').innerHTML = `<span class="err">${esc((h&&h.error)||'?')}</span>`; return; }
@@ -246,8 +250,36 @@ async function act(){
   const text = $('text').value, chart = $('chart').value;
   $('answer').innerHTML = '<span class="muted">'
     + (retain ? 'perturbing and retaining…' : 'perturbing the field…') + '</span>';
-  const r = retain ? await post('/propose', {text, chart})
-                   : await post('/ask', {question:text, chart});
+  let r;
+  if(retain){ r = await post('/propose', {text, chart}); }
+  else {
+    // NDJSON: each line is a stage entered, the last carries the result. The label reports
+    // the stage the SERVER announced, never one the page guessed.
+    const t0 = Date.now();
+    const resp = await fetch(withToken('/ask'), {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question:text, chart})});
+    const reader = resp.body.getReader(); const dec = new TextDecoder();
+    let buf = '';
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buf += dec.decode(value, {stream:true});
+      let nl;
+      while((nl = buf.indexOf('\n')) >= 0){
+        const line = buf.slice(0, nl); buf = buf.slice(nl+1);
+        if(!line.trim()) continue;
+        let msg; try { msg = JSON.parse(line); } catch(e) { continue; }
+        if(msg.stage){
+          const secs = ((Date.now()-t0)/1000).toFixed(0);
+          $('answer').innerHTML =
+            `<span class="muted">${esc(msg.stage)}… <b>${secs}s</b></span>`;
+        }
+        if(msg.result) r = msg.result;
+      }
+    }
+    if(!r){ $('answer').innerHTML = '<span class="err">no result on the stream</span>'; return; }
+  }
   if(retain){
     render(r);
     const R2 = r.retention || {};

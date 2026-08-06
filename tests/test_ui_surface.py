@@ -74,8 +74,48 @@ class TheBuildIdentifiesItself(unittest.TestCase):
         self.assertEqual(out["served"], "unknown")
         self.assertIn("CANNOT SAY WHICH COMMIT", out["warning"])
 
+    def test_the_header_reports_the_SERVED_model_not_the_configured_one(self):
+        """Third occurrence of code-truth != wire-truth: the HTML, the commit stamp, and an
+        env var silently overriding the code pin. The deployed window ran the lite model for
+        hours while the code said `google/gemini-2.5-flash`. Configured and served are
+        different facts and the header now carries both."""
+        from ui.current import corpus_header
+
+        b = corpus_header()["build"]
+        self.assertIn("model", b)
+        self.assertIn("model_configured", b)
+        self.assertIn("model_drift", b)
+
+    def test_planted_a_pin_that_did_not_take_is_flagged(self):
+        from unittest import mock
+
+        import ui.lm as L
+
+        with mock.patch.object(L, "OPENROUTER_MODEL", "google/gemini-2.5-flash"), \
+             mock.patch.object(L, "LAST_SERVED", "google/gemini-2.5-flash-lite"):
+            from ui.current import corpus_header
+
+            self.assertTrue(corpus_header()["build"]["model_drift"],
+                            "a served model differing from the pin must announce itself")
+
+    def test_auto_routing_is_not_counted_as_drift(self):
+        """`auto` means the router chooses, so a different served model is expected rather
+        than a drift — the drift being flagged is a PIN that did not take."""
+        from unittest import mock
+
+        import ui.lm as L
+
+        with mock.patch.object(L, "OPENROUTER_MODEL", "openrouter/auto"), \
+             mock.patch.object(L, "LAST_SERVED", "google/gemini-2.5-flash-lite"):
+            from ui.current import corpus_header
+
+            self.assertFalse(corpus_header()["build"]["model_drift"])
+
     def test_the_page_renders_it(self):
-        self.assertIn("renderBuild", PAGE.read_text(encoding="utf-8"))
+        body = PAGE.read_text(encoding="utf-8")
+        self.assertIn("renderBuild", body)
+        self.assertIn("model served:", body)
+        self.assertIn("PIN DRIFT", body)
 
 
 if __name__ == "__main__":

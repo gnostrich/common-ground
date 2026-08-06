@@ -48,6 +48,9 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash")
 
 
+#: What actually answered, most recently. Empty until the first call.
+LAST_SERVED = ""
+
 _VALID_TYPES = ("assert", "define", "conditional", "normative")
 _VALID_B: tuple[BValue, ...] = ("T", "F", "B", "N")
 
@@ -113,6 +116,12 @@ def _http_post(key: str, body: dict, usage: dict | None = None) -> str:
                           ("prompt_tokens", "completion_tokens", "total_tokens", "cost")
                           if k in reported})
             usage["model"] = payload.get("model", "")
+            # THE LAST SERVED MODEL, module-level, so the header can report what actually
+            # answered rather than what was configured. Code-truth != wire-truth has now bitten
+            # three times — the HTML, the commit stamp, and an env override beating the pin —
+            # and each time the fix was making the served thing self-report.
+            global LAST_SERVED
+            LAST_SERVED = usage["model"]
         if payload.get("error"):
             raise RuntimeError(f"openrouter error: {payload['error'].get('message', '?')}")
         choices = payload.get("choices") or []

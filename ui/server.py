@@ -213,7 +213,21 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, json.dumps(_proposer_ledger()))
             elif path == "/ask":
                 question = str(b.get("question", ""))
-                compiled = ask_the_corpus(question, str(b.get("chart", "english")), key=key)
+                # STREAMED PHASES. 76-94% of a perturbation is the one attachment call, so a
+                # blank wait of half a minute is indistinguishable from a wedge. Progress
+                # lines go out as stages are ENTERED — the walk's rule, on the request path.
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-ndjson")
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+
+                def _phase(name: str) -> None:
+                    self.wfile.write(
+                        (json.dumps({"stage": name}) + "\n").encode("utf-8"))
+                    self.wfile.flush()
+
+                compiled = ask_the_corpus(question, str(b.get("chart", "english")), key=key,
+                                          on_stage=_phase)
                 # No branch on whether anything "landed". The compiled input already IS
                 # the field's response — the moved region with the declared path to each
                 # moved slot, or an explicit statement that nothing moved and why. There is
@@ -221,6 +235,7 @@ class Handler(BaseHTTPRequestHandler):
                 # on here reported `charts: {}` and `corpus size 0`, which read as a fact
                 # about the corpus and was a fact about an unrelated object.
                 system, grounded_on = INBOUND_SYSTEM, compiled["compiled"]
+                _phase("answering")
                 if lm_available(key):
                     client = LMClient(key)
                     reply = client.complete(system, grounded_on,
@@ -228,10 +243,11 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     reply = ("(no key — the LM is not answering. What it would have received "
                              "is below, compiled from the field.)")
-                self._send(200, json.dumps({
+                self.wfile.write((json.dumps({"result": {
                     "answer": reply, "grounded_on": grounded_on,
                     "lm_available": lm_available(key), "compiled": compiled,
-                    "corpus_header": corpus_header()}))
+                    "corpus_header": corpus_header()}}) + "\n").encode("utf-8"))
+                self.wfile.flush()
             else:
                 self._send(404, json.dumps({"error": "not found"}))
         except Exception as exc:   # keep the window alive; surface the error in the panel

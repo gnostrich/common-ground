@@ -89,7 +89,18 @@ def corpus_header() -> dict:
     snap = corpus_snapshot()
     head = snap.header()
     head["path"] = SNAPSHOT_PATH
-    head["build"] = stamp()
+    from . import lm as _lm
+
+    b = stamp()
+    # PIN DRIFT, announced. An env var silently overrode the code pin and the deployed
+    # window ran the lite model for hours while the code said otherwise. Configured and
+    # served are different facts; the header now carries both and flags a mismatch.
+    b["model_configured"] = _lm.OPENROUTER_MODEL
+    b["model"] = _lm.LAST_SERVED
+    b["model_drift"] = bool(_lm.LAST_SERVED
+                            and _lm.LAST_SERVED != _lm.OPENROUTER_MODEL
+                            and _lm.OPENROUTER_MODEL != "openrouter/auto")
+    head["build"] = b
     if snap.empty:
         head["note"] = ("NO CORPUS LOADED — run `python3 proposerd.py build-snapshot`. "
                         "The window is answering from the typed current alone.")
@@ -212,7 +223,8 @@ def _region_transport(key: str | None):
     return transport
 
 
-def ask_the_corpus(question: str, chart: str = "english", key: str | None = None) -> dict:
+def ask_the_corpus(question: str, chart: str = "english", key: str | None = None,
+                   on_stage=None) -> dict:
     """Compile the LM's input FROM THE FIELD, and hand back both sides of the compilation.
 
     The answer is not retrieval-with-receipts and not a lookup. The typed question enters a
@@ -223,7 +235,7 @@ def ask_the_corpus(question: str, chart: str = "english", key: str | None = None
     structural reason; there is no second mechanism that produces words anyway.
     """
     compiled = compile_input(question, corpus_snapshot(), chart,
-                             transport=_region_transport(key))
+                             transport=_region_transport(key), on_stage=on_stage)
     out = compiled.as_record()
 
     # THE READING SURFACE. A view: the trace is unchanged and still in `compiled`, and the

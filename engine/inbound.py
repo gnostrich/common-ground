@@ -104,6 +104,10 @@ class CompiledInput:
     conditioned: bool = False                  # did the FIELD respond to the bias?
     relaxation: Relaxation | None = None
     attachment: object | None = None           # perturb.Perturbation — the diagram, shown
+    #: Per-stage wall clock. A window that takes half a minute must be able to say WHICH
+    #: stage took it — the same rule as the walk's phase announcements: silence must never
+    #: mean unknown-phase.
+    stages: dict = field(default_factory=dict)
 
     @property
     def reached(self) -> int:
@@ -130,6 +134,7 @@ class CompiledInput:
             "landings": [l.as_record() for l in self.landings],
             "relaxation": self.relaxation.as_record() if self.relaxation else None,
             "attachment": self.attachment.as_record() if self.attachment else None,
+            "stages": dict(self.stages),
         }
 
 
@@ -303,7 +308,7 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot) -> tuple[list[str]
 
 
 def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
-                  index=None, transport=None) -> CompiledInput:
+                  index=None, transport=None, on_stage=None) -> CompiledInput:
     """Compile the LM's input FROM WHAT THE FIELD DID, not from what the text resembles.
 
     The typed text is applied to the real corpus as a soft constraint, settlement runs, and
@@ -317,7 +322,27 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     kept for one release so an old caller fails loudly on behaviour rather than on a TypeError
     that reads like an unrelated bug.
     """
+    import time as _time
+
+    def _phase(name: str) -> None:
+        """Announce the stage ENTERED, not the stage guessed.
+
+        The window takes tens of seconds and 76-94% of it is one call, so a blank wait is
+        indistinguishable from a wedge. This is the walk's phase rule applied to the request
+        path: silence must never mean unknown-phase. The callback is optional so every
+        non-streaming caller is unaffected.
+        """
+        if on_stage is not None:
+            try:
+                on_stage(name)
+            except Exception:
+                pass                    # a progress channel must never break the answer
+
+    stages: dict[str, float] = {}
+    _t0 = _time.time()
+    _phase("addressing")
     landings = land(text, snapshot, chart)
+    stages["address"] = round(_time.time() - _t0, 3)
 
     # WHERE THE BIAS ATTACHES. With a transport, the typed input enters a REGION as one more
     # object and one call completes the diagram; the arrows the medium draws to it are the
@@ -326,17 +351,27 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     # path exists to fix.
     att = None
     if transport is not None:
+        _phase("attaching")
+        _t = _time.time()
         att = perturb(text, snapshot, transport, chart)
+        stages["attach"] = round(_time.time() - _t, 3)
         if not att.seeds:
             status = ("THE FIELD DID NOT RESPOND — " + _no_attachment(att))
+            stages["total"] = round(_time.time() - _t0, 3)
             return CompiledInput(
+                stages=stages,
                 typed=text, compiled=f"{status}\n\n{_region_block(att)}\n\n"
                                      f"BOUNDARY CONDITION:\n{text}",
                 landings=landings, field_status=status, conditioned=False,
                 relaxation=None, attachment=att)
+        _phase("settling")
+        _t = _time.time()
         rel = relax_from(att, text, snapshot, chart)
+        stages["settle"] = round(_time.time() - _t, 3)
     else:
+        _t = _time.time()
         rel = relax(text, snapshot, chart)
+        stages["settle"] = round(_time.time() - _t, 3)
 
     if not rel.responded:
         status = f"THE FIELD DID NOT RESPOND — {rel.silence}"
@@ -374,9 +409,14 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     lines.append("BOUNDARY CONDITION (what was typed; it is the constraint, not the content):")
     lines.append(text)
 
-    return CompiledInput(typed=text, compiled="\n".join(lines), landings=landings,
-                         facts=facts, field_status=status, conditioned=True, relaxation=rel,
-                         attachment=att)
+    _phase("rendering")
+    stages["render"] = round(_time.time() - _t0 - sum(stages.values()), 3)
+    stages["total"] = round(_time.time() - _t0, 3)
+    out = CompiledInput(typed=text, compiled="\n".join(lines), landings=landings,
+                        facts=facts, field_status=status, conditioned=True, relaxation=rel,
+                        attachment=att)
+    out.stages = stages
+    return out
 
 
 INBOUND_SYSTEM = (
