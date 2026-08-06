@@ -22,6 +22,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from engine.export_sheet import sheet
+from engine.corpus_state import SNAPSHOT_PATH
 from engine.grounded import check_answer
 from engine.inbound import INBOUND_SYSTEM
 

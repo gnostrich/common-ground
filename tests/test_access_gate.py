@@ -253,3 +253,124 @@ class TheCorpusIsNEVERInAGitTree(unittest.TestCase):
         body = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
         for name in ("runs/corpus.snapshot", "runs/proposer.journal.jsonl", "seed_runs/"):
             self.assertIn(name, body)
+
+
+class TheSeedEndpointMustACTUALLYRUN(unittest.TestCase):
+    """BEHAVIOURAL, not source-reading. The last set of controls read the handler's TEXT.
+
+    Every assertion about /seed was a substring check over `inspect.getsource`, so a
+    `NameError` on the first line that touches the filesystem passed all of them: the suite
+    was green, the deployed endpoint died before sending a byte, and Railway returned
+    "Application failed to respond". That is the third time in this session a control has
+    been simpler than the thing it stands for — the bound-method `id`, the stub with no `id`,
+    and now a source scan standing in for a request. So this class starts a real server and
+    posts to it.
+    """
+
+    def _serve(self, token="probe-token"):
+        import importlib
+        import os
+        import socketserver
+        import threading
+
+        os.environ["CG_SEED_UPLOAD_TOKEN"] = token
+        os.environ["CG_OPEN"] = "1"
+        import ui.server as srv
+        importlib.reload(srv)
+        httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), srv.Handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        return httpd, f"http://127.0.0.1:{httpd.server_address[1]}"
+
+    def _post(self, url, data, **headers):
+        import urllib.error
+        import urllib.request
+        req = urllib.request.Request(url + "/seed", data=data, method="POST",
+                                     headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
+
+    def test_a_verified_upload_is_written(self):
+        import hashlib
+        import json
+        import tempfile
+        from pathlib import Path
+
+        import engine.corpus_state as cs
+        keep = cs.SNAPSHOT_PATH
+        with tempfile.TemporaryDirectory() as d:
+            cs.SNAPSHOT_PATH = str(Path(d) / "corpus.snapshot")
+            httpd, url = self._serve()
+            try:
+                import ui.server as srv
+                srv.SNAPSHOT_PATH = cs.SNAPSHOT_PATH
+                body = b"y" * 4096
+                code, out = self._post(
+                    url, body, **{"X-Seed-Token": "probe-token",
+                                  "X-Seed-Name": "corpus.snapshot",
+                                  "X-Seed-Sha256": hashlib.sha256(body).hexdigest()})
+                self.assertEqual(200, code, out[:400])
+                rec = json.loads(out)
+                self.assertTrue(rec["ok"])
+                self.assertEqual(4096, rec["bytes"])
+                self.assertEqual(body, Path(cs.SNAPSHOT_PATH).read_bytes())
+            finally:
+                httpd.shutdown()
+                cs.SNAPSHOT_PATH = keep
+
+    def test_a_WRONG_digest_is_refused_and_nothing_is_written(self):
+        import tempfile
+        from pathlib import Path
+
+        import engine.corpus_state as cs
+        keep = cs.SNAPSHOT_PATH
+        with tempfile.TemporaryDirectory() as d:
+            cs.SNAPSHOT_PATH = str(Path(d) / "corpus.snapshot")
+            httpd, url = self._serve()
+            try:
+                import ui.server as srv
+                srv.SNAPSHOT_PATH = cs.SNAPSHOT_PATH
+                code, out = self._post(url, b"z" * 4096,
+                                       **{"X-Seed-Token": "probe-token",
+                                          "X-Seed-Name": "corpus.snapshot",
+                                          "X-Seed-Sha256": "00" * 32})
+                self.assertEqual(400, code)
+                self.assertIn(b"sha256 mismatch", out)
+                self.assertFalse(Path(cs.SNAPSHOT_PATH).exists())
+            finally:
+                httpd.shutdown()
+                cs.SNAPSHOT_PATH = keep
+
+    def test_a_bad_seed_token_is_401(self):
+        httpd, url = self._serve()
+        try:
+            code, _ = self._post(url, b"x", **{"X-Seed-Token": "wrong",
+                                               "X-Seed-Name": "corpus.snapshot",
+                                               "X-Seed-Sha256": "00" * 32})
+            self.assertEqual(401, code)
+        finally:
+            httpd.shutdown()
+
+    def test_an_unlisted_name_is_400(self):
+        httpd, url = self._serve()
+        try:
+            code, out = self._post(url, b"x", **{"X-Seed-Token": "probe-token",
+                                                 "X-Seed-Name": "../../etc/passwd",
+                                                 "X-Seed-Sha256": "00" * 32})
+            self.assertEqual(400, code)
+            self.assertIn(b"not an uploadable name", out)
+        finally:
+            httpd.shutdown()
+
+    def test_with_no_token_variable_the_endpoint_is_404(self):
+        import os
+        httpd, url = self._serve(token="")
+        os.environ.pop("CG_SEED_UPLOAD_TOKEN", None)
+        try:
+            code, _ = self._post(url, b"x", **{"X-Seed-Name": "corpus.snapshot",
+                                               "X-Seed-Sha256": "00" * 32})
+            self.assertEqual(404, code)
+        finally:
+            httpd.shutdown()

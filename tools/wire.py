@@ -45,9 +45,13 @@ class Forwarder:
             def _relay(self, body=None):
                 req = urllib.request.Request(self._url(), data=body,
                                              method=self.command)
-                ct = self.headers.get("Content-Type")
-                if ct:
-                    req.add_header("Content-Type", ct)
+                # RELAY THE HEADERS THE REQUEST CARRIES, not one hand-picked field. Forwarding
+                # only Content-Type silently dropped X-Seed-Token and turned a correct upload
+                # into a 401 — a forwarder that edits what it forwards is not a forwarder.
+                for k, v in self.headers.items():
+                    if k.lower() in ("host", "content-length", "connection", "accept-encoding"):
+                        continue
+                    req.add_header(k, v)
                 try:
                     with urllib.request.urlopen(req, timeout=600) as r:
                         payload, status, hdrs = r.read(), r.status, r.headers
