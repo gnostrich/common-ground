@@ -264,9 +264,9 @@ async function act(){
   const t0 = Date.now();
   const tick = setInterval(() => {
     const s = ((Date.now() - t0) / 1000).toFixed(0);
-    $('answer').innerHTML = `<span class="muted">${retain ? 'perturbing and retaining' :
-      'perturbing the field'}… <b>${s}s</b> <span class="muted">(the attachment call is '
-      + `76-94% of it)</span></span>`;
+    const what = retain ? 'perturbing and retaining' : 'perturbing the field';
+    $('answer').innerHTML = `<span class="muted">${what}… <b>${s}s</b> `
+      + `<span class="muted">(the attachment call is 76-94% of it)</span></span>`;
   }, 1000);
   try {
     r = retain ? await post('/propose', {text, chart})

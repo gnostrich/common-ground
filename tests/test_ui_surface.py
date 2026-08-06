@@ -56,6 +56,69 @@ class TheSurfaceDepictsOnlyLiveMechanisms(unittest.TestCase):
         self.assertNotIn("async function ask()", self.body)
 
 
+class ThePagesScriptMustPARSE(unittest.TestCase):
+    """A syntax error in the inline script kills the ENTIRE page, silently.
+
+    This shipped. One malformed template literal — a stray quote inside a backtick string —
+    and the whole script failed to parse, so `corpus()` never ran (the header sat on
+    "corpus: loading…" forever) and `act()` was never defined (the perturb button did
+    nothing at all). Every server-side check was green; the endpoints answered in under a
+    second; the suite was 887 green. Nothing in the engine could see it, because the defect
+    was in a string the engine never executes.
+
+    The page is code. It gets a compiler.
+    """
+
+    def _script(self) -> str:
+        body = PAGE.read_text(encoding="utf-8")
+        self.assertIn("<script>", body)
+        return body.split("<script>")[1].split("</script>")[0]
+
+    def test_the_inline_script_parses(self):
+        import shutil
+        import subprocess
+        import tempfile
+
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node is not available to parse the page")
+        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
+            fh.write(self._script())
+            path = fh.name
+        out = subprocess.run([node, "--check", path], capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0,
+                         f"the page's script does not parse — the whole window is dead:\n"
+                         f"{out.stderr}")
+
+    def test_planted_a_broken_literal_is_caught(self):
+        """The exact shape that shipped: a single quote closing inside a template literal."""
+        import shutil
+        import subprocess
+        import tempfile
+
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node is not available to parse the page")
+        broken = "const x = `a ${1} b '\n  + `c`;"
+        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
+            fh.write(broken)
+            path = fh.name
+        out = subprocess.run([node, "--check", path], capture_output=True, text=True)
+        self.assertNotEqual(out.returncode, 0, "the checker must reject what shipped")
+
+    def test_every_function_the_page_calls_is_defined(self):
+        """`act()` was undefined for a whole deploy and the button did nothing."""
+        import re
+
+        body = PAGE.read_text(encoding="utf-8")
+        called = set(re.findall(r'onclick="(\w+)\(', body))
+        script = self._script()
+        for fn in sorted(called):
+            self.assertTrue(
+                f"function {fn}(" in script or f"async function {fn}(" in script,
+                f"the page calls {fn}() but never defines it")
+
+
 class TheBuildIdentifiesItself(unittest.TestCase):
     """A deploy that cannot say which commit it is cannot be caught serving a stale one."""
 
