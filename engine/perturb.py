@@ -186,15 +186,28 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
     from .normalize import address
 
     out = Perturbation()
-    if snapshot.empty:
-        out.error = "the corpus is empty"
-        return out
     if not text.strip():
         out.error = "nothing was typed"
         return out
 
+    # Addressed FIRST, and unconditionally. Gate 1 does not need a model, a corpus or a
+    # region — so even the degenerate cases below carry a real address, which is what lets
+    # `commit` retain the claim by the ONE path instead of a caller inventing a second one.
     slot, nu_value = address(chart, text, "assert")
     out.typed_slot, out.typed_chart, out.typed_nu = slot, chart, nu_value
+
+    if transport is None:
+        # NO MODEL. Situating is an LM proposal, so without one the input cannot be
+        # situated at all — and the tempting fallback, dropping the claim on the tape
+        # unsituated and calling it normal, is precisely the organ that was removed. It is
+        # a stated degenerate case of this path, not a second path: `commit` will retain an
+        # isolated claim and say so, which is what Q2 says an object with no morphisms is.
+        out.error = ("no model is configured, so the input could not be put to a region. "
+                     "It has an address and nothing else: an object with no morphisms.")
+        return out
+    if snapshot.empty:
+        out.error = "the corpus is empty"
+        return out
 
     anchor = anchor_for(snapshot, slot, quarantined)
     region = build_region(snapshot, clamp=anchor, size=size, quarantined=quarantined,
@@ -339,16 +352,27 @@ def commit(pert: Perturbation, tape=None, mode: str = RELEASE,
         except EngineError:
             continue          # refused (intra-chart, self-pair) — dropped, never coerced
     out.arrows = tuple(kept)
-    out.note = (
-        f"perturb-and-retain: [0] entered the fast tape as a claim at EXTRACTION tier and "
-        f"{len(kept)} attachment arrow(s) were retained as proposals, so it arrives "
-        f"pre-situated by the same relaxation that conditioned the answer. Nothing here is "
-        f"promoted — only K crosses to the slow side — and everything retained AGES.")
-    if not kept and bias_only:
-        out.note += (" NOTE: every attachment was `bears_on`, so the claim was retained with "
-                     "no arrows. It is on the tape and it is isolated: an object with no "
-                     "morphisms cannot propagate, which is what Q2 says and is a real state "
-                     "rather than a failure.")
+    tail = ("Nothing here is promoted — only K crosses to the slow side — and everything "
+            "retained AGES (D14).")
+    if kept:
+        out.note = (
+            f"perturb-and-retain: [0] entered the fast tape as a claim at EXTRACTION tier "
+            f"and {len(kept)} attachment arrow(s) were retained as proposals, so it arrives "
+            f"PRE-SITUATED by the same relaxation that conditioned the answer. {tail}")
+    else:
+        # NOT situated, and it must not say it was. An earlier version printed the
+        # pre-situated sentence unconditionally, so a claim that attached to nothing — or
+        # that never reached a model at all — reported itself as positioned in the field.
+        # That is a false statement about the mechanism in a string the operator reads.
+        why = (f" The region call reported: {pert.error}" if pert.error else
+               " Every attachment the medium drew was `bears_on`, which is a boundary "
+               "relation and cannot persist." if bias_only else
+               " The medium was consulted and drew no arrow to it.")
+        out.note = (
+            f"perturb-and-retain: [0] entered the fast tape as a claim at EXTRACTION tier "
+            f"and it is ISOLATED — no attachment arrow was retained, so it has no morphisms "
+            f"and cannot propagate. That is what Q2 says an unattached object is, and it is "
+            f"a real state rather than a failure.{why} {tail}")
     return out
 
 

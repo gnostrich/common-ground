@@ -20,15 +20,14 @@ from pathlib import Path
 from engine import seed_lock
 from engine.constants import BETA_ARMS, MINT_ENABLED, shadow
 from engine.corpus_state import SNAPSHOT_PATH, CorpusSnapshot, with_arrows
-from engine.extract import DeterministicExtractor
 from engine.inbound import compile_input
-from engine.inlet import FastTape, stub_translator
+from engine.inlet import FastTape
 from engine.mint_tape import MintController, read_tape, residual_stream
 from engine.pipeline import ledger_from_deltas, run_meter
 from engine.surface import report_from_ledger
 from engine.types import Document
 
-from .lm import LMClient, LMProposer, api_key, lm_available
+from .lm import LMClient, api_key, lm_available
 
 #: The persisted read view over the real corpus. Loaded once, lazily, and never rebuilt in
 #: the window — a request that rebuilt 620k deltas would be a request that never returned.
@@ -107,36 +106,54 @@ class Current:
     def __init__(self) -> None:
         self.tape = FastTape()
         self._conv: list[str] = []
+        self._last_retention = None
 
     def reset(self) -> None:
         self.tape = FastTape()
         self._conv = []
+        self._last_retention = None
 
     def propose_text(self, text: str, chart: str = "english", temperature: float = 0.3,
                      key: str | None = None, instance_id: str | None = None,
                      lm_transport=None) -> dict:
-        """Add a submission through the ONE inlet, then return the settled current."""
-        lm_used = False
-        if instance_id:
-            # another instance — the same inlet, a stub translator in front.
-            for d in DeterministicExtractor(f"inst-{instance_id}", "typed").extract(
-                    Document(f"inst:{instance_id}", chart, text, "instance")):
-                self.tape.propose(stub_translator(d, instance_id), f"instance:{instance_id}")
-        else:
-            # me (typing) — a source.
-            for d in DeterministicExtractor("me", "typed").extract(
-                    Document("me", chart, text, "typed")):
-                self.tape.propose(d, "me")
-            # the LM (Opus) — a source, in parallel, through the SAME inlet.
-            if lm_available(key):
-                client = LMClient(api_key(key), transport=lm_transport)
-                for d in LMProposer("lm", "opus", client, temperature).extract(
-                        Document("lm", chart, text, "lm")):
-                    self.tape.propose(d, "lm")
-                lm_used = True
+        """PERTURB-AND-RETAIN. Proposing and asking are one act with a persistence flag.
+
+        THE BARE PROPOSE PATH IS DELETED, not deprecated. It ran the claim extractor and the
+        LM proposer against a fresh Current that knew nothing about the corpus, so a proposed
+        claim landed on the tape with no position in the field — while `ask` ran a region
+        relaxation against the real one. Two mechanisms for one job, and the proposing half
+        threw away the relaxation that could have situated what it was proposing.
+
+        Now the SAME region call runs, and the flag decides what survives it. A proposed
+        claim therefore arrives PRE-SITUATED: `[0|bias]` enters a region, the medium completes
+        the diagram, and the correspondence-kind arrows it draws to the input are retained
+        beside the claim as proposals. Everything retained is born subject to the
+        event-quantized decay (D14), which is what stops the tape becoming a second corpus.
+
+        WITH NO MODEL the input cannot be situated, and dropping it on the tape unsituated
+        and calling that normal IS the removed organ. So that case is a stated degenerate of
+        this one path — `perturb` returns an addressed input with an error, `commit` retains
+        an isolated claim, and the result says so.
+        """
+        from engine.perturb import RETAIN, commit, perturb
+
+        # ONE PATH. An instance is a SOURCE, not a second mechanism — it differs from `me`
+        # by its source tag and by nothing else. The instance branch used to run the claim
+        # extractor and a stub translator, which is the same raw drop the operator's own
+        # branch did, so collapsing them is what "the two entry points become one box"
+        # means rather than leaving the organ alive under another name.
+        source = f"instance:{instance_id}" if instance_id else "me"
+        transport = _region_transport(key) if lm_transport is None else lm_transport
+        pert = perturb(text, corpus_snapshot(), transport, chart)
+        retention = commit(pert, self.tape, RETAIN, source=source)
+        lm_used = pert.consulted
+        self._last_retention = retention
         if chart == "conversation":
             self._conv.append(text)
-        return self.state(lm_used=lm_used)
+        out = self.state(lm_used=lm_used)
+        if retention is not None:
+            out["retention"] = retention.as_record()
+        return out
 
     def state(self, lm_used: bool | None = None) -> dict:
         ledger = ledger_from_deltas(self.tape.deltas())
@@ -232,7 +249,14 @@ def run_current(text: str, chart: str = "english", temperature: float = 0.3,
     """One-shot convenience (tests): a fresh current with one 'me' submission (+ optional
     instance), settled once."""
     cur = Current()
-    cur.propose_text(text, chart=chart, temperature=temperature, key=key, lm_transport=lm_transport)
+    first = cur.propose_text(text, chart=chart, temperature=temperature, key=key,
+                             lm_transport=lm_transport)
     if instance_text.strip():
         cur.propose_text(instance_text, chart=chart, instance_id="B")
-    return cur.state(lm_used=lm_available(key))
+    out = cur.state(lm_used=lm_available(key))
+    # The RETENTION travels with the result. Re-settling and dropping it would hide what
+    # `/propose` actually did, which is the whole difference between the unified act and
+    # the raw drop it replaced.
+    if "retention" in first:
+        out["retention"] = first["retention"]
+    return out

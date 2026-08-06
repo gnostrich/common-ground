@@ -94,7 +94,7 @@ class BearsOnIsReleasedInBothModes(unittest.TestCase):
     def test_the_claim_is_still_retained_and_its_isolation_is_stated(self):
         r = commit(_pert(kinds=("bears_on",)), FastTape(), RETAIN)
         self.assertIsNotNone(r.claim)
-        self.assertIn("isolated", r.note)
+        self.assertIn("ISOLATED", r.note)
 
     def test_the_corpus_kinds_are_still_three(self):
         from engine.correspondence import KINDS

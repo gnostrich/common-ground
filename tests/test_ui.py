@@ -42,29 +42,45 @@ def tearDownModule():
         os.environ["OPENROUTER_API_KEY"] = _SAVED_KEY
 
 
-def _mock_transport(_key, _body):
-    return ('{"claims":[{"surface":"The cone is positive under composition",'
-            '"type":"assert","value":"T","confidence":0.9},'
-            '{"surface":"The spectral radius is the maximum modulus eigenvalue",'
-            '"type":"assert","value":"T","confidence":0.8}]}')
+def _mock_transport(_system, _body):
+    """The REGION transport. Proposing is now a region completion, so a stub that returned
+    the old claim-extraction JSON would be miming a mechanism that no longer exists."""
+    return "", {"cost": 0.0}
 
 
-class TheLMIsASourceThroughTheOneInlet(unittest.TestCase):
-    def test_lm_proposals_enter_at_proposal_tier(self):
+class ProposingIsPerturbAndRetain(unittest.TestCase):
+    """The bare propose path is DELETED. These controls describe what replaced it.
+
+    The old control here asserted that the LM appeared as a second SOURCE at the inlet,
+    beside `me`, each dropping extracted claims on the tape. That mechanism is gone: the LM
+    no longer proposes claims about the typed text, it completes a region containing it, and
+    what it contributes is ATTACHMENT — arrows to `[0|bias]`, retained beside the claim.
+    Keeping the old assertion would have pinned the removed organ in place.
+    """
+
+    def test_the_typed_claim_is_retained_at_extraction_tier(self):
         out = run_current("The cone is positive under composition.", chart="english",
                           key="sk-or-test-key", lm_transport=_mock_transport)
-        self.assertTrue(out["lm_available"])
-        by = out["proposals_by_source"]
-        self.assertIn("me", by)
-        self.assertIn("lm", by)
+        self.assertIn("me", out["proposals_by_source"])
         for p in out["proposals"]:
             self.assertEqual(p["tier"], "EXTRACTION",
-                             "every source, LM included, is proposal-tier")
+                             "every source, the LM's attachments included, is proposal-tier")
 
-    def test_no_key_means_deterministic_only(self):
+    def test_the_result_reports_what_was_retained(self):
+        out = run_current("The cone is positive under composition.", chart="english",
+                          key="sk-or-test-key", lm_transport=_mock_transport)
+        self.assertIn("retention", out)
+        self.assertEqual(out["retention"]["mode"], "retain")
+        self.assertTrue(out["retention"]["retained_claim"])
+
+    def test_planted_no_model_retains_an_isolated_claim_and_says_so(self):
+        """The removed organ was a raw drop treated as normal. Without a model the input
+        still cannot be situated — but that is now STATED, not silently done."""
         out = run_current("The cone is positive.", chart="english")
         self.assertFalse(out["lm_available"])
         self.assertEqual(set(out["proposals_by_source"]), {"me"})
+        self.assertEqual(out["retention"]["retained_arrows"], 0)
+        self.assertIn("ISOLATED", out["retention"]["note"])
 
     def test_a_third_instance_source_uses_the_same_inlet(self):
         cur = Current()

@@ -220,8 +220,33 @@ def check_one_code_path(root: Path | str | None = None) -> tuple[str, str]:
         text = (base / rel).read_text(encoding="utf-8")
         if "engine.attach" in text or "from .attach import" in text:
             return RED, f"{rel} still reaches for the deleted loop"
+
+    # THE SECOND PROPOSE PATH. Proposing and asking are one act with a persistence flag, so
+    # `propose_text` must reach the field through `perturb` + `commit` and by no other route.
+    # The removed organ ran the claim extractor and an LM claim-proposer against a Current
+    # that knew nothing about the corpus; either of those reappearing inside the propose path
+    # is that organ growing back, whatever it is called.
+    import ast
+
+    cur = (base / "ui" / "current.py")
+    tree = ast.parse(cur.read_text(encoding="utf-8"), filename=str(cur))
+    fn = next((n for n in ast.walk(tree)
+               if isinstance(n, ast.FunctionDef) and n.name == "propose_text"), None)
+    if fn is None:
+        return RED, "ui/current.py no longer defines propose_text"
+    called = {n.func.id for n in ast.walk(fn)
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+    for required in ("perturb", "commit"):
+        if required not in called:
+            return RED, (f"propose_text does not call {required}(): proposing has stopped "
+                         f"being the same act as asking")
+    for banned in ("LMProposer", "DeterministicExtractor"):
+        if banned in called:
+            return RED, (f"propose_text calls {banned}() — the bare propose path is back, "
+                         f"dropping a claim on the tape with no situating")
     return GREEN, ("the perturb path uses engine.region's prompt, renderer, parser and "
-                   "reading discipline; the candidate-list loop is absent")
+                   "reading discipline; the candidate-list loop is absent; and propose_text "
+                   "reaches the field only through perturb+commit")
 
 
 def run(snapshot: CorpusSnapshot, transport, chart: str = "english",

@@ -1,370 +1,384 @@
 {
- "schema": "common-ground/decisions/v0",
- "D1": {
-  "status": "resolved",
-  "basis": "fact",
-  "repo": "gnostrich/common-ground",
-  "license": "MIT",
-  "visibility": "as-configured-on-remote"
- },
- "D2": {
-  "status": "resolved",
-  "basis": "stated-default",
-  "charts": [
-   "english",
-   "lean",
-   "tabular",
-   "conversation",
-   "correspondence"
-  ],
-  "code_chart": "deferred-to-v0.5",
-  "note": "english + lean per KICKOFF default; tabular added 2026-07-31 by the item-2 chart plug-in refactor (operator-authorized). Charts are now a seed manifest (seed/CHARTS.json), not a compile-time Literal, so a fourth chart is a manifest row plus behavior registration, no engine dispatch edit. code chart still deferred to v0.5. correspondence chart added 2026-08-04 (operator-authorized, move-1 additive: new tag 'corr', a fresh address space; no existing address moves). It carries the base category's morphisms as CLAIMS so they are addressed/settled/contested by the same machinery.",
-  "manifest": "seed/CHARTS.json"
- },
- "D3": {
-  "status": "partial",
-  "claude_export": {
-   "pin": "registry/imports/claude_export_pin.json",
-   "conversations_json_sha256": "ffe6e6ade3b606066c90021381a52d06b56cc620f9fbefc2d434644534a7d60b",
-   "threads": 129,
-   "turns": 11514,
-   "stored": "external (digest-only in repo, operator 2026-07-31)"
+  "schema": "common-ground/decisions/v0",
+  "D1": {
+    "status": "resolved",
+    "basis": "fact",
+    "repo": "gnostrich/common-ground",
+    "license": "MIT",
+    "visibility": "as-configured-on-remote"
   },
-  "lean_corpus": {
-   "pin": "registry/imports/aristotle_corpus_pin.json",
-   "artifact_digest_sha256": "24485b87c2377d54aa9cd4b15a486a610cc93cea4602c2dc81efc8309a0eb648",
-   "source": "aristotle-harmonic (2 accounts)",
-   "projects": 297,
-   "lean_files": 2128,
-   "stored": "external (digest-only in repo, operator 2026-07-31)"
+  "D2": {
+    "status": "resolved",
+    "basis": "stated-default",
+    "charts": [
+      "english",
+      "lean",
+      "tabular",
+      "conversation",
+      "correspondence"
+    ],
+    "code_chart": "deferred-to-v0.5",
+    "note": "english + lean per KICKOFF default; tabular added 2026-07-31 by the item-2 chart plug-in refactor (operator-authorized). Charts are now a seed manifest (seed/CHARTS.json), not a compile-time Literal, so a fourth chart is a manifest row plus behavior registration, no engine dispatch edit. code chart still deferred to v0.5. correspondence chart added 2026-08-04 (operator-authorized, move-1 additive: new tag 'corr', a fresh address space; no existing address moves). It carries the base category's morphisms as CLAIMS so they are addressed/settled/contested by the same machinery.",
+    "manifest": "seed/CHARTS.json"
   },
-  "repos": [
-   "certified-positivity"
-  ],
-  "repos_second": null,
-  "exclusions": null,
-  "exclusions_policy": "operator 2026-07-31: exclude personal, non-technical content only; term-list authored at ingestion (an explicit [] is still a decision, never a default)",
-  "note": "claude_export + lean_corpus fetched out-of-band and pinned (not live pulls; KICKOFF 7.5). Bytes live external to this public repo per operator; only digests are committed. Still OPEN: concrete exclusions term-list, and the second repo. D3 remains partial and does not unblock SEED.lock (D5, D6 still open)."
- },
- "D4": {
-  "status": "partial",
-  "extractors": [
-   {
-    "id": "k0",
-    "model": "claude-opus-5",
-    "prompt": "extract_v1"
-   },
-   {
-    "id": "k1",
-    "model": "claude-opus-5",
-    "prompt": "extract_v2"
-   },
-   {
-    "id": "k2",
-    "model": "claude-sonnet-5",
-    "prompt": "extract_v1"
-   }
-  ],
-  "live_extraction_default": "off",
-  "live_extraction": "DELETED 2026-08-05, not disabled. The live arm was an AnthropicExtractor and the operator's rule is OpenRouter only; a dormant second provider is a rule enforced by nobody calling it. build_k_extractors raises if asked for it. When live extraction returns it goes through ui/lm.py:LMProposer."
- },
- "D5": {
-  "status": "unresolved",
-  "preminted": [
-   "BVALUED-AGREED.md",
-   "STATEMENTS.md",
-   "REGISTRY.md"
-  ],
-  "preminted_present": [],
-  "additional": null
- },
- "D6": {
-  "status": "unresolved",
-  "lean": null,
-  "lean_source": "certified-positivity lake-manifest",
-  "lean_observed_in_aristotle_corpus": "leanprover/lean4:v4.28.0 (244/245 pinned projects; one v4.32.0 outlier), single mathlib rev 8f9d9cff6bd728b17a24e163c9402775d9e6a365",
-  "lean_observed_note": "CORROBORATION ONLY — D6 stays unresolved. The authoritative pin is certified-positivity's lake-manifest, not the imported corpus; recording the corpus toolchain does not decide D6.",
-  "python": null,
-  "python_observed": "3.11.15",
-  "third_party_runtime_deps": []
- },
- "D7": {
-  "status": "resolved",
-  "choice": "re-approved-over-amendments",
-  "note": "Originally approved as-is. Re-approved 2026-07-30 over two amendments, both with R1-R5 text verbatim and unrewritten. AMENDMENT-1 (R3, class transcription-restoration, rationales a/b/c): second_fdt_surrogate_floor decides in place of the bootstrap band. AMENDMENT-2 (R4, class pre-data-design, rationales b/c only - (a) explicitly does NOT apply, since nothing in the spec named a null-rewire reference or a sensitivity arm): R4 becomes two-sided and both arms are decided against dropout movement on a degree- and weight-marginal-preserving rewire of the Q graph. Both retain the superseded band as a reported diagnostic that decides nothing. Amendment authority expires when P3 ingestion begins. AMENDMENT-3 (R2, class pre-data-design, rationales b/c - (a) checked against the drafting history and does not apply: KICKOFF section 5 specifies no flagging criterion and the bootstrap was present from the P0 commit): a gap is flagged iff its loop's cold floor exceeds q95 of a leave-one-out pooled label-permutation null. Rationale (c) here is calibration-restoring, not strictness-increasing. Deviates from the authorized per-loop wording, which is unsatisfiable (2**k support, all-cold assignment is the observed floor); the mandated positive control caught it and the deviation needs operator confirmation.",
-  "amendments": [
-   "PREREG-AMENDMENT-1",
-   "PREREG-AMENDMENT-2",
-   "PREREG-AMENDMENT-3"
-  ],
-  "prereg_path": "registry/PREREG.md"
- },
- "D8": {
-  "status": "partial",
-  "note": "Lexicon import pins (LEXICON SPEC section 3). Source POLICY is decided; two of the three artifacts have not landed yet. A pin is a content digest of a fetched dump, not a label: 'latest stable' and 'current' resolve to a different artifact next week, so they name a fetch rule, not an input. KICKOFF 7.5 forbids a live pull during a run for the same mechanical reason - an unpinned source cannot hash cleanly, so the seed hash keying every verdict would mean nothing. Record each artifact with `python cli.py pin <source> --path ...` when it lands.",
-  "mathlib_policy": "latest-stable-at-fetch",
-  "mathlib_dump": null,
-  "mathlib_commit": null,
-  "mathlib_dump_sha256": null,
-  "nlab_policy": "current-at-fetch",
-  "nlab_scrape": null,
-  "nlab_scrape_date": null,
-  "nlab_scrape_sha256": null,
-  "wordnet_policy": "pinned-version",
-  "wordnet_path": null,
-  "wordnet_version": "3.1",
-  "wordnet_sha256": null,
-  "convention_table": "approved-with-additions",
-  "convention_table_path": "seed/LEXICON/convention_table.json",
-  "resolved_when": "every *_sha256 recorded; policy fields alone do not resolve D8"
- },
- "D9_correspondence": {
-  "status": "resolved",
-  "basis": "operator-decided 2026-08-04, from the object",
-  "shape": "directed typed morphism between two slot ADDRESSES: src(chart,slot) -kind-> dst(chart,slot), + warrant + provenance(proposer, prompt_hash, evidence spans)",
-  "kinds": [
-   "same_claim",
-   "refines",
-   "instance_of"
-  ],
-  "no_approximates": "CONSTITUTIONAL (GATES sentence 9). Uncertainty is LOW WARRANT on a same_claim proposal, never a fuzzy morphism type — a graded morphism is a threshold wearing a type's clothes, i.e. the deleted similarity defect re-entering the algebra.",
-  "holonomy": "same_claim ONLY. refines/instance_of are directed and non-invertible: recorded, they contribute coupling structure (gate-2 energy), and are EXCLUDED from loops.",
-  "reverse_arrow": "a SEPARATE proposal with its own address. It may not arrive, or may disagree; that mismatch is SIGNAL and is reported as open, never assumed symmetric.",
-  "warrant_ladder": "LM proposal = EXTRACTION; operator confirmation = AUTHORSHIP; kernel-verified translation = KERNEL. Extraction-tier arrows may form PROVISIONAL fibers/loops and be reported, but never clamp and never promote through K below AUTHORSHIP (engine/types.py:PROMOTION_FLOOR).",
-  "write_path": "NO side registry. The correspondence set is DERIVED from accepted correspondence-chart claims that came through propose(); seed/CORRESPONDENCE.json was REMOVED so no direct write-path exists.",
-  "granularity": "SLOT-LEVEL at v0 — a faithful NON-COMPOSITIONAL approximation, recorded as such.",
-  "granularity_v_next": "TERM-LEVEL (designed, not built): a lexicon-entry ~ Lean-name correspondence that INDUCES slot correspondences compositionally — the functorial version. Slot-level does not compose: two slot arrows do not entail an arrow between claims built from the same terms.",
-  "candidate_generation": "STRUCTURAL hole enumeration (engine/holes.py): cross-chart only (exact addressing owns intra-chart identity), type-compatible only, ranked by restatement count, bounded before materialization. Never all-pairs, never scanning."
- },
- "findings": {
-  "note": "First-class findings recorded from the object outward. Not decisions (no status/resolution): design inputs and rulings that constrain later work. Keyed outside the D-series so the resolution check (seed_lock.unresolved_decisions, which scans D* keys) ignores them.",
-  "F-contest-under-exact-addressing": {
-   "date": "2026-08-04",
-   "statement": "Under exact addressing (GATES.md #1: slot = hash(nu, type)) with fiber membership the DECLARED correspondence relation and never token similarity, contest is producible ONLY by (1) a clamp-eligible warrant (kernel/CI receipt) asserting one b-value on a slot whose EXTRACTED reading asserts a different b-value (single-slot multi-value contest), or (2) a DECLARED correspondence over genuinely-same-claim slots with CONFLICTING grounding (a clamp on one member contradicting extraction), which closes a holonomy loop. This is the object's definition of disagreement.",
-   "consequence": "Design input for the correspondence FORMAT, which remains an undesigned HOLE (engine/correspondence.py): the format must express declared co-reference over genuinely-same-claim slots, because that plus grounding is the only thing that puts a nonzero floor on H1. A format admitting similarity-grouped members would re-manufacture the artifact.",
-   "supersedes": "The null-battery P/not-P 'contest' fixtures ('The cone is positive / is not positive / may be positive') declared three GENUINELY-DIFFERENT claims equal on token overlap and read the holonomy as contest. Deleted; every control resting on them rebuilt on mechanism (1)/(2) with a real KERNEL-tier Clamp+Warrant.",
-   "composes_with": "GATES.md sentence 8 (value/address span): a slot's b-value is read off nu(chart, surface), so the rebuilt controls carry their deciding token in the CLAMP (a separate constraint set derived from no surface), keeping them span-clean by construction.",
-   "see": [
-    "FAITHFULNESS.md",
-    "engine/correspondence.py",
-    "engine/nulls.py",
-    "engine/blocks.py"
-   ]
+  "D3": {
+    "status": "partial",
+    "claude_export": {
+      "pin": "registry/imports/claude_export_pin.json",
+      "conversations_json_sha256": "ffe6e6ade3b606066c90021381a52d06b56cc620f9fbefc2d434644534a7d60b",
+      "threads": 129,
+      "turns": 11514,
+      "stored": "external (digest-only in repo, operator 2026-07-31)"
+    },
+    "lean_corpus": {
+      "pin": "registry/imports/aristotle_corpus_pin.json",
+      "artifact_digest_sha256": "24485b87c2377d54aa9cd4b15a486a610cc93cea4602c2dc81efc8309a0eb648",
+      "source": "aristotle-harmonic (2 accounts)",
+      "projects": 297,
+      "lean_files": 2128,
+      "stored": "external (digest-only in repo, operator 2026-07-31)"
+    },
+    "repos": [
+      "certified-positivity"
+    ],
+    "repos_second": null,
+    "exclusions": null,
+    "exclusions_policy": "operator 2026-07-31: exclude personal, non-technical content only; term-list authored at ingestion (an explicit [] is still a decision, never a default)",
+    "note": "claude_export + lean_corpus fetched out-of-band and pinned (not live pulls; KICKOFF 7.5). Bytes live external to this public repo per operator; only digests are committed. Still OPEN: concrete exclusions term-list, and the second repo. D3 remains partial and does not unblock SEED.lock (D5, D6 still open)."
   },
-  "F-restatement-ranking-retired": {
-   "status": "retired 2026-08-04 (operator)",
-   "signal": "restatement count (number of distinct documents restating a slot)",
-   "why_retired": "it measures REPETITION WITHIN A CHART, not bridge likelihood across charts. A slot restated in many documents is boilerplate as often as it is important, and boilerplate concentrates in the smallest chart. Ranking by it selected 186/200 lean x tabular candidates — Lean theorem statements paired with table rows — and the proposer correctly answered `none` to all 170 it was shown.",
-   "evidence": "Batch 1: 200 holes, chart-pairs {lean x tabular:186, english x lean:10, conversation x lean:4}; LM 20 calls/46s; answers 170/170 `none`; 0 arrows entered.",
-   "kept_result": "the `none` discipline held in production across 170 candidates — the proposer forced no match. That is the batch's real result."
+  "D4": {
+    "status": "partial",
+    "extractors": [
+      {
+        "id": "k0",
+        "model": "claude-opus-5",
+        "prompt": "extract_v1"
+      },
+      {
+        "id": "k1",
+        "model": "claude-opus-5",
+        "prompt": "extract_v2"
+      },
+      {
+        "id": "k2",
+        "model": "claude-sonnet-5",
+        "prompt": "extract_v1"
+      }
+    ],
+    "live_extraction_default": "off",
+    "live_extraction": "DELETED 2026-08-05, not disabled. The live arm was an AnthropicExtractor and the operator's rule is OpenRouter only; a dormant second provider is a rule enforced by nobody calling it. build_k_extractors raises if asked for it. When live extraction returns it goes through ui/lm.py:LMProposer."
   },
-  "F-claim-form-typing-does-not-discriminate": {
-   "status": "open defect, NAMED not fixed",
-   "claim": "type-compatibility was supposed to filter candidate pairs, but claim-form has four values and one absorbs ~88% of every prose-family chart, so it filters almost nothing.",
-   "measured": {
-    "english_assert": "88.9% of 96308",
-    "conversation_assert": "87.9% of 37297",
-    "tabular_assert": "88.5% of 1456",
-    "lean_assert": "18.1% of 12041 (lean splits: conditional 7467, define 2397, assert 2177)"
-   },
-   "consequence": "tabular rows type as `assert` and therefore match nearly every english/conversation slot AND lean's assert slots — which is why the 186 lean x tabular candidates passed the type gate. Type-compatible english x lean pairs alone number 234,514,206.",
-   "not_fixed": "a finer claim-form taxonomy moves classify(), which moves addresses (gate 4, plastic). Named for the operator to rule on rather than repaired silently."
+  "D5": {
+    "status": "unresolved",
+    "preminted": [
+      "BVALUED-AGREED.md",
+      "STATEMENTS.md",
+      "REGISTRY.md"
+    ],
+    "preminted_present": [],
+    "additional": null
   },
-  "F-lexicon-import-is-the-bottleneck": {
-   "status": "blocking",
-   "question": "can candidate pairs be ranked by shared lexicon anchors (english term <-> Lean name already bound in the imported lexicon)?",
-   "answer": "NO — the anchored set is not thin, it is EMPTY. 0 of 184 imported senses carry a formal face.",
-   "why": "mathlib import BLOCKED (D8: policy 'latest-stable-at-fetch', no dump landed, mathlib_dump_sha256 null); nlab BLOCKED; wordnet BLOCKED; preminted BLOCKED (D5). The only source that imported is the hand-authored convention table (134 convention + 46 general + 4 preminted senses), and its 51 rows name no formal face at all.",
-   "consequence": "anchor-ranking cannot be computed: it would score all 234.5M english x lean pairs at zero. Batch 2 as specified cannot run until a formal-face source lands.",
-   "unblocks": "land + pin a Mathlib dump (D8), OR derive formal faces from the operator's OWN Lean corpus declaration names via the seeded R-map (engine/rmap.py renders formal -> English through the hashed abbreviation table) — declared structure, not similarity. The second needs no external fetch. Operator's call."
+  "D6": {
+    "status": "unresolved",
+    "lean": null,
+    "lean_source": "certified-positivity lake-manifest",
+    "lean_observed_in_aristotle_corpus": "leanprover/lean4:v4.28.0 (244/245 pinned projects; one v4.32.0 outlier), single mathlib rev 8f9d9cff6bd728b17a24e163c9402775d9e6a365",
+    "lean_observed_note": "CORROBORATION ONLY — D6 stays unresolved. The authoritative pin is certified-positivity's lake-manifest, not the imported corpus; recording the corpus toolchain does not decide D6.",
+    "python": null,
+    "python_observed": "3.11.15",
+    "third_party_runtime_deps": []
   },
-  "F-generic-collision-masquerading-as-anchor": {
-   "status": "caught and fixed 2026-08-04",
-   "pattern": "a LEXICAL MATCH THAT LOOKS LIKE DECLARED STRUCTURE but is generic-word collision — the same class as the deleted Jaccard membership and the value/address span mismatch, one layer further out.",
-   "instance": "corpus-derived formal faces anchored 161,694 english x lean pairs (a 1,450x reduction from 234,514,206), but the top of the list was `mark`, `with`, `value`, `real`, `state` — generic English words that happen to be fragments of Lean declaration names. `with` alone anchored 9,987 english slots to 1 lean slot.",
-   "how_caught": "by MEASURING THE TOP OF THE LIST rather than trusting the headline reduction. The aggregate looked like a triumph; the composition showed it was mostly junk.",
-   "why_the_stop_list_failed": "it was CURATED. It caught the closed-class words its author thought of (is/of/the/eq/add) and missed the five that went on to supply most of the pair count. A hand-written list encodes a guess about what is generic.",
-   "fix": "RETIRED the stop list. A face now anchors only if it is (1) MULTI-WORD — a rendered declaration rather than a fragment of one — or (2) SINGLE-WORD AND RARE by MEASUREMENT: english document frequency below seed/CONSTANTS.json:face_admission.single_word_max_df_fraction (0.001, hashed, gate-4 plastic). Rarity admits genuine single-word terms (mcMillan, hankel, lipschitz, tendsto) without a curated list.",
-   "standard": "a measured corpus property, never a tuned or curated cutoff."
+  "D7": {
+    "status": "resolved",
+    "choice": "re-approved-over-amendments",
+    "note": "Originally approved as-is. Re-approved 2026-07-30 over two amendments, both with R1-R5 text verbatim and unrewritten. AMENDMENT-1 (R3, class transcription-restoration, rationales a/b/c): second_fdt_surrogate_floor decides in place of the bootstrap band. AMENDMENT-2 (R4, class pre-data-design, rationales b/c only - (a) explicitly does NOT apply, since nothing in the spec named a null-rewire reference or a sensitivity arm): R4 becomes two-sided and both arms are decided against dropout movement on a degree- and weight-marginal-preserving rewire of the Q graph. Both retain the superseded band as a reported diagnostic that decides nothing. Amendment authority expires when P3 ingestion begins. AMENDMENT-3 (R2, class pre-data-design, rationales b/c - (a) checked against the drafting history and does not apply: KICKOFF section 5 specifies no flagging criterion and the bootstrap was present from the P0 commit): a gap is flagged iff its loop's cold floor exceeds q95 of a leave-one-out pooled label-permutation null. Rationale (c) here is calibration-restoring, not strictness-increasing. Deviates from the authorized per-loop wording, which is unsatisfiable (2**k support, all-cold assignment is the observed floor); the mandated positive control caught it and the deviation needs operator confirmation.",
+    "amendments": [
+      "PREREG-AMENDMENT-1",
+      "PREREG-AMENDMENT-2",
+      "PREREG-AMENDMENT-3"
+    ],
+    "prereg_path": "registry/PREREG.md"
   },
-  "F-english-and-lean-share-zero-provenance": {
-   "status": "first-class finding, 2026-08-04",
-   "measured": "English slots come from 109 Claude conversation threads; Lean slots from 252 Aristotle project uploads. Intersection of provenance units: ZERO.",
-   "consequence": "cross-chart candidate generation is STRUCTURALLY IMPOSSIBLE in the Aristotle+Claude corpus until prose and formalization co-locate. No lexical mechanism substitutes for a structural relation that does not exist.",
-   "evidence_not_mechanism": "anchoring produced 495 shared faces / 319,551 pairs of which 97.1% came from generic single-word collisions (is, of, one, with, real, mark, state). The multi-word set (241 faces, 3,819 pairs) and measured-rare-single-word set (117 faces, 5,360 pairs) are RECORDED EVIDENCE for why option (1) was rejected — NOT a mechanism that is kept.",
-   "rule_pile": "four anchor rules had accumulated (4-char min, stop list, stop-list extension, multi-word) and none is specified by the object. Anchoring was unspecified scaffolding growing a rule pile — the same failure as similarity, one layer up. Operator retired it.",
-   "resolution": "option (2): bound candidates by PROVENANCE. Retired anchoring from the candidate path."
+  "D8": {
+    "status": "partial",
+    "note": "Lexicon import pins (LEXICON SPEC section 3). Source POLICY is decided; two of the three artifacts have not landed yet. A pin is a content digest of a fetched dump, not a label: 'latest stable' and 'current' resolve to a different artifact next week, so they name a fetch rule, not an input. KICKOFF 7.5 forbids a live pull during a run for the same mechanical reason - an unpinned source cannot hash cleanly, so the seed hash keying every verdict would mean nothing. Record each artifact with `python cli.py pin <source> --path ...` when it lands.",
+    "mathlib_policy": "latest-stable-at-fetch",
+    "mathlib_dump": null,
+    "mathlib_commit": null,
+    "mathlib_dump_sha256": null,
+    "nlab_policy": "current-at-fetch",
+    "nlab_scrape": null,
+    "nlab_scrape_date": null,
+    "nlab_scrape_sha256": null,
+    "wordnet_policy": "pinned-version",
+    "wordnet_path": null,
+    "wordnet_version": "3.1",
+    "wordnet_sha256": null,
+    "convention_table": "approved-with-additions",
+    "convention_table_path": "seed/LEXICON/convention_table.json",
+    "resolved_when": "every *_sha256 recorded; policy fields alone do not resolve D8"
   },
-  "F-router-overreads-gate-3": {
-   "status": "NAMED, operator ruling pending",
-   "defect": "engine/router.py:_default_lean_elaborates shelves every non-elaborating .lean file, justified as 'a Lean-chart slot that was never kernel-checked would be a grounding claim the engine cannot back'. That is a misreading: GATES sentence 3 governs GROUNDING (clamp-eligibility), not chart ENTRY.",
-   "spec": "GATES 3 verbatim: 'Only top-tier warrants ground (clamp-eligible): Lean kernel-accept under pinned toolchain; CI-green test receipts.' adapters/lean_corpus.py implements the correct reading: 'refuses to emit clamps while D6 is unresolved, and emits documents only.'",
-   "evidence": "the Aristotle corpus already carries 12,041 Lean slots at extraction tier with D6 unresolved and zero clamps. Two ingestion paths, two different rules, one mistaken.",
-   "impact": "all 407 GitHub .lean files were shelved by the router. Under the adapter's (correct) rule they yield 1,676 Lean slots across 6 repos, which is what makes provenance-bounded candidates possible at all.",
-   "d6_still_required_for": "KERNEL clamps only — never for chart entry."
+  "D9_correspondence": {
+    "status": "resolved",
+    "basis": "operator-decided 2026-08-04, from the object",
+    "shape": "directed typed morphism between two slot ADDRESSES: src(chart,slot) -kind-> dst(chart,slot), + warrant + provenance(proposer, prompt_hash, evidence spans)",
+    "kinds": [
+      "same_claim",
+      "refines",
+      "instance_of"
+    ],
+    "no_approximates": "CONSTITUTIONAL (GATES sentence 9). Uncertainty is LOW WARRANT on a same_claim proposal, never a fuzzy morphism type — a graded morphism is a threshold wearing a type's clothes, i.e. the deleted similarity defect re-entering the algebra.",
+    "holonomy": "same_claim ONLY. refines/instance_of are directed and non-invertible: recorded, they contribute coupling structure (gate-2 energy), and are EXCLUDED from loops.",
+    "reverse_arrow": "a SEPARATE proposal with its own address. It may not arrive, or may disagree; that mismatch is SIGNAL and is reported as open, never assumed symmetric.",
+    "warrant_ladder": "LM proposal = EXTRACTION; operator confirmation = AUTHORSHIP; kernel-verified translation = KERNEL. Extraction-tier arrows may form PROVISIONAL fibers/loops and be reported, but never clamp and never promote through K below AUTHORSHIP (engine/types.py:PROMOTION_FLOOR).",
+    "write_path": "NO side registry. The correspondence set is DERIVED from accepted correspondence-chart claims that came through propose(); seed/CORRESPONDENCE.json was REMOVED so no direct write-path exists.",
+    "granularity": "SLOT-LEVEL at v0 — a faithful NON-COMPOSITIONAL approximation, recorded as such.",
+    "granularity_v_next": "TERM-LEVEL (designed, not built): a lexicon-entry ~ Lean-name correspondence that INDUCES slot correspondences compositionally — the functorial version. Slot-level does not compose: two slot arrows do not entail an arrow between claims built from the same terms.",
+    "candidate_generation": "STRUCTURAL hole enumeration (engine/holes.py): cross-chart only (exact addressing owns intra-chart identity), type-compatible only, ranked by restatement count, bounded before materialization. Never all-pairs, never scanning."
   },
-  "F-d6-build-not-feasible-in-container": {
-   "status": "measured 2026-08-04",
-   "toolchain": "leanprover/lean4:v4.28.0 IS downloadable (HTTP 200, 520MB, releases.lean-lang.org -> release-assets.githubusercontent.com).",
-   "mathlib_cache": "BLOCKED: release.ammkrn.dev -> 502 connect_rejected (agent-proxy policy denial, in the proxy's own failure log). Without the cache Mathlib builds from source: hours of CPU.",
-   "container": "27GB free disk (sufficient); no elan/lake/lean installed; container is EPHEMERAL so any build is lost at session end and must be redone.",
-   "two_toolchains": "repos do not agree: v4.28.0 (certified-positivity, beauville-laszlo, realization-lean) vs v4.32.0 (discovery-kernel). D6 must pin per-repo or accept two.",
-   "honest_answer": "a full kernel-verified Mathlib build is NOT practical in this environment. Kernel clamps are future work; chart entry does not need them."
+  "findings": {
+    "note": "First-class findings recorded from the object outward. Not decisions (no status/resolution): design inputs and rulings that constrain later work. Keyed outside the D-series so the resolution check (seed_lock.unresolved_decisions, which scans D* keys) ignores them.",
+    "F-contest-under-exact-addressing": {
+      "date": "2026-08-04",
+      "statement": "Under exact addressing (GATES.md #1: slot = hash(nu, type)) with fiber membership the DECLARED correspondence relation and never token similarity, contest is producible ONLY by (1) a clamp-eligible warrant (kernel/CI receipt) asserting one b-value on a slot whose EXTRACTED reading asserts a different b-value (single-slot multi-value contest), or (2) a DECLARED correspondence over genuinely-same-claim slots with CONFLICTING grounding (a clamp on one member contradicting extraction), which closes a holonomy loop. This is the object's definition of disagreement.",
+      "consequence": "Design input for the correspondence FORMAT, which remains an undesigned HOLE (engine/correspondence.py): the format must express declared co-reference over genuinely-same-claim slots, because that plus grounding is the only thing that puts a nonzero floor on H1. A format admitting similarity-grouped members would re-manufacture the artifact.",
+      "supersedes": "The null-battery P/not-P 'contest' fixtures ('The cone is positive / is not positive / may be positive') declared three GENUINELY-DIFFERENT claims equal on token overlap and read the holonomy as contest. Deleted; every control resting on them rebuilt on mechanism (1)/(2) with a real KERNEL-tier Clamp+Warrant.",
+      "composes_with": "GATES.md sentence 8 (value/address span): a slot's b-value is read off nu(chart, surface), so the rebuilt controls carry their deciding token in the CLAMP (a separate constraint set derived from no surface), keeping them span-clean by construction.",
+      "see": [
+        "FAITHFULNESS.md",
+        "engine/correspondence.py",
+        "engine/nulls.py",
+        "engine/blocks.py"
+      ]
+    },
+    "F-restatement-ranking-retired": {
+      "status": "retired 2026-08-04 (operator)",
+      "signal": "restatement count (number of distinct documents restating a slot)",
+      "why_retired": "it measures REPETITION WITHIN A CHART, not bridge likelihood across charts. A slot restated in many documents is boilerplate as often as it is important, and boilerplate concentrates in the smallest chart. Ranking by it selected 186/200 lean x tabular candidates — Lean theorem statements paired with table rows — and the proposer correctly answered `none` to all 170 it was shown.",
+      "evidence": "Batch 1: 200 holes, chart-pairs {lean x tabular:186, english x lean:10, conversation x lean:4}; LM 20 calls/46s; answers 170/170 `none`; 0 arrows entered.",
+      "kept_result": "the `none` discipline held in production across 170 candidates — the proposer forced no match. That is the batch's real result."
+    },
+    "F-claim-form-typing-does-not-discriminate": {
+      "status": "open defect, NAMED not fixed",
+      "claim": "type-compatibility was supposed to filter candidate pairs, but claim-form has four values and one absorbs ~88% of every prose-family chart, so it filters almost nothing.",
+      "measured": {
+        "english_assert": "88.9% of 96308",
+        "conversation_assert": "87.9% of 37297",
+        "tabular_assert": "88.5% of 1456",
+        "lean_assert": "18.1% of 12041 (lean splits: conditional 7467, define 2397, assert 2177)"
+      },
+      "consequence": "tabular rows type as `assert` and therefore match nearly every english/conversation slot AND lean's assert slots — which is why the 186 lean x tabular candidates passed the type gate. Type-compatible english x lean pairs alone number 234,514,206.",
+      "not_fixed": "a finer claim-form taxonomy moves classify(), which moves addresses (gate 4, plastic). Named for the operator to rule on rather than repaired silently."
+    },
+    "F-lexicon-import-is-the-bottleneck": {
+      "status": "blocking",
+      "question": "can candidate pairs be ranked by shared lexicon anchors (english term <-> Lean name already bound in the imported lexicon)?",
+      "answer": "NO — the anchored set is not thin, it is EMPTY. 0 of 184 imported senses carry a formal face.",
+      "why": "mathlib import BLOCKED (D8: policy 'latest-stable-at-fetch', no dump landed, mathlib_dump_sha256 null); nlab BLOCKED; wordnet BLOCKED; preminted BLOCKED (D5). The only source that imported is the hand-authored convention table (134 convention + 46 general + 4 preminted senses), and its 51 rows name no formal face at all.",
+      "consequence": "anchor-ranking cannot be computed: it would score all 234.5M english x lean pairs at zero. Batch 2 as specified cannot run until a formal-face source lands.",
+      "unblocks": "land + pin a Mathlib dump (D8), OR derive formal faces from the operator's OWN Lean corpus declaration names via the seeded R-map (engine/rmap.py renders formal -> English through the hashed abbreviation table) — declared structure, not similarity. The second needs no external fetch. Operator's call."
+    },
+    "F-generic-collision-masquerading-as-anchor": {
+      "status": "caught and fixed 2026-08-04",
+      "pattern": "a LEXICAL MATCH THAT LOOKS LIKE DECLARED STRUCTURE but is generic-word collision — the same class as the deleted Jaccard membership and the value/address span mismatch, one layer further out.",
+      "instance": "corpus-derived formal faces anchored 161,694 english x lean pairs (a 1,450x reduction from 234,514,206), but the top of the list was `mark`, `with`, `value`, `real`, `state` — generic English words that happen to be fragments of Lean declaration names. `with` alone anchored 9,987 english slots to 1 lean slot.",
+      "how_caught": "by MEASURING THE TOP OF THE LIST rather than trusting the headline reduction. The aggregate looked like a triumph; the composition showed it was mostly junk.",
+      "why_the_stop_list_failed": "it was CURATED. It caught the closed-class words its author thought of (is/of/the/eq/add) and missed the five that went on to supply most of the pair count. A hand-written list encodes a guess about what is generic.",
+      "fix": "RETIRED the stop list. A face now anchors only if it is (1) MULTI-WORD — a rendered declaration rather than a fragment of one — or (2) SINGLE-WORD AND RARE by MEASUREMENT: english document frequency below seed/CONSTANTS.json:face_admission.single_word_max_df_fraction (0.001, hashed, gate-4 plastic). Rarity admits genuine single-word terms (mcMillan, hankel, lipschitz, tendsto) without a curated list.",
+      "standard": "a measured corpus property, never a tuned or curated cutoff."
+    },
+    "F-english-and-lean-share-zero-provenance": {
+      "status": "first-class finding, 2026-08-04",
+      "measured": "English slots come from 109 Claude conversation threads; Lean slots from 252 Aristotle project uploads. Intersection of provenance units: ZERO.",
+      "consequence": "cross-chart candidate generation is STRUCTURALLY IMPOSSIBLE in the Aristotle+Claude corpus until prose and formalization co-locate. No lexical mechanism substitutes for a structural relation that does not exist.",
+      "evidence_not_mechanism": "anchoring produced 495 shared faces / 319,551 pairs of which 97.1% came from generic single-word collisions (is, of, one, with, real, mark, state). The multi-word set (241 faces, 3,819 pairs) and measured-rare-single-word set (117 faces, 5,360 pairs) are RECORDED EVIDENCE for why option (1) was rejected — NOT a mechanism that is kept.",
+      "rule_pile": "four anchor rules had accumulated (4-char min, stop list, stop-list extension, multi-word) and none is specified by the object. Anchoring was unspecified scaffolding growing a rule pile — the same failure as similarity, one layer up. Operator retired it.",
+      "resolution": "option (2): bound candidates by PROVENANCE. Retired anchoring from the candidate path."
+    },
+    "F-router-overreads-gate-3": {
+      "status": "NAMED, operator ruling pending",
+      "defect": "engine/router.py:_default_lean_elaborates shelves every non-elaborating .lean file, justified as 'a Lean-chart slot that was never kernel-checked would be a grounding claim the engine cannot back'. That is a misreading: GATES sentence 3 governs GROUNDING (clamp-eligibility), not chart ENTRY.",
+      "spec": "GATES 3 verbatim: 'Only top-tier warrants ground (clamp-eligible): Lean kernel-accept under pinned toolchain; CI-green test receipts.' adapters/lean_corpus.py implements the correct reading: 'refuses to emit clamps while D6 is unresolved, and emits documents only.'",
+      "evidence": "the Aristotle corpus already carries 12,041 Lean slots at extraction tier with D6 unresolved and zero clamps. Two ingestion paths, two different rules, one mistaken.",
+      "impact": "all 407 GitHub .lean files were shelved by the router. Under the adapter's (correct) rule they yield 1,676 Lean slots across 6 repos, which is what makes provenance-bounded candidates possible at all.",
+      "d6_still_required_for": "KERNEL clamps only — never for chart entry."
+    },
+    "F-d6-build-not-feasible-in-container": {
+      "status": "measured 2026-08-04",
+      "toolchain": "leanprover/lean4:v4.28.0 IS downloadable (HTTP 200, 520MB, releases.lean-lang.org -> release-assets.githubusercontent.com).",
+      "mathlib_cache": "BLOCKED: release.ammkrn.dev -> 502 connect_rejected (agent-proxy policy denial, in the proxy's own failure log). Without the cache Mathlib builds from source: hours of CPU.",
+      "container": "27GB free disk (sufficient); no elan/lake/lean installed; container is EPHEMERAL so any build is lost at session end and must be redone.",
+      "two_toolchains": "repos do not agree: v4.28.0 (certified-positivity, beauville-laszlo, realization-lean) vs v4.32.0 (discovery-kernel). D6 must pin per-repo or accept two.",
+      "honest_answer": "a full kernel-verified Mathlib build is NOT practical in this environment. Kernel clamps are future work; chart entry does not need them."
+    },
+    "F-where-prose-about-lean-actually-lives": {
+      "status": "measured 2026-08-04; three defects NAMED, none fixed (operator rules)",
+      "question": "dir-level provenance bounding covered only 179 of 1,317 lean slots (13.6%) BEFORE the proposer said anything. Where does prose-about-Lean actually live?",
+      "c_key_number": "571 of 1,113 identifier-shaped lean declaration names (51.3%) ARE named in English prose somewhere in the corpus. THE BRIDGES EXIST — co-location is simply the wrong finder. Sample: A3_exists, A4_main, B1_bound, B2_recurrence, B4_resolvent, C1_kolmogorov, C2_stochastic, C3_gibbs, D2_b_posdef, AmericanOptimalityPrinciple, CoveragePrimeFree.",
+      "defect_1_underscore_stripping": "engine/normalize.py:_nu_english strips `_ * ` ~` as MARKDOWN EMPHASIS, so every Lean identifier written in prose is MANGLED in the address: gershgorin_wall -> gershgorinwall. Prose naming a declaration and the declaration itself can therefore never share a token. This is in the ADDRESSING function (gate-4 plastic). It is why a first pass at the key number returned 0 of 1,113 — the measurement had to be run against the same transform the corpus underwent.",
+      "defect_2_docstrings_discarded": "264 of 407 .lean files (64.9%) carry /-- docstrings -/, 292,633 chars = 15.8% of all Lean text. _nu_lean strips them from the Lean address AND the file routes wholesale to the Lean chart on its extension, so they are never available as English. The most perfectly co-located prose that can exist — sitting ON the declaration — is discarded at the boundary.",
+      "defect_3_dir_bounding_wrong_shaped": "certified-positivity keeps STATEMENTS.md ('the exact formal claims, verbatim from the named source file') at the repo ROOT while 75 of its 77 .lean files sit in lean/. Docs at top, code below. Dir-level bounding pairs that prose with 2 files and misses 75. The bound is not wrong in kind — it is wrong in SHAPE for how repositories are organized.",
+      "method_caveat": "the key number required a >=4-character minimum after the markdown transform, to stop one-letter names (A, C) matching every English word. That threshold is the diagnostic's, introduced for this measurement and flagged rather than left silent."
+    },
+    "F-batch-2-result": {
+      "status": "complete 2026-08-04; PROVISIONAL, nothing promoted",
+      "run": "179 lean declarations, each against its dir-co-located english slots. OpenRouter, openrouter/auto, 179 calls, 468s.",
+      "answers": "1,227 answers: none 1,223 (99.7%), same_claim 3, instance_of 1.",
+      "structure": "4 arrows entered at EXTRACTION tier; 2 fibers, 4 edges, 0 loops; provisional floor 0.0 reported as NO-CYCLE-SUPPORT, never as agreement. 3 open reverse arrows.",
+      "arrows_are_real": "gershgorin_wall and wall_gersh_margin_zero <-> the prose naming gershgorin_wall as the certified instance; wall_sigmaMin_half <-> 'the lower bound half of the condition number theorem'; relation_eq_sum_smul_proj -> checkRelation/checkRelationSound/checkRelationIff, correctly typed instance_of rather than same_claim.",
+      "reading": "the mechanism is sound end-to-end (holes -> proposer -> one inlet -> derived arrows -> fibers) and the none-discipline held under 1,227 chances to force a match. The limit was COVERAGE, not the proposer: the bound reached 13.6% of a corpus in which 51.3% of declarations are nameable."
+    },
+    "F-batch-per-repo-was-a-scope-error": {
+      "finding": "a repository is a fact about where files were checked in, not a boundary in the base category. Running one campaign per repo guarantees that the only correspondences ever proposed live inside a single checkout, so no cross-corpus bridge can ever be found — including the Aristotle/Claude material, which is the only hub that touches more than one repo.",
+      "consequence": "architecture changed to a continuous global process (D10). Batch runners are retained only as one-shot measurements.",
+      "measured": "batch 3 (perp-options-amm) enumerated 20,430 holes inside ONE repo and 0 across any boundary, because both bounding relations are provenance relations."
+    },
+    "F-contest-predicate-was-quadratic-in-its-access-pattern": {
+      "finding": "Ledger.contested_blocks is [b for b in blocks if is_contested(b, deltas)], and is_contested scans EVERY delta for EVERY block. On the union corpus that is 183,135 blocks against 620,503 deltas — about 1.1e11 slot comparisons — and the window's read view was killed after thirty minutes inside that one call.",
+      "diagnosis": "the predicate is cheap; only its access pattern was expensive. Nothing about the definition of contest is wrong.",
+      "repair": "engine/corpus_state.build_snapshot_direct indexes the deltas by slot once (_flatten_deltas) and evaluates the identical two-arm predicate against that index. Settlement machinery the read view does not need — evidence vectors, lexicon priors — is not built at all.",
+      "measured": "field-for-field agreement with the ledger build on the four-chart fixture (both contest arms planted against) and on three real repos: beauville-laszlo 143 slots 2.1x, mathlib-structure-probes 2,063 slots 27.7x, autosynth 5,121 slots 69.3x. Zero disagreements. The speedup grows with corpus size, which is what a quadratic-to-linear repair looks like.",
+      "caveat": "the three real subsets had 0 arrows and 0 contested slots, so they exercised slots/blocks/fibers/floor-status agreement but NOT the contest arms. Those are covered only by the fixture, where both arms are planted."
+    },
+    "F-corpus-contest-is-structurally-impossible-without-arrows": {
+      "finding": "the full union corpus settles to 183,135 slots, 0 fibers, 0 contested slots and floor GAP when built from corpus material alone.",
+      "why": "this is the exact consequence of the span repair (GATES 8). A slot's b-value is computed over its address span, and the address determines the span, so every delta landing on one address necessarily agrees. Single-slot contest is impossible BY CONSTRUCTION. Contest can only arise from the multi-slot arm, which requires a declared correspondence — and correspondences are precisely what the corpus does not contain until a proposer supplies them.",
+      "consequence": "the corpus alone can carry no contest and no floor. Both are downstream of correspondence. With the daemon's first 56 arrows laid over the same corpus: 25 fibers, 66 contested slots, floor still GAP (no cycle).",
+      "not_a_defect": "it is the engine reporting absence as absence rather than manufacturing agreement."
+    },
+    "F-verbatim-was-a-document-property-not-a-span-property": {
+      "finding": "engine/router.py rule 1 shelved an ENTIRE artifact if it contained a single code fence. On the operator's 9 repositories that discarded 226 of 742 markdown files — 2,209,806 characters of prose — to avoid extracting 224,623 characters of fenced code.",
+      "why_it_matters": "the prose it discarded is exactly the prose most likely to bridge: a README's usage section is the natural-language statement of what the code beside it does.",
+      "repair": "fenced blocks are lifted out as SPANS, pinned by content hash on RoutedDoc.verbatim_spans, and the prose around them is routed on its own merits. A fence is a delimiter the author wrote, so removing it reads the document's markup rather than inferring an extent.",
+      "stated_limitation": "log lines and stack traces keep DOCUMENT-level treatment. They carry no delimiter, so their extent would have to be guessed, and a guessed extent is a threshold. On the real corpus that residue is 1 document of 227 — measured, not assumed.",
+      "measured_after": "md->verbatim 226->0; 225 documents reach a chart that could not before; md->english 324->482, md->tabular 81->105, md->conversation 111->155. Corpus census re-run: deltas 620,503 -> 955,380 (+54%), slots 183,135 -> 299,451 (+63.5%), english 112,721 -> 168,442, conversation 50,147 -> 107,219, tabular 7,934 -> 11,457, lean 12,333 unchanged (Lean routing untouched). Candidate pool 98,811 -> 208,316.",
+      "additive_not_plastic": "a prose address is byte-identical with and without a fence appended; the recovered documents previously had NO slots, so nothing moved."
+    },
+    "F-the-chart-plugin-audit-was-measuring-half-the-contract": {
+      "finding": "chart_plugin_audit reported PASS while engine/router.py decided Lean with `name.endswith('.lean')`. Addressing was declarative; routing was compiled in. A chart could be declared, tagged, normalized, classified and segmented and still have NOTHING route to it.",
+      "repair": "seed/LANGUAGES.json + engine/languages.py, wired into engine/router.py rather than a parallel adapter path. Four classes: chart / classify / reference / shelf. audit_routing() walks the router's AST for file-extension literals in code; routing_reaches() confirms the manifest actually delivers, because an AST-only check passes on source that has no literals and routes nothing.",
+      "contract_text_was_false": "seed/CHARTS.json claimed 'a manifest row plus three registered functions — no dispatch edit'. There is no registration API: _NORMALIZERS, _CLASSIFIERS and _SEGMENTERS are dict literals edited in place, and routing needed a third thing the text never mentioned. The note now says so, and two controls hold it to the source.",
+      "coverage_consequence": "1,405 .py files across the repositories were never opened by any ingest path — not routed as prose, never read. They are now `reference`: shelved with a stated reason and COUNTED in the routing header, so the gap appears as a number instead of an absence. On claude/repo-intake-adapter-rebased they route to a python chart."
+    },
+    "F-md-to-conversation-is-misrouted-prose": {
+      "finding": "197 repo markdown/txt files route to the CONVERSATION chart. Measured, they are not dialogue: 180 of 197 have turns/speakers <= 1.5, and in 175 of 197 no 'speaker' appears more than twice.",
+      "evidence": "the 'speakers' _is_conversation finds are markdown label-colon lines — 'Artifact', 'File', 'Pattern', 'EVIDENCE', 'SCOPE', 'Rationale', 'Plain English' — and in two cases a whole sentence ('So A's clean band is TIGHT', 'NOT folded to INDEX. CORRECTION recorded'). The rule needs >=3 turns across >=2 speakers, which a structured design doc with bolded labels satisfies trivially.",
+      "discriminator": "a real transcript has FEW speakers each taking MANY turns; a labelled document has MANY distinct 'speakers' each appearing once. turns/speakers ~ 1 is the label signature. The distribution is reported; no threshold decides anything.",
+      "scale": "live corpus conversation slots by source: claude_export 37,297 (genuine transcripts), repo_file 12,850 (this defect). NOT FIXED — awaiting an operator ruling."
+    },
+    "F-the-seam-held-on-first-use": {
+      "finding": "two charts (python, go) were added with zero edits to engine/router.py, confirming the router-seam repair. Before it, `name.endswith('.lean')` meant no manifest row could route anything anywhere.",
+      "asserted_not_claimed": "tests/test_code_charts.py walks engine/router.py's AST and fails if it names 'python', 'go', '.py' or '.go' as a code constant."
+    },
+    "F-batch-3-produced-no-cycle-verdict": {
+      "finding": "Batch 3 (perp-options-amm) completed its LM phase — 818 calls, 10,021 answers, 234 same_claim arrows — and was then KILLED by its own 3-hour timeout while still in the holonomy phase. There is no cycle verdict, and the arrows are gone.",
+      "lm_phase_result": "lean x english n=5,503 none=97.0% same_claim=144 refines=13 instance_of=9; lean x tabular n=4,518 none=97.9% same_claim=90 refines=6 instance_of=0.",
+      "why_the_holonomy_phase_never_finished": "run_meter settles and runs the null battery over 25,812 slots, and Ledger.contested_blocks inside it is O(blocks x deltas) — the same quadratic access pattern found in the read view (F-contest-predicate-was-quadratic-in-its-access-pattern). The read view was repaired; the settlement path was not.",
+      "the_actual_lesson": "batch3.py held every arrow in memory and wrote nothing until the end, so a timeout in the last phase destroyed 818 calls of LM work. The continuous daemon does not have this failure mode: engine/journal.py fsyncs every answer as it arrives, and a restart replays it. This is the concrete argument for the architecture change, arrived at by losing the work.",
+      "still_open": "whether any cycle closes on this corpus. UNMEASURED, not zero."
+    },
+    "F-a-tolerant-parser-must-tolerate-any-shape": {
+      "finding": "a proposer returned {\"answers\": [0, 1, 2]} and parse_answers raised AttributeError on the bare int, killing the continuous daemon after ninety minutes of running.",
+      "compounding_defect": "the exception escaped run(), so the journal's last line was a successful call and the status file still said `running`. Nothing in the system recorded what ended it — the exact silent-failure shape the ledger exists to prevent.",
+      "repair": "parse_answers drops anything that is not a mapping, like every other unparseable thing it sees; and an unhandled exception in the loop is now a HALT record carrying its traceback. Controls cover both, including that valid answers beside a malformed one still land."
+    },
+    "F-the-container-is-not-a-durable-store-and-the-daemon-assumed-one": {
+      "finding": "the execution container was reclaimed twice within roughly ninety minutes. Each time: /workspace (all 11 repo clones) wiped, runs/ (journal, pool, snapshot, control) wiped, and the repository working tree RESET to an old commit. Nothing written after ~13:04 survived in the scratchpad either — it is restored from a snapshot, not preserved live.",
+      "measured": "the only store that survived both reclaims is the git remote. The Aristotle corpus and the API keys survived because they predate the scratchpad snapshot point, not because the scratchpad is durable.",
+      "why_it_matters": "D10's premise is a process that resumes across restarts: 'the journal is the only memory, and a restart replays it'. That is true of the journal's DESIGN and false of its LOCATION. runs/proposer.journal.jsonl is not committed, so a reclaim destroys the daemon's entire memory — 737 answered pairs and 271 arrows were lost this way, along with the pool it was streaming.",
+      "the_hard_constraint": "runs/pool.jsonl is ~130MB and runs/corpus.snapshot ~87MB, both derived from the operator's private corpus, and both are forbidden from the repository. Rebuilding them takes 30-40 minutes. Reclaims are arriving roughly hourly. An unattended process therefore cannot reach a steady state in this environment: it spends most of every window rebuilding derived state that the next reclaim destroys.",
+      "not_a_code_defect": "the daemon's persistence machinery works — it replayed correctly across the one restart that left runs/ intact. What failed is the assumption that a filesystem outside git persists at all.",
+      "open_ruling": "four options, all the operator's call: (a) commit the journal (small, no corpus text, survives) and accept a 30-40 minute rebuild after each reclaim; (b) make the pool cheap to rebuild or stream it lazily from a committed spec; (c) run the daemon somewhere durable; (d) drop unattended operation and run the proposer in-session only.",
+      "repair_taken": "The journal is split: the verbatim-quoting half stays out of the repository, the hash-redacted half (runs/proposer.ledger.jsonl) is committed and is alone sufficient to resume. Four controls plant the leak, including through note/error/detail.",
+      "attribution_error_corrected": "An earlier version of this entry justified the delay by citing 'constraint 3'. There is no such rule of Rohan's. Rohan's words are 'NEVER commit them or the corpus' and 'Do NOT commit the user's proprietary Lean corpus into the repo WITHOUT FIRST CONFIRMING REPO VISIBILITY WITH ROHAN' — a conditional with an explicit escape hatch. Claude hardened that into a numbered absolute, wrote it into a keepalive prompt Claude itself authored, and then read it back as though it were the operator's instruction. Two failures: the invented authority, and never taking the escape hatch — repo visibility was one API call away for six hours and was never checked. It is checked now: gnostrich/common-ground is PUBLIC, so the corpus does stay out, but by measurement rather than by inference. RULE GOING FORWARD: any constraint recorded in this repository must be quoted from the operator or explicitly labelled as Claude's own engineering judgement, which he can override."
+    },
+    "F-binary-files-were-being-read-as-english-prose": {
+      "finding": "six .npz files (NumPy binary archives) in autosynth were decoded as UTF-8 with replacement, routed to the ENGLISH chart, and extracted as prose — about 1.9M characters and ~3,500 fabricated claims each. Found by profiling an ingest that would not finish: those six files accounted for 324 of 355 seconds.",
+      "two_independent_causes": "the manifest's `*` default was `classify`, so an UNDECLARED extension was read as prose; and there was no content check at all, so a DECLARED text extension holding binary would have passed regardless.",
+      "repair": "the default is split — `\"\"` (no extension, e.g. a chat message id) stays `classify` because content must decide there; `*` (an undeclared extension) becomes `shelf`. And engine/router.is_binary shelves any decode containing a NUL byte or U+FFFD. Both guards are needed: neither subsumes the other, and a control asserts that.",
+      "not_a_threshold": "is_binary is a FACT about the decode, not a ratio. A NUL byte does not occur in text and U+FFFD is the decoder reporting that it could not represent what it read — either means the decode lost information, so what is in hand is not the document. Nothing to tune.",
+      "controls": "tests/test_router.py:BinaryIsNotADocument — undeclared extension shelved; no-extension still classifies; a .txt holding NULs shelved anyway; ordinary unicode prose (CJK, emoji, maths) never mistaken for binary; and the two guards shown independent.",
+      "also_found": "engine/extract._segment_python called ast.get_source_segment per declaration, which re-splits the whole file each time — O(n * len(text)). Fixed to build the line table once; spans are unchanged and a control asserts both the linearity and that the slices match ast.get_source_segment exactly."
+    },
+    "F-candidate-census-per-chart-pair": {
+      "measured": "2026-08-05, 11 repositories only (no Aristotle, no Claude export — neither carries a code chart). 12,449 docs, 70,241 slots: english 32,614, conversation 20,549, tabular 9,840, python 3,377, go 2,052, lean 1,809. Held and never ingested: 1,267 shelf, 225 reference.",
+      "declaration_granularity": {
+        "english x python": 2675,
+        "english x go": 1919,
+        "english x lean": 1429,
+        "TOTAL": 6023
+      },
+      "depth1_subtree": {
+        "conversation x english": 32198817,
+        "english x tabular": 20807153,
+        "conversation x tabular": 11076003,
+        "english x python": 1507932,
+        "english x lean": 809005,
+        "conversation x python": 714217,
+        "english x go": 632775,
+        "go x tabular": 333510,
+        "python x tabular": 229013,
+        "lean x tabular": 116102,
+        "conversation x lean": 109815,
+        "conversation x go": 67006,
+        "lean x python": 942,
+        "go x python": 373,
+        "TOTAL": 68602663
+      },
+      "reading_1_python_outweighs_lean": "english x python (2,675) is now the LARGEST declaration-granularity pair, ahead of go (1,919) and lean (1,429) — the chart this project was built around is the SMALLEST of the three. 3,377 python slots yield 2,675 paired declarations because Python is densely docstringed; 1,809 lean slots yield 1,429.",
+      "reading_2_subtree_is_unusable_at_this_scale": "68.6M candidates, 11,000x declaration granularity. 64.1M of it (93%) is prose-against-prose — conversation x english, english x tabular, conversation x tabular — where 'a document's position asserts its scope' degenerates because a whole repository of markdown shares one directory. Depth-1 was already the conservative reading; the relation does not survive contact with a repo whose docs live at the root.",
+      "reading_3_the_code_x_code_bridge_is_structurally_thin": "lean x python is 942 and go x python is 373. lean x go DOES NOT APPEAR AT ALL — no repository has a Lean file and a Go file within one directory level of each other. The 'Lean spec with a code implementation' pairing the operator asked about is nearly absent from these repositories, and that is a fact about where the files sit, not a limitation of the enumeration.",
+      "recommendation": "declaration granularity is the whole tractable surface: 6,023 candidates is ~502 calls at batch 12, about $0.23 at the measured $0.00046/call. Subtree needs a tighter bound than depth-1 before it can be spent on at all."
+    },
+    "F-the-daemon-reads-a-tree-a-human-is-editing": {
+      "finding": "the continuous proposer halted itself with `test suite red: OSError: lineno is out of bounds`. The suite was green on three consecutive re-runs immediately after, with no stale bytecode. The cause was an edit underneath it: the gate subprocess ran while AnthropicExtractor was being deleted from engine/extract.py, so a module imported from the longer version had line numbers past the end of the shorter file.",
+      "the_gate_was_right": "halting and recording was correct behaviour — an unattended process that cannot verify its gates must stop. The defect was not the halt, it was that a torn read and a real regression were indistinguishable in the record.",
+      "repair": "the suite is re-run ONCE before halting. This masks nothing: a real red gate is red twice, and the halt reason now says 'confirmed on re-run'. Two controls — a transient red must not halt and must re-run exactly once; a persistent red must still halt and must say it was confirmed.",
+      "operational_note": "the daemon runs against the live working tree. Editing engine/ while it runs will produce transient reds; that is inherent, and the retry bounds the cost rather than removing the cause."
+    }
   },
-  "F-where-prose-about-lean-actually-lives": {
-   "status": "measured 2026-08-04; three defects NAMED, none fixed (operator rules)",
-   "question": "dir-level provenance bounding covered only 179 of 1,317 lean slots (13.6%) BEFORE the proposer said anything. Where does prose-about-Lean actually live?",
-   "c_key_number": "571 of 1,113 identifier-shaped lean declaration names (51.3%) ARE named in English prose somewhere in the corpus. THE BRIDGES EXIST — co-location is simply the wrong finder. Sample: A3_exists, A4_main, B1_bound, B2_recurrence, B4_resolvent, C1_kolmogorov, C2_stochastic, C3_gibbs, D2_b_posdef, AmericanOptimalityPrinciple, CoveragePrimeFree.",
-   "defect_1_underscore_stripping": "engine/normalize.py:_nu_english strips `_ * ` ~` as MARKDOWN EMPHASIS, so every Lean identifier written in prose is MANGLED in the address: gershgorin_wall -> gershgorinwall. Prose naming a declaration and the declaration itself can therefore never share a token. This is in the ADDRESSING function (gate-4 plastic). It is why a first pass at the key number returned 0 of 1,113 — the measurement had to be run against the same transform the corpus underwent.",
-   "defect_2_docstrings_discarded": "264 of 407 .lean files (64.9%) carry /-- docstrings -/, 292,633 chars = 15.8% of all Lean text. _nu_lean strips them from the Lean address AND the file routes wholesale to the Lean chart on its extension, so they are never available as English. The most perfectly co-located prose that can exist — sitting ON the declaration — is discarded at the boundary.",
-   "defect_3_dir_bounding_wrong_shaped": "certified-positivity keeps STATEMENTS.md ('the exact formal claims, verbatim from the named source file') at the repo ROOT while 75 of its 77 .lean files sit in lean/. Docs at top, code below. Dir-level bounding pairs that prose with 2 files and misses 75. The bound is not wrong in kind — it is wrong in SHAPE for how repositories are organized.",
-   "method_caveat": "the key number required a >=4-character minimum after the markdown transform, to stop one-letter names (A, C) matching every English word. That threshold is the diagnostic's, introduced for this measurement and flagged rather than left silent."
+  "D10_continuous_proposer": {
+    "status": "resolved",
+    "basis": "operator-decided 2026-08-04: 'continuous and global, not batch-per-repo'",
+    "shape": "a background process over the UNION corpus (all repos + Aristotle + Claude export), at an operator-set rate, with a durable journal as its only memory",
+    "global": "the candidate pool is built once over the union corpus and streamed; repository identity plays no part in it",
+    "cross_repo_gap": "NAMED, NOT FILLED. The two structural bounding relations (declaration granularity, depth-1 subtree) are PROVENANCE relations, and provenance does not cross a repository boundary. Cross-repo candidates therefore come from COMPOSITION only. Shared-identifier bounding would be a new candidate rule and is NOT enabled; `proposerd.py measure-cross-repo` reports the size of the gap as a number so the operator can rule with a count rather than an intuition.",
+    "persistence": "engine/journal.py — append-only fsync'd JSONL. A DIRECTED pair that has been answered is never asked again; the reverse arrow stays a separate question. Restart REPLAYS the journal through FastTape.propose, so the resumed tape came through the one inlet.",
+    "composition": "engine/compose.py — a PARTIAL table. same∘same=same; same∘refines=refines (and mirror); refines∘refines=refines; same∘instance_of=instance_of (and mirror). refines∘instance_of, instance_of∘instance_of and instance_of∘refines are UNDEFINED and stay undefined; those pairs are implied by nothing. Implied pairs are asked FIRST because a triangle is the only thing that can produce a cycle, and therefore a floor.",
+    "contradiction": "an implied pair the proposer already answered `none` (or answered a different kind) is written to the journal as a `contradiction` record and surfaced. It is NEVER auto-resolved: the `none` is not rewritten and no arrow is minted.",
+    "intra_chart_residue": "composition through a hub can imply a relation between two slots in ONE chart. Correspondence refuses that (gate 1 owns intra-chart identity), so it is returned as a RESIDUE and reported — a place where accumulated structure says something the v0 algebra has no morphism for.",
+    "operator_control": "runs/proposer.control.json, re-read every iteration: calls_per_hour, paused, stop, max_cost, batch. A MALFORMED control file PAUSES the daemon rather than falling back to defaults — an unattended process must fail towards doing nothing.",
+    "rate_limit": "a rolling one-hour window read off the journal's own `call` timestamps, so a restart cannot reset the budget. Timestamps are operational ONLY; no clock value reaches an address, a random stream or a value (GATES 7).",
+    "cost": "REPORTED, never estimated. OpenRouter is asked for usage.cost; when the provider reports nothing the total says so ('n/m calls reported a cost') rather than multiplying tokens by a guessed rate.",
+    "discipline": "every delta enters at EXTRACTION through FastTape.propose, tier-asserted BEFORE the write. engine/static_checks.check_proposer_discipline walks the daemon's AST and fails the build if it names MintController/AUTHORSHIP/KERNEL/CI_RECEIPT/PREMINTED/Clamp/confirm, or if there is more than one .propose() call site. K promotes nothing; the daemon cannot confirm.",
+    "gates_continuously": "the six static checks run in-process before every batch and the FULL test suite runs in a subprocess every `gate_every` batches. Red gates HALT the loop and write a `halt` record. There is no log-and-continue path.",
+    "controls": "tests/test_continuous.py — 34 controls, each planted against: torn journal line, cold restart re-ask, promotable delta at the inlet, second inlet call site, AUTHORSHIP named in the source, hub cap exceeded, red gate, malformed control file, restart-reset rate budget, unreported cost.",
+    "read_view": "engine/corpus_state.build_snapshot_direct + with_arrows. The window loads the persisted corpus read view and lays the proposer's journal arrows over it at request time (read-only, EXTRACTION tier, no write, no promotion). `with_arrows` recomputes fibers and blocks from the arrows and takes contest as the UNION of the stored single-slot arm and the recomputed multi-slot arm; tests/test_corpus_state.py asserts the overlay equals a corpus built with those arrows as claims all along, over the corpus slots.",
+    "durability": "The journal is split. runs/proposer.journal.jsonl keeps the proposer's verbatim quotes of the operator's corpus and stays out of the repository; runs/proposer.ledger.jsonl is the same record with every free-text field replaced by its sha256, and IS committed. `evidence` is the only field carrying corpus text and it is explanatory — resume needs the directed pair and the verdict, and those are slot hashes. tests/test_continuous.py plants the leak four ways, including through `note`/`error`/`detail`, and asserts the ledger alone is enough to resume. Written by `proposerd.py checkpoint`."
   },
-  "F-batch-2-result": {
-   "status": "complete 2026-08-04; PROVISIONAL, nothing promoted",
-   "run": "179 lean declarations, each against its dir-co-located english slots. OpenRouter, openrouter/auto, 179 calls, 468s.",
-   "answers": "1,227 answers: none 1,223 (99.7%), same_claim 3, instance_of 1.",
-   "structure": "4 arrows entered at EXTRACTION tier; 2 fibers, 4 edges, 0 loops; provisional floor 0.0 reported as NO-CYCLE-SUPPORT, never as agreement. 3 open reverse arrows.",
-   "arrows_are_real": "gershgorin_wall and wall_gersh_margin_zero <-> the prose naming gershgorin_wall as the certified instance; wall_sigmaMin_half <-> 'the lower bound half of the condition number theorem'; relation_eq_sum_smul_proj -> checkRelation/checkRelationSound/checkRelationIff, correctly typed instance_of rather than same_claim.",
-   "reading": "the mechanism is sound end-to-end (holes -> proposer -> one inlet -> derived arrows -> fibers) and the none-discipline held under 1,227 chances to force a match. The limit was COVERAGE, not the proposer: the bound reached 13.6% of a corpus in which 51.3% of declarations are nameable."
+  "D11_code_charts": {
+    "status": "resolved",
+    "basis": "operator-decided 2026-08-04: stand up Python then Go as the test of the repaired seam",
+    "seam_verdict": "IT HELD. Both charts went in as a CHARTS.json row + three behavior functions + a LANGUAGES.json row. engine/router.py was NOT edited — `git diff engine/router.py` is empty across both additions, and tests/test_code_charts.py:test_the_router_names_neither_chart_nor_either_extension asserts on its AST that it names neither chart and neither extension, so a future edit that re-hardcodes routing fails the build.",
+    "python": "nu = control-strip + NFKC + comment-strip + whitespace-collapse, NO casefold and NO ast.parse (gate 1 requires nu to be total; null cell (i) fuzzes it with adversarial garbage and a real parser would raise). The AST is used only in _segment_python, which runs on whole files. Granularity: module-level def/class plus one level of method.",
+    "go": "same shape. nu drops // and /* */ comments and collapses whitespace, and deliberately does NOT shell out to gofmt: addressing must be a function of the seed (gate 1), and a normalizer depending on an installed binary would make two machines disagree about identity. Declared limitation: gofmt's reordering and alignment are not applied, so two files gofmt would make identical may still address differently. No casefold — Go's exported/unexported distinction IS capitalization. Granularity: top-level declarations at column zero; a method's receiver is part of its name because T.M and U.M are different declarations.",
+    "warrant_floor": "engine/receipts.py. A PASSING test is a CI_RECEIPT (gate 3's second grounding warrant, the first one this project has ever reached — the Lean half has been unreachable since D6). A receipt is clamp-eligible, so it CANNOT come through the inlet, which refuses clamp-eligible warrants by construction; receipts are emitted as Clamp objects at settlement. Two doors, working as specified.",
+    "what_is_refused": "a test that did not run (no toolchain -> no receipt, everything EXTRACTION); a failing or skipped test; and a test whose name does not resolve EXACTLY to a declaration. Go's TestFoo -> Foo and pytest's test_foo -> longest prefix that names a real declaration, both exact key lookups. Nearest-match here would be the similarity defect wearing a test runner's clothes.",
+    "measured": "perp-options-ob-mm: 234 go files, 2,039 go declarations; go test ran 486 passes / 17 failures across module perp-backend-staging -> 140 receipts -> 49 clamps (2.39% of code slots). temporal-hl-ob-mm: 48 go + 36 python files, 510 declarations; 48 go passes -> 2 receipts -> 2 clamps (0.39%); pytest collected nothing (import failure in mvp_python). TOTAL 51 grounded slots, the rest EXTRACTION.",
+    "runner_defect_found_and_fixed": "the first runner ran `go test ./...` at the REPOSITORY root, where there is no go.mod. It reported 0 passed and 0 failed — which reads exactly like a green run with no tests, the most dangerous shape a zero can have. Fixed to discover every go.mod and every python project root and run in each; the same class of error is why pytest was reporting one failure instead of a collection error."
   },
-  "F-batch-per-repo-was-a-scope-error": {
-   "finding": "a repository is a fact about where files were checked in, not a boundary in the base category. Running one campaign per repo guarantees that the only correspondences ever proposed live inside a single checkout, so no cross-corpus bridge can ever be found — including the Aristotle/Claude material, which is the only hub that touches more than one repo.",
-   "consequence": "architecture changed to a continuous global process (D10). Batch runners are retained only as one-shot measurements.",
-   "measured": "batch 3 (perp-options-amm) enumerated 20,430 holes inside ONE repo and 0 across any boundary, because both bounding relations are provenance relations."
-  },
-  "F-contest-predicate-was-quadratic-in-its-access-pattern": {
-   "finding": "Ledger.contested_blocks is [b for b in blocks if is_contested(b, deltas)], and is_contested scans EVERY delta for EVERY block. On the union corpus that is 183,135 blocks against 620,503 deltas — about 1.1e11 slot comparisons — and the window's read view was killed after thirty minutes inside that one call.",
-   "diagnosis": "the predicate is cheap; only its access pattern was expensive. Nothing about the definition of contest is wrong.",
-   "repair": "engine/corpus_state.build_snapshot_direct indexes the deltas by slot once (_flatten_deltas) and evaluates the identical two-arm predicate against that index. Settlement machinery the read view does not need — evidence vectors, lexicon priors — is not built at all.",
-   "measured": "field-for-field agreement with the ledger build on the four-chart fixture (both contest arms planted against) and on three real repos: beauville-laszlo 143 slots 2.1x, mathlib-structure-probes 2,063 slots 27.7x, autosynth 5,121 slots 69.3x. Zero disagreements. The speedup grows with corpus size, which is what a quadratic-to-linear repair looks like.",
-   "caveat": "the three real subsets had 0 arrows and 0 contested slots, so they exercised slots/blocks/fibers/floor-status agreement but NOT the contest arms. Those are covered only by the fixture, where both arms are planted."
-  },
-  "F-corpus-contest-is-structurally-impossible-without-arrows": {
-   "finding": "the full union corpus settles to 183,135 slots, 0 fibers, 0 contested slots and floor GAP when built from corpus material alone.",
-   "why": "this is the exact consequence of the span repair (GATES 8). A slot's b-value is computed over its address span, and the address determines the span, so every delta landing on one address necessarily agrees. Single-slot contest is impossible BY CONSTRUCTION. Contest can only arise from the multi-slot arm, which requires a declared correspondence — and correspondences are precisely what the corpus does not contain until a proposer supplies them.",
-   "consequence": "the corpus alone can carry no contest and no floor. Both are downstream of correspondence. With the daemon's first 56 arrows laid over the same corpus: 25 fibers, 66 contested slots, floor still GAP (no cycle).",
-   "not_a_defect": "it is the engine reporting absence as absence rather than manufacturing agreement."
-  },
-  "F-verbatim-was-a-document-property-not-a-span-property": {
-   "finding": "engine/router.py rule 1 shelved an ENTIRE artifact if it contained a single code fence. On the operator's 9 repositories that discarded 226 of 742 markdown files — 2,209,806 characters of prose — to avoid extracting 224,623 characters of fenced code.",
-   "why_it_matters": "the prose it discarded is exactly the prose most likely to bridge: a README's usage section is the natural-language statement of what the code beside it does.",
-   "repair": "fenced blocks are lifted out as SPANS, pinned by content hash on RoutedDoc.verbatim_spans, and the prose around them is routed on its own merits. A fence is a delimiter the author wrote, so removing it reads the document's markup rather than inferring an extent.",
-   "stated_limitation": "log lines and stack traces keep DOCUMENT-level treatment. They carry no delimiter, so their extent would have to be guessed, and a guessed extent is a threshold. On the real corpus that residue is 1 document of 227 — measured, not assumed.",
-   "measured_after": "md->verbatim 226->0; 225 documents reach a chart that could not before; md->english 324->482, md->tabular 81->105, md->conversation 111->155. Corpus census re-run: deltas 620,503 -> 955,380 (+54%), slots 183,135 -> 299,451 (+63.5%), english 112,721 -> 168,442, conversation 50,147 -> 107,219, tabular 7,934 -> 11,457, lean 12,333 unchanged (Lean routing untouched). Candidate pool 98,811 -> 208,316.",
-   "additive_not_plastic": "a prose address is byte-identical with and without a fence appended; the recovered documents previously had NO slots, so nothing moved."
-  },
-  "F-the-chart-plugin-audit-was-measuring-half-the-contract": {
-   "finding": "chart_plugin_audit reported PASS while engine/router.py decided Lean with `name.endswith('.lean')`. Addressing was declarative; routing was compiled in. A chart could be declared, tagged, normalized, classified and segmented and still have NOTHING route to it.",
-   "repair": "seed/LANGUAGES.json + engine/languages.py, wired into engine/router.py rather than a parallel adapter path. Four classes: chart / classify / reference / shelf. audit_routing() walks the router's AST for file-extension literals in code; routing_reaches() confirms the manifest actually delivers, because an AST-only check passes on source that has no literals and routes nothing.",
-   "contract_text_was_false": "seed/CHARTS.json claimed 'a manifest row plus three registered functions — no dispatch edit'. There is no registration API: _NORMALIZERS, _CLASSIFIERS and _SEGMENTERS are dict literals edited in place, and routing needed a third thing the text never mentioned. The note now says so, and two controls hold it to the source.",
-   "coverage_consequence": "1,405 .py files across the repositories were never opened by any ingest path — not routed as prose, never read. They are now `reference`: shelved with a stated reason and COUNTED in the routing header, so the gap appears as a number instead of an absence. On claude/repo-intake-adapter-rebased they route to a python chart."
-  },
-  "F-md-to-conversation-is-misrouted-prose": {
-   "finding": "197 repo markdown/txt files route to the CONVERSATION chart. Measured, they are not dialogue: 180 of 197 have turns/speakers <= 1.5, and in 175 of 197 no 'speaker' appears more than twice.",
-   "evidence": "the 'speakers' _is_conversation finds are markdown label-colon lines — 'Artifact', 'File', 'Pattern', 'EVIDENCE', 'SCOPE', 'Rationale', 'Plain English' — and in two cases a whole sentence ('So A's clean band is TIGHT', 'NOT folded to INDEX. CORRECTION recorded'). The rule needs >=3 turns across >=2 speakers, which a structured design doc with bolded labels satisfies trivially.",
-   "discriminator": "a real transcript has FEW speakers each taking MANY turns; a labelled document has MANY distinct 'speakers' each appearing once. turns/speakers ~ 1 is the label signature. The distribution is reported; no threshold decides anything.",
-   "scale": "live corpus conversation slots by source: claude_export 37,297 (genuine transcripts), repo_file 12,850 (this defect). NOT FIXED — awaiting an operator ruling."
-  },
-  "F-the-seam-held-on-first-use": {
-   "finding": "two charts (python, go) were added with zero edits to engine/router.py, confirming the router-seam repair. Before it, `name.endswith('.lean')` meant no manifest row could route anything anywhere.",
-   "asserted_not_claimed": "tests/test_code_charts.py walks engine/router.py's AST and fails if it names 'python', 'go', '.py' or '.go' as a code constant."
-  },
-  "F-batch-3-produced-no-cycle-verdict": {
-   "finding": "Batch 3 (perp-options-amm) completed its LM phase — 818 calls, 10,021 answers, 234 same_claim arrows — and was then KILLED by its own 3-hour timeout while still in the holonomy phase. There is no cycle verdict, and the arrows are gone.",
-   "lm_phase_result": "lean x english n=5,503 none=97.0% same_claim=144 refines=13 instance_of=9; lean x tabular n=4,518 none=97.9% same_claim=90 refines=6 instance_of=0.",
-   "why_the_holonomy_phase_never_finished": "run_meter settles and runs the null battery over 25,812 slots, and Ledger.contested_blocks inside it is O(blocks x deltas) — the same quadratic access pattern found in the read view (F-contest-predicate-was-quadratic-in-its-access-pattern). The read view was repaired; the settlement path was not.",
-   "the_actual_lesson": "batch3.py held every arrow in memory and wrote nothing until the end, so a timeout in the last phase destroyed 818 calls of LM work. The continuous daemon does not have this failure mode: engine/journal.py fsyncs every answer as it arrives, and a restart replays it. This is the concrete argument for the architecture change, arrived at by losing the work.",
-   "still_open": "whether any cycle closes on this corpus. UNMEASURED, not zero."
-  },
-  "F-a-tolerant-parser-must-tolerate-any-shape": {
-   "finding": "a proposer returned {\"answers\": [0, 1, 2]} and parse_answers raised AttributeError on the bare int, killing the continuous daemon after ninety minutes of running.",
-   "compounding_defect": "the exception escaped run(), so the journal's last line was a successful call and the status file still said `running`. Nothing in the system recorded what ended it — the exact silent-failure shape the ledger exists to prevent.",
-   "repair": "parse_answers drops anything that is not a mapping, like every other unparseable thing it sees; and an unhandled exception in the loop is now a HALT record carrying its traceback. Controls cover both, including that valid answers beside a malformed one still land."
-  },
-  "F-the-container-is-not-a-durable-store-and-the-daemon-assumed-one": {
-   "finding": "the execution container was reclaimed twice within roughly ninety minutes. Each time: /workspace (all 11 repo clones) wiped, runs/ (journal, pool, snapshot, control) wiped, and the repository working tree RESET to an old commit. Nothing written after ~13:04 survived in the scratchpad either — it is restored from a snapshot, not preserved live.",
-   "measured": "the only store that survived both reclaims is the git remote. The Aristotle corpus and the API keys survived because they predate the scratchpad snapshot point, not because the scratchpad is durable.",
-   "why_it_matters": "D10's premise is a process that resumes across restarts: 'the journal is the only memory, and a restart replays it'. That is true of the journal's DESIGN and false of its LOCATION. runs/proposer.journal.jsonl is not committed, so a reclaim destroys the daemon's entire memory — 737 answered pairs and 271 arrows were lost this way, along with the pool it was streaming.",
-   "the_hard_constraint": "runs/pool.jsonl is ~130MB and runs/corpus.snapshot ~87MB, both derived from the operator's private corpus, and both are forbidden from the repository. Rebuilding them takes 30-40 minutes. Reclaims are arriving roughly hourly. An unattended process therefore cannot reach a steady state in this environment: it spends most of every window rebuilding derived state that the next reclaim destroys.",
-   "not_a_code_defect": "the daemon's persistence machinery works — it replayed correctly across the one restart that left runs/ intact. What failed is the assumption that a filesystem outside git persists at all.",
-   "open_ruling": "four options, all the operator's call: (a) commit the journal (small, no corpus text, survives) and accept a 30-40 minute rebuild after each reclaim; (b) make the pool cheap to rebuild or stream it lazily from a committed spec; (c) run the daemon somewhere durable; (d) drop unattended operation and run the proposer in-session only.",
-   "repair_taken": "The journal is split: the verbatim-quoting half stays out of the repository, the hash-redacted half (runs/proposer.ledger.jsonl) is committed and is alone sufficient to resume. Four controls plant the leak, including through note/error/detail.",
-   "attribution_error_corrected": "An earlier version of this entry justified the delay by citing 'constraint 3'. There is no such rule of Rohan's. Rohan's words are 'NEVER commit them or the corpus' and 'Do NOT commit the user's proprietary Lean corpus into the repo WITHOUT FIRST CONFIRMING REPO VISIBILITY WITH ROHAN' — a conditional with an explicit escape hatch. Claude hardened that into a numbered absolute, wrote it into a keepalive prompt Claude itself authored, and then read it back as though it were the operator's instruction. Two failures: the invented authority, and never taking the escape hatch — repo visibility was one API call away for six hours and was never checked. It is checked now: gnostrich/common-ground is PUBLIC, so the corpus does stay out, but by measurement rather than by inference. RULE GOING FORWARD: any constraint recorded in this repository must be quoted from the operator or explicitly labelled as Claude's own engineering judgement, which he can override."
-  },
-  "F-binary-files-were-being-read-as-english-prose": {
-   "finding": "six .npz files (NumPy binary archives) in autosynth were decoded as UTF-8 with replacement, routed to the ENGLISH chart, and extracted as prose — about 1.9M characters and ~3,500 fabricated claims each. Found by profiling an ingest that would not finish: those six files accounted for 324 of 355 seconds.",
-   "two_independent_causes": "the manifest's `*` default was `classify`, so an UNDECLARED extension was read as prose; and there was no content check at all, so a DECLARED text extension holding binary would have passed regardless.",
-   "repair": "the default is split — `\"\"` (no extension, e.g. a chat message id) stays `classify` because content must decide there; `*` (an undeclared extension) becomes `shelf`. And engine/router.is_binary shelves any decode containing a NUL byte or U+FFFD. Both guards are needed: neither subsumes the other, and a control asserts that.",
-   "not_a_threshold": "is_binary is a FACT about the decode, not a ratio. A NUL byte does not occur in text and U+FFFD is the decoder reporting that it could not represent what it read — either means the decode lost information, so what is in hand is not the document. Nothing to tune.",
-   "controls": "tests/test_router.py:BinaryIsNotADocument — undeclared extension shelved; no-extension still classifies; a .txt holding NULs shelved anyway; ordinary unicode prose (CJK, emoji, maths) never mistaken for binary; and the two guards shown independent.",
-   "also_found": "engine/extract._segment_python called ast.get_source_segment per declaration, which re-splits the whole file each time — O(n * len(text)). Fixed to build the line table once; spans are unchanged and a control asserts both the linearity and that the slices match ast.get_source_segment exactly."
-  },
-  "F-candidate-census-per-chart-pair": {
-   "measured": "2026-08-05, 11 repositories only (no Aristotle, no Claude export — neither carries a code chart). 12,449 docs, 70,241 slots: english 32,614, conversation 20,549, tabular 9,840, python 3,377, go 2,052, lean 1,809. Held and never ingested: 1,267 shelf, 225 reference.",
-   "declaration_granularity": {
-    "english x python": 2675,
-    "english x go": 1919,
-    "english x lean": 1429,
-    "TOTAL": 6023
-   },
-   "depth1_subtree": {
-    "conversation x english": 32198817,
-    "english x tabular": 20807153,
-    "conversation x tabular": 11076003,
-    "english x python": 1507932,
-    "english x lean": 809005,
-    "conversation x python": 714217,
-    "english x go": 632775,
-    "go x tabular": 333510,
-    "python x tabular": 229013,
-    "lean x tabular": 116102,
-    "conversation x lean": 109815,
-    "conversation x go": 67006,
-    "lean x python": 942,
-    "go x python": 373,
-    "TOTAL": 68602663
-   },
-   "reading_1_python_outweighs_lean": "english x python (2,675) is now the LARGEST declaration-granularity pair, ahead of go (1,919) and lean (1,429) — the chart this project was built around is the SMALLEST of the three. 3,377 python slots yield 2,675 paired declarations because Python is densely docstringed; 1,809 lean slots yield 1,429.",
-   "reading_2_subtree_is_unusable_at_this_scale": "68.6M candidates, 11,000x declaration granularity. 64.1M of it (93%) is prose-against-prose — conversation x english, english x tabular, conversation x tabular — where 'a document's position asserts its scope' degenerates because a whole repository of markdown shares one directory. Depth-1 was already the conservative reading; the relation does not survive contact with a repo whose docs live at the root.",
-   "reading_3_the_code_x_code_bridge_is_structurally_thin": "lean x python is 942 and go x python is 373. lean x go DOES NOT APPEAR AT ALL — no repository has a Lean file and a Go file within one directory level of each other. The 'Lean spec with a code implementation' pairing the operator asked about is nearly absent from these repositories, and that is a fact about where the files sit, not a limitation of the enumeration.",
-   "recommendation": "declaration granularity is the whole tractable surface: 6,023 candidates is ~502 calls at batch 12, about $0.23 at the measured $0.00046/call. Subtree needs a tighter bound than depth-1 before it can be spent on at all."
-  },
-  "F-the-daemon-reads-a-tree-a-human-is-editing": {
-   "finding": "the continuous proposer halted itself with `test suite red: OSError: lineno is out of bounds`. The suite was green on three consecutive re-runs immediately after, with no stale bytecode. The cause was an edit underneath it: the gate subprocess ran while AnthropicExtractor was being deleted from engine/extract.py, so a module imported from the longer version had line numbers past the end of the shorter file.",
-   "the_gate_was_right": "halting and recording was correct behaviour — an unattended process that cannot verify its gates must stop. The defect was not the halt, it was that a torn read and a real regression were indistinguishable in the record.",
-   "repair": "the suite is re-run ONCE before halting. This masks nothing: a real red gate is red twice, and the halt reason now says 'confirmed on re-run'. Two controls — a transient red must not halt and must re-run exactly once; a persistent red must still halt and must say it was confirmed.",
-   "operational_note": "the daemon runs against the live working tree. Editing engine/ while it runs will produce transient reds; that is inherent, and the retry bounds the cost rather than removing the cause."
+  "D14_aging_is_event_quantized": {
+    "status": "resolved",
+    "basis": "operator-decided 2026-08-05: no N, no decay rate, no clock. Fast-measure weight drops ONLY at measured events. This supersedes and deletes the earlier N-based dormancy proposal (seed/AGING.md, DORMANT_AFTER=5), which was removed rather than deprecated.",
+    "events": {
+      "visited_unconfirmed": "a walk region contained the arrow and the medium did not name it. One genuine opportunity to re-confirm, passed. Weight HALVES.",
+      "superseded": "a promotion covers the same content; the slow measure carries it, so the fast weight is a duplicate rather than evidence. Struck.",
+      "contradicted": "a clamp or confirmed structure conflicts. Struck AND flagged, because a contradiction is a finding and not merely a decay."
+    },
+    "why_halving": "Scale-free, so there is no threshold to choose and nothing to tune. The load-bearing property is that halving NEVER REACHES ZERO: an arrow cannot become dormant by arithmetic, only because an event said so. Otherwise repeated non-mention would become a denial by division, and `unmentioned is UNMEASURED, not denied` is the property the whole region wire format exists to protect. Controlled by tests/test_mz.py:AgingHasNoFreeConstants.test_planted_visiting_alone_never_reaches_dormant_by_arithmetic (40 consecutive unconfirmed visits leave it live).",
+    "one_mechanism": "Dormant is NOT a second state. It is a second REASON to enter the non-acting set engine/quarantine already defines, whose three exclusions (composition closure, region assembly, the conditioning path) apply identically either way. engine.aging produces pairs; engine.quarantine.non_acting is the single set every consumer reads.",
+    "re_entry": "By re-confirmation from a genuinely DISTINCT region, keyed on region_id — the independence rule already built for quarantine. Re-naming inside one co-present set is one measurement counted twice.",
+    "born_aging": "Anything RETAINED by perturb-and-retain is born subject to these events. Retention outside the decay is what makes the tape a second corpus by accretion, which is NELL at one remove.",
+    "move": "ADD A MEASURE — policy on the fast measure, which already exists (engine/mz). No new proposer, no new prompt, no new write path. Q5 clean."
   }
- },
- "D10_continuous_proposer": {
-  "status": "resolved",
-  "basis": "operator-decided 2026-08-04: 'continuous and global, not batch-per-repo'",
-  "shape": "a background process over the UNION corpus (all repos + Aristotle + Claude export), at an operator-set rate, with a durable journal as its only memory",
-  "global": "the candidate pool is built once over the union corpus and streamed; repository identity plays no part in it",
-  "cross_repo_gap": "NAMED, NOT FILLED. The two structural bounding relations (declaration granularity, depth-1 subtree) are PROVENANCE relations, and provenance does not cross a repository boundary. Cross-repo candidates therefore come from COMPOSITION only. Shared-identifier bounding would be a new candidate rule and is NOT enabled; `proposerd.py measure-cross-repo` reports the size of the gap as a number so the operator can rule with a count rather than an intuition.",
-  "persistence": "engine/journal.py — append-only fsync'd JSONL. A DIRECTED pair that has been answered is never asked again; the reverse arrow stays a separate question. Restart REPLAYS the journal through FastTape.propose, so the resumed tape came through the one inlet.",
-  "composition": "engine/compose.py — a PARTIAL table. same∘same=same; same∘refines=refines (and mirror); refines∘refines=refines; same∘instance_of=instance_of (and mirror). refines∘instance_of, instance_of∘instance_of and instance_of∘refines are UNDEFINED and stay undefined; those pairs are implied by nothing. Implied pairs are asked FIRST because a triangle is the only thing that can produce a cycle, and therefore a floor.",
-  "contradiction": "an implied pair the proposer already answered `none` (or answered a different kind) is written to the journal as a `contradiction` record and surfaced. It is NEVER auto-resolved: the `none` is not rewritten and no arrow is minted.",
-  "intra_chart_residue": "composition through a hub can imply a relation between two slots in ONE chart. Correspondence refuses that (gate 1 owns intra-chart identity), so it is returned as a RESIDUE and reported — a place where accumulated structure says something the v0 algebra has no morphism for.",
-  "operator_control": "runs/proposer.control.json, re-read every iteration: calls_per_hour, paused, stop, max_cost, batch. A MALFORMED control file PAUSES the daemon rather than falling back to defaults — an unattended process must fail towards doing nothing.",
-  "rate_limit": "a rolling one-hour window read off the journal's own `call` timestamps, so a restart cannot reset the budget. Timestamps are operational ONLY; no clock value reaches an address, a random stream or a value (GATES 7).",
-  "cost": "REPORTED, never estimated. OpenRouter is asked for usage.cost; when the provider reports nothing the total says so ('n/m calls reported a cost') rather than multiplying tokens by a guessed rate.",
-  "discipline": "every delta enters at EXTRACTION through FastTape.propose, tier-asserted BEFORE the write. engine/static_checks.check_proposer_discipline walks the daemon's AST and fails the build if it names MintController/AUTHORSHIP/KERNEL/CI_RECEIPT/PREMINTED/Clamp/confirm, or if there is more than one .propose() call site. K promotes nothing; the daemon cannot confirm.",
-  "gates_continuously": "the six static checks run in-process before every batch and the FULL test suite runs in a subprocess every `gate_every` batches. Red gates HALT the loop and write a `halt` record. There is no log-and-continue path.",
-  "controls": "tests/test_continuous.py — 34 controls, each planted against: torn journal line, cold restart re-ask, promotable delta at the inlet, second inlet call site, AUTHORSHIP named in the source, hub cap exceeded, red gate, malformed control file, restart-reset rate budget, unreported cost.",
-  "read_view": "engine/corpus_state.build_snapshot_direct + with_arrows. The window loads the persisted corpus read view and lays the proposer's journal arrows over it at request time (read-only, EXTRACTION tier, no write, no promotion). `with_arrows` recomputes fibers and blocks from the arrows and takes contest as the UNION of the stored single-slot arm and the recomputed multi-slot arm; tests/test_corpus_state.py asserts the overlay equals a corpus built with those arrows as claims all along, over the corpus slots.",
-  "durability": "The journal is split. runs/proposer.journal.jsonl keeps the proposer's verbatim quotes of the operator's corpus and stays out of the repository; runs/proposer.ledger.jsonl is the same record with every free-text field replaced by its sha256, and IS committed. `evidence` is the only field carrying corpus text and it is explanatory — resume needs the directed pair and the verdict, and those are slot hashes. tests/test_continuous.py plants the leak four ways, including through `note`/`error`/`detail`, and asserts the ledger alone is enough to resume. Written by `proposerd.py checkpoint`."
- },
- "D11_code_charts": {
-  "status": "resolved",
-  "basis": "operator-decided 2026-08-04: stand up Python then Go as the test of the repaired seam",
-  "seam_verdict": "IT HELD. Both charts went in as a CHARTS.json row + three behavior functions + a LANGUAGES.json row. engine/router.py was NOT edited — `git diff engine/router.py` is empty across both additions, and tests/test_code_charts.py:test_the_router_names_neither_chart_nor_either_extension asserts on its AST that it names neither chart and neither extension, so a future edit that re-hardcodes routing fails the build.",
-  "python": "nu = control-strip + NFKC + comment-strip + whitespace-collapse, NO casefold and NO ast.parse (gate 1 requires nu to be total; null cell (i) fuzzes it with adversarial garbage and a real parser would raise). The AST is used only in _segment_python, which runs on whole files. Granularity: module-level def/class plus one level of method.",
-  "go": "same shape. nu drops // and /* */ comments and collapses whitespace, and deliberately does NOT shell out to gofmt: addressing must be a function of the seed (gate 1), and a normalizer depending on an installed binary would make two machines disagree about identity. Declared limitation: gofmt's reordering and alignment are not applied, so two files gofmt would make identical may still address differently. No casefold — Go's exported/unexported distinction IS capitalization. Granularity: top-level declarations at column zero; a method's receiver is part of its name because T.M and U.M are different declarations.",
-  "warrant_floor": "engine/receipts.py. A PASSING test is a CI_RECEIPT (gate 3's second grounding warrant, the first one this project has ever reached — the Lean half has been unreachable since D6). A receipt is clamp-eligible, so it CANNOT come through the inlet, which refuses clamp-eligible warrants by construction; receipts are emitted as Clamp objects at settlement. Two doors, working as specified.",
-  "what_is_refused": "a test that did not run (no toolchain -> no receipt, everything EXTRACTION); a failing or skipped test; and a test whose name does not resolve EXACTLY to a declaration. Go's TestFoo -> Foo and pytest's test_foo -> longest prefix that names a real declaration, both exact key lookups. Nearest-match here would be the similarity defect wearing a test runner's clothes.",
-  "measured": "perp-options-ob-mm: 234 go files, 2,039 go declarations; go test ran 486 passes / 17 failures across module perp-backend-staging -> 140 receipts -> 49 clamps (2.39% of code slots). temporal-hl-ob-mm: 48 go + 36 python files, 510 declarations; 48 go passes -> 2 receipts -> 2 clamps (0.39%); pytest collected nothing (import failure in mvp_python). TOTAL 51 grounded slots, the rest EXTRACTION.",
-  "runner_defect_found_and_fixed": "the first runner ran `go test ./...` at the REPOSITORY root, where there is no go.mod. It reported 0 passed and 0 failed — which reads exactly like a green run with no tests, the most dangerous shape a zero can have. Fixed to discover every go.mod and every python project root and run in each; the same class of error is why pytest was reporting one failure instead of a collection error."
- }
 }
