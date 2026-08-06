@@ -84,6 +84,10 @@ REFEREES = {
     # and carries no weight — it changes which neighbourhood a question is sampled from, and
     # `tests/test_nominate.py` asserts its output contains nothing but slot ids.
     "nominate.py": "nominates a region's seed set; decides nothing",
+    # It GRADES — it decides whether a constant's provenance is acceptable — so it is swept
+    # like every other grader. It reads a declared enumeration (derived/swept/confessed) and
+    # a JSON map, never text, which is why the sweep passes it.
+    "constants_sweep.py": "grades whether a constant claims a legal provenance",
     "control_sweep.py": "decides which controls check text where they claim behaviour",
     "inbound.py": "GROUPS the compiled sheet — groups must be fibers, never clusters. A "
                   "grouping that produced the same groups by similarity would be a different "

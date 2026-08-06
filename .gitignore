@@ -66,3 +66,4 @@ runs/acceptance/
 runs/glossary.jsonl
 runs/gloss_validation.json
 runs/gloss_ab.log
+runs/audit.json

@@ -49,9 +49,13 @@
   "OI-4": {
    "statement": "Constants are derived, swept, or confessed \u2014 never picked. Precedents: aging-halving (scale-free), k/(k\u22121) (anchor-forced), coverage-by-unwalked-mass (self-extinguishing). **OPEN:** \u03b2 (confessed, audit ordered). `[C: constants sweep]`",
    "enforcement_sites": [
+    "engine/constants_sweep.py",
+    "seed/CONSTANT_PROVENANCE.json",
     "engine/aging.py"
    ],
    "controls": [
+    "tests/test_constants_sweep.py:EveryEngineConstantCLAIMSAProvenance",
+    "tests/test_constants_sweep.py:PlantedDefects",
     "tests/test_apex.py:DeviationCostIsIndependentOfK",
     "tests/test_walk.py:ExplorationPressureIsDERIVEDAndSelfExtinguishing"
    ],

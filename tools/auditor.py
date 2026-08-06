@@ -54,7 +54,7 @@ def sweeps() -> list[dict]:
                               "v=[str(x) for x in c().violations];"
                               "print('\\n'.join(v) or 'clean');"
                               "raise SystemExit(1 if v else 0)"]),
-        ("constants", [sys.executable, "-m", "unittest", "-q", "tests.test_constants"]),
+        ("constants", [sys.executable, "-m", "engine.constants_sweep"]),
     ):
         code, log = _run(name and args)
         out.append({"check": name, "ok": code == 0, "detail": log.strip()[:600]})

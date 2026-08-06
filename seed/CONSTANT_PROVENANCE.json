@@ -1,0 +1,102 @@
+{
+ "schema": "common-ground/constant-provenance/v0",
+ "note": "OI-4: every constant is DERIVED (forced by the object), SWEPT (measured across a range and pinned in a stable band with the sweep as its justification), or CONFESSED (chosen, and said to be chosen, with what would settle it). A constant with no entry is UNMARKED and `engine/constants_sweep` reports it. This file does not judge whether a derivation is good; it enforces that one is CLAIMED, which is the difference between an argument somebody can check and a number nobody can find the argument for.",
+ "constants": {
+  "BORN": {
+   "provenance": "derived",
+   "why": "A record enters whole. Aging halves it on each unconfirmed visit, so the start value fixes the scale and nothing else; 1.0 is the multiplicative identity and any other choice would be the same sequence rescaled."
+  },
+  "N_ARROW_SIDES": {
+   "provenance": "derived",
+   "why": "An arrow has two endpoints. Not a parameter."
+  },
+  "LOOPS_UNSEARCHED": {
+   "provenance": "derived",
+   "why": "Girth-by-BFS searches every fiber, so the count of declined searches is structurally zero. It exists to stay reportable if a bound ever returns; the (n-1)! brute force it replaced could decline and did."
+  },
+  "DECLARED_WEIGHT": {
+   "provenance": "derived",
+   "why": "A declared correspondence is asserted, not scored, and there is no similarity to weight it by. The unit weight IS the assertion; apex-star's k/(k-1) implied weight is derived from it by the k=2 anchor."
+  },
+  "EPS": {
+   "provenance": "confessed",
+   "why": "A float guard against division by zero. Chosen at the scale where double-precision noise lives; no measurement justifies the exact value and none would change a result at any nearby value."
+  },
+  "MIN_RATE_N": {
+   "provenance": "confessed",
+   "why": "The operator's declared minimum n for a rate to be stated as a finding, with stability to ~10n. A policy threshold, not a measurement \u2014 and it was set after two rate claims flipped when n grew tenfold."
+  },
+  "READ_BETA": {
+   "provenance": "confessed",
+   "why": "THE OPEN ONE. The settler's inverse temperature on the read path. It entered as 1.0 with no derivation and no sweep. The operator has ordered the beta audit: sweep the floor and settlement outcomes across a range on fixed fixtures, pin inside a stable band with the sweep as justification, or report the instability as a finding about the physics. Until that runs this is confessed."
+  },
+  "BIAS_WEIGHT": {
+   "provenance": "confessed",
+   "why": "How hard the typed input pushes. Justified only as 'small enough not to clamp, large enough to move something' \u2014 which is an argument for a range, not for 0.35. A sweep on the battery fixtures would settle it."
+  },
+  "MOVED_EPS": {
+   "provenance": "confessed",
+   "why": "The shift below which a slot counts as unmoved. A noise floor chosen to sit under observed shifts; not swept."
+  },
+  "BLOCK_CAP": {
+   "provenance": "confessed",
+   "why": "Blocks above this size are not relaxed and are COUNTED as skipped rather than silently dropped. A compute bound, confessed as one \u2014 the honesty is in the counting, not in the number."
+  },
+  "MOVED_CAP": {
+   "provenance": "confessed",
+   "why": "How many moved slots the record carries. A transport bound; the remainder is counted and reported, never silently cut."
+  },
+  "REGION_SIZE": {
+   "provenance": "confessed",
+   "why": "The attachment lineup size. OI-17 says this should be the medium's MEASURED co-relaxation range rather than a number \u2014 the acceptance guard band is the measurement that would derive it, and until that closes the loop this is chosen."
+  },
+  "NU_CAP": {
+   "provenance": "confessed",
+   "why": "Longest nu-string rendered into a region. A transport bound on the attachment call; display trim never feeds computation (gate 8)."
+  },
+  "NEIGHBOUR_CAP": {
+   "provenance": "confessed",
+   "why": "How many declared neighbours a compiled claim lists. A transport bound."
+  },
+  "NU_BUDGET": {
+   "provenance": "confessed",
+   "why": "How much nu-text the atlas page renders per view. A display bound: the atlas is a read surface and this decides how much of a claim is shown before it is trimmed, which never feeds computation (gate 8)."
+  },
+  "SHEET_WIDTH": {
+   "provenance": "confessed",
+   "why": "Longest claim rendered into the portable export sheet. A display bound on a read surface; the full nu-string is what addresses and hashes, and trimming here never feeds computation (gate 8)."
+  },
+  "MAX_LABEL_CHARS": {
+   "provenance": "confessed",
+   "why": "Longest gloss label rendered into a sheet's glossary line. Display only, on a read surface; the gloss itself is stored whole."
+  },
+  "_MIN_FACE_CHARS": {
+   "provenance": "confessed",
+   "why": "Shortest string treated as a face. A parser bound."
+  },
+  "TOP_CLUSTERS": {
+   "provenance": "confessed",
+   "why": "How many clusters the structure trace shows. Display only."
+  },
+  "SETTLED_DEGREE": {
+   "provenance": "confessed",
+   "why": "Degree at or below which a boundary site counts as settled for K. Chosen; K's three refusals to date did not turn on it, which is why it has not been forced by a measurement yet."
+  },
+  "POLL_SECONDS": {
+   "provenance": "confessed",
+   "why": "Daemon poll interval. Operational, not physical."
+  },
+  "SAMPLE_EVERY_DAYS": {
+   "provenance": "confessed",
+   "why": "How often the longitudinal battery samples. The operator asked for weekly."
+  },
+  "JUMP_EVERY": {
+   "provenance": "confessed",
+   "why": "How often the walk jumps rather than continuing its neighbourhood. An exploration bound predating the coverage term, which IS derived (unwalked mass, self-extinguishing) \u2014 this one should follow it and has not yet."
+  },
+  "DRIFT_AFTER": {
+   "provenance": "confessed",
+   "why": "Consecutive empty steps before the walk is judged drifting. Chosen."
+  }
+ }
+}
