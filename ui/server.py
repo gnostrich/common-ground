@@ -24,10 +24,12 @@ from pathlib import Path
 from engine.export_sheet import sheet
 from engine.corpus_state import SNAPSHOT_PATH
 from engine.grounded import check_answer
+from engine.transcript import CURRENT as TRANSCRIPT, start as start_transcript
+from engine.mode import cell as mode_cell, normalize as normalize_mode, stamp as mode_stamp
 from engine.inbound import INBOUND_SYSTEM
 
 from .current import Current, ask_the_corpus, corpus_header
-from .lm import LMClient, answer, api_key, lm_available
+from .lm import LAST_SERVED, LMClient, answer, api_key, lm_available
 
 HERE = Path(__file__).resolve().parent
 INDEX = HERE / "index.html"
@@ -301,6 +303,12 @@ class Handler(BaseHTTPRequestHandler):
         key = api_key(b.get("key"))          # request key or env; never logged
         try:
             if path == "/propose":
+                # THE LOCK, at the only place that could break it. In brainstorm the typed
+                # text is bias and never becomes a claim, so retain keeps the MEDIUM's cited
+                # proposals at EXTRACTION and not the prompt. Routing the prompt in anyway
+                # would make the mode a laundering channel — think out loud, agree with what
+                # comes back, and watch it become authored.
+                _mode = normalize_mode(b.get("mode"))
                 state = CURRENT.propose_text(
                     text=str(b.get("text", "")),
                     chart=str(b.get("chart", "english")),
@@ -345,6 +353,7 @@ class Handler(BaseHTTPRequestHandler):
                     phases.append({"stage": name, "at": round(time.time() - _t_req, 3)})
 
                 _t_req = time.time()
+                mode = normalize_mode(b.get("mode"))
                 compiled = ask_the_corpus(question, str(b.get("chart", "english")), key=key,
                                           on_stage=_phase)
                 # No branch on whether anything "landed". The compiled input already IS
@@ -357,8 +366,12 @@ class Handler(BaseHTTPRequestHandler):
                 _phase("answering")
                 if lm_available(key):
                     client = LMClient(key)
+                    _t_lm = time.time()
                     reply = client.complete(system, grounded_on,
                                             float(b.get("temperature", 0.2)), 1200).strip()
+                    TRANSCRIPT.record("render", system, grounded_on, reply,
+                                      model=str(LAST_SERVED or ""),
+                                      seconds=time.time() - _t_lm)
                 else:
                     reply = ("(no key — the LM is not answering. What it would have received "
                              "is below, compiled from the field.)")
@@ -370,6 +383,13 @@ class Handler(BaseHTTPRequestHandler):
                 verdict = check_answer(reply, compiled).as_record()
                 self._send(200, json.dumps({
                     "answer": reply, "grounded_on": grounded_on, "faithful": verdict,
+                    # THE MODE IS ON THE RECORD, always. A record that cannot say which act
+                    # produced it cannot be re-read later as what it was.
+                    "mode": mode_stamp(mode), "act": mode_cell(mode, False),
+                    # EVERY CALL, BOTH CHANNELS, RAW — including the attachment call, which
+                    # decides what the answer can be about. With digests, so the displayed
+                    # bytes can be verified to be the sent bytes.
+                    "transcript": TRANSCRIPT.as_record(),
                     # THE PORTABLE SHEET. A VIEW over the record this request already made —
                     # it is returned WITH the answer rather than behind a second endpoint, so
                     # exporting cannot re-run a perturbation or produce a sheet describing a

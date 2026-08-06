@@ -58,6 +58,9 @@ details.scope[open]>summary{margin-bottom:.6rem}
     <label title="release: the input and its attachments evaporate. retain: the input enters the fast tape as a claim at EXTRACTION tier and its correspondence-kind attachments are kept as proposals, born subject to event-quantized aging.">
       <input id="retain" type="checkbox"> retain
     </label>
+    <label title="assert: what you type carries your AUTHORSHIP — you are standing behind it. brainstorm: what you type is bias only and never becomes a claim, in this session or any other; what the medium proposes enters at EXTRACTION like every other proposal, and agreeing with it here confers nothing — re-assert it through the normal act if you want it to count.">
+      <input id="brainstorm" type="checkbox"> brainstorm
+    </label>
     <button class="go" onclick="act()">perturb</button>
     <button onclick="reset_()">reset current</button>
     <button id="exportbtn" onclick="exportSheet()" disabled
@@ -288,6 +291,7 @@ async function act(){
   // /ask (perturb-and-release). Same region call either way — the flag decides only what
   // survives it, which is what "one box" means rather than two forms sharing a button.
   const retain = $('retain').checked;
+  const mode = $('brainstorm').checked ? 'brainstorm' : 'assert';
   const text = $('text').value, chart = $('chart').value;
   $('answer').innerHTML = '<span class="muted">'
     + (retain ? 'perturbing and retaining…' : 'perturbing the field…') + '</span>';
@@ -304,8 +308,8 @@ async function act(){
       + `<span class="muted">(the attachment call is 76-94% of it)</span></span>`;
   }, 1000);
   try {
-    r = retain ? await post('/propose', {text, chart})
-               : await post('/ask', {question:text, chart});
+    r = retain ? await post('/propose', {text, chart, mode})
+               : await post('/ask', {question:text, chart, mode});
   } catch(e) {
     clearInterval(tick);
     $('answer').innerHTML = `<span class="err">the request failed: ${esc(String(e))}</span>`;

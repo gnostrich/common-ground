@@ -47,6 +47,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .corpus_state import CorpusSnapshot
+import time as _time
+
+from .transcript import CURRENT as TRANSCRIPT
+
 from .region import (BEARS_ON, BIAS_CHART, REGION_SIZE, REGION_SYSTEM, Region, anchor_for,
                      arrows_from, build_region, parse_region, render_region, residuals)
 from .relax import Relaxation, relax
@@ -278,7 +282,15 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
         return out
 
     try:
-        raw, usage = transport(REGION_SYSTEM, render_region(region))
+        # THE ATTACHMENT CALL IS RECORDED, and it is the one that matters most: it decides
+        # what the answer can possibly be about. Recording only the render call would show
+        # the answer's input and hide its cause.
+        _sys, _user = REGION_SYSTEM, render_region(region)
+        _t = _time.time()
+        raw, usage = transport(_sys, _user)
+        TRANSCRIPT.record("propose", _sys, _user, raw or "",
+                          model=str((usage or {}).get("model") or ""),
+                          seconds=_time.time() - _t)
     except Exception as exc:                      # a dead call is reported, never silent
         out.error = f"{type(exc).__name__}: {exc}"
         return out
