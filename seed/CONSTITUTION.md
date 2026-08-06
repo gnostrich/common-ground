@@ -126,8 +126,16 @@ aging-halving (scale-free), k/(k−1) (anchor-forced), coverage-by-unwalked-mass
 (self-extinguishing). **OPEN:** β (confessed, audit ordered). `[C: constants sweep]`
 
 **OI-5** Conditional language in rulings is a tell — "as long as X" either references a gate
-(redundant) or nothing (hope). Constraints are controls, not clauses.
-`[P: ruling review; auditor flags conditionals in normative text]`
+(redundant) or nothing (hope). Constraints are controls, not clauses. `engine/conditionals`
+scans normative text for a closed set of tells and forgives a clause only when it cites
+something that REFUSES: a gate, an OI, a decision id, or a control file. Use versus mention is
+load-bearing — this statement quotes the phrase it forbids, and a linter that could not tell
+quoting from asserting would flag its own definition. The residual is confessed: mood is not
+detected, so a descriptive conditional in a normative document is flagged, and the one real
+instance is allowlisted AS A SENTENCE rather than by exempting its file.
+`[C: tests/test_conditionals.py — the real text is clean, so the planted arm carries the
+weight: every tell must fire, a quoted tell must not, and a loose use in the same sentence as
+a quoted one must still be caught]`
 
 ### II. NOTHING LEXICAL, NOTHING SIMILAR, EVER
 
