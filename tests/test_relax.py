@@ -100,7 +100,13 @@ class TheFieldIsActuallyRelaxed(unittest.TestCase):
         reached = [m for m in got.relaxation.moved if m.hops > 0]
         self.assertTrue(reached, "nothing was reached through a declared arrow")
         self.assertEqual(reached[0].chart, "lean")
-        self.assertIn("MOVED [lean", got.compiled)
+        self.assertIn("[lean/assert]", got.compiled)
+        # AND THE TWO ARE ONE GROUP. The English claim and the Lean one are the same
+        # proposition — the corpus declares it with a same_claim arrow — so the compiled
+        # sheet presents them as one thing written twice, not as two claims in a list. That
+        # flattening is what made the medium attach to every member of a region separately.
+        self.assertIn("ONE PROPOSITION carried across 2 claim(s) [english+lean]", got.compiled)
+        self.assertIn("attaching once, not several times", got.compiled)
 
     def test_the_shift_decays_with_distance(self):
         """A perturbation that propagated should weaken as it travels; equal shifts at every

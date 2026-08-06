@@ -63,7 +63,6 @@ from .corpus_state import CorpusSnapshot
 from .extract import DeterministicExtractor
 from .perturb import perturb, relax_from
 from .relax import Relaxation, relax
-from .medium import glossary_block, load_glosses
 from .structure_trace import signature_of, structure_lines
 from .types import Document
 
@@ -320,38 +319,104 @@ def _no_attachment(pert) -> str:
             f"not ruled out — a different sample may answer differently.")
 
 
+def _fiber_index(snapshot) -> dict:
+    """slot -> the fiber it belongs to. Built once per compile, read off the snapshot."""
+    out: dict[str, tuple] = {}
+    for fib in (getattr(snapshot, "fibers", None) or []):
+        members = tuple(fib)
+        for slot in members:
+            out[slot] = members
+    return out
+
+
+def _links_for(snapshot, slot: str, inside: set) -> list[str]:
+    """The declared arrows leaving this claim, rendered. The corpus's own decomposition.
+
+    A fiber says these claims are one proposition; the arrows LEAVING it say what that
+    proposition refines, instances and bears on. That is the decompression the corpus has
+    already written, and until this function existed it never reached the medium.
+    """
+    out = []
+    for a in (getattr(snapshot, "arrows", None) or []):
+        for src, dst in ((a.src_slot, a.dst_slot), (a.dst_slot, a.src_slot)):
+            if src != slot or dst in inside or a.kind == "same_claim":
+                continue
+            rec = (getattr(snapshot, "slots", None) or {}).get(dst)
+            if rec is None:
+                continue
+            out.append(f"      -{a.kind}-> [{getattr(rec, 'chart', '?')}] "
+                       f"{display(getattr(rec, 'nu', '') or '')}")
+    return out[:4]
+
+
 def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
                    cites: list | None = None) -> tuple[list[str], list[dict]]:
-    """The moved region, each row carrying the declared path the bias reached it by.
+    """The moved region, GROUPED BY FIBER, each row carrying the path the bias reached it by.
 
-    A row here is not "a claim that resembles the query". It is a claim whose settled
-    distribution CHANGED when the query was applied as a soft constraint, and the path is the
-    chain of declared correspondences the perturbation travelled along to reach it. Nothing
-    was compared as a string.
+    THE FLAT LIST WAS THE DEFECT. A numbered list of claims presents a corpus as an
+    undifferentiated pile, and the medium attaches to a pile indiscriminately — 59 of 59 on
+    the measured run — because there is nothing in the presentation to attach to more
+    precisely than "one of these". The corpus is not a pile: a `same_claim` fiber says several
+    of these claims are ONE proposition written in different charts, and the arrows leaving
+    that fiber say what the proposition refines, instances and bears on. That structure has
+    been in the snapshot the whole time and was flattened away on the way into the prompt.
+
+    So a group is the presentation of a span: the shared term at the head, its members
+    beneath with their charts, and the declared links out. No glossary is stored to achieve
+    this and no model is asked for it — it is the live structure, formatted honestly. A claim
+    in no fiber is its own group of one, stated as such rather than quietly mixed in.
     """
+    from .medium import fiber_label
+
     lines: list[str] = [
         "WHAT MOVED. The typed text entered this corpus's energy as a soft constraint and "
-        "settlement was run twice — once on the corpus alone, once with the bias. Every line "
-        "below is a claim whose settled distribution CHANGED, listed with how far it moved "
-        "and the declared correspondences the bias reached it through. Nothing here was "
-        "matched by words; a slot that moved but could not be reached over a declared arrow "
-        "is not listed, because its provenance could not be shown.",
+        "settlement was run twice — once on the corpus alone, once with the bias. Every claim "
+        "below is one whose settled distribution CHANGED. Nothing here was matched by words.",
+        "",
+        "GROUPED BY FIBER. A group is ONE PROPOSITION the corpus has declared is carried "
+        "across several charts, followed by the declared arrows leaving it — what it refines, "
+        "what it instances, what it bears on. The group is the unit to relate to; its members "
+        "are the same thing written differently, and attaching to all of them is attaching "
+        "once, not several times.",
     ]
     facts: list[dict] = []
+    index = _fiber_index(snapshot)
+    groups: dict[tuple, list] = {}
     for m in rel.moved:
-        mark = "CONTESTED" if m.contested else "settled"
-        origin = ("the bias landed on this address" if m.hops == 0
-                  else f"reached in {m.hops} declared hop(s), weakest arrow "
-                       f"{m.weakest_tier}")
-        n = len(cites) + 1 if cites is not None else 0
-        if cites is not None:
-            cites.append(Citable(n=n, kind="moved", chart=m.chart, slot=m.slot,
-                                 nu=display(m.nu)))
-        lines.append(f"[{n}] MOVED [{m.chart}/{m.type}] value={m.value} warrant={m.tier} "
-                     f"({mark}) shift={m.shift:.4f} — {origin} :: {display(m.nu)}")
-        for step in m.path:
-            lines.append(f"  VIA {step.render()}")
-        facts.append({"kind": "moved", **m.as_record()})
+        groups.setdefault(index.get(m.slot, (m.slot,)), []).append(m)
+
+    for members, moved in groups.items():
+        inside = set(members)
+        charts = sorted({m.chart for m in moved})
+        head = ("ONE PROPOSITION carried across " if len(members) > 1
+                else "A CLAIM in no declared fiber — its own group of one; ")
+        label = fiber_label(members[0])
+        lines.append("")
+        lines.append(f"== {head}{len(members)} claim(s) [{'+'.join(charts)}], "
+                     f"{len(moved)} of which moved"
+                     + (f" — the medium reads this as: {label}" if label else "") + " ==")
+        for m in moved:
+            n = len(cites) + 1 if cites is not None else 0
+            if cites is not None:
+                cites.append(Citable(n=n, kind="moved", chart=m.chart, slot=m.slot,
+                                     nu=display(m.nu)))
+            mark = "CONTESTED" if m.contested else "settled"
+            origin = ("the bias landed here" if m.hops == 0
+                      else f"reached in {m.hops} declared hop(s), weakest arrow "
+                           f"{m.weakest_tier}")
+            lines.append(f"  [{n}] [{m.chart}/{m.type}] value={m.value} warrant={m.tier} "
+                         f"({mark}) shift={m.shift:.4f} — {origin}")
+            lines.append(f"      {display(m.nu)}")
+            for step in m.path:
+                lines.append(f"      VIA {step.render()}")
+            facts.append({"kind": "moved", **m.as_record()})
+        links = []
+        for slot in members:
+            links.extend(_links_for(snapshot, slot, inside))
+        if links:
+            lines.append(f"   WHAT THIS PROPOSITION IS LINKED TO, by declared arrows:")
+            lines.extend(links[:6])
+
     if rel.moved_dropped:
         lines.append(f"({rel.moved_dropped} further slot(s) moved and are not shown — the "
                      f"list is cut at the least-responsive end, and the count is stated "
@@ -446,21 +511,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     if att is not None:
         lines.extend(_region_block(att, cites).splitlines())
         lines.append("")
-        # THE GLOSSARY, before the claims it conditions. Only validated glosses, tagged by the
-        # medium that produced them; a gloss validated elsewhere enters marked as a lead.
-        # WHICH MEDIUM IS SERVING decides whether a gloss is a fact or a lead, and the
-        # engine must not import the web layer to find out. Asked through a try, because a
-        # missing surface means "unknown medium", and an unknown medium demotes every gloss
-        # to a lead rather than promoting it — the safe direction.
-        try:
-            from ui.lm import LAST_SERVED, OPENROUTER_MODEL
-            serving = LAST_SERVED or OPENROUTER_MODEL
-        except Exception:
-            serving = ""
-        gl = glossary_block(load_glosses(), serving, set(), cites, Citable)
-        if gl:
-            lines.extend(gl)
-            lines.append("")
+
     moved_lines, facts = _relaxed_block(rel, snapshot, cites)
     lines.extend(moved_lines)
     lines.append("")
