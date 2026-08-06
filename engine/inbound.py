@@ -93,6 +93,27 @@ class Landing:
                 "arrows": list(self.arrows), "docs": list(self.docs)}
 
 
+@dataclass(frozen=True, slots=True)
+class Citable:
+    """One object the answer is allowed to cite, and the integer it cites it by.
+
+    The number is the WHOLE relation between a sentence and the trace. It is assigned here,
+    printed into the prompt here, and resolved by `engine.grounded` as integer membership —
+    no text is compared at any point. The referee that licenses answer-first cannot itself be
+    a similarity mechanism, and a citation index is the only shape that avoids it.
+    """
+
+    n: int
+    kind: str          # "moved" | "attached" | "bears_on"
+    chart: str
+    slot: str
+    nu: str
+
+    def as_record(self) -> dict[str, object]:
+        return {"n": self.n, "kind": self.kind, "chart": self.chart,
+                "slot": self.slot[:16], "nu": self.nu}
+
+
 @dataclass(slots=True)
 class CompiledInput:
     """What the LM actually receives, and the provenance of every line in it."""
@@ -108,6 +129,9 @@ class CompiledInput:
     #: stage took it — the same rule as the walk's phase announcements: silence must never
     #: mean unknown-phase.
     stages: dict = field(default_factory=dict)
+    #: The numbered objects the answer may cite. Empty when nothing attached and nothing
+    #: moved, in which case an answer citing anything is citing something that is not there.
+    citations: list = field(default_factory=list)
 
     @property
     def reached(self) -> int:
@@ -135,6 +159,7 @@ class CompiledInput:
             "relaxation": self.relaxation.as_record() if self.relaxation else None,
             "attachment": self.attachment.as_record() if self.attachment else None,
             "stages": dict(self.stages),
+            "citations": [c.as_record() for c in self.citations],
         }
 
 
@@ -200,7 +225,7 @@ def land(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> list[La
     return out
 
 
-def _region_block(pert) -> str:
+def _region_block(pert, cites: list | None = None) -> str:
     """The diagram the boundary condition entered, and what the medium drew in it.
 
     A bias that reaches the field through a proposed arrow is standing on a claim somebody's
@@ -236,20 +261,39 @@ def _region_block(pert) -> str:
         "never compose, and never become arrows. An arrow to a boundary condition is not "
         "structure.",
     ]
+    def _cite(kind: str, a) -> int:
+        """One number, assigned here and printed here. The prompt and the record cannot
+        disagree about it because there is no second place that assigns one."""
+        n = len(cites) + 1 if cites is not None else 0
+        if cites is not None:
+            cites.append(Citable(n=n, kind=kind, chart=a.dst_chart, slot=a.dst_slot,
+                                 nu=display(a.dst_nu)))
+        return n
+
     if corresponds:
         lines.append(f"-- {len(corresponds)} CORRESPONDENCE attachment(s) --")
     for a in corresponds:
-        lines.append(f"ATTACHED via {a.kind} (warrant {a.tier}) -> [{a.dst_chart}] "
-                     f"{display(a.dst_nu)}")
+        lines.append(f"[{_cite('attached', a)}] ATTACHED via {a.kind} (warrant {a.tier}) -> "
+                     f"[{a.dst_chart}] {display(a.dst_nu)}")
     if bias_only:
         lines.append(f"-- {len(bias_only)} BEARS-ON attachment(s) --")
     for a in bias_only:
-        lines.append(f"BEARS ON -> [{a.dst_chart}] {display(a.dst_nu)}")
+        lines.append(f"[{_cite('bears_on', a)}] BEARS ON -> [{a.dst_chart}] "
+                     f"{display(a.dst_nu)}")
     if pert.extracted:
         lines.append(f"({len(pert.extracted)} arrow(s) among the CORPUS objects came back in "
                      f"the same call. Those are ordinary extraction at the same tier the "
                      f"sampler produces — asking a question does the sampler's work — and "
                      f"they are offered to the inlet, not written by this read path.)")
+    d = pert.discrimination
+    if d["shown"]:
+        line = (f"ATTACHMENT DISCRIMINATION: {d['attached']} of {d['shown']} corpus object(s) "
+                f"shown were attached to ({d['fraction']:.0%}).")
+        if d["red"]:
+            line += (f" RED — at or above {d['threshold']:.0%} this is INDISCRIMINATE "
+                     f"attachment: {d['note']}. Treat the attachment as carrying no "
+                     f"information about which claims the input bears on, and say so.")
+        lines.append(line)
     if pert.void:
         lines.append(f"({pert.void} line(s) were VOID: outside the region, self-paired, "
                      f"intra-chart, or an unknown kind. Discarded with the reason, never "
@@ -270,7 +314,8 @@ def _no_attachment(pert) -> str:
             f"not ruled out — a different sample may answer differently.")
 
 
-def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot) -> tuple[list[str], list[dict]]:
+def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
+                   cites: list | None = None) -> tuple[list[str], list[dict]]:
     """The moved region, each row carrying the declared path the bias reached it by.
 
     A row here is not "a claim that resembles the query". It is a claim whose settled
@@ -292,8 +337,12 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot) -> tuple[list[str]
         origin = ("the bias landed on this address" if m.hops == 0
                   else f"reached in {m.hops} declared hop(s), weakest arrow "
                        f"{m.weakest_tier}")
-        lines.append(f"MOVED [{m.chart}/{m.type}] value={m.value} warrant={m.tier} ({mark}) "
-                     f"shift={m.shift:.4f} — {origin} :: {display(m.nu)}")
+        n = len(cites) + 1 if cites is not None else 0
+        if cites is not None:
+            cites.append(Citable(n=n, kind="moved", chart=m.chart, slot=m.slot,
+                                 nu=display(m.nu)))
+        lines.append(f"[{n}] MOVED [{m.chart}/{m.type}] value={m.value} warrant={m.tier} "
+                     f"({mark}) shift={m.shift:.4f} — {origin} :: {display(m.nu)}")
         for step in m.path:
             lines.append(f"  VIA {step.render()}")
         facts.append({"kind": "moved", **m.as_record()})
@@ -339,6 +388,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
                 pass                    # a progress channel must never break the answer
 
     stages: dict[str, float] = {}
+    cites: list[Citable] = []
     _t0 = _time.time()
     _phase("addressing")
     landings = land(text, snapshot, chart)
@@ -360,10 +410,10 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
             stages["total"] = round(_time.time() - _t0, 3)
             return CompiledInput(
                 stages=stages,
-                typed=text, compiled=f"{status}\n\n{_region_block(att)}\n\n"
+                typed=text, compiled=f"{status}\n\n{_region_block(att, cites)}\n\n"
                                      f"BOUNDARY CONDITION:\n{text}",
                 landings=landings, field_status=status, conditioned=False,
-                relaxation=None, attachment=att)
+                relaxation=None, attachment=att, citations=cites)
         _phase("settling")
         _t = _time.time()
         rel = relax_from(att, text, snapshot, chart)
@@ -378,7 +428,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         return CompiledInput(
             typed=text, compiled=f"{status}\n\nBOUNDARY CONDITION:\n{text}",
             landings=landings, field_status=status, conditioned=False, relaxation=rel,
-            attachment=att)
+            attachment=att, citations=cites)
 
     lines: list[str] = [
         "FIELD STATE after relaxation. The boundary condition below was applied to this "
@@ -388,9 +438,9 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         "",
     ]
     if att is not None:
-        lines.extend(_region_block(att).splitlines())
+        lines.extend(_region_block(att, cites).splitlines())
         lines.append("")
-    moved_lines, facts = _relaxed_block(rel, snapshot)
+    moved_lines, facts = _relaxed_block(rel, snapshot, cites)
     lines.extend(moved_lines)
     lines.append("")
 
@@ -414,7 +464,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     stages["total"] = round(_time.time() - _t0, 3)
     out = CompiledInput(typed=text, compiled="\n".join(lines), landings=landings,
                         facts=facts, field_status=status, conditioned=True, relaxation=rel,
-                        attachment=att)
+                        attachment=att, citations=cites)
     out.stages = stages
     return out
 
@@ -436,16 +486,22 @@ INBOUND_SYSTEM = (
     "its sentence — the voice of the answer should be recognisably the corpus's own, arranged "
     "around the question that was asked. Weave the quoted material into prose; do not list "
     "it.\n\n"
-    "EVERY PROPOSITION YOU WRITE MUST TRACE TO A MOVED CLAIM OR AN ATTACHMENT SHOWN BELOW. "
-    "This is checked after you answer, mechanically, and an answer that asserts something "
-    "outside the trace is flagged. Nothing licenses you to supply a fact the field did not "
-    "move — not plausibility, not common knowledge, not filling an obvious gap.\n\n"
-    "OPEN WITH THE TWO LINES THAT SAY WHAT THE ANSWER RESTS ON, plainly worded, before the "
-    "prose: one line naming what the input was read as bearing on (the ATTACHED and BEARS ON "
-    "lines, in your own plain phrasing — 'I read your question as bearing on X and Y'), and, "
-    "where something was declined or nothing responded, one line saying so ('nothing in the "
-    "field responded to Z'). The reader must be able to see what the answer stands on without "
-    "opening anything else.\n\n"
+    "CITE. Every line below that you may draw on carries a number in square brackets — "
+    "[1], [2], [3] — on its ATTACHED, BEARS ON or MOVED line. EVERY SENTENCE YOU WRITE MUST "
+    "END WITH AT LEAST ONE SUCH CITATION, naming the numbered line(s) it rests on, like "
+    "this [4] or this [2][7]. A sentence resting on two claims cites both.\n\n"
+    "This is checked mechanically: the numbers are resolved against the lines that were "
+    "shown to you. A sentence with no citation is flagged, and a citation to a number that "
+    "was not shown is flagged. Do not invent numbers, do not cite a range, do not cite a "
+    "line you were not given. If you cannot cite a sentence, you should not be writing it — "
+    "nothing licenses you to supply a fact the field did not move, not plausibility, not "
+    "common knowledge, not filling an obvious gap.\n\n"
+    "OPEN WITH THE TWO LINES THAT SAY WHAT THE ANSWER RESTS ON, plainly worded and cited like "
+    "everything else: one line naming what the input was read as bearing on (the ATTACHED and "
+    "BEARS ON lines, in your own plain phrasing — 'I read your question as bearing on X [3] "
+    "and Y [5]'), and, where something was declined or nothing responded, one line saying so. "
+    "The reader must be able to see what the answer stands on without opening anything "
+    "else.\n\n"
     "Answer only from that state. Where the field says CONTESTED, do not resolve it — report "
     "the contest. Where it reports a GAP or says no correspondence carried the perturbation "
     "further, say the relation is unmeasured rather than supplying one. Where it says blocks "

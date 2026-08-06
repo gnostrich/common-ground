@@ -57,7 +57,8 @@ ASK = {
     "answer": "I read your question as bearing on one claim. The cone is positive under the "
               "metric, and nothing else in the field responded.",
     "grounded_on": "FIELD STATE after relaxation.",
-    "faithful": {"ok": True, "checked": 2, "ground": 12, "violations": []},
+    "faithful": {"ok": True, "checked": 2, "cited": 2, "citable": 2, "resolved": [1, 2],
+                 "method": "citation-resolution", "violations": []},
     "lm_available": True,
     "phases": [{"stage": "addressing", "at": 0.01}, {"stage": "attaching", "at": 0.02},
                {"stage": "settling", "at": 1.2}, {"stage": "answering", "at": 1.3},
@@ -106,10 +107,16 @@ PROPOSE = {
 }
 
 RED_ASK = json.loads(json.dumps(ASK))
-RED_ASK["answer"] = "Perelman settled the Poincare conjecture."
-RED_ASK["faithful"] = {"ok": False, "checked": 1, "ground": 12,
-                       "violations": [{"sentence": "Perelman settled the Poincare conjecture.",
-                                       "ungrounded": ["perelman", "poincare", "conjecture"]}]}
+RED_ASK["answer"] = "Perelman settled the Poincare conjecture some years ago."
+RED_ASK["faithful"] = {
+    "ok": False, "checked": 2, "cited": 1, "citable": 2, "resolved": [],
+    "method": "citation-resolution",
+    "violations": [
+        {"kind": "uncited", "numbers": [],
+         "sentence": "Perelman settled the Poincare conjecture some years ago."},
+        {"kind": "unresolved", "numbers": [99],
+         "sentence": "The cone is positive under the ambient metric [99]."},
+    ]}
 
 
 class _Stub(http.server.BaseHTTPRequestHandler):
@@ -252,14 +259,18 @@ class TheAnswerIsFIRST(unittest.TestCase):
     def test_a_green_verdict_is_shown_with_the_answer(self):
         with _Server() as url, _Page(url) as p:
             p.perturb()
-            self.assertIn("faithful: []", p.page.inner_text("#answer .verdict"))
+            v = p.page.inner_text("#answer .verdict")
+            self.assertIn("faithful: []", v)
+            self.assertIn("cites a claim that was shown", v)
 
-    def test_a_red_verdict_is_shown_ON_the_answer_with_its_convicting_words(self):
+    def test_a_red_verdict_is_shown_ON_the_answer_with_its_failing_sentences(self):
         with _Server(RED_ASK) as url, _Page(url) as p:
             p.perturb()
             block = p.page.inner_text("#answer")
             self.assertIn("FAITHFULNESS RED", block)
-            self.assertIn("perelman", block.lower())
+            # Both structural failures are named on the answer, not filed in the scope.
+            self.assertIn("rests on nothing shown", block)
+            self.assertIn("99", block)
 
     def test_the_movers_and_phases_land_in_the_scope(self):
         with _Server() as url, _Page(url) as p:

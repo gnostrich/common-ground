@@ -82,7 +82,7 @@ class Attachment:
 
     def as_record(self) -> dict[str, object]:
         return {"kind": self.kind, "tier": self.tier, "to": self.dst_slot[:16],
-                "chart": self.dst_chart, "nu": self.dst_nu[:220],
+                "chart": self.dst_chart, "nu": self.dst_nu,
                 "evidence": self.evidence[:400], "ephemeral": True}
 
 
@@ -106,6 +106,49 @@ class Perturbation:
     #: unstated it looks exactly like a region that was aimed.
     unanchored: bool = False
     note: str = ""
+
+    #: THE DISCRIMINATION GUARD, symmetric to the acceptance guard on the walk.
+    #: A medium that attaches the boundary condition to EVERY object in the region has not
+    #: related it to anything — the same degeneracy class as force-matching, where a proposer
+    #: that answers `same_claim` to everything carries no information in any single answer.
+    #: The battery measured 59 attachments out of a 59-claim region: total attachment,
+    #: reported as a rich result. The fraction is computed per perturbation, logged, and
+    #: crosses into RED at `INDISCRIMINATE`.
+    #:
+    #: The threshold is stated rather than tuned. A boundary condition genuinely about a
+    #: coherent neighbourhood can legitimately touch most of it, so this is not set low; what
+    #: it refuses is the limit case where the medium drew an arrow to everything it was shown
+    #: and the answer therefore rests on the region's membership rather than on any relation.
+    INDISCRIMINATE = 0.9
+
+    @property
+    def attachment_fraction(self) -> float:
+        """Attached corpus objects over corpus objects SHOWN. The bias itself is not a corpus
+        object and is excluded from the denominator, so a full sweep reads as 1.0 exactly."""
+        shown = max(0, self.members - 1)
+        if not shown:
+            return 0.0
+        return len({a.dst_slot for a in self.attachment}) / shown
+
+    @property
+    def indiscriminate(self) -> bool:
+        """RED: the medium attached to (almost) everything it was shown."""
+        return self.attachment_fraction >= Perturbation.INDISCRIMINATE
+
+    @property
+    def discrimination(self) -> dict[str, object]:
+        f = self.attachment_fraction
+        return {
+            "attached": len({a.dst_slot for a in self.attachment}),
+            "shown": max(0, self.members - 1),
+            "fraction": round(f, 4),
+            "threshold": Perturbation.INDISCRIMINATE,
+            "red": self.indiscriminate,
+            "note": ("the medium drew an arrow to essentially every object it was shown, so "
+                     "the attachment carries no information about which claims the input "
+                     "bears on — the same degeneracy as a proposer that answers the same "
+                     "relation to everything" if self.indiscriminate else ""),
+        }
 
     @property
     def consulted(self) -> bool:
@@ -159,6 +202,7 @@ class Perturbation:
             "implied": len(self.region.implied) if self.region else 0,
             "attachment": [a.as_record() for a in self.attachment],
             "attached": len(self.attachment),
+            "discrimination": self.discrimination,
             "extracted": len(self.extracted),
             "void": self.void, "calls": self.calls, "cost": round(self.cost, 6),
             "error": self.error,

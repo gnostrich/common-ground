@@ -1,120 +1,171 @@
-"""THE GATE THAT LICENSES ANSWER-FIRST, with its planted violation.
+"""THE REFEREE, AND THE CONTROL THAT KEEPS IT STRUCTURAL.
 
-The answer moved to the top of the page. What makes that warranted rather than a layout
-preference is that an answer asserting anything outside the trace goes RED — so the RED case
-is planted here, and if it ever passes the hierarchy is unlicensed.
+The answer moved to the top of the page. What makes that warranted is a gate that can convict
+it — and the FIRST gate built for the job was term overlap, the move this codebase records as
+deleted, reintroduced inside the referee where it does the most damage. So this file plants
+both the ordinary REDs and the return of the lexical method itself.
 """
 
+import ast
 import unittest
+from pathlib import Path
 
-from engine.grounded import LICENSED, MIN_CONTENT, check_answer, ground_of, words
+from engine.grounded import (MIN_SENTENCE_CHARS, Verdict, check_answer, citable_numbers,
+                             sentences)
 
-
-def _compiled(nus, typed="is the cone positive", attached=(), silence=""):
-    return {
-        "typed": typed,
-        "field_status": "RELAXED",
-        "relaxation": {"silence": silence,
-                       "rows": [{"nu": f"\x01english\x01{n}", "chart": "english",
-                                 "type": "claim", "path": []} for n in nus]},
-        "attachment": {"proposed": [{"dst_nu": f"\x01english\x01{a}", "kind": "corresponds",
-                                     "accepted": True, "dst_chart": "english",
-                                     "evidence": ""} for a in attached]},
-    }
+MODULE = Path(__file__).resolve().parent.parent / "engine" / "grounded.py"
 
 
-class TheGroundIsWhatTheFieldSupplied(unittest.TestCase):
-
-    def test_moved_claims_and_attachments_both_ground(self):
-        g = ground_of(_compiled(["the cone is positive under the metric"],
-                                attached=["curvature bounds the spectrum"]))
-        self.assertIn("metric", g)
-        self.assertIn("curvature", g)
-
-    def test_the_typed_question_grounds_its_own_words(self):
-        self.assertIn("cone", ground_of(_compiled([], typed="is the cone positive")))
-
-    def test_a_silence_reason_grounds_the_words_it_uses(self):
-        g = ground_of(_compiled([], silence="no declared correspondence carried it further"))
-        self.assertIn("carried", g)
-
-    def test_the_ground_is_built_from_full_nu_strings_not_trimmed_ones(self):
-        long_nu = "alpha " * 60 + "omegaword"
-        self.assertIn("omegaword", ground_of(_compiled([long_nu])))
+def _compiled(ns):
+    return {"citations": [{"n": n, "kind": "moved", "chart": "english",
+                           "slot": f"s{n}", "nu": f"claim {n}"} for n in ns]}
 
 
-class APlantedViolationIsRED(unittest.TestCase):
+class CitationsResolveOrTheyDoNot(unittest.TestCase):
 
-    def test_an_answer_importing_a_claim_the_field_never_moved_goes_red(self):
-        c = _compiled(["the cone is positive under the metric"])
-        v = check_answer("This follows from the Riemann hypothesis.", c)
+    def test_a_fully_cited_answer_is_green(self):
+        v = check_answer("I read your question as bearing on the metric cone [1]. "
+                         "The field also moved a claim about the boundary term [2].",
+                         _compiled([1, 2, 3]))
+        self.assertTrue(v.ok, [x.render() for x in v.uncited + v.unresolved])
+        self.assertEqual(2, v.cited)
+        self.assertEqual([1, 2], v.as_record()["resolved"])
+
+    def test_one_sentence_may_cite_several_lines(self):
+        v = check_answer("The two claims disagree about the sign of the term [1][2].",
+                         _compiled([1, 2]))
+        self.assertTrue(v.ok)
+        self.assertEqual([1, 2], v.as_record()["resolved"])
+
+    def test_an_uncited_sentence_is_red_and_named(self):
+        v = check_answer("Perelman settled the Poincare conjecture some years ago.",
+                         _compiled([1, 2]))
         self.assertFalse(v.ok)
-        self.assertIn("riemann", v.violations[0].ungrounded)
+        self.assertEqual(1, len(v.uncited))
+        self.assertIn("UNCITED", v.uncited[0].render())
 
-    def test_the_convicting_words_are_named_not_just_counted(self):
-        c = _compiled(["the cone is positive"])
-        v = check_answer("Perelman settled it.", c)
-        self.assertIn("perelman", v.violations[0].ungrounded)
+    def test_a_citation_to_a_number_never_emitted_is_red(self):
+        v = check_answer("The cone is positive under the ambient metric here [99].",
+                         _compiled([1, 2]))
+        self.assertFalse(v.ok)
+        self.assertEqual([99], v.unresolved[0].numbers)
 
     def test_one_bad_sentence_among_good_ones_is_still_red(self):
-        c = _compiled(["the cone is positive under the metric"])
-        v = check_answer("The cone is positive under the metric. "
-                         "Perelman proved the Poincare conjecture.", c)
+        v = check_answer("The boundary term moved when the bias was applied [1]. "
+                         "Perelman settled the Poincare conjecture some years ago.",
+                         _compiled([1]))
         self.assertFalse(v.ok)
-        self.assertEqual(1, len(v.violations))
         self.assertEqual(2, v.checked)
+        self.assertEqual(1, len(v.uncited))
 
-    def test_a_number_the_field_did_not_supply_is_an_importation(self):
-        c = _compiled(["the cone is positive"])
-        self.assertFalse(check_answer("It holds for 1729 cases.", c).ok)
-
-
-class AGroundedAnswerPasses(unittest.TestCase):
-
-    def test_an_answer_built_from_the_moved_claim_is_green(self):
-        c = _compiled(["the cone is positive under the metric"])
-        v = check_answer("The field moved one claim: the cone is positive under the metric. "
-                         "Nothing else responded.", c)
-        self.assertTrue(v.ok, v.violations and v.violations[0].render())
-
-    def test_the_machines_own_vocabulary_does_not_convict(self):
-        c = _compiled(["the cone is positive"])
-        v = check_answer("Nothing in the field responded, and the relation is unmeasured "
-                         "rather than absent.", c)
-        self.assertTrue(v.ok, v.violations and v.violations[0].render())
-
-    def test_quoting_a_long_moved_claim_verbatim_is_green(self):
-        nu = ("the second fundamental form of the boundary controls the spectral gap "
-              "whenever the ambient curvature is bounded below by a positive constant")
-        v = check_answer(f"The field moved this claim: {nu}.", _compiled([nu]))
-        self.assertTrue(v.ok, v.violations and v.violations[0].render())
-
-
-class TheGreenIsNotOverclaimed(unittest.TestCase):
+    def test_a_short_fragment_is_scaffolding_not_a_proposition(self):
+        # "Yes." carries no proposition; demanding a citation on it produces noise.
+        v = check_answer("Yes.", _compiled([1]))
+        self.assertEqual(0, v.checked)
+        self.assertEqual(MIN_SENTENCE_CHARS, 25)
 
     def test_an_empty_answer_reports_zero_checked_so_it_cannot_read_as_a_pass(self):
-        v = check_answer("", _compiled(["the cone is positive"]))
+        v = check_answer("", _compiled([1]))
         self.assertEqual(0, v.checked)
-        self.assertEqual(0, len(v.violations))
+        self.assertTrue(v.ok)
+        self.assertEqual(1, v.as_record()["citable"])
 
-    def test_the_licensed_list_holds_no_topic_word(self):
-        # A topic word here would silently license importation of that topic forever. The
-        # check is that nothing in the list is a term a corpus would be ABOUT.
-        planted = {"riemann", "curvature", "manifold", "spectrum", "perelman", "cone"}
-        self.assertEqual(set(), planted & LICENSED)
 
-    def test_content_threshold_is_stated_not_incidental(self):
-        self.assertEqual(4, MIN_CONTENT)
-        self.assertEqual(set(), words("is it in on at a of to"))
+class TheTraceSetIsExactlyWhatWasEmitted(unittest.TestCase):
+
+    def test_citable_numbers_come_from_the_record_not_from_a_range(self):
+        self.assertEqual({1, 4, 9}, citable_numbers(_compiled([1, 4, 9])))
+
+    def test_an_attachment_is_citable_so_it_cannot_convict_a_correct_answer_twice(self):
+        compiled = {"citations": [{"n": 1, "kind": "bears_on", "chart": "english",
+                                   "slot": "a", "nu": "an attached claim"}]}
+        self.assertTrue(check_answer("The input was read as bearing on that claim [1].",
+                                     compiled).ok)
+
+    def test_no_citations_emitted_means_every_cited_sentence_is_unresolved(self):
+        v = check_answer("Something moved in the field when this was applied [1].",
+                         {"citations": []})
+        self.assertFalse(v.ok)
+        self.assertEqual(0, v.as_record()["citable"])
+
+
+class TheRefereeIsNotALEXICALMECHANISM(unittest.TestCase):
+    """THE PLANTED RETURN OF THE DELETED MOVE.
+
+    Term overlap in the answer path is ledgered as deleted, and it came back inside the
+    referee anyway. A control that only tested behaviour would not have caught it — the
+    lexical version passed its own tests. So this reads the module's source: the referee may
+    match integers and may split sentences, and it may not tokenize, lowercase, stem, or
+    difference bags of words.
+    """
+
+    def _src(self) -> str:
+        return MODULE.read_text(encoding="utf-8")
+
+    def test_the_module_holds_no_word_tokenizer(self):
+        src = self._src()
+        for banned in ("[a-z0-9]+", "[a-zA-Z]+", "\\w+", ".lower()", ".split()", ".casefold()"):
+            self.assertNotIn(banned, src,
+                             f"a tokenizer is back in the referee: {banned!r}")
+
+    def test_the_only_regex_matches_citations_and_sentence_ends(self):
+        tree = ast.parse(self._src())
+        patterns = [n.args[0].value for n in ast.walk(tree)
+                    if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                    and n.func.attr == "compile" and n.args
+                    and isinstance(n.args[0], ast.Constant)]
+        self.assertEqual(2, len(patterns), f"unexpected regexes: {patterns}")
+        self.assertIn(r"\[(\d+)\]", patterns)
+
+    def test_no_set_difference_survives_anywhere_in_the_module(self):
+        tree = ast.parse(self._src())
+        subs = [n for n in ast.walk(tree)
+                if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Sub)]
+        self.assertEqual([], subs, "a set difference is how the lexical version matched")
+
+    def test_the_deleted_names_do_not_come_back(self):
+        names = {n.id for n in ast.walk(ast.parse(self._src())) if isinstance(n, ast.Name)}
+        names |= {f.name for f in ast.walk(ast.parse(self._src()))
+                  if isinstance(f, ast.FunctionDef)}
+        for gone in ("words", "LICENSED", "ground_of", "corpus_words", "vocab", "MIN_CONTENT"):
+            self.assertNotIn(gone, names, f"{gone} was the lexical method")
+
+    def test_the_verdict_declares_its_method(self):
+        self.assertEqual("citation-resolution",
+                         check_answer("x", _compiled([1])).as_record()["method"])
+
+
+class TheGrammarRequiresCitations(unittest.TestCase):
+
+    def test_the_answer_prompt_states_the_citation_rule(self):
+        from engine.inbound import INBOUND_SYSTEM
+        self.assertIn("CITE", INBOUND_SYSTEM)
+        self.assertIn("EVERY SENTENCE YOU WRITE MUST", INBOUND_SYSTEM)
+
+    def test_the_compiled_prompt_prints_a_number_on_every_citable_line(self):
+        from engine.inbound import Citable
+        c = Citable(n=3, kind="moved", chart="english", slot="abc", nu="a claim")
+        self.assertEqual(3, c.as_record()["n"])
+
+    def test_sentence_splitting_survives_a_trailing_citation_bracket(self):
+        got = sentences("The boundary term moved when the bias landed [1]. "
+                        "The second claim contested it in the same block [2].")
+        self.assertEqual(2, len(got), got)
 
 
 class TheVerdictTravelsAsData(unittest.TestCase):
 
-    def test_the_record_carries_the_sentences_and_the_words(self):
-        rec = check_answer("Perelman settled it.", _compiled(["the cone is positive"])).as_record()
-        self.assertFalse(rec["ok"])
-        self.assertEqual(1, rec["checked"])
-        self.assertIn("perelman", rec["violations"][0]["ungrounded"])
+    def test_the_record_carries_both_failure_kinds_distinctly(self):
+        rec = check_answer("Perelman settled the Poincare conjecture some years ago. "
+                           "The cone is positive under the ambient metric here [99].",
+                           _compiled([1])).as_record()
+        kinds = {v["kind"] for v in rec["violations"]}
+        self.assertEqual({"uncited", "unresolved"}, kinds)
+
+    def test_a_default_verdict_is_green_and_says_it_checked_nothing(self):
+        v = Verdict()
+        self.assertTrue(v.ok)
+        self.assertEqual(0, v.checked)
 
 
 if __name__ == "__main__":

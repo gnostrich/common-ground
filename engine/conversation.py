@@ -48,13 +48,6 @@ _SHARPEN = ("more precisely", "to be precise", "more exactly", "to sharpen", "sh
 _ACCEPT = ("agreed", "i agree", "that is right", "that's right", "thats right", "correct",
            "confirmed", "exactly", "indeed", "yes")
 
-_STOP = frozenset({
-    "the", "a", "an", "is", "are", "was", "were", "be", "been", "to", "of", "in", "on",
-    "and", "or", "not", "that", "this", "it", "its", "as", "for", "with", "by", "we",
-    "you", "i", "under", "over", "no", "yes", "more", "less", "than", "then", "so",
-    "but", "if", "at", "from", "into", "precisely", "exactly", "agreed", "wrong",
-})
-
 
 @dataclass(frozen=True, slots=True)
 class Turn:
@@ -115,11 +108,6 @@ def speaker_claims(text: str) -> list[AttributedClaim]:
     return claims
 
 
-def _keywords(claim: str) -> set[str]:
-    return {t for t in re.findall(r"[a-z]+", claim.casefold())
-            if len(t) >= 4 and t not in _STOP}
-
-
 def _verdict_of(response: str) -> tuple[Verdict, str] | None:
     low = response.casefold()
     for cue in _REJECT:
@@ -138,22 +126,47 @@ def proposal_verdict_ledger(text: str) -> list[ProposalVerdict]:
     """Output 2 (load-bearing): each proposal with the verdict a later turn passed on it.
 
     A claim R (later turn, different speaker) is the verdict on proposal P iff R carries a
-    verdict cue AND shares a content keyword with P. The earliest such R decides P; a
-    proposal no one takes up stays `open`. Deterministic — no randomness, a pure function of
-    the transcript — so it is reproducible from the fixture bytes.
+    verdict cue from the DECLARED cue list and P is the most recent claim R could be
+    answering — the latest preceding claim by a different speaker. Turn order and speaker
+    identity are declared conversation structure; nothing here compares the words of P and R.
+
+    THIS REPLACED A KEYWORD INTERSECTION, and the replacement is the point. The old rule
+    required R to "share a content keyword" with P: two word bags, `p_keys & _keywords(...)`,
+    with the overlap standing in for aboutness. That is similarity substituted for a declared
+    relation — the move `seed/OBJECT-AMENDED.md` records as deleted — sitting inside the
+    thing that decides every verdict in this ledger. `engine/referee_sweep.py` is the control
+    that now refuses it, and it found this one rather than a person finding it.
+
+    THE APPROXIMATION IS STATED, because adjacency is not free of error either. When a
+    speaker makes several claims in a row and the reply carries one cue, this attributes the
+    verdict to the LAST of them. That is a real limitation of turn adjacency and it is
+    recorded here rather than papered over with a resemblance test that would be wrong in a
+    way nobody could see. A conversation chart that needs finer attribution needs a declared
+    reply-to relation in the transcript, not a better guess.
+
+    Deterministic — a pure function of the transcript — so it is reproducible from the
+    fixture bytes.
     """
     claims = speaker_claims(text)
     ledger: list[ProposalVerdict] = []
     for i, p in enumerate(claims):
-        p_keys = _keywords(p.claim)
         decided: tuple[Verdict, str, AttributedClaim] | None = None
-        for r in claims[i + 1:]:
-            if r.speaker == p.speaker or not (p_keys & _keywords(r.claim)):
+        for j, r in enumerate(claims[i + 1:], start=i + 1):
+            if r.speaker == p.speaker:
                 continue
             v = _verdict_of(r.claim)
-            if v is not None:
-                decided = (v[0], v[1], r)
+            if v is None:
+                continue
+            # ADJACENCY, DECLARED. R answers the latest claim before it by a speaker other
+            # than R's own. If some later claim by p's speaker sits between p and r, then r
+            # is answering that one, not p — and p stays open rather than collecting a
+            # verdict it did not receive.
+            latest = max((k for k in range(i, j) if claims[k].speaker != r.speaker),
+                         default=None)
+            if latest != i:
                 break
+            decided = (v[0], v[1], r)
+            break
         if decided is None:
             ledger.append(ProposalVerdict(p.claim, p.speaker, p.turn, "open",
                                           None, None, None, p.locator))

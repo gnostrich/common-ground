@@ -563,11 +563,26 @@ def anchor_for(snapshot: CorpusSnapshot, seed: str,
         that successive questions probe different parts of the corpus instead of every question
         re-measuring one hub forever.
 
-    So the region is a SAMPLE, stated as one. It is not the part of the corpus that matches the
-    question — nothing here could compute that — and the window says so rather than letting the
-    operator infer relevance from the fact that these sixty claims and not others came back.
+    EXACT LANDING COMES FIRST, and it is not a search either. `seed` is the typed text's own
+    address under this chart's nu — gate 1 addressing, byte-exact. If the corpus already
+    carries that address, the input IS that claim and the neighbourhood to sample is its own.
+    Falling through to the hash-rotated hub in that case inverts the spec: a claim the corpus
+    holds verbatim gets sampled somewhere unrelated and declines, which is what the battery's
+    sharp input did — 59 claims shown, zero arrows drawn, on a slot with 254 declared arrows
+    sitting elsewhere in the corpus. Exact identity is the one relation available without a
+    proposal, so it is used before anything else is.
+
+    Otherwise the region is a SAMPLE, stated as one. It is not the part of the corpus that
+    matches the question — nothing here could compute that — and the window says so rather
+    than letting the operator infer relevance from the fact that these sixty claims and not
+    others came back.
     """
     from .hashing import sha256_text
+
+    # GATE 1, USED AS ITSELF. An exact address hit is identity, not resemblance: same nu,
+    # same type, same chart, same sha256. No text is compared to reach this branch.
+    if seed and seed in getattr(snapshot, "slots", {}):
+        return seed
 
     live = [a for a in snapshot.arrows
             if (a.src_slot, a.dst_slot) not in quarantined

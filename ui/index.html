@@ -317,7 +317,7 @@ function renderAnswer(r){
   // on `conditioned` — whether the FIELD moved — not on whether attachments happened to parse.
   const acc = (A.attachment || A.proposed || []);
   const corr = acc.filter(x => x.kind !== 'bears_on'), bears = acc.filter(x => x.kind === 'bears_on');
-  const X = c.relaxation || {};
+  const X = c.relaxation || {}, D = A.discrimination;
   let rests;
   if(c.conditioned){
     const kinds = [corr.length ? `${corr.length} correspondence` : '',
@@ -329,21 +329,36 @@ function renderAnswer(r){
           + `${X.moved||0} claim(s) moved; `
           + `${(X.rows||[]).filter(m=>m.hops>0).length} were reached over declared arrows.`
           + ((X.blocks_skipped||0) ? ` ${X.blocks_skipped} block(s) exceeded the settling cap and are unmeasured.` : '')
-          + `</div>`;
+          + `</div>`
+          // THE DISCRIMINATION GUARD, on the answer. Attaching to everything shown is not a
+          // rich result; it is the attachment carrying no information about which claims the
+          // input bears on. It reads as depth unless it is named.
+          + (D && D.red
+              ? `<div class="verdict bad">INDISCRIMINATE ATTACHMENT — ${D.attached} of `
+                + `${D.shown} objects shown were attached to (${Math.round(D.fraction*100)}%, `
+                + `threshold ${Math.round(D.threshold*100)}%). What follows rests on the `
+                + `region's membership, not on a relation the medium discriminated.</div>`
+              : '');
   } else {
     rests = `<div class="rests">Nothing in the field responded to what you typed — `
           + `${esc((X.silence) || (c.field_status||''))}</div>`;
   }
+  // THE GATE, RENDERED. Two structural failures, both about citations: a sentence resting on
+  // nothing shown, or on a number never emitted. The previous version compared words and was
+  // red on five of six correct answers; nothing here compares text.
   const f = r.faithful;
   let gate = '';
   if(f){
     gate = f.ok
-      ? `<div class="verdict ok">faithful: [] — every sentence traces to a moved claim or an `
-        + `attachment (${f.checked} checked against ${f.ground} words the field supplied).</div>`
-      : `<div class="verdict bad">FAITHFULNESS RED — ${f.violations.length} of ${f.checked} `
-        + `sentence(s) assert material the trace does not carry.</div>`
-        + f.violations.map(v => `<div class="viol"><b>${esc(v.ungrounded.join(' '))}</b> — `
-            + `${esc(v.sentence)}</div>`).join('');
+      ? `<div class="verdict ok">faithful: [] — every sentence cites a claim that was shown `
+        + `(${f.cited}/${f.checked} sentences cited; ${(f.resolved||[]).length} distinct `
+        + `citation(s) resolved against ${f.citable} citable line(s)).</div>`
+      : `<div class="verdict bad">FAITHFULNESS RED — `
+        + `${f.violations.filter(v=>v.kind==='uncited').length} uncited, `
+        + `${f.violations.filter(v=>v.kind==='unresolved').length} unresolved, `
+        + `of ${f.checked} sentence(s).</div>`
+        + f.violations.map(v => `<div class="viol"><b>${v.kind==='uncited' ? 'rests on nothing shown'
+            : 'cites ' + v.numbers.join(', ') + ' — never shown'}</b> — ${esc(v.sentence)}</div>`).join('');
   }
   $('answer').innerHTML = rests + `<div class="answer">${esc(r.answer)}</div>` + gate;
 }

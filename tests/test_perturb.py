@@ -286,3 +286,97 @@ class TheTypedTextReachesTheMediumRaw(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExactLandingComesFirst(unittest.TestCase):
+    """A verbatim corpus claim must seed its OWN neighbourhood.
+
+    The battery's sharp input is a claim the corpus holds verbatim with 254 declared arrows on
+    it. It was hash-rotated to an unrelated hub, shown 59 claims, and declined — the spec
+    inverted. Gate 1 addressing is exact and available without any proposal, so it is used
+    before the sampler's rotation is.
+    """
+
+    def test_an_address_the_corpus_carries_becomes_the_anchor(self):
+        from engine.region import anchor_for
+
+        class Snap:
+            slots = {"deadbeef": object()}
+            arrows = []
+        self.assertEqual("deadbeef", anchor_for(Snap(), "deadbeef"))
+
+    def test_an_address_the_corpus_does_not_carry_falls_through_to_the_sampler(self):
+        from engine.region import anchor_for
+
+        class Snap:
+            slots = {"deadbeef": object()}
+            arrows = []
+        self.assertEqual("", anchor_for(Snap(), "not_in_the_corpus"))
+
+    def test_the_exact_branch_compares_no_text(self):
+        # Identity, not resemblance: a near-identical address must NOT hit.
+        from engine.region import anchor_for
+
+        class Snap:
+            slots = {"abc123": object()}
+            arrows = []
+        self.assertEqual("", anchor_for(Snap(), "abc124"))
+
+
+class AttachmentMustDISCRIMINATE(unittest.TestCase):
+    """Attaching to everything shown is degeneracy, not depth.
+
+    Symmetric to the walk's acceptance guard: a proposer answering one relation to every pair
+    carries no information in any single answer, and a medium drawing an arrow to every object
+    in the region carries none in any single attachment. The battery measured 59 of 59.
+    """
+
+    def _pert(self, attached: int, members: int):
+        from engine.perturb import Attachment, Perturbation
+        p = Perturbation()
+        p.attachment = [Attachment(kind="bears_on", dst_slot=f"s{i}", dst_chart="english",
+                                   dst_nu=f"claim {i}", tier="EXTRACTION", evidence="")
+                        for i in range(attached)]
+
+        class R:
+            def __init__(self, n):
+                self.members = [None] * n
+        p.region = R(members)
+        return p
+
+    def test_attaching_to_everything_shown_is_red(self):
+        p = self._pert(attached=59, members=60)          # 59 corpus objects + the bias
+        self.assertEqual(1.0, p.attachment_fraction)
+        self.assertTrue(p.indiscriminate)
+        self.assertTrue(p.discrimination["red"])
+        self.assertIn("no information", p.discrimination["note"])
+
+    def test_a_discriminating_attachment_is_green(self):
+        p = self._pert(attached=6, members=60)
+        self.assertLess(p.attachment_fraction, 0.9)
+        self.assertFalse(p.indiscriminate)
+        self.assertEqual("", p.discrimination["note"])
+
+    def test_the_bias_is_not_in_the_denominator(self):
+        # 60 members = 59 corpus objects + [0|bias]. A full sweep must read exactly 1.0, not
+        # 59/60 — otherwise the guard's own arithmetic hides the limit case.
+        self.assertEqual(1.0, self._pert(59, 60).attachment_fraction)
+
+    def test_duplicate_arrows_to_one_slot_count_once(self):
+        # Two arrows to the same claim is one attached object. Counting records rather than
+        # distinct targets is the acceptance guard's original defect, in a new place.
+        from engine.perturb import Attachment
+        p = self._pert(attached=0, members=11)
+        p.attachment = [Attachment(kind=k, dst_slot="same", dst_chart="english",
+                                   dst_nu="c", tier="EXTRACTION", evidence="")
+                        for k in ("bears_on", "corresponds")]
+        self.assertEqual(0.1, p.attachment_fraction)
+
+    def test_an_empty_region_reports_zero_rather_than_dividing(self):
+        p = self._pert(attached=0, members=0)
+        self.assertEqual(0.0, p.attachment_fraction)
+        self.assertFalse(p.indiscriminate)
+
+    def test_the_threshold_is_stated_not_incidental(self):
+        from engine.perturb import Perturbation
+        self.assertEqual(0.9, Perturbation.INDISCRIMINATE)
