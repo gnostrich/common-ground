@@ -31,10 +31,20 @@ class CitationsResolveOrTheyDoNot(unittest.TestCase):
         self.assertEqual(2, v.cited)
         self.assertEqual([1, 2], v.as_record()["resolved"])
 
-    def test_one_sentence_may_cite_several_lines(self):
-        v = check_answer("The two claims disagree about the sign of the term [1][2].",
-                         _compiled([1, 2]))
-        self.assertTrue(v.ok)
+    def test_one_sentence_may_cite_several_lines_of_ONE_group(self):
+        """Co-citing faces of one quotient asserts no relation the field lacks.
+
+        This control used to read "The two claims disagree about the sign of the term [1][2]"
+        over two UNGROUPED objects, and the weld rule now convicts it — correctly, because
+        "disagree" is a relation and nothing declared it. That is the rule working on a
+        fixture written before it existed, not a regression: the property being defended is
+        that several lines may be cited at once, and inside a declared group they may.
+        """
+        c = _compiled([1, 2])
+        for cite in c["citations"]:
+            cite["group"] = "fiber-A"
+        v = check_answer("Both of these state the same proposition in different charts [1][2].", c)
+        self.assertTrue(v.ok, v.violations)
         self.assertEqual([1, 2], v.as_record()["resolved"])
 
     def test_an_uncited_sentence_is_red_and_named(self):
@@ -145,9 +155,21 @@ class TheRefereeIsNotALEXICALMECHANISM(unittest.TestCase):
 class TheGrammarRequiresCitations(unittest.TestCase):
 
     def test_the_answer_prompt_states_the_citation_rule(self):
+        """THE RULE, not its spelling.
+
+        This asserted the literal strings "CITE" and "EVERY SENTENCE YOU WRITE MUST" — the
+        shouting of a prompt that has since been stripped to grammar. A control pinned to
+        wording is a fossil of an old implementation: it fails when the prose improves and
+        passes when the rule is deleted, which is backwards on both counts. What matters is
+        that the grammar states the rule and a checker enforces it.
+        """
+        from engine.grammar import BLOCKS
         from engine.inbound import INBOUND_SYSTEM
-        self.assertIn("CITE", INBOUND_SYSTEM)
-        self.assertIn("EVERY SENTENCE YOU WRITE MUST", INBOUND_SYSTEM)
+        self.assertIn("[4]", INBOUND_SYSTEM, "the citation form must be shown")
+        self.assertTrue(any(k == "GRAMMAR" and "Every sentence ends with" in t
+                            for k, t in BLOCKS))
+        self.assertFalse(check_answer("This sentence rests on nothing at all whatsoever.",
+                                      _compiled([1])).ok)
 
     def test_the_compiled_prompt_prints_a_number_on_every_citable_line(self):
         from engine.inbound import Citable
@@ -280,3 +302,103 @@ class HonestNegativesHaveALegalForm(unittest.TestCase):
         for name in WARRANTS:
             self.assertIn(f"[\u2205{name}]", INBOUND_SYSTEM,
                           f"the grammar accepts {name} but never tells the model it exists")
+
+
+class ThePromptIsWIREGrammarAndNothing(unittest.TestCase):
+    """ITEM 3. Every block tagged, and a style instruction has no legal tag.
+
+    The prompt reached 4,889 characters by answering each defect with another sentence:
+    how to open, whose voice to prefer, what not to apologise for, an exhortation to report
+    absences, and the citation rule three times over. None of it was enforceable. The blocks
+    make "no editorial content" a control rather than an intention.
+    """
+
+    def test_every_block_is_wire_grammar_or_state(self):
+        from engine.grammar import BLOCKS, illegal_blocks
+        self.assertTrue(BLOCKS)
+        self.assertEqual([], illegal_blocks())
+
+    def test_a_planted_style_instruction_is_RED(self):
+        from engine.grammar import illegal_blocks
+        planted = (("STYLE", "Open with a line naming what the question bears on."),)
+        self.assertEqual(1, len(illegal_blocks(planted)))
+
+    def test_the_prompt_carries_no_voice_or_opening_instruction(self):
+        # The corpus-voice preference and the answer-first phrasing rule were both ordered
+        # dead; they were reactions to defects since fixed at the root.
+        from engine.inbound import INBOUND_SYSTEM
+        low = INBOUND_SYSTEM.lower()
+        for banned in ("i read your question", "voice", "prefer", "apolog", "persona",
+                       "open with", "not an inventory", "worth reading"):
+            self.assertNotIn(banned, low, f"editorial content survived: {banned!r}")
+
+    def test_every_grammar_rule_has_a_checker(self):
+        # The claim that makes this prompt legitimate: each GRAMMAR block names a rule the
+        # build enforces. A rule with no checker is prose.
+        from engine.grammar import BLOCKS
+        from engine.grounded import check_answer
+        import inspect
+        src = inspect.getsource(check_answer)
+        for kind, text in BLOCKS:
+            if kind != "GRAMMAR":
+                continue
+            self.assertTrue(
+                any(tok in src for tok in ("uncited", "unresolved", "vacuous", "unwarranted",
+                                           "welded", "uncontested")),
+                f"no checker backs: {text[:50]}")
+
+
+class TheWeldRule(unittest.TestCase):
+    """A sentence may not relate objects no arrow joins.
+
+    MEASURED FAILURE: "certified positivity relates to mode spectrum measurement [21]" — two
+    co-present claims fused by a conjunction, each half cited, the relation declared nowhere.
+    """
+
+    def _c(self):
+        return {"citations": [{"n": 1}, {"n": 2}, {"n": 3},
+                              {"n": 9, "kind": "arrow", "joins": [1, 2]},
+                              {"n": 4, "contested": True}],
+                "relaxation": {"rows": [{"hops": 1}]},
+                "attachment": {"attachment": [{"kind": "x"}]}}
+
+    def test_co_citing_unrelated_objects_is_WELDED(self):
+        v = check_answer("Certified positivity relates to mode spectrum measurement "
+                         "in this corpus [1][3].", self._c())
+        self.assertFalse(v.ok)
+        self.assertEqual("welded", v.violations[0]["kind"])
+
+    def test_citing_the_ARROW_licenses_the_relation(self):
+        self.assertTrue(check_answer("Both of these concern the settling floor and its "
+                                     "measurement [1][2][9].", self._c()).ok)
+
+    def test_the_absence_marker_licenses_it_too(self):
+        self.assertTrue(check_answer("No declared arrow joins these two claims in this "
+                                     "field [1][3][∅rel].", self._c()).ok)
+
+    def test_one_object_per_sentence_is_never_welded(self):
+        self.assertTrue(check_answer("The settling floor is measured over cycles here [1].",
+                                     self._c()).ok)
+
+
+class TheContestRule(unittest.TestCase):
+    """A contest resolved in prose is the one thing the field refuses to do itself."""
+
+    def _c(self):
+        return {"citations": [{"n": 4, "contested": True}, {"n": 1}],
+                "relaxation": {"rows": [{"hops": 1}]},
+                "attachment": {"attachment": [{"kind": "x"}]}}
+
+    def test_citing_a_contested_object_without_the_marker_is_RED(self):
+        v = check_answer("The settled value of that claim is definitely true across the "
+                         "field [4].", self._c())
+        self.assertFalse(v.ok)
+        self.assertEqual("uncontested", v.violations[0]["kind"])
+
+    def test_the_marker_licenses_it(self):
+        self.assertTrue(check_answer("The settled value of that claim is disputed across "
+                                     "the field [4][!].", self._c()).ok)
+
+    def test_an_uncontested_object_needs_no_marker(self):
+        self.assertTrue(check_answer("The settling floor is measured over cycles here [1].",
+                                     self._c()).ok)

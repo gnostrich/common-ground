@@ -132,6 +132,45 @@ def warrants_held(compiled: dict) -> set[str]:
 
 
 @dataclass
+class Welded:
+    """A sentence relating objects no arrow joins.
+
+    THE MEASURED FAILURE: "certified positivity relates to mode spectrum measurement [21]" —
+    two co-present claims fused by a conjunction, each half correctly cited, the relation
+    between them declared nowhere. The citation grammar could not see it, because it checks
+    that every claim is SHOWN and never that an asserted relation between two of them exists.
+    Same failure class as the fiber repair, one level up: asserting structure the declarations
+    do not license.
+
+    THE CHECK IS CONSERVATIVE AND SAYS SO. Co-citing two objects in one sentence is treated as
+    asserting a relation between them, because a checker cannot read the sentence to find out.
+    The escape is not silence — it is [0rel], which says in the grammar that the relation is
+    not in the field. Splitting the sentence also works, and is usually what was meant.
+    """
+
+    sentence: str
+    numbers: list
+    kind: str = "welded"
+
+    def render(self) -> str:
+        return (f"WELDED {sorted(self.numbers)} — no arrow joins these :: "
+                f"{self.sentence.strip()[:160]}")
+
+
+@dataclass
+class Uncontested:
+    """A sentence citing a contested object without carrying [!]."""
+
+    sentence: str
+    numbers: list
+    kind: str = "uncontested"
+
+    def render(self) -> str:
+        return (f"UNCONTESTED {sorted(self.numbers)} — the field holds more than one value "
+                f":: {self.sentence.strip()[:160]}")
+
+
+@dataclass
 class Uncited:
     """A sentence resting on nothing that was shown."""
 
@@ -192,6 +231,8 @@ class Verdict:
     unresolved: list = field(default_factory=list)
     vacuous: list = field(default_factory=list)
     unwarranted: list = field(default_factory=list)
+    welded: list = field(default_factory=list)
+    uncontested: list = field(default_factory=list)
     checked: int = 0
     cited: int = 0
     asserted_absent: int = 0
@@ -201,12 +242,14 @@ class Verdict:
 
     @property
     def ok(self) -> bool:
-        return not (self.uncited or self.unresolved or self.vacuous or self.unwarranted)
+        return not (self.uncited or self.unresolved or self.vacuous or self.unwarranted
+                    or self.welded or self.uncontested)
 
     @property
     def violations(self) -> list[dict]:
         out = []
-        for v in self.uncited + self.unresolved + self.vacuous + self.unwarranted:
+        for v in (self.uncited + self.unresolved + self.vacuous + self.unwarranted
+                  + self.welded + self.uncontested):
             out.append({"kind": v.kind, "sentence": v.sentence,
                         "numbers": sorted(getattr(v, "numbers", []) or []),
                         "warrant": getattr(v, "warrant", "")})
@@ -217,6 +260,35 @@ class Verdict:
                 "asserted_absent": self.asserted_absent, "citable": self.citable,
                 "resolved": sorted(set(self.resolved)), "warrants": sorted(set(self.warrants)),
                 "method": "citation-resolution", "violations": self.violations}
+
+
+def arrow_index(compiled: dict) -> tuple[dict, set]:
+    """(arrow number -> the pair it joins, the set of joined pairs). Read off the citations."""
+    joins, joined = {}, set()
+    for c in (compiled.get("citations") or []):
+        if c.get("kind") != "arrow":
+            continue
+        pair = tuple(sorted(int(x) for x in (c.get("joins") or ())))
+        if len(pair) == 2:
+            joins[int(c["n"])] = pair
+            joined.add(pair)
+    return joins, joined
+
+
+def group_of(compiled: dict) -> dict:
+    """object number -> the declared group it belongs to. Ungrouped objects get their own."""
+    out = {}
+    for c in (compiled.get("citations") or []):
+        if c.get("kind") == "arrow":
+            continue
+        n = int(c["n"])
+        out[n] = str(c.get("group") or f"~{n}")
+    return out
+
+
+def contested_numbers(compiled: dict) -> set:
+    """Objects the field holds more than one value for."""
+    return {int(c["n"]) for c in (compiled.get("citations") or []) if c.get("contested")}
 
 
 def citable_numbers(compiled: dict) -> set[int]:
@@ -232,7 +304,10 @@ def sentences(answer: str) -> list[str]:
 def check_answer(answer: str, compiled: dict) -> Verdict:
     """Read the brackets, resolve them against what was emitted. No text is compared."""
     valid = citable_numbers(compiled)
-    held = warrants_held(compiled)
+    held = warrants_held(compiled) | {"rel"}
+    joins, joined = arrow_index(compiled)
+    contested = contested_numbers(compiled)
+    groups = group_of(compiled)
     v = Verdict(citable=len(valid))
     for sentence in sentences(answer):
         v.checked += 1
@@ -263,6 +338,31 @@ def check_answer(answer: str, compiled: dict) -> Verdict:
             if bad:
                 v.unresolved.append(Unresolved(sentence, bad))
             v.resolved.extend(n for n in nums if n in valid)
+
+            # THE WELD RULE. Co-citing two objects in one sentence is treated as asserting a
+            # relation between them, because a checker cannot read the sentence to find out.
+            # It is licensed by citing the ARROW that states the relation, or by [∅rel]
+            # which says in the grammar that the field does not have one. Splitting the
+            # sentence also works and is usually what was meant.
+            objects = sorted({n for n in nums if n in valid and n not in joins})
+            if len(objects) > 1 and not any(n in joins for n in nums) \
+                    and not any(w == "rel" for _, w in absences):
+                # DIFFERENT GROUPS, not merely two objects. Co-citing two faces of one
+                # quotient asserts no relation the field lacks — the quotient IS the declared
+                # relation between them, which is what a fiber means. The rule fires only
+                # where the sentence spans groups the field never joined, and the first
+                # version without this distinction convicted a correct multi-citation.
+                spans = {groups.get(n, f"~{n}") for n in objects}
+                covered = all(tuple(sorted((a, b))) in joined
+                              for i, a in enumerate(objects) for b in objects[i + 1:])
+                if len(spans) > 1 and not covered:
+                    v.welded.append(Welded(sentence, objects))
+
+            # THE CONTEST RULE. A contested object cited without [!] is a contest resolved in
+            # prose, which is the one thing the field explicitly refuses to do itself.
+            hot = [n for n in nums if n in contested]
+            if hot and "[!]" not in sentence:
+                v.uncontested.append(Uncontested(sentence, hot))
         elif not absences:
             v.uncited.append(Uncited(sentence))
     return v

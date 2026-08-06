@@ -59,6 +59,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Sequence
 
+from .grammar import render_prompt
 from .corpus_state import CorpusSnapshot
 from .extract import DeterministicExtractor
 from .perturb import perturb, relax_from
@@ -105,10 +106,20 @@ class Citable:
     """
 
     n: int
-    kind: str          # "moved" | "attached" | "bears_on"
+    kind: str          # "moved" | "attached" | "bears_on" | "arrow" | "absent"
     chart: str
     slot: str
     nu: str
+    #: For an ARROW citation: the two object numbers it joins. The weld rule reads this and
+    #: nothing else — a sentence may assert a relation only by citing the line that states it.
+    joins: tuple = ()
+    #: True when the field holds more than one value for this object. The grammar requires a
+    #: sentence citing it to carry [!], so a contest cannot be silently resolved in prose.
+    contested: bool = False
+    #: Which declared group this object belongs to — a fiber, a span, a block. The weld rule
+    #: is about claims from DIFFERENT groups: co-citing two faces of one quotient asserts no
+    #: relation the field lacks, because the quotient IS the declared relation between them.
+    group: str = ""
 
     def as_record(self) -> dict[str, object]:
         return {"n": self.n, "kind": self.kind, "chart": self.chart,
@@ -637,69 +648,11 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     return out
 
 
-INBOUND_SYSTEM = (
-    "You are answering from a FIELD, not from your own knowledge. The input below is not a "
-    "search result. The user's text was applied to a reconciliation engine's corpus as a soft "
-    "constraint, the field was allowed to settle, and every MOVED line is a claim whose "
-    "settled state CHANGED as a result — listed with how far it moved and the chain of "
-    "declared correspondences the perturbation reached it through (the VIA lines).\n\n"
-    "This means a moved claim need not share any wording with what the user typed, and a "
-    "claim that shares wording is absent unless the field actually moved it. Do not treat the "
-    "list as keyword matches and do not apologise for lines that look unrelated — being "
-    "reached through structure IS the relation, and the VIA lines say what that structure "
-    "was. A hop count of 0 means the constraint applied to that claim directly.\n\n"
-    "THE MOVED CLAIMS ARE THE USER'S OWN WRITING, GIVEN TO YOU VERBATIM AND IN FULL. Your "
-    "answer is an EXPANSION OF THEIR QUESTION THROUGH THOSE SENTENCES, not a summary of a "
-    "result list and not a paraphrase from gist. Where a moved claim carries the point, quote "
-    "its sentence — the voice of the answer should be recognisably the corpus's own, arranged "
-    "around the question that was asked. Weave the quoted material into prose; do not list "
-    "it.\n\n"
-    "CITE. Every line below that you may draw on carries a number in square brackets — "
-    "[1], [2], [3] — on its ATTACHED, BEARS ON or MOVED line. EVERY SENTENCE YOU WRITE MUST "
-    "END WITH AT LEAST ONE SUCH CITATION, naming the numbered line(s) it rests on, like "
-    "this [4] or this [2][7]. A sentence resting on two claims cites both.\n\n"
-    "This is checked mechanically: the numbers are resolved against the lines that were "
-    "shown to you. A sentence with no citation is flagged, and a citation to a number that "
-    "was not shown is flagged. Do not invent numbers, do not cite a range, do not cite a "
-    "line you were not given. If you cannot cite a sentence, you should not be writing it — "
-    "nothing licenses you to supply a fact the field did not move, not plausibility, not "
-    "common knowledge, not filling an obvious gap.\n\n"
-    "OPEN WITH THE TWO LINES THAT SAY WHAT THE ANSWER RESTS ON, plainly worded and cited like "
-    "everything else: one line naming what the input was read as bearing on (the ATTACHED and "
-    "BEARS ON lines, in your own plain phrasing — 'I read your question as bearing on X [3] "
-    "and Y [5]'), and, where something was declined or nothing responded, one line saying so. "
-    "The reader must be able to see what the answer stands on without opening anything "
-    "else.\n\n"
-    "Answer only from that state. Where the field says CONTESTED, do not resolve it — report "
-    "the contest. Where it reports a GAP or says no correspondence carried the perturbation "
-    "further, say the relation is unmeasured rather than supplying one. Where it says blocks "
-    "exceeded the settling cap, treat their contents as unmeasured, not as absent.\n\n"
-    "If the field DID NOT RESPOND, say so in one sentence and give the structural reason the "
-    "input states. Do not fill the silence: 'nothing in this corpus moved when that was "
-    "applied' is a real answer about the corpus, and inventing a plausible one would be a "
-    "claim the engine did not make.\n\n"
-    "WRITE AN ANSWER, NOT AN INVENTORY. Read what moved, then say in prose what it amounts to "
-    "and where it does not reach.\n\n"
-    "HONEST NEGATIVES HAVE THEIR OWN MARKER, so you never have to choose between saying what "
-    "the field lacks and following the citation rule. A sentence about what is NOT there "
-    "cannot cite a line, because there is no line — so it carries \u2205 instead:\n"
-    "  [\u2205]        this is absent from the whole trace you were shown.\n"
-    "  [\u2205:3,7]    this is absent from those specific lines.\n"
-    "  [\u2205gap] [\u2205cap] [\u2205cut] [\u2205attach] [\u2205anchor] [\u2205indiscriminate] "
-    "[\u2205void]\n"
-    "                these name WHY the field is silent, and each is checked against what the "
-    "field actually reported. Use the one the input above states — a GAP line, a settling-cap "
-    "line, a cut moved-list, no attachment, an unaimed region, an INDISCRIMINATE attachment, "
-    "VOID lines. Naming one the input does not state is flagged exactly like citing a number "
-    "that was not shown.\n\n"
-    "Say what is not there. An engine that can only report what it found will always find "
-    "something, and the negatives are half of what makes this instrument worth reading.\n\n"
-    "THE CITATION RULE AGAIN, BECAUSE IT IS THE ONE THAT IS CHECKED. Measured on live "
-    "answers, the sentences that lose their citation are the SUMMARY ones — the opening line "
-    "about what the question bears on, the linking sentence between two groups of claims, the "
-    "closing sentence about what it all amounts to. Those are exactly the sentences that "
-    "assert the most, so they need citations most. A sentence summarising several lines cites "
-    "all of them: 'these claims all concern the settling floor [4][9][11][12]'. A sentence "
-    "saying nothing responded carries an absence marker instead. END EVERY SENTENCE WITH "
-    "EITHER ITS BRACKETED NUMBERS OR AN ABSENCE MARKER."
-)
+#: THE RENDERER PROMPT. Wire format, grammar, and nothing else — `engine/grammar.py` holds
+#: the blocks and a control asserts every one of them is tagged WIRE, GRAMMAR or STATE. What
+#: used to be here was 4,889 characters, and most of it was editorial: how to open, whose
+#: voice to prefer, what not to apologise for, an exhortation to say what is not there, and
+#: the citation rule stated three times in three registers. Each of those sentences was added
+#: in answer to a defect that should have been answered with a checker, and none of them was
+#: enforceable. A rule the build cannot check is a hope.
+INBOUND_SYSTEM = render_prompt()

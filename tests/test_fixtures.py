@@ -172,13 +172,40 @@ class SummarySentencesMustCite(unittest.TestCase):
         self.assertEqual("uncited", v.violations[0]["kind"])
 
     def test_a_summary_citing_every_line_it_summarises_is_green(self):
+        """A summary over ONE group. Across groups it needs the arrow or [∅rel].
+
+        The fixture used to leave the two objects ungrouped, and the weld rule now convicts
+        it: "these claims all concern the settling floor" asserts a shared subject, which is
+        a relation, and nothing declared one. The property under defence — a summary sentence
+        may cite every line it summarises — survives; what changed is that a summary spanning
+        groups the field never joined must say so.
+        """
         self.assertTrue(check_answer(
             "Taken together these claims all concern the settling floor [1][2].",
-            {"citations": [{"n": 1}, {"n": 2}]}).ok)
+            {"citations": [{"n": 1, "group": "g"}, {"n": 2, "group": "g"}]}).ok)
 
-    def test_the_prompt_names_the_measured_failure(self):
-        from engine.inbound import INBOUND_SYSTEM
-        self.assertIn("SUMMARY", INBOUND_SYSTEM.upper())
+    def test_a_summary_ACROSS_groups_needs_the_arrow_or_the_marker(self):
+        c = {"citations": [{"n": 1, "group": "a"}, {"n": 2, "group": "b"}]}
+        self.assertFalse(check_answer(
+            "Taken together these claims all concern the settling floor [1][2].", c).ok)
+        self.assertTrue(check_answer(
+            "Taken together these claims all concern the settling floor [1][2][∅rel].",
+            c).ok)
+
+    def test_the_grammar_carries_the_rule_the_measured_failure_produced(self):
+        """THE RULE, not the prompt's old shouting about it.
+
+        This asserted the literal word "SUMMARY" appeared in the prompt — a sentence added
+        after measuring that summary sentences drop their citations. The prompt has since been
+        stripped to grammar and state, and the right assertion is that the rule is stated once
+        and enforced, not that a particular paragraph still exists to exhort about it.
+        """
+        from engine.grammar import BLOCKS
+        self.assertTrue(any(k == "GRAMMAR" and "several objects names all of them" in t
+                            for k, t in BLOCKS))
+        self.assertFalse(check_answer(
+            "Taken together these claims all concern the settling floor.",
+            {"citations": [{"n": 1}, {"n": 2}]}).ok)
 
 
 class SharpVerbatimInputExactLands(unittest.TestCase):
