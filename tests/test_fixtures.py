@@ -19,6 +19,34 @@ from engine.structure_trace import Signature, signature_of
 #: repository, then "nothing moved" contradicting its own trace.
 STRUCTURAL_QUESTION = "common thread through the math"
 
+#: THE SUBSTRATE-REPAIR RETEST. Verbatim, pinned by the operator as the one fixed input that
+#: separates two explanations of the same symptom.
+#:
+#: Run on the PRE-REPAIR substrate it returned: attachment 59 of 59 (100%, the guard's limit
+#: case), 0 of 24 moved slots reached over any declared arrow, and a region drawn from the ETS
+#: writer/deploy cluster — the 120-member fiber's gravity well.
+#:
+#: Re-run byte-identical after the demotion and apex-star land, the three numbers reported
+#: side by side. The two outcomes mean different things and only one of them is a defect:
+#:   attachment drops below the guard AND any arrows travel -> the gravity well collapsed;
+#:     the muddle was substrate flattening and the repair fixed it.
+#:   still 59/59 with 0 arrows -> the cross-project conceptual thread genuinely is not in the
+#:     corpus as same_claim structure. A real finding, and the answer is daemon-hours plus the
+#:     lexicon hubs, not more repair.
+RETEST_QUESTION = "talk about the gibbs ebm across projects and general design principles"
+
+#: What that input measured before the repair. Pinned so the comparison cannot drift.
+RETEST_PRE_REPAIR = {
+    "attachment_fraction": 1.0,      # 59 of 59 objects shown
+    "attached": 59,
+    "shown": 59,
+    "moved": 24,
+    "reached_over_arrows": 0,
+    "region_cluster": "ETS writer/deploy — the 120-member fiber",
+    "substrate": "pre-demotion: 2,082 same_claim pairs, 96.7% code-to-own-docstring "
+                 "containment mis-kinded as identity",
+}
+
 
 class _Att:
     def __init__(self, kind):
@@ -274,3 +302,44 @@ class TheExportSheetIsExactlyTheCompiledContext(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheSubstrateRepairRetest(unittest.TestCase):
+    """FIXTURE: one fixed input, run before and after the repair, three numbers.
+
+    Why it exists: the same symptom — a region full of one repository's writer internals —
+    has two possible causes, and they call for opposite responses. Either the substrate was
+    flattened (96.7% of same_claim was containment mis-kinded as identity, closure fabricating
+    a 120-member gravity well) and the repair collapses it, or the cross-project conceptual
+    thread genuinely is not in the corpus as declared structure and the answer is daemon-hours,
+    not more repair. Guessing between those is how a real corpus limitation gets "fixed"
+    forever without improving.
+    """
+
+    def test_the_retest_input_is_pinned_verbatim(self):
+        self.assertEqual("talk about the gibbs ebm across projects and general design "
+                         "principles", RETEST_QUESTION)
+
+    def test_the_pre_repair_numbers_are_recorded_not_remembered(self):
+        self.assertEqual(1.0, RETEST_PRE_REPAIR["attachment_fraction"])
+        self.assertEqual(0, RETEST_PRE_REPAIR["reached_over_arrows"])
+        self.assertEqual(24, RETEST_PRE_REPAIR["moved"])
+
+    def test_the_pre_repair_reading_names_the_substrate_it_was_measured_on(self):
+        # A before-number with no substrate attached is a number that cannot be compared to
+        # anything: the corpus changed under it twice in one session.
+        self.assertIn("pre-demotion", RETEST_PRE_REPAIR["substrate"])
+
+    def test_total_attachment_is_at_the_guard_limit(self):
+        from engine.perturb import Perturbation
+        self.assertGreaterEqual(RETEST_PRE_REPAIR["attachment_fraction"],
+                                Perturbation.INDISCRIMINATE)
+
+    def test_both_outcomes_are_written_down_before_the_rerun(self):
+        # Stating what each result would MEAN before measuring is what stops the measurement
+        # from being read to suit whichever answer arrives.
+        import tests.test_fixtures as mod
+        doc = mod.__doc__ or ""
+        src = __import__("inspect").getsource(mod)
+        self.assertIn("gravity well collapsed", src)
+        self.assertIn("daemon-hours", src)
