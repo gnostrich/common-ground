@@ -146,10 +146,22 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   pinned model has repeats-per-pair of exactly 1.0.
 
   `same_claim` is the ONLY loop-eligible relation, so a model that never emits it cannot grow
-  a fiber, cannot close a cycle, and cannot produce a floor. The corpus's forest topology —
-  359 of 367 components trees, only 8 cycles in 16,564 arrows — is downstream of a routing
-  default, not of the material. **A model selector is a mechanism parameter, and `auto` means
-  the mechanism was chosen by a vendor's cost heuristic per call.**
+  a fiber, cannot close a cycle, and cannot produce a floor. **A model selector is a mechanism
+  parameter, and `auto` means the mechanism was chosen by a vendor's cost heuristic per call.**
+
+  **WITHDRAWN, on corpus-scale data.** I also claimed the forest topology — 359 of 367
+  components trees, only 8 cycles in 16,564 arrows — was downstream of that routing default.
+  It is not. The first pinned-model tranche gives `same_claim` at **7.2%** (n=2,872) against
+  the lite era's **8.4%** — slightly LOWER, not higher. Repetition was real and is fixed
+  (8.83 -> 2.12 records per distinct pair, corpus-wide); the identity scarcity was never the
+  transport's doing.
+
+  **The error was generalising from one region.** A single pinned probe showed 5 `same_claim`
+  in 24 lines (21%) and I read a corpus-wide cause off it. n=24 against n=2,872. The same
+  probe's repetition finding held at scale and its kind-distribution finding did not, which is
+  exactly what a sample of one region can and cannot support. If 7.2% holds as clean stock
+  grows, eight loops is roughly the truth and the floor story is about those loops DEEPENING,
+  not multiplying.
 
 - **A process that cannot say what phase it is in.** The walk burned four minutes in an eager
   global closure before its first print, and "silent" meant "unknown whether loading or

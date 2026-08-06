@@ -84,9 +84,12 @@ def corpus_snapshot(reload: bool = False) -> CorpusSnapshot:
 
 def corpus_header() -> dict:
     """What the window must display so a missing corpus is never mistaken for an empty one."""
+    from .build import stamp
+
     snap = corpus_snapshot()
     head = snap.header()
     head["path"] = SNAPSHOT_PATH
+    head["build"] = stamp()
     if snap.empty:
         head["note"] = ("NO CORPUS LOADED — run `python3 proposerd.py build-snapshot`. "
                         "The window is answering from the typed current alone.")

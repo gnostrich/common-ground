@@ -36,19 +36,20 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
   <div class="banner">One inlet. All proposers equal. Warrant conferred only at the gate.</div>
   <h1>common-ground — one current</h1>
   <div id="corpushdr" class="muted">corpus: loading…</div>
-  <p class="muted">I propose by typing. The LM (Opus) proposes in parallel through the same
-  inlet. Both settle in the same current. K deposits what survives — only through Hankel ∧
-  conservative. Nothing writes past the inlet; nothing reaches the corpus except through K.</p>
+  <div id="buildhdr" class="muted"></div>
+  <p class="muted">One act, one box. What you type is a <b>boundary condition</b>: it enters
+  a REGION of the corpus as one more object, the medium completes the diagram, and what moved
+  comes back. <b>RETAIN</b> decides only what survives that — nothing else differs.</p>
 
-  <textarea id="text" placeholder="Type a claim, a Lean statement, a markdown table, or a Speaker: transcript…"></textarea>
+  <textarea id="text" placeholder="Type a claim, a question, or a bare topic — it becomes the boundary condition…"></textarea>
   <div class="row">
     <label>chart <select id="chart">
       <option>english</option><option>lean</option><option>python</option><option>go</option><option>tabular</option><option>conversation</option>
     </select></label>
-    <label>temperature <input id="temp" type="range" min="0" max="1" step="0.1" value="0.3"></label>
-    <span id="tempv" class="muted">0.3</span>
-    <label>instance <input id="inst" placeholder="(blank = me/LM; else id, e.g. B)" size="10"></label>
-    <button class="go" onclick="propose()">propose &rarr; inlet</button>
+    <label title="release: the input and its attachments evaporate. retain: the input enters the fast tape as a claim at EXTRACTION tier and its correspondence-kind attachments are kept as proposals, born subject to event-quantized aging.">
+      <input id="retain" type="checkbox"> retain
+    </label>
+    <button class="go" onclick="act()">perturb</button>
     <button onclick="reset_()">reset current</button>
   </div>
   <div id="lmstate" class="muted"></div>
@@ -86,34 +87,18 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
   </div>
   <div id="proposer" class="muted">not loaded — press refresh.</div>
 
-  <h2>Perturb the field — a claim goes in, what moves comes back</h2>
-  <p class="muted">What you type is a <b>boundary condition</b>, not a prompt and not a search.
-  It enters the corpus's energy as a <b>soft constraint</b>, settlement runs, and what the
-  model receives is the region that <b>moved</b> — reached over declared correspondences, with
-  every hop shown.</p>
-  <p class="muted"><b>Free-form input is fine.</b> Gate 1 decides claim IDENTITY, not how a
-  bias reaches the field — those are different questions and no longer share a rule. Text this
-  corpus has never carried is an object with no morphisms until morphisms are proposed for it,
-  so the <b>proposer is asked which corpus claims it corresponds to</b>: same proposer, same
-  prompt, same three kinds, <span class="nu">none</span> legal and expected. Accepted
-  attachments are correspondences at EXTRACTION tier — proposed, not confirmed — and the
-  relaxation that follows rests on them, which is why they are printed above the result.
-  If the proposer declines every candidate, the field genuinely did not respond and the window
-  says so, naming how many candidates were asked and how many remain UNMEASURED.</p>
-  <div class="row">
-    <input id="q" placeholder="paste a claim this corpus holds — it becomes the boundary condition" style="flex:1">
-    <label>chart <select id="qchart">
-      <option>english</option><option>lean</option><option>python</option><option>go</option><option>tabular</option><option>conversation</option>
-    </select></label>
-    <button class="go" onclick="ask()">perturb</button>
-  </div>
+  <h2>What came back</h2>
+  <p class="muted">The region is a <b>SAMPLE</b> of the corpus chosen by declared structure —
+  arrow-rich, provenance-near, chart-balanced. It is <b>not</b> the part of the corpus that
+  matches your question; nothing here could compute that, and no text is compared. Arrows the
+  medium draws to your input are <b>attachment</b>; arrows it draws among the corpus objects
+  are ordinary extraction, so asking does the sampler's work.</p>
   <div id="answer"></div>
   <div class="grid">
     <div><h2 style="border:none">What I typed</h2><pre id="typed" class="nu"></pre></div>
     <div><h2 style="border:none">What was compiled from the field</h2><pre id="compiled" class="nu"></pre></div>
   </div>
   <div id="landings"></div>
-  <div id="retrieved"></div>
 </div>
 
 <script>
@@ -142,15 +127,6 @@ async function post(path, body){
 async function get(path){ return (await fetch(withToken(path))).json(); }
 function esc(s){return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 
-async function propose(){
-  $('err').textContent='';
-  const body = {text:$('text').value, chart:$('chart').value, temperature:parseFloat($('temp').value),
-                instance_id:$('inst').value||undefined};
-  const st = await post('/propose', body);
-  if(st.error){ $('err').textContent = st.error; return; }
-  render(st);
-  $('text').value='';
-}
 async function reset_(){ await post('/reset',{}); render(null); }
 
 function render(st){
@@ -245,6 +221,14 @@ async function corpus(){
   const h = await get('/corpus');
   renderCorpus(h);
 }
+function renderBuild(b){
+  // The SERVED commit, on the page. Deploy skew has been invisible twice; a build that
+  // cannot name itself cannot be caught serving a stale page.
+  if(!b) return;
+  $('buildhdr').innerHTML = b.warning
+    ? `<span class="err">build: ${esc(b.served||'unknown')} — ${esc(b.warning)}</span>`
+    : `build: <span class="nu">${esc(b.served)}</span>`;
+}
 function renderCorpus(h){
   if(!h || h.error){ $('corpushdr').innerHTML = `<span class="err">${esc((h&&h.error)||'?')}</span>`; return; }
   if(!h.loaded){ $('corpushdr').innerHTML = `<span class="err">NO CORPUS LOADED</span> — ${esc(h.note||'')}`; return; }
@@ -254,9 +238,24 @@ function renderCorpus(h){
     + `· loops ${h.loops} · floor <b>${esc(h.floor)}</b>`;
 }
 
-async function ask(){
-  $('answer').innerHTML = '<span class="muted">addressing against the corpus…</span>';
-  const r = await post('/ask', {question:$('q').value, chart:$('qchart').value});
+async function act(){
+  // ONE ACT, one flag. RETAIN routes through /propose (perturb-and-retain); RELEASE through
+  // /ask (perturb-and-release). Same region call either way — the flag decides only what
+  // survives it, which is what "one box" means rather than two forms sharing a button.
+  const retain = $('retain').checked;
+  const text = $('text').value, chart = $('chart').value;
+  $('answer').innerHTML = '<span class="muted">'
+    + (retain ? 'perturbing and retaining…' : 'perturbing the field…') + '</span>';
+  const r = retain ? await post('/propose', {text, chart})
+                   : await post('/ask', {question:text, chart});
+  if(retain){
+    render(r);
+    const R2 = r.retention || {};
+    $('answer').innerHTML = `<div class="prop"><b>RETAINED</b> — claim on the fast tape at `
+      + `EXTRACTION, ${R2.retained_arrows||0} attachment arrow(s) kept as proposals.`
+      + `<div class="muted">${esc(R2.note||'')}</div></div>`;
+    return;
+  }
   if(r.error){ $('answer').innerHTML = `<span class="err">${esc(r.error)}</span>`; return; }
   if(r.corpus_header) renderCorpus(r.corpus_header);
   const c = r.compiled || {};
@@ -288,22 +287,6 @@ async function ask(){
                  + (l.contested?' <b class="F">CONTESTED</b>':'')
                  + ` <span class="muted">fiber ${l.fiber} · block ${l.block} · arrows ${(l.arrows||[]).length}</span>` : '')
         + `<br><span class="nu">${esc(l.surface)}</span></div>`).join('')
-    : '';
-  $('retrieved').innerHTML = R.length
-    ? '<h2 style="border:none">What moved, and the declared path it moved along</h2>'
-      + '<p class="muted">Each row is a claim whose settled distribution <b>changed</b> when '
-      + 'what you typed was applied to the corpus as a soft constraint. Nothing was matched by '
-      + 'words. A row at 0 hops was biased directly; the rest were reached over declared '
-      + 'correspondences, and every hop is shown — a slot that moved but had no showable path '
-      + 'is not listed at all.</p>'
-      + R.map(x =>
-        `<div class="prop"><span class="tag inst">${esc(x.chart)}</span>`
-        + ` <b class="b ${x.value}">${x.value}</b> <span class="tier">${esc(x.tier)}</span>`
-        + (x.contested?' <b class="F">CONTESTED</b>':'')
-        + ` <span class="muted">shift ${x.shift} · ${esc(x.reached_by||'')}</span>`
-        + `<br><span class="nu">${esc(x.nu_display || '')}</span>`
-        + (x.path||[]).map(s=>`<br><span class="nu">&nbsp;&nbsp;VIA ${esc(s)}</span>`).join('')
-        + `</div>`).join('')
     : '';
 }
 corpus();
