@@ -41,6 +41,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .nonempty import census
+
+#: `survivors()` LIVED HERE and was deleted. It walked the arrows, adjudicated each pair and
+#: split them into kept and demoted — which is what `corpus_state._demote_containment` does,
+#: with the live callers. Two implementations of one adjudication, one of them with no caller
+#: and no control, free to drift from the other silently: the forbidden shape (Q5), and the
+#: exact mechanism by which prose stops describing the code. One settlement, not two.
+
 #: Charts whose slots are definitions rather than prose about definitions.
 CODE_CHARTS = frozenset({"python", "go", "lean"})
 
@@ -84,16 +92,22 @@ class Verdict:
     reason: str
     cls: str = ""            # "same-file" | "cross-document" | ""
     symbol: str = ""         # the docstring locator, when there is one
+    #: OI-24 AT THE FINEST GRAIN. `demote=False` used to mean two different things: this pair
+    #: was read and is not containment, and this pair could not be read at all. The second is
+    #: not a keep — it is an absence — and counting it as a keep is success on the empty set
+    #: one pair at a time. A pair with an endpoint outside the snapshot is UNADJUDICATED.
+    adjudicated: bool = True
 
     def as_record(self) -> dict[str, object]:
         return {"demote": self.demote, "reason": self.reason, "class": self.cls,
-                "symbol": self.symbol}
+                "symbol": self.symbol, "adjudicated": self.adjudicated}
 
 
 def adjudicate(src_rec, dst_rec) -> Verdict:
     """Is this `same_claim` a containment wearing an identity's kind?"""
     if src_rec is None or dst_rec is None:
-        return Verdict(False, "an endpoint is not in this snapshot; nothing to read")
+        return Verdict(False, "an endpoint is not in this snapshot; nothing to read",
+                       adjudicated=False)
     a, b = src_rec, dst_rec
     if b.chart in CODE_CHARTS and a.chart not in CODE_CHARTS:
         prose, code = a, b
@@ -124,35 +138,20 @@ def pigeonhole(pairs, slots) -> dict:
     no reading of the text required. RED if any survives demotion.
     """
     counts: dict[tuple, int] = {}
+    unadjudicated = 0
     for u, v in pairs:
         ru, rv = slots.get(u), slots.get(v)
         verdict = adjudicate(ru, rv)
+        if not verdict.adjudicated:
+            unadjudicated += 1
+            continue
         if not verdict.demote or verdict.cls != "same-file":
             continue
         code = u if (rv is not None and rv.chart not in CODE_CHARTS) else v
         counts[(verdict.symbol, code)] = counts.get((verdict.symbol, code), 0) + 1
     over = {k: n for k, n in counts.items() if n > 1}
-    return {"docstrings": len(counts), "over_declared": len(over),
-            "worst": max(counts.values()) if counts else 0,
-            "excess_pairs": sum(n - 1 for n in over.values())}
-
-
-def survivors(arrows, slots) -> tuple[set, list]:
-    """(surviving same_claim pairs, demotion records). Deterministic, reads only provenance."""
-    keep: set = set()
-    demoted: list[dict] = []
-    seen: set = set()
-    for a in arrows:
-        if a.kind != "same_claim":
-            continue
-        pair = tuple(sorted((a.src_slot, a.dst_slot)))
-        if pair in seen:
-            continue
-        seen.add(pair)
-        v = adjudicate(slots.get(a.src_slot), slots.get(a.dst_slot))
-        if v.demote:
-            demoted.append({"pair": [pair[0][:16], pair[1][:16]], "to": DEMOTED_KIND,
-                            "era": DOCSTRING_ERA, "status": LEAD, **v.as_record()})
-        else:
-            keep.add(pair)
-    return keep, demoted
+    return census("pigeonhole", pairs, {
+        "docstrings": len(counts), "over_declared": len(over),
+        "worst": max(counts.values()) if counts else 0,
+        "excess_pairs": sum(n - 1 for n in over.values()),
+        "unadjudicated_pairs": unadjudicated}, unit="same_claim pair")

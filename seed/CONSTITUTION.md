@@ -251,8 +251,16 @@ than the thing it stands for"* — 3 instances (substring checks over `getsource
 `SNAPSHOT_PATH` was never imported). `[C: control-liveness sweep]`
 
 **OI-24** "Success on the empty set" is a defect class: operations assert non-empty inputs; an
-all-zero census from an empty adjudication = RED. *VIOLATED:* demotion applied at
-snapshot-build (zero arrows) reported clean success. `[C]`
+all-zero census from an empty adjudication = RED. *WAS VIOLATED, NOW MECHANIZED:* demotion
+applied at snapshot-build (zero arrows) reported clean success. `engine/nonempty` is the shared
+vocabulary — `require()` where an empty population is a caller bug, `census()` where it is a
+real state, and `clean()`, the only sanctioned way to ask a census whether it found nothing,
+which REFUSES to answer for a census over nothing. Every census carries its own population.
+At the finest grain a `Verdict` now separates read-and-kept from could-not-be-read, so an
+unreadable pair is never counted as a surviving identity.
+`[C: tests/test_nonempty.py — the incident's literal census is rebuilt by hand and shown
+indistinguishable from a clean one; every adjudication site refuses an empty population and
+answers a real one]`
 
 **OI-25** Silence never means unknown: long-running processes announce phases; a progress
 channel that can hang its subject is worse than none.
@@ -305,8 +313,15 @@ names, digest-verified). *VIOLATED-AND-CAUGHT:* the 25MB backup pickle swept by 
 the pre-push gate refused it.
 `[E: pre-push gate; C: no tracked file >4KB begins with a pickle header]`
 
-**OI-36** Reflexivity firewall: common-ground's own material stays out of the corpus (audited
-clean: 0 matches across 80,566 slots; standing control). `[C]`
+**OI-36** Reflexivity firewall: common-ground's own material stays out of the corpus.
+`engine/reflexivity` audits on two DECLARED arms and never on resemblance — provenance (this
+repo's bucket, or a path this repo tracks) and exact ν (byte-identical to a line of this repo's
+seed documents, which is gate 1's identity rule, not a similarity). The blind spot travels on
+the record: material re-labelled, re-pathed AND paraphrased is undetectable here, because the
+only mechanism that would catch it is the one this engine refuses everywhere else and refuses
+here most of all. Standing: 0 matches across 80,566 slots, re-checked every run.
+`[C: tests/test_reflexivity.py — planted contamination on each arm is caught unconditionally;
+the real corpus is audited when present and SKIPPED LOUDLY when absent, never passed]`
 
 **OI-37** Keys: exposure is tracked as BLOCKED-on-operator, never forgotten, never committed.
 `[inventory row; repo verified clean]`

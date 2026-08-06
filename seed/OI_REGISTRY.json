@@ -5,11 +5,9 @@
  "weak": [
   "OI-2",
   "OI-5",
-  "OI-24",
   "OI-26",
   "OI-28",
   "OI-30",
-  "OI-36",
   "OI-37",
   "OI-38",
   "OI-40"
@@ -283,10 +281,20 @@
    "unresolved": []
   },
   "OI-24": {
-   "statement": "\"Success on the empty set\" is a defect class: operations assert non-empty inputs; an all-zero census from an empty adjudication = RED. *VIOLATED:* demotion applied at snapshot-build (zero arrows) reported clean success. `[C]`",
-   "enforcement_sites": [],
-   "controls": [],
-   "process_only": true,
+   "statement": "\"Success on the empty set\" is a defect class: operations assert non-empty inputs; an all-zero census from an empty adjudication = RED. *WAS VIOLATED, NOW MECHANIZED:* demotion applied at snapshot-build (zero arrows) reported clean success. `engine/nonempty` is the shared vocabulary \u2014 `require()` where an empty population is a caller bug, `census()` where it is a real state, and `clean()`, the only",
+   "enforcement_sites": [
+    "engine/nonempty.py:census",
+    "engine/nonempty.py:clean",
+    "engine/adjudicate.py:Verdict",
+    "engine/corpus_state.py"
+   ],
+   "controls": [
+    "tests/test_nonempty.py:TheVocabularyItself",
+    "tests/test_nonempty.py:TheFinestGrainIsOnePAIR",
+    "tests/test_nonempty.py:EveryAdjudicationSiteCENSUSES",
+    "tests/test_nonempty.py:PlantedSuccessOnTheEmptySet"
+   ],
+   "process_only": false,
    "unresolved": []
   },
   "OI-25": {
@@ -404,10 +412,17 @@
    "unresolved": []
   },
   "OI-36": {
-   "statement": "Reflexivity firewall: common-ground's own material stays out of the corpus (audited clean: 0 matches across 80,566 slots; standing control). `[C]`",
-   "enforcement_sites": [],
-   "controls": [],
-   "process_only": true,
+   "statement": "Reflexivity firewall: common-ground's own material stays out of the corpus. `engine/reflexivity` audits on two DECLARED arms and never on resemblance \u2014 provenance (this repo's bucket, or a path this repo tracks) and exact \u03bd (byte-identical to a line of this repo's seed documents, which is gate 1's identity rule, not a similarity). The blind spot travels on the record: material re-labelled, re-path",
+   "enforcement_sites": [
+    "engine/reflexivity.py:audit",
+    "engine/reflexivity.py:matches"
+   ],
+   "controls": [
+    "tests/test_reflexivity.py:TheDetectorDETECTS",
+    "tests/test_reflexivity.py:TheAuditIsACensusAndObeysOI24",
+    "tests/test_reflexivity.py:TheREALCorpusIsClean"
+   ],
+   "process_only": false,
    "unresolved": []
   },
   "OI-37": {

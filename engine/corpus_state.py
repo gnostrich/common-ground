@@ -184,6 +184,7 @@ def _demote_containment(arrow_list, slots, docs) -> tuple[list, dict]:
     import dataclasses
 
     from .adjudicate import DEMOTED_KIND, DOCSTRING_ERA, adjudicate, pigeonhole
+    from .nonempty import census as _census
 
     # A PLAIN DICT, deliberately. This is the adjudicator's slot->chart lookup and no apex
     # can appear in it: kind re-adjudication runs over DECLARED ARROWS, before any fiber or
@@ -202,12 +203,20 @@ def _demote_containment(arrow_list, slots, docs) -> tuple[list, dict]:
 
     out, demoted, kept_pairs, classes = [], 0, set(), {"same-file": 0, "cross-document": 0}
     same_claim_pairs = set()
+    unadjudicated = 0
     for a in arrow_list:
         if a.kind != "same_claim":
             out.append(a)
             continue
         same_claim_pairs.add(a.pair)
         v = adjudicate(recs.get(a.src_slot), recs.get(a.dst_slot))
+        if not v.adjudicated:
+            # NOT A SURVIVOR. The pair has an endpoint this snapshot does not carry, so
+            # nothing was read — and counting it among the kept would report an identity
+            # this adjudication never confirmed. OI-24 at the finest grain.
+            unadjudicated += 1
+            out.append(a)
+            continue
         if v.demote:
             demoted += 1
             classes[v.cls] = classes.get(v.cls, 0) + 1
@@ -216,19 +225,24 @@ def _demote_containment(arrow_list, slots, docs) -> tuple[list, dict]:
             kept_pairs.add(a.pair)
             out.append(a)
 
-    census = {
+    # OI-24. THE CENSUS CARRIES ITS OWN POPULATION. This function was once called at
+    # snapshot-build time, where the snapshot holds zero arrows, and reported a census of all
+    # zeroes that read as "the corpus is clean". It examined nothing. `census()` makes the two
+    # states different objects: a refused census cannot be asked whether it found nothing.
+    census = _census("demote_containment", [a for a in arrow_list if a.kind == "same_claim"], {
         "era": DOCSTRING_ERA,
         "same_claim_records_before": sum(1 for a in arrow_list if a.kind == "same_claim"),
         "same_claim_pairs_before": len(same_claim_pairs),
         "demoted_records": demoted,
         "surviving_pairs": len(kept_pairs),
+        "unadjudicated_records": unadjudicated,
         "by_class": classes,
         "pigeonhole": pigeonhole(same_claim_pairs, recs),
         "note": ("containment re-kinded to refines and held as leads. Nothing deleted: a "
                  "demoted arrow keeps its endpoints, evidence, proposer and tier, still "
                  "couples, and stops being loop-eligible. A genuine whole-restatement can "
                  "re-earn same_claim through region relaxation as a fresh declaration."),
-    }
+    }, unit="same_claim record")
     return out, census
 
 

@@ -43,6 +43,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .nonempty import census
+
 #: The relation. One kind at v0; the family is open but each member needs its own ruling.
 DEPENDS_ON = "depends_on"
 SCAFFOLD_KINDS = frozenset({DEPENDS_ON})
@@ -157,9 +159,13 @@ def ambiguity_census(snapshot, index_fn) -> dict:
             continue
         bodies = {nu for _, nu in rows}
         (copies if len(bodies) == 1 else overloads).append((name, len(rows)))
-    return {"ambiguous_names": len(overloads) + len(copies),
+    # OI-24: censused over the LEAN SLOTS EXAMINED, not over the whole snapshot. A snapshot
+    # with no lean material produces zero ambiguous names, which is not a fact about ambiguity.
+    return census("ambiguity_census", list(seen), {
+            "ambiguous_names": len(overloads) + len(copies),
             "copies": sorted(copies, key=lambda kv: -kv[1]),
             "overloads": sorted(overloads, key=lambda kv: -kv[1]),
             "note": ("a COPY is a same_claim candidate nominated by a declared fact — "
                      "identical declared name AND identical declaration text across "
-                     "repositories. Nominated for the walk, never asserted here.")}
+                     "repositories. Nominated for the walk, never asserted here.")},
+            unit="declared lean name")

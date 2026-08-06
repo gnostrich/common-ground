@@ -1,6 +1,6 @@
 {
  "schema": "common-ground/constant-provenance/v0",
- "note": "OI-4: every constant is DERIVED (forced by the object), SWEPT (measured across a range and pinned in a stable band with the sweep as its justification), or CONFESSED (chosen, and said to be chosen, with what would settle it). A constant with no entry is UNMARKED and `engine/constants_sweep` reports it. This file does not judge whether a derivation is good; it enforces that one is CLAIMED, which is the difference between an argument somebody can check and a number nobody can find the argument for. A constant may move confessed->derived (or ->swept) ONLY with a derivation ARTIFACT attached: a sweep result, an anchor identity, or a measurement. The TRANSITION is the controlled event, not the ratio \u2014 derived overtaking confessed is the GOAL, and a control on the ratio would fire RED on progress.",
+ "note": "OI-4: every constant is DERIVED (forced by the object), SWEPT (measured across a range and pinned in a stable band with the sweep as its justification), or CONFESSED (chosen, and said to be chosen, with what would settle it). A constant with no entry is UNMARKED and `engine/constants_sweep` reports it. This file does not judge whether a derivation is good; it enforces that one is CLAIMED, which is the difference between an argument somebody can check and a number nobody can find the argument for. A constant may move confessed->derived (or ->swept) ONLY with a derivation ARTIFACT attached: a sweep result, an anchor identity, or a measurement. The TRANSITION is the controlled event, not the ratio — derived overtaking confessed is the GOAL, and a control on the ratio would fire RED on progress.",
  "constants": {
   "BORN": {
    "provenance": "derived",
@@ -23,7 +23,7 @@
    "why": "Girth-by-BFS searches every fiber, so the count of declined searches is structurally zero. It exists to stay reportable if a bound ever returns; the (n-1)! brute force it replaced could decline and did.",
    "artifact": {
     "kind": "measurement",
-    "evidence": "Girth-by-BFS visits every fiber, so the count of DECLINED searches is structurally zero \u2014 measured at 0 on the live corpus across every run since the (n-1)! brute force was replaced, and that predecessor could and did decline."
+    "evidence": "Girth-by-BFS visits every fiber, so the count of DECLINED searches is structurally zero — measured at 0 on the live corpus across every run since the (n-1)! brute force was replaced, and that predecessor could and did decline."
    }
   },
   "DECLARED_WEIGHT": {
@@ -40,7 +40,7 @@
   },
   "MIN_RATE_N": {
    "provenance": "confessed",
-   "why": "The operator's declared minimum n for a rate to be stated as a finding, with stability to ~10n. A policy threshold, not a measurement \u2014 and it was set after two rate claims flipped when n grew tenfold."
+   "why": "The operator's declared minimum n for a rate to be stated as a finding, with stability to ~10n. A policy threshold, not a measurement — and it was set after two rate claims flipped when n grew tenfold."
   },
   "READ_BETA": {
    "provenance": "confessed",
@@ -48,7 +48,7 @@
   },
   "BIAS_WEIGHT": {
    "provenance": "confessed",
-   "why": "How hard the typed input pushes. Justified only as 'small enough not to clamp, large enough to move something' \u2014 which is an argument for a range, not for 0.35. A sweep on the battery fixtures would settle it."
+   "why": "How hard the typed input pushes. Justified only as 'small enough not to clamp, large enough to move something' — which is an argument for a range, not for 0.35. A sweep on the battery fixtures would settle it."
   },
   "MOVED_EPS": {
    "provenance": "confessed",
@@ -56,7 +56,7 @@
   },
   "BLOCK_CAP": {
    "provenance": "confessed",
-   "why": "Blocks above this size are not relaxed and are COUNTED as skipped rather than silently dropped. A compute bound, confessed as one \u2014 the honesty is in the counting, not in the number."
+   "why": "Blocks above this size are not relaxed and are COUNTED as skipped rather than silently dropped. A compute bound, confessed as one — the honesty is in the counting, not in the number."
   },
   "MOVED_CAP": {
    "provenance": "confessed",
@@ -64,7 +64,7 @@
   },
   "REGION_SIZE": {
    "provenance": "confessed",
-   "why": "The attachment lineup size. OI-17 says this should be the medium's MEASURED co-relaxation range rather than a number \u2014 the acceptance guard band is the measurement that would derive it, and until that closes the loop this is chosen."
+   "why": "The attachment lineup size. OI-17 says this should be the medium's MEASURED co-relaxation range rather than a number — the acceptance guard band is the measurement that would derive it, and until that closes the loop this is chosen."
   },
   "NU_CAP": {
    "provenance": "confessed",
@@ -108,11 +108,15 @@
   },
   "JUMP_EVERY": {
    "provenance": "confessed",
-   "why": "How often the walk jumps rather than continuing its neighbourhood. An exploration bound predating the coverage term, which IS derived (unwalked mass, self-extinguishing) \u2014 this one should follow it and has not yet."
+   "why": "How often the walk jumps rather than continuing its neighbourhood. An exploration bound predating the coverage term, which IS derived (unwalked mass, self-extinguishing) — this one should follow it and has not yet."
   },
   "DRIFT_AFTER": {
    "provenance": "confessed",
    "why": "Consecutive empty steps before the walk is judged drifting. Chosen."
+  },
+  "MIN_LINE": {
+   "provenance": "confessed",
+   "why": "The shortest line of this repo's seed documents whose nu is hashed for the reflexivity firewall's exact-nu arm. 40 characters is a judgement, not a derivation: it is set to exclude headings, rules and bare imperatives, whose nu collides with ordinary prose in any corpus and would manufacture matches. A false positive in a firewall is worse than useless — it trains the reader to ignore it — so the threshold errs toward missing a short line rather than flagging a stranger's. Nothing was swept and no anchor forces the value; it could move to 30 or 60 without an argument this repo can make today."
   }
  }
 }
