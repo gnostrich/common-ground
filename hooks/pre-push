@@ -21,14 +21,18 @@ cd "$(git rev-parse --show-toplevel)"
 # never installed, which is the state this whole file exists to leave behind.
 echo "[pre-push] running the suite — a red suite may not reach the remote" >&2
 START=$(date +%s)
-if ! python3 -m unittest discover -s tests -q > /tmp/prepush.log 2>&1; then
+# A UNIQUE LOG PER RUN. The gate's own controls push inside a throwaway repository,
+# which runs this hook again — a fixed path meant the inner run clobbered the outer
+# one's log and the outer failure was reported with the inner repo's traceback.
+LOG=$(mktemp -t prepush.XXXXXX)
+if ! python3 -m unittest discover -s tests -q > "$LOG" 2>&1; then
     echo "[pre-push] REFUSED — the suite is red." >&2
     echo >&2
-    grep -E '^(FAIL|ERROR):' /tmp/prepush.log | head -20 >&2
-    tail -3 /tmp/prepush.log >&2
+    grep -aE '^(FAIL|ERROR):' "$LOG" | head -20 >&2
+    tail -3 "$LOG" >&2
     echo >&2
-    echo "[pre-push] full output: /tmp/prepush.log" >&2
+    echo "[pre-push] full output: $LOG" >&2
     echo "[pre-push] fix it, or push with --no-verify if you mean to." >&2
     exit 1
 fi
-echo "[pre-push] green in $(( $(date +%s) - START ))s — $(grep -oE 'Ran [0-9]+ tests' /tmp/prepush.log | tail -1 || echo 'suite passed')" >&2
+echo "[pre-push] green in $(( $(date +%s) - START ))s — $(grep -aoE 'Ran [0-9]+ tests' "$LOG" | tail -1 || echo 'suite passed')" >&2

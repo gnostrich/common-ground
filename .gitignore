@@ -42,6 +42,11 @@ venv/
 corpus.local.json
 runs/pool.jsonl
 runs/corpus.snapshot
+# ANY SUFFIX. A backup copy is corpus bytes under a longer name, and `git add -A`
+# swept `runs/corpus.snapshot.pre-demotion` into the index one commit after the
+# control against exactly that was written. The control caught it; the pattern is
+# what stops it happening again.
+runs/corpus.snapshot*
 runs/proposer.journal.jsonl
 runs/proposer.control.json
 runs/proposer.status.json
