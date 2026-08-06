@@ -253,7 +253,9 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
         out.error = "the corpus is empty"
         return out
 
-    anchor = anchor_for(snapshot, slot, quarantined)
+    # The TYPED TEXT reaches the seeder, so a question naming material the corpus
+    # literally holds is sampled from there rather than from the walk's history.
+    anchor = anchor_for(snapshot, slot, quarantined, text=text, chart=chart)
     region = build_region(snapshot, clamp=anchor, size=size, quarantined=quarantined,
                           bias=(slot, nu_value))
     out.region = region

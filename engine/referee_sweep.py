@@ -79,6 +79,11 @@ REFEREES = {
     "export_sheet.py": "renders the portable context sheet",
     "medium.py": "decides which glosses survive the behavioural gate",
     "adjudicate.py": "decides which same_claim declarations are containment",
+    # NOT a referee, and registered so the exemption is visible rather than implicit: a
+    # nominator returns ADDRESSES. It decides no relation, proposes no arrow, ranks no claim
+    # and carries no weight — it changes which neighbourhood a question is sampled from, and
+    # `tests/test_nominate.py` asserts its output contains nothing but slot ids.
+    "nominate.py": "nominates a region's seed set; decides nothing",
     "control_sweep.py": "decides which controls check text where they claim behaviour",
     "inbound.py": "GROUPS the compiled sheet — groups must be fibers, never clusters. A "
                   "grouping that produced the same groups by similarity would be a different "

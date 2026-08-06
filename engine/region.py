@@ -547,7 +547,8 @@ def provenance_key(doc_id: str) -> str:
 
 
 def anchor_for(snapshot: CorpusSnapshot, seed: str,
-               quarantined: frozenset = frozenset()) -> str:
+               quarantined: frozenset = frozenset(), text: str = "",
+               chart: str = "english") -> str:
     """Which arrow-rich neighbourhood a PERTURBATION samples. Structure picks it; a hash orders it.
 
     A typed input has no position in the corpus — that is what Q2 says about an object with no
@@ -583,6 +584,21 @@ def anchor_for(snapshot: CorpusSnapshot, seed: str,
     # same type, same chart, same sha256. No text is compared to reach this branch.
     if seed and seed in getattr(snapshot, "slots", {}):
         return seed
+
+    # NOMINATION, BEFORE THE ARROW-RICH CORE. Degree eligibility is self-reinforcing: walked
+    # material gets arrows, arrows make it eligible, eligibility routes questions there, and
+    # those questions produce more arrows. Measured on the live corpus, the eligible set was
+    # 71% one repository holding 15% of the material, and a question about certified
+    # positivity could draw 2 of 512 eligible slots from that provenance — so no question
+    # about arrow-poor material could ever assemble a region about it. A phrase the corpus
+    # literally contains is a declared fact about that claim's TEXT; it nominates where to
+    # sample and creates nothing. See engine/nominate.
+    if text:
+        from .nominate import nominate
+
+        nom = nominate(snapshot, text, chart)
+        if nom["slots"]:
+            return min(nom["slots"], key=lambda s: sha256_text(seed + s))
 
     live = [a for a in snapshot.arrows
             if (a.src_slot, a.dst_slot) not in quarantined

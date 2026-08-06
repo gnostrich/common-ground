@@ -257,6 +257,29 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   calibration, and block adjacency. **Five of the six were found by a downstream zero and only
   the last by sweeping for the pattern** — which is the wrong ratio, and the reason the sweep
   is now a standing step rather than a reaction.
+- **THE REFEREE SWEEP'S PROOF OF VALUE: the flag and the failure arrived together.** The
+  first nomination module tokenized the question, folded case, and chose the RAREST WORD to
+  seed a region on. The sweep refused it — TOKENIZE and FOLD, two violations — and in the same
+  run the thing produced the wrong answer: on "what does the certified positivity work
+  establish" it picked the verb `establish` over `certified positivity`, because rarest-word
+  is not most-specific-topic. **The banned mechanism was independently wrong.** That is the
+  sweep's argument settled by measurement rather than by assertion: it catches DESIGN ERRORS,
+  not style violations, and the two coincide because the shapes it bans are the shapes that
+  substitute resemblance for structure. Anything it flags is worth re-deriving rather than
+  re-spelling.
+- **NO MODULE MAKES A VOCABULARY JUDGEMENT. Specificity is DERIVED, never curated.** Ranking
+  candidate phrases by word count picked "what does the" — three function words — over
+  "certified positivity", landing a real question in the wrong corpus for a purely grammatical
+  reason. The obvious repair is a stopword list, and it is refused: a stopword list is a
+  curated opinion about which words carry meaning, maintained by hand, drifting silently, and
+  wrong for exactly the corpus that most needs it. **Character length of literal containment**
+  is the derived alternative — a longer literal string is a more specific declared fact about
+  the text, it needs no list, and it cannot drift. The `LICENSED` word list in
+  `engine/grounded.py` was the same mistake caught earlier from the other direction; the
+  citation grammar replaced it rather than growing it.
+  **THE PAIR IS THE STANDING SHAPE for anything that touches question text: the sweep refuses
+  bags, and specificity is derived.** A module that needs a curated vocabulary to work is a
+  module whose mechanism has not been found yet.
 - Similarity substituted for a declared relation (Jaccard fibers). **DELETED.**
 - Term overlap in the ANSWER path. **DELETED.** (Navigation is not evidence.)
 - Docstrings claiming mechanisms the call graph lacks ("index", "settlement runs", "provably
