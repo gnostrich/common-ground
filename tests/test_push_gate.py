@@ -39,9 +39,18 @@ class TheHookExistsAndIsInstallable(unittest.TestCase):
         self.assertTrue(inst.exists() and os.access(inst, os.X_OK))
 
     def test_this_repository_has_the_hook_path_configured(self):
+        # ABSOLUTE OR RELATIVE. `git config core.hooksPath` reports whatever was set, and a
+        # worktree resolves it to an absolute path — so pinning the literal string "hooks"
+        # made this control fail on a correctly-configured repository. What matters is that
+        # the path RESOLVES to the versioned hooks directory.
+        from pathlib import Path
         out = _run(["git", "config", "--get", "core.hooksPath"], REPO)
-        self.assertEqual("hooks", out.stdout.strip(),
-                         "run ./hooks/install — the gate is not active")
+        got = out.stdout.strip()
+        self.assertTrue(got, "run ./hooks/install — the gate is not active")
+        self.assertEqual((REPO / "hooks").resolve(),
+                         (REPO / got).resolve() if not Path(got).is_absolute()
+                         else Path(got).resolve(),
+                         f"core.hooksPath={got!r} does not point at the versioned hooks")
 
 
 class TheGateActuallyREFUSES(unittest.TestCase):

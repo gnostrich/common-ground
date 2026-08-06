@@ -1,26 +1,37 @@
 {
-  "schema": "common-ground/composition/v0",
-  "note": "THE COMPOSITION TABLE for correspondence kinds. Declared in seed, not in code. The implied-arrows section of a region's wire format is composition closure, and closure is meaningless without a declared table \u2014 inventing one in code would be the attachment-law failure class exactly: a rule inherited where none was specified. Operator-declared 2026-08-05.",
-  "reading": "compose[k1][k2] is the kind of the arrow implied by (a -k1-> b) followed by (b -k2-> c). A pair absent from this table does NOT compose: the composite is UNDEFINED and is not implied, not weakly implied, and not defaulted to anything.",
-  "compose": {
-    "same_claim": {
-      "same_claim": "same_claim",
-      "refines": "refines",
-      "instance_of": "instance_of"
-    },
-    "refines": {
-      "same_claim": "refines",
-      "refines": "refines",
-      "instance_of": "instance_of"
-    },
-    "instance_of": {
-      "same_claim": "instance_of",
-      "instance_of": "instance_of"
-    }
+ "schema": "common-ground/composition/v0",
+ "note": "THE COMPOSITION TABLE for correspondence kinds. Declared in seed, not in code. The implied-arrows section of a region's wire format is composition closure, and closure is meaningless without a declared table \u2014 inventing one in code would be the attachment-law failure class exactly: a rule inherited where none was specified. Operator-declared 2026-08-05.",
+ "reading": "compose[k1][k2] is the kind of the arrow implied by (a -k1-> b) followed by (b -k2-> c). A pair absent from this table does NOT compose: the composite is UNDEFINED and is not implied, not weakly implied, and not defaulted to anything.",
+ "compose": {
+  "same_claim": {
+   "same_claim": "same_claim",
+   "refines": "refines",
+   "instance_of": "instance_of"
   },
-  "undefined": [
-    "instance_of o refines \u2014 a particular instance followed by a refinement is not determined; the composite is left UNDEFINED and implies nothing"
-  ],
-  "why_undefined_matters": "An undefined composite must produce NO implied arrow. Filling it with a weakest-kind default would manufacture structure the operator never declared, and every residual measured against it would be measuring an invention.",
-  "operator_rule_verbatim": "same_claim o same_claim = same_claim; same_claim o refines = refines (either order); refines o refines = refines; anything o instance_of = instance_of; undefined compositions are NOT implied"
+  "refines": {
+   "same_claim": "refines",
+   "refines": "refines",
+   "instance_of": "instance_of"
+  },
+  "instance_of": {
+   "same_claim": "instance_of",
+   "instance_of": "instance_of"
+  },
+  "depends_on": {
+   "depends_on": "depends_on"
+  }
+ },
+ "undefined": [
+  "instance_of o refines \u2014 a particular instance followed by a refinement is not determined; the composite is left UNDEFINED and implies nothing",
+  "depends_on o same_claim",
+  "same_claim o depends_on",
+  "depends_on o refines",
+  "refines o depends_on",
+  "depends_on o instance_of",
+  "instance_of o depends_on",
+  "Composing a DEPENDENCY with an EQUIVALENCE implies nothing. That a theorem depends on a definition, and that definition states the same proposition as an English claim, does not make the theorem depend on the English claim in any sense the sources declared. Undefined, not weakly implied, not defaulted."
+ ],
+ "why_undefined_matters": "An undefined composite must produce NO implied arrow. Filling it with a weakest-kind default would manufacture structure the operator never declared, and every residual measured against it would be measuring an invention.",
+ "operator_rule_verbatim": "same_claim o same_claim = same_claim; same_claim o refines = refines (either order); refines o refines = refines; anything o instance_of = instance_of; undefined compositions are NOT implied",
+ "depends_on_note": "A dependency chain is a real dependency: if a theorem uses a definition and that definition uses another, the theorem depends on the third. Transitive, and the only composition this kind has."
 }

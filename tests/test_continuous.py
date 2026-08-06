@@ -245,8 +245,19 @@ class CompositionIsPrioritized(unittest.TestCase):
             ("refines", "instance_of"): "instance_of",
             ("instance_of", "instance_of"): "instance_of",
             ("instance_of", "same_claim"): "instance_of",
+            # THE SCAFFOLD KIND, added with the depends_on ruling. A dependency chain is a
+            # real dependency and that is its ONLY composition: every cross-composition with
+            # an equivalence kind is undefined, because a theorem depending on a definition
+            # that states the same proposition as an English claim does not thereby depend on
+            # the English claim in any sense the sources declared.
+            ("depends_on", "depends_on"): "depends_on",
         }
         self.assertEqual(dict(COMPOSITION), declared)
+
+    def test_a_dependency_never_composes_with_an_equivalence(self):
+        for k in ("same_claim", "refines", "instance_of"):
+            self.assertNotIn(("depends_on", k), COMPOSITION)
+            self.assertNotIn((k, "depends_on"), COMPOSITION)
 
     def test_an_undefined_composite_implies_nothing(self):
         """`instance_of o refines` is the one the operator left undefined. An undefined
