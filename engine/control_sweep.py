@@ -95,14 +95,19 @@ def classified_keys(triage: Path | None = None) -> set:
     p = triage or TRIAGE
     if not p.exists():
         return set()
-    body = p.read_text(encoding="utf-8")
     keys = set()
-    for line in body.splitlines():
+    for line in p.read_text(encoding="utf-8").splitlines():
         if "::" not in line:
             continue
-        for token in line.replace("|", " ").split():
-            if "::" in token:
-                keys.add(token.strip("`, "))
+        # BY MARKDOWN CELL, not by tokenizing the line. A bare `.split()` inside a registered
+        # guard is the forbidden shape whatever it happens to be doing, and `engine/
+        # referee_sweep` was right to refuse it here rather than grant an exemption: the cell
+        # boundary is the document's own declared structure, so reading it is reading a
+        # grammar rather than manufacturing tokens.
+        for cell in line.split("|"):
+            cell = cell.strip().strip("`, ")
+            if "::" in cell and " " not in cell:
+                keys.add(cell)
     return keys
 
 

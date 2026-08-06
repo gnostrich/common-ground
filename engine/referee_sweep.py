@@ -79,6 +79,7 @@ REFEREES = {
     "export_sheet.py": "renders the portable context sheet",
     "medium.py": "decides which glosses survive the behavioural gate",
     "adjudicate.py": "decides which same_claim declarations are containment",
+    "control_sweep.py": "decides which controls check text where they claim behaviour",
     "inbound.py": "GROUPS the compiled sheet — groups must be fibers, never clusters. A "
                   "grouping that produced the same groups by similarity would be a different "
                   "mechanism wearing this one's output.",
