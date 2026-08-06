@@ -112,6 +112,16 @@ details.scope[open]>summary{margin-bottom:.6rem}
   </div>
   <div id="proposer" class="muted">not loaded — press refresh.</div>
 
+  <details class="scope" id="wire"><summary id="wiresum">raw LM traffic — every call, both directions</summary>
+  <p class="muted">The <b>bytes on the socket</b>, not a summary of them. An act makes more than
+  one call: the <b>propose</b> call completes the region diagram and decides what the answer can
+  possibly be about, and the <b>render</b> call voices the settled state. Showing only the second
+  would show the answer's input and hide its cause. Each block carries the sha256 the server
+  computed when it sent or received those bytes; your browser re-hashes what is on your screen and
+  compares, so <b>what you are shown is what was sent</b> is checkable rather than promised.</p>
+  <div id="calls" class="muted">no call yet.</div>
+  </details>
+
   <details class="scope" id="scope"><summary>show what moved — the scope behind the answer</summary>
   <p class="muted">The region is a <b>SAMPLE</b> of the corpus chosen by declared structure —
   arrow-rich, provenance-near, chart-balanced. It is <b>not</b> the part of the corpus that
@@ -325,6 +335,8 @@ async function act(){
     return;
   }
   clearInterval(tick);
+  // BEFORE the retain branch, because retain returns early and its two calls are calls.
+  await renderWire(r);
   if(retain){
     render(r);
     const R2 = r.retention || {};
@@ -522,6 +534,66 @@ function renderScope(r){
                  + ` <span class="muted">fiber ${l.fiber} · block ${l.block} · arrows ${(l.arrows||[]).length}</span>` : '')
         + `<br><span class="nu">${esc(l.surface)}</span></div>`).join('')
     : '';
+}
+
+// EVERY CALL, BOTH DIRECTIONS, RAW — and VERIFIED. The digest arm is the load-bearing half:
+// a page that re-renders the bytes it claims to be quoting is exactly the failure this whole
+// surface exists to rule out, and the only way to rule it out is to hash what is on screen and
+// compare against what the server hashed at the socket. A mismatch is displayed ON the block.
+async function sha16(text){
+  if(!(window.crypto && crypto.subtle)) return null;   // insecure context: say so, never fake it
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text || ''));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0,16);
+}
+
+function wireBlock(id, label, text, sha){
+  const n = (text || '').length;
+  return `<div style="margin:.5em 0">`
+    + `<div class="muted"><b>${esc(label)}</b> — ${n} char(s) · sha ${esc(sha||'(none)')} `
+    + `<span id="${id}" class="muted">checking…</span></div>`
+    + `<pre class="nu" id="${id}-t"></pre></div>`;
+}
+
+async function renderWire(r){
+  const T = r.transcript || [];
+  $('wiresum').textContent = T.length
+    ? `raw LM traffic — ${T.length} call(s), both directions, byte-exact`
+    : 'raw LM traffic — no call was made';
+  if(!T.length){
+    $('calls').innerHTML = '<div class="muted">no call reached the model on this act. '
+      + 'That is a state, not an omission — an act with no model configured, or one that '
+      + 'bounced before the region was built, makes no call and has nothing to quote.</div>';
+    return;
+  }
+  // Built as one string, then the raw text is set through textContent — never through
+  // innerHTML. The bytes are the model's and the operator's, and interpolating them into
+  // markup would let a reply rewrite the page that is quoting it.
+  $('calls').innerHTML = T.map((c,i) =>
+      `<div class="prop"><div><b class="promoted">${esc(c.port)}</b> `
+    + `<span class="tier">${esc(c.model||'no model named')}</span> `
+    + `<span class="muted">${Number(c.seconds||0).toFixed(2)}s`
+    + (c.error ? ` · <span class="err">${esc(c.error)}</span>` : '') + `</span></div>`
+    + wireBlock(`w${i}s`, 'SYSTEM — in', (c.system||''), c.system_sha)
+    + wireBlock(`w${i}u`, 'USER — in', (c.user||''), c.user_sha)
+    + wireBlock(`w${i}r`, 'REPLY — out', (c.reply||''), c.reply_sha)
+    + `</div>`).join('');
+  for(let i=0;i<T.length;i++){
+    const c = T[i];
+    for(const [suf, text, sha] of [['s', c.system, c.system_sha],
+                                   ['u', c.user, c.user_sha],
+                                   ['r', c.reply, c.reply_sha]]){
+      const el = $(`w${i}${suf}-t`);
+      if(el) el.textContent = text || '';
+      const got = await sha16(text || '');
+      const badge = $(`w${i}${suf}`);
+      if(!badge) continue;
+      if(got === null){ badge.innerHTML = '<b class="F">UNVERIFIED</b> — this page is not in a '
+        + 'secure context, so the browser will not hash. The bytes above are unchecked.'; }
+      else if(got === sha){ badge.innerHTML = '<b class="promoted">VERIFIED</b>'; }
+      else { badge.innerHTML = `<b class="F">DIGEST MISMATCH</b> — displayed ${esc(got)}, `
+        + `server sent ${esc(sha||'(none)')}. What is on this screen is NOT what crossed the socket.`; }
+    }
+  }
 }
 
 // MEASURED stages, with the result. Not a progress channel — these are what the server

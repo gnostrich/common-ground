@@ -323,6 +323,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._seed()
         b = self._body()
         key = api_key(b.get("key"))          # request key or env; never logged
+        # THE TRANSCRIPT IS PER-ACT, and this line is what makes it so. It was imported and
+        # never called, so `CURRENT.calls` accumulated across every request the process had
+        # ever served: the operator would have been shown somebody else's traffic under their
+        # own question, growing without bound. A transparency surface that reports the wrong
+        # bytes is worse than none, because it is believed.
+        start_transcript()
         try:
             if path == "/propose":
                 # THE LOCK, at the only place that could break it. In brainstorm the typed
@@ -338,6 +344,7 @@ class Handler(BaseHTTPRequestHandler):
                     key=key or None,
                     instance_id=(b.get("instance_id") or None),
                 )
+                state["transcript"] = TRANSCRIPT.as_record()
                 self._send(200, json.dumps(state))
             elif path == "/reset":
                 CURRENT.reset()
@@ -375,6 +382,7 @@ class Handler(BaseHTTPRequestHandler):
                 state = CURRENT.propose_text(text=c.surface, chart=c.chart,
                                              key=key or None, instance_id=None)
                 state["claim"] = c.as_record()
+                state["transcript"] = TRANSCRIPT.as_record()
                 self._send(200, json.dumps(state))
             elif path == "/ask":
                 question = str(b.get("question", ""))

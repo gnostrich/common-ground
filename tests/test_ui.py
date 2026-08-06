@@ -147,6 +147,61 @@ class LiveLocalhostSmoke(unittest.TestCase):
             server.shutdown()
 
 
+class TheTranscriptIsPERACT(unittest.TestCase):
+    """`start()` was imported and never called, so the sink accumulated forever.
+
+    The consequence is worse than a leak: an operator opening the raw traffic would have been
+    shown every call the process had served since boot, under their own question, with digests
+    that all verified. A transparency surface reporting the wrong bytes is worse than none,
+    because it is believed — so the boundary of one act is controlled at the HTTP layer, where
+    the reset actually has to happen, rather than by reading the import.
+    """
+
+    def _serve(self):
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        t = threading.Thread(target=server.serve_forever, daemon=True)
+        t.start()
+        return server, f"http://127.0.0.1:{server.server_address[1]}"
+
+    def _post(self, base, path, payload):
+        req = urllib.request.Request(base + path, data=json.dumps(payload).encode(),
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as r:
+            return json.load(r)
+
+    def test_a_second_act_does_not_inherit_the_firsts_calls(self):
+        from engine.transcript import CURRENT
+
+        server, base = self._serve()
+        try:
+            # A DISTINCT LEFTOVER, planted on top of whatever this process already holds.
+            # Asserting the sink is empty first would be a test about test ordering; the
+            # property under control is that THIS string cannot survive into the next act.
+            CURRENT.record("propose", "leftover system", "leftover user", "leftover reply")
+            self.assertIn("leftover", json.dumps(CURRENT.as_record()))
+            state = self._post(base, "/propose", {"text": "the cone is positive",
+                                                  "chart": "english"})
+            self.assertIn("transcript", state, "/propose must return its calls too — retain "
+                                               "makes the same calls release does")
+            blob = json.dumps(state["transcript"])
+            self.assertNotIn("leftover", blob,
+                             "the act inherited a call it did not make")
+        finally:
+            server.shutdown()
+
+    def test_every_act_endpoint_returns_a_transcript_key(self):
+        server, base = self._serve()
+        try:
+            for path, payload in (("/propose", {"text": "the cone is positive"}),
+                                  ("/ask", {"question": "is the cone positive"})):
+                with self.subTest(path=path):
+                    out = self._post(base, path, dict(payload, chart="english"))
+                    self.assertIn("transcript", out)
+                    self.assertIsInstance(out["transcript"], list)
+        finally:
+            server.shutdown()
+
+
 class TheProposerLedgerIsVisibleAndReadOnly(unittest.TestCase):
     """The window shows the daemon's own journal, and cannot promote through it."""
 

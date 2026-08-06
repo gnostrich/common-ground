@@ -106,6 +106,33 @@ PROPOSE = {
                "status": {"P3": "BLOCKED on D5"}},
 }
 
+#: THE TRANSCRIPT the page must quote. Two calls, both directions, with REAL sha256[:16] of
+#: the exact strings above them — so the VERIFIED path is genuinely exercised rather than
+#: asserted against digests the page could not fail to match.
+def _sha16(t: str) -> str:
+    import hashlib
+    return hashlib.sha256((t or "").encode("utf-8")).hexdigest()[:16]
+
+
+def _call(port, system, user, reply, model="google/gemini-2.5-flash", seconds=1.0):
+    return {"port": port, "model": model, "seconds": seconds, "system": system, "user": user,
+            "reply": reply, "error": "", "system_sha": _sha16(system),
+            "user_sha": _sha16(user), "reply_sha": _sha16(reply),
+            "chars": {"system": len(system), "user": len(user), "reply": len(reply)}}
+
+
+#: The propose call's user body carries the operator's bytes as `[b0]` — OI-19's wire — so a
+#: page that showed a summary instead of the bytes would fail on this string.
+PROPOSE_USER = ("OBJECTS\n[b0] Is The Cone POSITIVE?  Really\n"
+                "[e1] \\x01en\\x01the cone is positive under the metric\n\nARROWS (declared)\n(none)")
+ASK["transcript"] = [
+    _call("propose", "You are completing a partial DIAGRAM.", PROPOSE_USER, "b0 -bears_on-> e1",
+          seconds=18.4),
+    _call("render", "WIRE\nYou speak only from the state below.",
+          "FIELD STATE after relaxation.\n\nBOUNDARY CONDITION:\nIs The Cone POSITIVE?  Really",
+          "The cone is positive under the metric [1].", seconds=2.1),
+]
+
 RED_ASK = json.loads(json.dumps(ASK))
 RED_ASK["answer"] = "Perelman settled the Poincare conjecture some years ago."
 RED_ASK["faithful"] = {
@@ -191,6 +218,13 @@ class _Page:
     def __exit__(self, *a):
         self.browser.close()
         self._pw.stop()
+
+    def open_wire(self):
+        """One click, the way the operator opens it. A collapsed `<details>` renders no text,
+        so reading it closed would test the markup rather than what is on screen."""
+        self.page.click("#wiresum")
+        self.page.wait_for_function("document.querySelector('#wire').open", timeout=5000)
+        return self.page.inner_text("#calls")
 
     def perturb(self, text="is the cone positive"):
         self.page.fill("#text", text)
@@ -279,6 +313,95 @@ class TheAnswerIsFIRST(unittest.TestCase):
             self.assertIn("0.4213", p.page.inner_text("#movers"))
             self.assertIn("VIA corresponds", p.page.inner_text("#movers"))
             self.assertIn("settling", p.page.inner_text("#phases"))
+
+
+@unittest.skipUnless(_HAVE and CHROMIUM and Path(CHROMIUM).exists(), "no chromium/playwright here")
+class EveryLMCallIsVISIBLERaw(unittest.TestCase):
+    """The operator asked to see every input and output of the LM, including intermediate ones.
+
+    "Visible" is not "shipped in the JSON" — the transcript rode on every `/ask` response for a
+    release while the page rendered none of it. So these controls read the RENDERED TEXT of the
+    page, and they read the digest badges, because a surface that re-renders the bytes it claims
+    to quote is the one failure this whole section exists to rule out.
+    """
+
+    def test_both_calls_are_on_the_page(self):
+        with _Server() as url, _Page(url) as p:
+            p.perturb()
+            txt = p.open_wire()
+            self.assertIn("propose", txt, "the ATTACHMENT call decides what the answer can "
+                                          "be about; hiding it shows the answer's input and "
+                                          "hides its cause")
+            self.assertIn("render", txt)
+
+    def test_the_bytes_are_shown_and_not_summarized(self):
+        with _Server() as url, _Page(url) as p:
+            p.perturb()
+            txt = p.open_wire()
+            for expected in ("[b0] Is The Cone POSITIVE?  Really",     # OI-19's wire, verbatim
+                             "b0 -bears_on-> e1",                      # the propose REPLY, raw
+                             "You are completing a partial DIAGRAM.",  # the propose SYSTEM
+                             "BOUNDARY CONDITION:",                    # the render USER
+                             "The cone is positive under the metric [1]."):
+                self.assertIn(expected, txt, f"missing from the raw traffic: {expected!r}")
+
+    def test_every_block_verifies_its_digest(self):
+        """Six blocks, two calls x (system, user, reply). All six must say VERIFIED."""
+        with _Server() as url, _Page(url) as p:
+            p.perturb()
+            p.open_wire()
+            p.page.wait_for_function(
+                "!document.querySelector('#calls').innerText.includes('checking…')", timeout=15000)
+            txt = p.page.inner_text("#calls")
+            self.assertEqual(txt.count("VERIFIED"), 6, txt[:2000])
+            self.assertNotIn("MISMATCH", txt)
+            self.assertNotIn("UNVERIFIED", txt)
+
+    def test_a_TAMPERED_digest_is_reported_ON_the_block(self):
+        """RED CONDITION. If the page displayed bytes other than the ones the server hashed,
+        the operator must be told on the block — not in a console nobody reads."""
+        payload = json.loads(json.dumps(ASK))
+        payload["transcript"][1]["reply"] = "Something the model never said."
+        with _Server(payload=payload) as url, _Page(url) as p:
+            p.perturb()
+            p.open_wire()
+            p.page.wait_for_function(
+                "!document.querySelector('#calls').innerText.includes('checking…')", timeout=15000)
+            txt = p.page.inner_text("#calls")
+            self.assertIn("DIGEST MISMATCH", txt)
+            self.assertIn("NOT what crossed the socket", txt)
+
+    def test_a_reply_cannot_rewrite_the_page_that_quotes_it(self):
+        """The raw bytes go in through textContent. A model that emits markup is quoted, not
+        obeyed — otherwise the transparency surface is an injection point."""
+        payload = json.loads(json.dumps(ASK))
+        hostile = '<img src=x onerror="window.__pwned=1"><b>bold</b>'
+        payload["transcript"][1]["reply"] = hostile
+        payload["transcript"][1]["reply_sha"] = _sha16(hostile)
+        with _Server(payload=payload) as url, _Page(url) as p:
+            p.perturb()
+            self.assertIn(hostile, p.open_wire(), "the markup must be QUOTED")
+            self.assertIsNone(p.page.evaluate("window.__pwned ?? null"))
+            self.assertEqual(0, p.page.locator("#calls img").count())
+
+    def test_no_calls_is_a_STATE_and_says_so(self):
+        payload = json.loads(json.dumps(ASK))
+        payload["transcript"] = []
+        with _Server(payload=payload) as url, _Page(url) as p:
+            p.perturb()
+            self.assertIn("no call", p.open_wire().lower())
+
+    def test_the_traffic_sits_below_the_answer(self):
+        """Answer-first is load-bearing and a raw dump is the most tempting thing to hoist."""
+        with _Server() as url, _Page(url) as p:
+            p.perturb()
+            self.assertLess(p.page.locator("#answer").bounding_box()["y"],
+                            p.page.locator("#wire").bounding_box()["y"])
+
+    def test_it_starts_collapsed(self):
+        with _Server() as url, _Page(url) as p:
+            p.perturb()
+            self.assertFalse(p.page.locator("#wire").evaluate("e => e.open"))
 
 
 @unittest.skipUnless(_HAVE and CHROMIUM and Path(CHROMIUM).exists(), "no chromium/playwright here")
