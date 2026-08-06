@@ -312,18 +312,27 @@ async function act(){
 // gate is that constraint, and it travels with the prose it judges.
 function renderAnswer(r){
   const c = r.compiled || {}, A = c.attachment || {};
-  const acc = (A.proposed || []).filter(x => x.accepted);
+  // The record's key is `attachment`; `proposed` was never a key and reading it made every
+  // relaxed response open by saying nothing responded. Both are read now, and the branch is
+  // on `conditioned` — whether the FIELD moved — not on whether attachments happened to parse.
+  const acc = (A.attachment || A.proposed || []);
   const corr = acc.filter(x => x.kind !== 'bears_on'), bears = acc.filter(x => x.kind === 'bears_on');
-  let rests = '';
-  if(acc.length){
+  const X = c.relaxation || {};
+  let rests;
+  if(c.conditioned){
     const kinds = [corr.length ? `${corr.length} correspondence` : '',
                    bears.length ? `${bears.length} bears-on` : ''].filter(Boolean).join(' + ');
-    rests = `<div class="rests">I read what you typed as bearing on ${acc.length} claim(s) in `
-          + `this region — attached by ${esc(kinds)}. `
-          + (c.conditioned ? '' : 'Nothing propagated from there.') + `</div>`;
+    rests = `<div class="rests">I read what you typed as bearing on `
+          + (acc.length ? `${acc.length} claim(s) in this region — attached by ${esc(kinds)}. `
+                        : `no claim directly — nothing attached, and what follows moved through `
+                          + `the field's own structure. `)
+          + `${X.moved||0} claim(s) moved; `
+          + `${(X.rows||[]).filter(m=>m.hops>0).length} were reached over declared arrows.`
+          + ((X.blocks_skipped||0) ? ` ${X.blocks_skipped} block(s) exceeded the settling cap and are unmeasured.` : '')
+          + `</div>`;
   } else {
     rests = `<div class="rests">Nothing in the field responded to what you typed — `
-          + `${esc(((c.relaxation||{}).silence) || (c.field_status||''))}</div>`;
+          + `${esc((X.silence) || (c.field_status||''))}</div>`;
   }
   const f = r.faithful;
   let gate = '';
@@ -361,7 +370,7 @@ function renderScope(r){
         + (m.contested ? ' <b class="F">CONTESTED</b>' : '')
         + ` <span class="muted">shift ${Number(m.shift||0).toFixed(4)} · `
         + `${m.hops||0} hop(s) · [${esc(m.chart)}]</span>`
-        + `<br><span class="nu">${esc(m.nu)}</span>`
+        + `<br><span class="nu">${esc((m.nu||m.slot||'').slice(0,300))}</span>`
         + ((m.path||[]).length
             ? (m.path||[]).map(v => `<br><span class="muted">VIA ${esc(v.kind||'')} `
                 + `[${esc(v.src_chart||'')}]→[${esc(v.dst_chart||'')}]</span>`).join('')

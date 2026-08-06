@@ -78,26 +78,31 @@ def words(text: str) -> set[str]:
 
 
 def ground_of(compiled: dict) -> set[str]:
-    """Every word the field actually put on the table, from FULL nu-strings."""
-    g: set[str] = set()
+    """Every word the field put in front of the model, taken from the PROMPT ITSELF.
+
+    The first version rebuilt the ground out of the record's fields and was wrong in the way
+    that matters: the moved rows carried addresses, not claims, so the ground held none of the
+    corpus text the answer was quoting and the gate convicted correct answers. Judging an
+    answer against a reconstruction of its input is judging it against a different object.
+
+    `compiled["compiled"]` IS the input — the same string handed to the model, holding the
+    full nu-strings of every moved claim, every attachment, the region description and the
+    boundary condition. The ground is its words plus the user's typed text. Anything else the
+    answer says came from somewhere the field did not put it.
+    """
+    g = words(compiled.get("compiled", ""))
     g |= words(compiled.get("typed", ""))
     g |= words(compiled.get("field_status", ""))
+    # ALSO the structured record, UNIONED rather than used as a fallback. A conditional
+    # second source stops running the moment the first returns anything, which is how the
+    # moved rows went unread in the first place.
     rel = compiled.get("relaxation") or {}
     g |= words(rel.get("silence", ""))
     for row in rel.get("rows", []) or []:
-        g |= words(row.get("nu", ""))
-        g |= words(row.get("chart", ""))
-        g |= words(row.get("type", ""))
-        for step in row.get("path", []) or []:
-            if isinstance(step, dict):
-                g |= words(step.get("src_nu", "")) | words(step.get("dst_nu", ""))
-                g |= words(step.get("kind", ""))
+        g |= words(row.get("nu", "")) | words(row.get("chart", ""))
     att = compiled.get("attachment") or {}
-    for a in att.get("proposed", []) or []:
-        g |= words(a.get("dst_nu", "")) | words(a.get("kind", ""))
-        g |= words(a.get("evidence", "")) | words(a.get("dst_chart", ""))
-    for name in ("error", "note"):
-        g |= words(str(att.get(name) or ""))
+    for a in (att.get("attachment") or att.get("proposed") or []):
+        g |= words(a.get("nu", "") or a.get("dst_nu", "")) | words(a.get("kind", ""))
     return g
 
 

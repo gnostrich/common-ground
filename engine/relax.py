@@ -106,7 +106,7 @@ class Hop:
 
     def as_record(self) -> dict[str, object]:
         return {"kind": self.kind, "tier": self.tier, "provisional": self.provisional,
-                "to": self.to_slot[:16], "chart": self.to_chart, "nu": self.to_nu[:200]}
+                "to": self.to_slot[:16], "chart": self.to_chart, "nu": self.to_nu}
 
     def render(self) -> str:
         state = "provisional" if self.provisional else "confirmed"
@@ -145,7 +145,7 @@ class Moved:
         return max((h.tier for h in self.path), key=lambda x: order.get(x, 99))
 
     def as_record(self) -> dict[str, object]:
-        return {"slot": self.slot[:16], "chart": self.chart, "type": self.type,
+        return {"slot": self.slot[:16], "nu": self.nu, "chart": self.chart, "type": self.type,
                 "value": self.value, "tier": self.tier, "contested": self.contested,
                 "shift": round(self.shift, 6), "hops": self.hops,
                 "path": [h.as_record() for h in self.path],

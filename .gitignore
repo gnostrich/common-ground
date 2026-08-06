@@ -57,3 +57,4 @@ seed_runs/
 # confidence of an exact answer, which is worse than the `unknown` it replaced. The deploy
 # writes it (or sets CG_COMMIT) at push time, outside git.
 runs/BUILD
+runs/acceptance/
