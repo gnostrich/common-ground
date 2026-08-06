@@ -117,6 +117,10 @@
   "MIN_LINE": {
    "provenance": "confessed",
    "why": "The shortest line of this repo's seed documents whose nu is hashed for the reflexivity firewall's exact-nu arm. 40 characters is a judgement, not a derivation: it is set to exclude headings, rules and bare imperatives, whose nu collides with ordinary prose in any corpus and would manufacture matches. A false positive in a firewall is worse than useless — it trains the reader to ignore it — so the threshold errs toward missing a short line rather than flagging a stranger's. Nothing was swept and no anchor forces the value; it could move to 30 or 60 without an argument this repo can make today."
+  },
+  "MIN_SECRET": {
+   "provenance": "confessed",
+   "why": "The shortest value in an env file treated as key material by OI-37's literal arm. 16 characters is a judgement, not a derivation. Below it sit flags, ports, model names and short paths ('english', 'true', '1'), whose bytes occur everywhere in ordinary source — searching for those would make the control fire constantly on correct code, and a security control that cries wolf is switched off by the person it protects. Above it sit real credentials, none of which is shorter. Nothing was swept and no anchor forces the value; it could move to 12 or 24 without an argument this repo can make today. The narrowing that actually does the work is SECRET_NAMES, which selects on the variable's name."
   }
  }
 }

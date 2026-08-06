@@ -324,7 +324,15 @@ here most of all. Standing: 0 matches across 80,566 slots, re-checked every run.
 the real corpus is audited when present and SKIPPED LOUDLY when absent, never passed]`
 
 **OI-37** Keys: exposure is tracked as BLOCKED-on-operator, never forgotten, never committed.
-`[inventory row; repo verified clean]`
+The first two clauses are ledger discipline; the third is a fact about bytes, and is checked.
+Two arms: SHAPE (generic key patterns — has false negatives by construction, and says so) and
+LITERAL (the actual values in the operator's env files — no pattern guessing, so it cannot
+false-positive). Both the tree AND the whole reachable history are searched, because a key
+committed and then deleted is still published — "not in HEAD" is not the property, and the
+remedy for a hit is ROTATION, which is a BLOCKED-on-operator row.
+`[C: tests/test_key_exposure.py — the scan runs on planted blobs so a real key in a TEST file
+is still caught; the literal arm SKIPS LOUDLY where no key material exists rather than passing
+on an empty search]`
 
 ### X. THE OPERATOR'S POSITION
 

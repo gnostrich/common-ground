@@ -67,3 +67,10 @@ runs/glossary.jsonl
 runs/gloss_validation.json
 runs/gloss_ab.log
 runs/audit.json
+
+# ENV FILES, ANYWHERE. The operator's keys live in a scratchpad OUTSIDE this repository, and
+# that location is the real protection. This is belt and braces for the moment somebody copies
+# one in to debug something and `git add -A` publishes it — which is not hypothetical here:
+# `runs/corpus.snapshot.pre-demotion` reached the index by exactly that route, one commit
+# after the control against it was written. tests/test_key_exposure.py asserts this line.
+*.env
