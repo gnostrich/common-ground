@@ -368,10 +368,31 @@ class Residual:
     unmeasured_pairs: int = 0
 
     @property
+    def void_pairs(self) -> int:
+        """DISTINCT void pairs. `void` is a list of proposals and a medium that repeats
+        itself puts the same refusal in it many times over."""
+        out = set()
+        for p in self.void:
+            if p.src and p.dst:
+                out.add(tuple(sorted((p.src.slot, p.dst.slot))))
+            else:
+                out.add(("?", p.evidence))     # unresolvable: keep each distinct line once
+        return len(out)
+
+    @property
     def acceptance(self) -> float:
-        """Resolved over named. The guard: pairwise held ~50% on good bounds, and a region
-        trending toward ~90% is condensing noise rather than seeing more."""
-        total = self.named_pairs + len(self.void)
+        """Resolved over named, BOTH SIDES DEDUPED. The guard: pairwise held ~50% on good
+        bounds, and a region trending toward ~90% is condensing noise rather than seeing more.
+
+        Both sides deduped, because they were not. `named_pairs` collapsed repeats and
+        `len(self.void)` did not, so acceptance compared a deduped numerator against a
+        repetition-inflated denominator. On a live step the medium emitted 1,789 arrow lines
+        that collapsed to 51 distinct pairs — about 35 repeats each — and the reported
+        acceptance swung between 97% and 2% across steps as a function of how much the model
+        had repeated itself rather than of what it had resolved. The number the guard watches
+        was measuring generation verbosity.
+        """
+        total = self.named_pairs + self.void_pairs
         return (self.named_pairs / total) if total else 0.0
 
     def as_record(self) -> dict[str, object]:
@@ -381,6 +402,8 @@ class Residual:
             "novel": [p.as_record() for p in self.novel],
             "residual": [[a[:16], b[:16]] for a, b in self.residual],
             "void": [p.as_record() for p in self.void],
+            "void_pairs": self.void_pairs,
+            "void_lines": len(self.void),
             "attachment": [p.as_record() for p in self.attachment],
             "acceptance": round(self.acceptance, 3),
             "named_pairs": self.named_pairs,

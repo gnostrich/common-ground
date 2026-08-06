@@ -358,3 +358,55 @@ class ThePromptForbidsForcingMatches(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AcceptanceMustNotMeasureVerbosity(unittest.TestCase):
+    """The guard number was comparing a deduped count against an inflated one.
+
+    Measured on a live walk step: the medium emitted 1,789 arrow lines that collapsed to 51
+    distinct pairs — about 35 repeats each — and every one of them was `refines`. `named_pairs`
+    deduped; `len(void)` did not. So reported acceptance swung 97% -> 2% -> 6% across steps as
+    a function of how much the model had repeated itself, not of what it had resolved.
+    """
+
+    def _region(self, charts):
+        from engine.corpus_state import CorpusSnapshot, SlotRecord
+        from engine.normalize import address
+        from engine.region import build_region
+
+        slots = {}
+        for i, c in enumerate(charts):
+            sid, nu = address(c, f"claim number {i}", "assert")
+            slots[sid] = SlotRecord(slot=sid, chart=c, type="assert", nu=nu, value="true",
+                                    confidence=1.0, tier="EXTRACTION",
+                                    docs=("repo||d/f.md",))
+        return build_region(CorpusSnapshot(slots=slots), clamp="", size=len(charts))
+
+    def test_planted_a_repeated_void_counts_once(self):
+        from engine.region import parse_region, residuals
+
+        region = self._region(["english", "english", "python", "python"])
+        idx = {m.chart: [] for m in region.members}
+        for m in region.members:
+            idx[m.chart].append(m.index)
+        a, b = idx["english"][0], idx["english"][1]     # an intra-chart pair: always void
+        raw = "\n".join(f"{a} -refines-> {b}" for _ in range(40))
+        res = residuals(parse_region(raw, region), region)
+        self.assertEqual(len(res.void), 40, "every line is still recorded")
+        self.assertEqual(res.void_pairs, 1, "but it is ONE refusal, repeated")
+
+    def test_acceptance_is_unchanged_by_repetition(self):
+        from engine.region import parse_region, residuals
+
+        region = self._region(["english", "english", "python", "python"])
+        idx = {}
+        for m in region.members:
+            idx.setdefault(m.chart, []).append(m.index)
+        bad = f"{idx['english'][0]} -refines-> {idx['english'][1]}"
+        good = f"{idx['english'][0]} -same_claim-> {idx['python'][0]}"
+        once = residuals(parse_region(f"{good}\n{bad}", region), region).acceptance
+        many = residuals(parse_region("\n".join([good] * 30 + [bad] * 30), region),
+                         region).acceptance
+        self.assertAlmostEqual(
+            once, many, places=6,
+            msg="acceptance moved when only the repetition count changed")
