@@ -268,3 +268,64 @@ class TheGrammarIsCaseEXACT(unittest.TestCase):
         body = src[src.index("def parse("):]
         self.assertNotIn(".lower()", body)
         self.assertNotIn(".casefold()", body)
+
+
+class TheGRAMMARShowsTheFormItParses(unittest.TestCase):
+    """The prompt described the line in English and the medium answered in English.
+
+    ACT_GRAMMAR said "then keep or keep-nothing". English "then X" invites a comma, so the
+    medium wrote `ACT: explore, keep` on live traffic and the lexer — which demanded whitespace
+    — read the line as absent. The whole reading fell to the conservative default, and the
+    operator was told the medium had said nothing while its reply said `explore, keep`.
+
+    Two changes, and only one of them is the real fix. The grammar now SHOWS the legal lines
+    instead of describing them, which is the move REGION_SYSTEM already makes for arrow forms:
+    enumerate the form and the wrong form has nothing to be written in. The separator widening
+    is a LEXING fact, not a tolerance for meaning — `ACT: explore, banana` still voids.
+    """
+
+    def test_the_comma_the_medium_actually_wrote_is_read(self):
+        r = parse("ACT: explore, keep")
+        self.assertEqual((r.act, r.persistence), ("explore", "keep"))
+        self.assertNotIn("no ACT line", r.reason)
+
+    def test_a_comma_in_the_claim_of_form_too(self):
+        r = parse("ACT: claim-of 3, keep")
+        self.assertEqual((r.act, r.claim_index, r.persistence), ("claim-of", 3, "keep"))
+
+    def test_the_widening_is_a_SEPARATOR_and_not_a_tolerance(self):
+        """Resolve-or-void survives. An unknown token after the comma still voids."""
+        for bad in ("ACT: explore, banana", "ACT: banana keep", "ACT: explore keep keep"):
+            with self.subTest(bad=bad):
+                self.assertIn("no ACT line", parse(bad).reason)
+
+    def test_case_exactness_is_UNCHANGED(self):
+        """The fold the referee sweep refused stays refused. This widened one separator."""
+        for bad in ("ACT: Explore keep", "act: explore keep", "ACT: EXPLORE KEEP"):
+            with self.subTest(bad=bad):
+                self.assertIn("no ACT line", parse(bad).reason)
+
+    def test_every_line_the_grammar_SHOWS_actually_parses(self):
+        """The load-bearing one. A prompt that displays a form its own parser refuses is the
+        defect this class exists for, and only reading the grammar's own text can catch it."""
+        shown = [seg[seg.index("ACT:"):].strip()
+                 for seg in ACT_GRAMMAR.split("|") if "ACT:" in seg]
+        self.assertGreaterEqual(len(shown), 6, ACT_GRAMMAR)
+        for line in shown:
+            with self.subTest(line=line):
+                r = parse(line.replace("<n>", "3"))
+                self.assertNotIn("no ACT line", r.reason,
+                                 f"the prompt shows {line!r} and the parser refuses it")
+
+    def test_the_grammar_SHOWS_rather_than_describes(self):
+        self.assertIn("ACT: assert keep-nothing", ACT_GRAMMAR)
+        self.assertIn("ACT: explore keep", ACT_GRAMMAR)
+
+    def test_no_shown_line_carries_trailing_punctuation_to_copy(self):
+        """The instruction's period ends the instruction. A form ending in `.` would be
+        copied onto the line and void — the razor's own sentence creating the defect."""
+        for seg in ACT_GRAMMAR.split("|"):
+            if "ACT:" in seg:
+                self.assertFalse(seg.strip().endswith("."), seg)
+
+

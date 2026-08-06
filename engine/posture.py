@@ -57,8 +57,15 @@ CONSERVATIVE = (EXPLORE_ACT, DISCARD)
 #: whatever it is folding. The grammar declares lowercase tokens, so a token in another case
 #: simply does not match and reads conservatively. That is resolve-or-void applied to case, and
 #: it removes the fold rather than arguing for an exemption.
-_ACT = re.compile(r"^\s*ACT:\s*(assert|explore|claim-of)(?:\s+(\d+))?"
-                  r"(?:\s+(keep|keep-nothing))?\s*$", re.M)
+#: THE SEPARATOR IS WHITESPACE OR A COMMA, and that is a LEXING fact, not a tolerance for
+#: meaning. `ACT: explore, banana` still voids. It is here because the grammar used to
+#: DESCRIBE the form in prose — "then keep or keep-nothing" — and English "then X" invites a
+#: comma, so the medium wrote `ACT: explore, keep` on live traffic and the line read as absent.
+#: The grammar below now SHOWS the form instead of describing it, which is the real fix; this
+#: is the lexer no longer disagreeing with the sentence that asked for the token.
+_SEP = r"(?:\s*,\s*|\s+)"
+_ACT = re.compile(r"^\s*ACT:\s*(assert|explore|claim-of)(?:" + _SEP + r"(\d+))?"
+                  r"(?:" + _SEP + r"(keep|keep-nothing))?\s*$", re.M)
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,5 +169,13 @@ def correct(prior: Reading, new: Reading) -> Reading:
 
 
 #: The line added to the attachment prompt. Codomain syntax, one sentence — the razor.
-ACT_GRAMMAR = ("On its own line write ACT: followed by one of assert, explore, or claim-of "
-               "<n>, then keep or keep-nothing.")
+#: SHOWN, NOT DESCRIBED. The previous wording described the line in English and the medium
+#: answered in English — `ACT: explore, keep` — which the lexer refused, so the whole reading
+#: fell to the conservative default on live traffic. This is the same move REGION_SYSTEM makes
+#: for arrow forms: enumerate the form and the wrong form has nothing to be written in.
+#: The instruction ends with its ONE period and the forms follow as a list, so there is no
+#: trailing punctuation for the medium to copy onto the line — `ACT: explore keep.` voids.
+ACT_GRAMMAR = ("On its own line write exactly one of these six lines, character for character. "
+               "ACT: assert keep-nothing  |  ACT: assert keep  |  "
+               "ACT: explore keep-nothing  |  ACT: explore keep  |  "
+               "ACT: claim-of <n> keep-nothing  |  ACT: claim-of <n> keep")
