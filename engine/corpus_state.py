@@ -50,6 +50,11 @@ class CorpusSnapshot:
     floor_status: str = FLOOR_GAP
     loops: int = 0
     sources: dict[str, int] = field(default_factory=dict)              # corpus -> slot count
+    #: THE DEMOTION CENSUS. What kind re-adjudication did to this snapshot's identity layer,
+    #: carried WITH the snapshot rather than logged, because a fiber count means one thing on
+    #: a raw substrate and another on a repaired one and nothing downstream can tell them
+    #: apart from the number alone.
+    demotion: dict = field(default_factory=dict)
 
     @property
     def empty(self) -> bool:
@@ -165,6 +170,64 @@ def _flatten_deltas(deltas):
     return votes, tiers, docs, values
 
 
+def _demote_containment(arrow_list, slots, docs) -> tuple[list, dict]:
+    """Re-kind the containment class and return (arrows, census). Nothing is deleted.
+
+    A demoted arrow keeps its endpoints, its evidence, its proposer and its tier; only its
+    KIND changes, from `same_claim` to `refines`, and it carries the era that demoted it. It
+    still couples — containment IS coupling — it simply stops being loop-eligible, so it stops
+    closing an equivalence class it never declared.
+
+    The census travels on the snapshot because a fiber count means one thing on a raw
+    substrate and another on a repaired one, and no reader can tell which from the number.
+    """
+    import dataclasses
+
+    from .adjudicate import DEMOTED_KIND, DOCSTRING_ERA, adjudicate, pigeonhole
+
+    chart_of = {s.id: s.chart for s in slots}
+
+    class _Rec:
+        __slots__ = ("chart", "docs")
+
+        def __init__(self, chart, d):
+            self.chart, self.docs = chart, d
+
+    recs = {sid: _Rec(chart_of.get(sid, "?"), tuple(sorted(docs.get(sid, ()))))
+            for sid in chart_of}
+
+    out, demoted, kept_pairs, classes = [], 0, set(), {"same-file": 0, "cross-document": 0}
+    same_claim_pairs = set()
+    for a in arrow_list:
+        if a.kind != "same_claim":
+            out.append(a)
+            continue
+        same_claim_pairs.add(a.pair)
+        v = adjudicate(recs.get(a.src_slot), recs.get(a.dst_slot))
+        if v.demote:
+            demoted += 1
+            classes[v.cls] = classes.get(v.cls, 0) + 1
+            out.append(dataclasses.replace(a, kind=DEMOTED_KIND))
+        else:
+            kept_pairs.add(a.pair)
+            out.append(a)
+
+    census = {
+        "era": DOCSTRING_ERA,
+        "same_claim_records_before": sum(1 for a in arrow_list if a.kind == "same_claim"),
+        "same_claim_pairs_before": len(same_claim_pairs),
+        "demoted_records": demoted,
+        "surviving_pairs": len(kept_pairs),
+        "by_class": classes,
+        "pigeonhole": pigeonhole(same_claim_pairs, recs),
+        "note": ("containment re-kinded to refines and held as leads. Nothing deleted: a "
+                 "demoted arrow keeps its endpoints, evidence, proposer and tier, still "
+                 "couples, and stops being loop-eligible. A genuine whole-restatement can "
+                 "re-earn same_claim through region relaxation as a fresh declaration."),
+    }
+    return out, census
+
+
 def build_snapshot_direct(deltas, arrows: Sequence[Correspondence] | None = None,
                           sources: dict[str, int] | None = None) -> CorpusSnapshot:
     """The read view, built from deltas WITHOUT going through `ledger_from_deltas`.
@@ -194,6 +257,14 @@ def build_snapshot_direct(deltas, arrows: Sequence[Correspondence] | None = None
     slots = slots_from_deltas(deltas)
     arrow_list = list(arrows) if arrows is not None else correspondences_from_deltas(deltas)
 
+    # KIND RE-ADJUDICATION, before anything reads the identity layer. 96.7% of this corpus's
+    # `same_claim` declarations join a definition to a sentence of its own docstring — the
+    # provenance says so — and that is containment, not identity. `same_claim` is the only
+    # loop-eligible kind, so it is the only kind that builds fibers, and closure over a
+    # containment relation manufactured equivalences nobody declared. See engine/adjudicate.
+    votes, tiers, docs, values = _flatten_deltas(deltas)
+    arrow_list, demotion = _demote_containment(arrow_list, slots, docs)
+
     fibers = build_fibers(slots, loop_pairs(arrow_list))
     edges = loop_edges(slots, arrow_list) + [
         e for e in structural_edges(slots, arrow_list)
@@ -203,8 +274,8 @@ def build_snapshot_direct(deltas, arrows: Sequence[Correspondence] | None = None
     chart_of = {s.id: s.chart for s in slots}
     loops = loops_from_fibers(fibers, chart_of, restrict_to=set(chart_of), edges=edges)
 
-    votes, tiers, docs, values = _flatten_deltas(deltas)
-    snap = CorpusSnapshot(arrows=arrow_list, sources=dict(sources or {}))
+    snap = CorpusSnapshot(arrows=arrow_list, sources=dict(sources or {}),
+                          demotion=demotion)
     for s in slots:
         counter = votes.get(s.id)
         top = counter.most_common(1) if counter else []
@@ -260,6 +331,15 @@ def with_arrows(snapshot: CorpusSnapshot,
 
     live = [a for a in arrows
             if a.src_slot in snapshot.slots and a.dst_slot in snapshot.slots]
+
+    # KIND RE-ADJUDICATION HAPPENS HERE, and it has to: the on-disk snapshot is built from
+    # corpus material and carries ZERO arrows, so a demotion applied at build time would have
+    # nothing to adjudicate. The identity layer only exists once the journal's arrows are laid
+    # over, which is this function — so this is where containment stops being read as identity.
+    _slots = [Slot(id=k, chart=v.chart, type=v.type, nu=v.nu)
+              for k, v in snapshot.slots.items()]
+    _docs = {k: set(v.docs or ()) for k, v in snapshot.slots.items()}
+    live, _census = _demote_containment(live, _slots, _docs)
     touched: set[str] = set()
     for a in live:
         touched.add(a.src_slot)
@@ -279,7 +359,7 @@ def with_arrows(snapshot: CorpusSnapshot,
     out = CorpusSnapshot(
         slots=snapshot.slots, arrows=list(live), blocks=dict(snapshot.blocks),
         contested=set(snapshot.contested), sources=dict(snapshot.sources),
-        fibers=[tuple(f.slots) for f in fibers],
+        fibers=[tuple(f.slots) for f in fibers], demotion=_census,
     )
     for b in blocks:
         for sid in b.slots:

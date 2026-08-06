@@ -202,6 +202,30 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   in one session — a stub with no `id` attribute that took a fallback branch, a bound method
   that serialised as a method, and a source scan standing in for an HTTP request. Executing
   is necessary and not sufficient; the fixture has to be as complicated as the real object.
+- **THE DEMOTION, LANDED — and the withdrawals it forces, beside their originals.** The
+  simulated table is **SUPERSEDED-BY-COMMIT** and the committed rebuild matches it EXACTLY:
+  2,082 same_claim pairs -> **69 surviving**, 6,150 records demoted (4,487 same-file
+  containment, 1,663 cross-document docstring bridges), 1,046 fibers -> **2**, largest fiber
+  120 -> **41**, 2,799 slots in multi-member fibers -> **43**. Pigeonhole: 1,155 docstrings
+  declared identity with a definition, **368 of them from more than one sentence, worst case
+  7** — 576 pairs over-declared on the face of the declarations, before any text is read.
+  WITHDRAWN, each beside its original claim: **"8 loops" -> 1**; the **second-FDT surrogate
+  floor 0.12153270**, computed from LoopMeasurements over those eight, pending re-measure on
+  the survivor; **"4,928 same_claim"** in the header; **the 73% energy dominance** and **K's
+  61-of-64 single-fiber support**, both real measurements of a substrate that has now mostly
+  left. What remains is small and TRUE.
+  **THE ZERO DELTA IS ITSELF A FINDING.** I predicted the committed census would differ from
+  the simulation because 11,016 lean slots landed between them. It does not differ at all, and
+  the reason is measurable: 375 arrows touch the lean material and **none of them is a
+  same_claim**. The corpus grew by 12,466 slots that the daemon has not walked, so the
+  identity layer could not move. Ingested is not the same as declared, and a slot count is not
+  a structure count — the deploy showed 12,466 new lean slots and zero new propositions.
+  **WHERE THE DEMOTION HAD TO GO, and it was not where I first put it.** The on-disk snapshot
+  is built from corpus material and carries ZERO arrows; the identity layer only exists once
+  the journal's arrows are laid over in `with_arrows`. A demotion applied at build time
+  adjudicated an empty list and reported a clean census over nothing — which it did, and the
+  census of all zeroes is what showed it. A repair applied where the thing being repaired does
+  not yet exist reports success.
 - Similarity substituted for a declared relation (Jaccard fibers). **DELETED.**
 - Term overlap in the ANSWER path. **DELETED.** (Navigation is not evidence.)
 - Docstrings claiming mechanisms the call graph lacks ("index", "settlement runs", "provably
