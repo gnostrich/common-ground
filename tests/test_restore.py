@@ -115,11 +115,76 @@ class ItReportsSECRETSWithoutTouchingThem(unittest.TestCase):
         for f in ("railway.env", "openrouter.env", "aristotle.env"):
             self.assertIn(f, self.body)
 
-    def test_it_never_reads_or_prints_a_key_value(self):
-        """`-f` tests existence. Sourcing or catting one would put a secret in a log."""
-        for leak in ("cat \"$SD", "source \"$SD", ". \"$SD", "export ARSTL", "RAILWAY_TOKEN="):
-            with self.subTest(leak=leak):
-                self.assertNotIn(leak, self.body)
+    def test_it_never_PRINTS_a_key_value(self):
+        """RESTATED, and the restatement is the point.
+
+        This asserted that the script never SOURCES a key file. That was right while it only
+        reported presence, and became wrong the moment it had to authenticate to Railway to
+        regenerate window.env — sourcing a credential into a subshell is how you use one.
+        Forbidding the read was a proxy for the property; the property is that no secret
+        reaches stdout, stderr, or a committed file.
+
+        So this is checked at the RUNTIME instead of by grepping the source, which is what
+        this codebase requires of every control anyway: run the thing, read what it emitted,
+        and look for the actual key bytes in it.
+        """
+        sd = subprocess.run(
+            ["bash", "-c", "ls -d /tmp/claude-*/-home-user-common-ground/*/scratchpad "
+                           "2>/dev/null | head -1"], capture_output=True, text=True).stdout.strip()
+        if not sd:
+            self.skipTest("NOT CHECKED: no scratchpad on this machine, so there is no key "
+                          "material to look for. This is a SKIP, not a pass.")
+        secrets = []
+        for name in ("railway.env", "openrouter.env", "aristotle.env", "window.env"):
+            f = Path(sd) / name
+            if not f.exists():
+                continue
+            for line in f.read_text().splitlines():
+                _, _, val = line.partition("=")
+                val = val.strip()
+                if len(val) >= 12:                    # a real key, not a flag or a short path
+                    secrets.append((name, val))
+        if not secrets:
+            self.skipTest("NOT CHECKED: no key material found to look for. SKIP, not a pass.")
+
+        r = subprocess.run(["bash", "-c", f"cd {REPO} && ./tools/restore"],
+                           capture_output=True, text=True, timeout=600)
+        emitted = r.stdout + r.stderr
+        for name, val in secrets:
+            with self.subTest(secret=name):
+                self.assertNotIn(val, emitted,
+                                 f"a value from {name} appeared in the recovery output; these "
+                                 f"logs are long and skimmed, so that is a disclosure")
+
+    def test_the_credential_is_used_in_a_SUBSHELL_so_it_does_not_persist(self):
+        """The parent shell must not carry the token onward into the rest of the script."""
+        i = self.body.index("regenerating from the Railway service")
+        window = self.body[i:i + 1400]
+        self.assertIn('( set -a; . "$SD/railway.env"; set +a', window,
+                      "the credential must be sourced inside ( ), not into the parent")
+
+    def test_the_regenerated_window_env_is_never_ECHOED(self):
+        """It writes the file and reports presence. A recovery log that prints a token turns
+        every reclaim into a disclosure, and these logs are long and skimmed."""
+        i = self.body.index("regenerating from the Railway service")
+        window = self.body[i:i + 1400]
+        self.assertIn("umask 077", window, "the written file must not be world-readable")
+        self.assertNotIn("echo \"$CG_TOKEN", window)
+        self.assertNotIn("echo $CG_TOKEN", window)
+        self.assertNotIn("--json | tee", window)
+
+    def test_the_token_comes_from_the_SERVICE_not_from_git(self):
+        """Railway holds both values as service variables, so regenerating needs no secret in
+        this public repository — and a rotated token is picked up instead of silently
+        disagreeing with a stale file."""
+        self.assertIn("COMMON_GROUND_TOKEN", self.body)
+        self.assertIn("RAILWAY_SERVICE_WINDOW_URL", self.body)
+        self.assertIn("railway variables --json", self.body)
+
+    def test_it_only_regenerates_when_the_file_is_ABSENT(self):
+        """Never overwrite a window.env somebody put there deliberately."""
+        i = self.body.index("regenerating from the Railway service")
+        self.assertIn('[ ! -f "$SD/window.env" ]', self.body[max(0, i - 400):i])
 
     def test_no_key_material_is_hardcoded(self):
         """The script is committed to a public repository."""

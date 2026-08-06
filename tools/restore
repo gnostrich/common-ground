@@ -74,6 +74,36 @@ fi
 
 echo "== secrets (outside git, by policy — this only reports) =="
 SD="$(ls -d /tmp/claude-*/-home-user-common-ground/*/scratchpad 2>/dev/null | head -1)"
+
+# WINDOW.ENV IS REGENERATED, not restored. The scratchpad comes back as an OLD snapshot, so
+# the operator's own key files survive and anything written there since does not — window.env
+# was lost on two consecutive reclaims. Railway already holds both values as service
+# variables, which makes it the source of truth rather than a copy: regenerating from there
+# needs no secret in git, and a URL or token rotated on the service is picked up here instead
+# of silently disagreeing with a stale file. Values are WRITTEN, never echoed.
+if [ -n "$SD" ] && [ -f "$SD/railway.env" ] && [ ! -f "$SD/window.env" ] \
+   && command -v railway >/dev/null 2>&1; then
+  echo "  window.env absent — regenerating from the Railway service"
+  ( set -a; . "$SD/railway.env"; set +a
+    export OUT="$SD/window.env"
+    export RAILWAY_API_TOKEN="${RAILWAY_API_TOKEN:-${RAILWAY_TOKEN:-}}"; unset RAILWAY_TOKEN
+    umask 077
+    railway variables --json 2>/dev/null | python3 -c "
+import json, os, sys
+try:
+    v = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+url, tok = v.get('RAILWAY_SERVICE_WINDOW_URL'), v.get('COMMON_GROUND_TOKEN')
+if not (url and tok):
+    sys.exit(1)
+if not url.startswith('http'):
+    url = 'https://' + url
+open(os.environ['OUT'], 'w').write(f'CG_URL={url}\\nCG_TOKEN={tok}\\n')
+" ) 2>/dev/null
+  [ -f "$SD/window.env" ] && chmod 600 "$SD/window.env"
+fi
+
 for f in railway.env openrouter.env aristotle.env window.env; do
   if [ -n "$SD" ] && [ -f "$SD/$f" ]; then echo "  $f present"; else echo "  $f MISSING"; fi
 done
