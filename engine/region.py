@@ -184,6 +184,16 @@ class Member:
     type: str
     nu: str
     attached: bool                            # already carries a declared arrow
+    #: WHAT GOES ON THE WIRE when it is not the nu. Empty for every corpus object, because a
+    #: corpus object has no other bytes — nu IS what the engine holds for it. Non-empty for the
+    #: bias alone: the operator typed something, and nu is the engine's paraphrase of it.
+    #: OI-19 is the whole reason this field exists; see `tests/test_bias_bytes.py`.
+    surface: str = ""
+
+    @property
+    def wire(self) -> str:
+        """The bytes the medium reads. One accessor, so no renderer can pick the other one."""
+        return self.surface or self.nu
 
 
 @dataclass(slots=True)
@@ -314,7 +324,9 @@ def render_region(region: Region) -> str:
     """
     lines = ["OBJECTS"]
     for m in region.members:
-        lines.append(f"[{label(m.chart, m.index)}] {escape_nu(m.nu)}")
+        # `m.wire`, never `m.nu`. For every corpus object these are the same string; for the
+        # bias they are not, and the difference is OI-19.
+        lines.append(f"[{label(m.chart, m.index)}] {escape_nu(m.wire)}")
 
     # THE LEGAL ARROW FORMS, enumerated. Cross-chart-only stops being an instruction the
     # medium may ignore and becomes the shape of the token itself: with the charts present
@@ -622,7 +634,7 @@ def anchor_for(snapshot: CorpusSnapshot, seed: str,
 def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_SIZE,
                  extra: list[str] | None = None,
                  quarantined: frozenset = frozenset(),
-                 bias: tuple[str, str] | None = None) -> Region:
+                 bias: tuple[str, str, str] | None = None) -> Region:
     """Assemble the partial diagram: the clamp, its declared neighbours, then PROVENANCE-NEAR
     claims — same directory, nothing else.
 
@@ -724,11 +736,16 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
         # The bias's role is not undeclared: it is written on the object, `[0|bias]`, so its
         # position tells the medium nothing its own chart tag has not already said. It is the
         # distinguished object of the diagram and it is rendered as one.
-        b_slot, b_nu = bias
+        # THREE PARTS, TWO ROLES. `b_nu` is the address's bytes and never reaches the wire;
+        # `b_surface` is the operator's bytes and is all that does. OI-19: input is an external
+        # field term, so the addresser's fold — case, whitespace, terminal punctuation, the
+        # chart tag itself — is a fact about identity and not about what was asked.
+        b_slot, b_nu, b_surface = bias
         members = ([Member(index=0, slot=b_slot, chart=BIAS_CHART, type="bias", nu=b_nu,
-                           attached=False)]
+                           attached=False, surface=b_surface)]
                    + [Member(index=m.index + 1, slot=m.slot, chart=m.chart, type=m.type,
-                             nu=m.nu, attached=m.attached) for m in members])
+                             nu=m.nu, attached=m.attached, surface=m.surface)
+                      for m in members])
         # The bias carries no declared arrow — it is new, and Q2 is the whole point — so it
         # cannot appear in `declared` and therefore cannot compose. Nothing to exclude.
         return Region(clamp=clamp, members=members, declared=declared, implied=implied,

@@ -201,9 +201,14 @@ phrasing, "I read your question as") — stripped.
 
 **OI-19** Operator input is an external field term: never normalized, never addressed as a
 stage, never objectified into the category. ν/hash consulted ONLY to detect incidental
-declared coincidences (whole-input, contiguous-term) that strengthen coupling. *VIOLATED:*
-`[0|bias]` object-costume; input-ν as pipeline.
-`[C: input bytes reaching the LM byte-identical to what was typed; planted normalization of bias = RED]`
+declared coincidences (whole-input, contiguous-term) that strengthen coupling. *WAS VIOLATED,
+NOW MECHANIZED:* the bias object went out as its ν — case folded, whitespace collapsed,
+terminal punctuation stripped, wearing the `english` chart tag — so the medium answered the
+addresser's paraphrase of the question. `Member.surface` now carries the typed bytes and
+`Member.wire` is the one accessor the renderer reads; ν remains the address and nothing else.
+`[C: tests/test_bias_bytes.py — the typed bytes are extracted from the recorded wire and
+compared; four planted normalizations (lowercase, whitespace, terminal punctuation, the full ν
+pipeline) each = RED]`
 
 **OI-20** Identity ≠ attachment; they never share a rule. Identity exact (gate 1); attachment
 proposed. *VIOLATED:* exact-landing-required made novel input an isolated object — THE

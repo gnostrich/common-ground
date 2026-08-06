@@ -315,13 +315,28 @@ def _region_block(pert, cites: list | None = None) -> str:
     did not, and an operator who is not told how those sixty were chosen will infer that they
     were the relevant ones — which is the inference the whole engine exists to refuse.
     """
-    from .region import BEARS_ON
+    from .region import BEARS_ON, BIAS_CHART, label
+
+    # NO REGION IS A STATE, not a crash. `perturb` returns early — empty corpus, no model,
+    # nothing typed — with `region` unset, and this block was called on exactly that path
+    # because an early return also means no seeds. It then read `.declared` off None and took
+    # the whole request down. Found by the OI-19 control asking what the LM reads when nothing
+    # moved; the honest answer is the reason, not a fabricated count of zero arrows.
+    if pert.region is None:
+        return ("THE DIAGRAM. There was none: " +
+                (pert.error or "the region could not be built") +
+                ". No call was made, so nothing was completed and nothing was drawn.")
 
     bias_only = [a for a in pert.attachment if a.kind == BEARS_ON]
     corresponds = [a for a in pert.attachment if a.kind != BEARS_ON]
     lines = [
+        # THE LABEL IS READ FROM THE RENDERER, not spelled here. This line said `[0|bias]`
+        # for as long as the wire said `[b0]` — a disclosure describing a format the engine
+        # had stopped using, in the one paragraph whose job is to tell the operator what the
+        # medium saw.
         f"THE DIAGRAM. The typed text entered a REGION of this corpus as one more object — "
-        f"[0|bias] — beside {pert.members - 1} corpus claim(s), with "
+        f"[{label(BIAS_CHART, 0)}], carrying what was typed BYTE FOR BYTE — beside "
+        f"{pert.members - 1} corpus claim(s), with "
         f"{len(pert.region.declared)} declared arrow(s) and {len(pert.region.implied)} "
         f"composition-implied arrow(s) already in it. One call asked the medium to complete "
         f"the diagram. This is the same region, wire format and prompt the sampler runs; "

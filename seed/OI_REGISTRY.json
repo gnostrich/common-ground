@@ -5,7 +5,6 @@
  "weak": [
   "OI-2",
   "OI-5",
-  "OI-19",
   "OI-24",
   "OI-26",
   "OI-28",
@@ -219,12 +218,19 @@
    "unresolved": []
   },
   "OI-19": {
-   "statement": "Operator input is an external field term: never normalized, never addressed as a stage, never objectified into the category. \u03bd/hash consulted ONLY to detect incidental declared coincidences (whole-input, contiguous-term) that strengthen coupling. *VIOLATED:* `[0|bias]` object-costume; input-\u03bd as pipeline. `[C: input bytes reaching the LM byte-identical to what was typed; planted normalization of b",
+   "statement": "Operator input is an external field term: never normalized, never addressed as a stage, never objectified into the category. \u03bd/hash consulted ONLY to detect incidental declared coincidences (whole-input, contiguous-term) that strengthen coupling. *WAS VIOLATED, NOW MECHANIZED:* the bias object went out as its \u03bd \u2014 case folded, whitespace collapsed, terminal punctuation stripped, wearing the `englis",
    "enforcement_sites": [
-    "engine/perturb.py"
+    "engine/perturb.py",
+    "engine/region.py:Member",
+    "engine/region.py:render_region"
    ],
-   "controls": [],
-   "process_only": true,
+   "controls": [
+    "tests/test_bias_bytes.py:TheOperatorsBytesReachTheProposeCall",
+    "tests/test_bias_bytes.py:TheOperatorsBytesReachTheRenderCall",
+    "tests/test_bias_bytes.py:PlantedNormalizationIsRED",
+    "tests/test_bias_bytes.py:TheCorpusObjectsAreUNCHANGED"
+   ],
+   "process_only": false,
    "unresolved": []
   },
   "OI-20": {

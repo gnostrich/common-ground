@@ -266,7 +266,7 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
     # literally holds is sampled from there rather than from the walk's history.
     anchor = anchor_for(snapshot, slot, quarantined, text=text, chart=chart)
     region = build_region(snapshot, clamp=anchor, size=size, quarantined=quarantined,
-                          bias=(slot, nu_value))
+                          bias=(slot, nu_value, text))
     out.region = region
     # A snapshot with no live arrow has no arrow-rich neighbourhood, so `anchor_for` returns
     # nothing and `build_region` falls back to the chart-spanning directory — the SAME region
