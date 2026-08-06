@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import time
+import hmac
 import os
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -89,6 +90,24 @@ ACCESS_TOKEN = "" if OPEN_ON_PURPOSE else _RAW_TOKEN
 #: Paths served without a token. Only the page shell, which holds no corpus and spends
 #: nothing — everything it then asks for is gated.
 OPEN_PATHS = frozenset({"/", "/index.html", "/healthz"})
+
+#: THE DATA CHANNEL. The corpus is DATA, not code: it must never enter a git tree, public or
+#: private, and never ship inside an image. `seed_runs/` is gitignored for exactly that reason,
+#: which is also why Railway skipped it and `ui/boot.seed_state` — correct code — has never
+#: executed on any deploy. So the material arrives over the wire, straight onto the volume.
+#:
+#: THE ENDPOINT DOES NOT EXIST unless this variable is set. Not "returns 403": a 404, the same
+#: as any unrouted path, so a deploy with the variable unset is a deploy with no upload surface
+#: to find. Setting it is the operator's act; unsetting it afterwards is the removal.
+SEED_UPLOAD_ENV = "CG_SEED_UPLOAD_TOKEN"
+
+#: Files the channel will write. A fixed list, not a caller-supplied path: an upload endpoint
+#: that takes a filename is an arbitrary-write endpoint wearing a narrower name.
+UPLOADABLE = {"corpus.snapshot", "proposer.journal.jsonl"}
+
+#: Largest upload accepted. The snapshot is ~25MB; the journal ~30MB. Stated so a truncated
+#: transfer fails loudly rather than landing a short file that loads as a smaller corpus.
+MAX_UPLOAD = 256 * 1024 * 1024
 
 
 def _authorized(path: str, raw_path: str, headers) -> bool:
@@ -178,10 +197,105 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, json.dumps({"error": "not found"}))
 
+    def _seed(self):
+        """THE DATA CHANNEL. The corpus arrives here or not at all.
+
+        It may not enter a git tree, public or private, and may not ship inside an image —
+        which is precisely why `ui/boot.seed_state` has never executed on any deploy: the
+        staging directory is gitignored for publication reasons and Railway skips gitignored
+        paths. So the material goes straight onto the volume, over the wire.
+
+        THE ENDPOINT DOES NOT EXIST unless `CG_SEED_UPLOAD_TOKEN` is set — a 404, the same as
+        any unrouted path, not a 403 that advertises what is behind it. Setting the variable
+        is the operator's act; unsetting it afterwards is the removal.
+
+        ATOMIC AND VERIFIED. Bytes land in a temp file beside the target, are hashed, are
+        compared against the digest the caller declared, and only then renamed into place. A
+        truncated transfer that loaded as a smaller corpus would be indistinguishable from a
+        smaller corpus, which is the one failure this must not be able to have.
+        """
+        import hashlib
+        import tempfile
+
+        token = os.environ.get(SEED_UPLOAD_ENV, "")
+        if not token:
+            return self._send(404, json.dumps({"error": "not found"}))
+        if not hmac.compare_digest(self.headers.get("X-Seed-Token", ""), token):
+            return self._send(401, json.dumps({"error": "bad seed token"}))
+        name = self.headers.get("X-Seed-Name", "")
+        if name not in UPLOADABLE:
+            return self._send(400, json.dumps({
+                "error": f"{name!r} is not an uploadable name",
+                "why": ("the channel writes a FIXED set of names. An endpoint that takes a "
+                        "caller-supplied path is an arbitrary-write endpoint wearing a "
+                        "narrower name."),
+                "uploadable": sorted(UPLOADABLE)}))
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0 or length > MAX_UPLOAD:
+            return self._send(400, json.dumps({
+                "error": f"content-length {length} outside 1..{MAX_UPLOAD}"}))
+        declared = (self.headers.get("X-Seed-Sha256") or "").strip()
+        if not declared:
+            return self._send(400, json.dumps({
+                "error": "X-Seed-Sha256 is required",
+                "why": ("an unverified upload that truncates lands a short file that loads "
+                        "as a smaller corpus, and nothing downstream could tell the "
+                        "difference")}))
+
+        target = Path(SNAPSHOT_PATH).parent / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        h = hashlib.sha256()
+        got = 0
+        fd, tmp = tempfile.mkstemp(dir=str(target.parent), prefix=f".{name}.")
+        try:
+            with os.fdopen(fd, "wb") as out:
+                while got < length:
+                    chunk = self.rfile.read(min(1 << 20, length - got))
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    h.update(chunk)
+                    got += len(chunk)
+            if got != length:
+                os.unlink(tmp)
+                return self._send(400, json.dumps({
+                    "error": f"short transfer: {got} of {length} bytes"}))
+            if h.hexdigest() != declared:
+                os.unlink(tmp)
+                return self._send(400, json.dumps({
+                    "error": "sha256 mismatch — the bytes that arrived are not the bytes "
+                             "that were sent",
+                    "declared": declared, "received": h.hexdigest()}))
+            was = target.stat().st_size if target.exists() else 0
+            os.replace(tmp, target)
+        except Exception as exc:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            return self._send(500, json.dumps({"error": f"{type(exc).__name__}: {exc}"}))
+
+        # The window holds a snapshot in memory; a replaced substrate that nothing rereads is
+        # a replaced substrate nobody is using.
+        try:
+            corpus_snapshot(reload=True)
+        except Exception:
+            pass
+        return self._send(200, json.dumps({
+            "ok": True, "name": name, "bytes": got, "sha256": h.hexdigest(),
+            "replaced_bytes": was,
+            "note": ("written atomically and verified against the declared digest. The "
+                     "journal is never overwritten by this channel — see UPLOADABLE.")}))
+
     def do_POST(self):
         path = self.path.split("?")[0]
         if not self._gate(path):
             return
+        if path == "/seed":
+            # HANDLED BEFORE `_body()`. The corpus is tens of megabytes of pickle; running it
+            # through a JSON parser would fail on the first byte, and reading it twice is not
+            # possible on a socket. So the raw stream is taken here and nowhere else.
+            return self._seed()
         b = self._body()
         key = api_key(b.get("key"))          # request key or env; never logged
         try:

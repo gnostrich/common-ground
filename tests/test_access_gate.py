@@ -153,3 +153,103 @@ class ThePageCarriesTheTokenToEveryEndpoint(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheDataChannelIsNarrowAndVERIFIED(unittest.TestCase):
+    """The corpus arrives over the wire or not at all — and only under conditions.
+
+    It may not enter a git tree, public or private, and may not ship inside an image. That
+    constraint is what made `ui/boot.seed_state` unreachable: the staging directory is
+    gitignored for publication reasons, Railway skips gitignored paths, and correct code sat
+    unexecuted for every deploy that has ever run. The channel replaces the source, not the
+    rule.
+    """
+
+    def test_the_endpoint_does_not_exist_without_the_token_variable(self):
+        # NOT 403. A deploy with the variable unset must have no upload surface to find —
+        # a 403 advertises what is behind it.
+        import ui.server as srv
+        self.assertEqual("CG_SEED_UPLOAD_TOKEN", srv.SEED_UPLOAD_ENV)
+        src = __import__("inspect").getsource(srv.Handler._seed)
+        self.assertIn("404", src.split("bad seed token")[0])
+
+    def test_the_writable_names_are_a_FIXED_set_not_a_caller_path(self):
+        # An upload endpoint that takes a filename is an arbitrary-write endpoint wearing a
+        # narrower name.
+        import ui.server as srv
+        self.assertEqual({"corpus.snapshot", "proposer.journal.jsonl"}, srv.UPLOADABLE)
+
+    def test_a_digest_is_REQUIRED(self):
+        # An unverified upload that truncates lands a short file that loads as a smaller
+        # corpus, and nothing downstream could tell the difference.
+        import inspect
+
+        import ui.server as srv
+        src = inspect.getsource(srv.Handler._seed)
+        self.assertIn("X-Seed-Sha256", src)
+        self.assertIn("is required", src)
+
+    def test_the_write_is_atomic(self):
+        # A half-written snapshot at the real path is a corpus nobody can distinguish from a
+        # smaller one. Bytes land beside the target and are renamed only after verification.
+        import inspect
+
+        import ui.server as srv
+        src = inspect.getsource(srv.Handler._seed)
+        self.assertIn("mkstemp", src)
+        self.assertIn("os.replace", src)
+
+    def test_the_upload_size_ceiling_is_stated(self):
+        import ui.server as srv
+        self.assertEqual(256 * 1024 * 1024, srv.MAX_UPLOAD)
+
+    def test_the_seed_path_is_handled_before_the_json_body_parser(self):
+        # The corpus is tens of megabytes of pickle. Running it through a JSON parser fails on
+        # the first byte, and a socket cannot be read twice.
+        import inspect
+
+        import ui.server as srv
+        src = inspect.getsource(srv.Handler.do_POST)
+        self.assertLess(src.index('path == "/seed"'), src.index("self._body()"))
+
+    def test_the_seed_path_is_still_behind_the_ordinary_access_gate(self):
+        import ui.server as srv
+        self.assertNotIn("/seed", srv.OPEN_PATHS)
+
+
+class TheCorpusIsNEVERInAGitTree(unittest.TestCase):
+    """PERMANENT. Snapshot bytes in any git object is RED, now and afterwards."""
+
+    def _tracked(self):
+        import subprocess
+        from engine.constants import REPO_ROOT
+        out = subprocess.run(["git", "ls-files"], cwd=REPO_ROOT, capture_output=True,
+                             text=True, timeout=120)
+        return out.stdout.splitlines()
+
+    def test_no_snapshot_or_journal_is_tracked_now(self):
+        bad = [p for p in self._tracked()
+               if p.endswith(("corpus.snapshot", "proposer.journal.jsonl", "pool.jsonl"))]
+        self.assertEqual([], bad, f"corpus bytes are tracked: {bad}")
+
+    def test_no_staging_directory_is_tracked(self):
+        bad = [p for p in self._tracked() if p.startswith("seed_runs/")]
+        self.assertEqual([], bad, f"the staging copy is tracked: {bad}")
+
+    def test_no_tracked_file_carries_a_python_pickle_header(self):
+        # The snapshot is a pickle. A pickle in the tree is corpus bytes under another name,
+        # whatever the path says.
+        from engine.constants import REPO_ROOT
+        for rel in self._tracked():
+            p = REPO_ROOT / rel
+            if not p.is_file() or p.stat().st_size < 4096:
+                continue
+            with p.open("rb") as fh:
+                head = fh.read(2)
+            self.assertNotEqual(b"\x80\x05", head, f"{rel} is a pickle")
+
+    def test_the_ignore_rules_still_exclude_them(self):
+        from engine.constants import REPO_ROOT
+        body = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+        for name in ("runs/corpus.snapshot", "runs/proposer.journal.jsonl", "seed_runs/"):
+            self.assertIn(name, body)
