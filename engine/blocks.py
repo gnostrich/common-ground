@@ -130,21 +130,97 @@ def build_fibers(
     return fibers
 
 
-def edges_from_fibers(fibers: Sequence[Fiber], slots: Sequence[Slot] = ()) -> list[QEdge]:
-    """One undirected Q edge per within-fiber pair. Weight is the DECLARED weight.
+#: How an apex node is addressed in the Q graph. NOT a slot id and deliberately not shaped
+#: like one: an apex is an ENERGY OBJECT, not a claim. It has no nu, no address, no type and
+#: no tier; it cannot be cited, proposed, promoted or typed into. The prefix makes a stray
+#: apex in a slot-shaped position visible instantly rather than silently plausible.
+APEX_PREFIX = "apex:"
 
-    A declared correspondence is asserted, not scored, so every within-fiber pair carries
-    `DECLARED_WEIGHT`; there is no token similarity to weight it by. `slots` is accepted for
-    call-site compatibility and unused — edges are a function of the fibers alone now.
+
+def apex_id(fiber) -> str:
+    """The coequalizer's name. Derived from the fiber's own members, so it is stable."""
+    members = sorted(getattr(fiber, "slots", fiber))
+    return APEX_PREFIX + join_hash(*members)[:16]
+
+
+def is_apex(node: str) -> bool:
+    return str(node).startswith(APEX_PREFIX)
+
+
+def edges_from_fibers(fibers: Sequence[Fiber], slots: Sequence[Slot] = ()) -> list[QEdge]:
+    """APEX-STAR: one derived apex per fiber, k face-edges to it. NOT all-pairs.
+
+    A fiber is a QUOTIENT — several claims declared to be one proposition — and the
+    coequalizer of that quotient is a single object the faces map onto. This function used to
+    emit one edge per within-fiber PAIR, so an n-member fiber contributed n(n-1)/2 couplings
+    at full declared weight from what is, in the declarations, a chain. Measured on the live
+    corpus before the repair: one 120-member fiber carried 73% of the entire corpus's
+    fiber-coupling energy, and the corpus-wide over-coupling factor was 5.6x. Large fibers
+    were rigidified in proportion to the SQUARE of their size and manufactured pair-level
+    contest between claims nobody had compared.
+
+    All-pairs also asserts something the declarations never did: that member 7 and member 92
+    were directly declared equivalent, when what was declared is a path between them.
+
+    THE WEIGHT WAS JUSTIFIED AND THE COUNT NEVER WAS. `DECLARED_WEIGHT` on every face-edge
+    stands — a declared correspondence is asserted, not scored, and there is no similarity to
+    weight it by. What changes is that k members now contribute k edges instead of k(k-1)/2.
+
+    THE DEVIATION COST BECOMES k-INDEPENDENT in the sense that matters: a member's coupling to
+    the quotient no longer grows with how many siblings it has, so a fiber cannot dominate its
+    block by being large. A control plants a 120-member fiber and asserts exactly that.
+
+    `slots` is accepted for call-site compatibility and unused.
     """
     out: dict[tuple[str, str], QEdge] = {}
     for fiber in fibers:
         members = sorted(fiber.slots)
-        for i in range(len(members)):
-            for j in range(i + 1, len(members)):
-                u, v = members[i], members[j]
-                out[(u, v)] = QEdge(u=u, v=v, weight=DECLARED_WEIGHT, origin="correspondence")
+        if len(members) < 2:
+            continue
+        apex = apex_id(fiber)
+        for m in members:
+            out[(apex, m)] = QEdge(u=apex, v=m, weight=DECLARED_WEIGHT,
+                                   origin="correspondence")
     return [out[k] for k in sorted(out)]
+
+
+def expand_stars(edges: Sequence[QEdge]) -> list[QEdge]:
+    """The FACE-TO-FACE view of apex-star edges, for consumers that need slot adjacency.
+
+    Apex-star is the right shape for the ENERGY: k face-edges to a derived consensus, so a
+    member's coupling does not grow with its sibling count. It is the wrong shape for anything
+    that asks "are these two slots joined" — the loop finder walking adjacency, the meter
+    looking up a pair's weight — because under it two faces of one fiber are two hops apart
+    through a node that is not a slot. Both consumers silently produced NOTHING: the loop
+    finder found no cycles, so `measurements` came back empty and `mean_floor()` returned
+    exactly 0.0, and the null battery's planted-defect cells stopped firing. A false zero,
+    not a smaller number.
+
+    THE EXPANSION IS THE SAME IDENTITY THE ENERGY USES, so the two views cannot drift.
+    (lambda*w/2)*(k/(k-1))*sum_i ||p_i - p_bar||^2 is the same quadratic form as pairwise
+    couplings of w/(k-1) between every pair of faces. At k=2 that is exactly w — a two-member
+    fiber is one declared pair and nothing about it changed — and at k=120 it is w/119.
+    Zero freedom: the anchor case fixes it and the algebra does the rest.
+    """
+    out: list[QEdge] = []
+    stars: dict[str, tuple[float, str, list[str]]] = {}
+    for e in edges:
+        apex = e.u if is_apex(e.u) else (e.v if is_apex(e.v) else None)
+        if apex is None:
+            out.append(e)
+            continue
+        w, origin, faces = stars.get(apex, (e.weight, e.origin, []))
+        faces.append(e.v if apex == e.u else e.u)
+        stars[apex] = (w, origin, faces)
+    for w, origin, faces in stars.values():
+        if len(faces) < 2:
+            continue
+        implied = w / (len(faces) - 1.0)
+        members = sorted(faces)
+        for i, u in enumerate(members):
+            for v in members[i + 1:]:
+                out.append(QEdge(u=u, v=v, weight=implied, origin=origin))
+    return out
 
 
 def build_blocks(
@@ -163,6 +239,14 @@ def build_blocks(
         return []
 
     ids = {s.id for s in relevant}
+    # APEX NODES CARRY NO DELTA, because they are not claims — nobody proposed one and nobody
+    # can. They are the coequalizers the faces couple to, so they join the graph on the
+    # strength of an ACTIVE face rather than on their own: an apex whose members are all
+    # inactive contributes nothing, and one with an active member is what connects it to its
+    # siblings. Without this the apex-star edges would be filtered out entirely and the
+    # quotient would silently stop coupling.
+    ids |= {n for e in edges for n in (e.u, e.v)
+            if is_apex(n) and (e.u in ids or e.v in ids)}
     adj: dict[str, set[str]] = defaultdict(set)
     kept = [e for e in edges if e.u in ids and e.v in ids]
     for e in kept:
@@ -183,7 +267,12 @@ def build_blocks(
             component.add(cur)
             stack.extend(n for n in adj[cur] if n not in component)
         seen |= component
-        members = tuple(sorted(component))
+        # AN APEX IS NOT A BLOCK MEMBER. It couples the faces and it is not one of them: a
+        # block listing an apex among its slots would put a non-claim into contest counts,
+        # settlement and every downstream reading that treats block membership as claims.
+        members = tuple(sorted(n for n in component if not is_apex(n)))
+        if not members:
+            continue
         block_edges = tuple(e for e in kept if e.u in component and e.v in component)
         blocks.append(Block(id=join_hash(*members)[:16], slots=members, edges=block_edges))
 
@@ -344,7 +433,11 @@ def loops_from_fibers(
     global LOOPS_UNSEARCHED
 
     allowed = set(restrict_to) if restrict_to is not None else None
-    adj = _adjacency(edges)
+    # THE EXPANDED VIEW. Adjacency is a question about SLOTS, and apex-star answers it
+    # with a non-slot in between — the BFS drops the apex, finds no adjacency, and
+    # reports no cycles at all. `expand_stars` restores the face-to-face view from the
+    # same identity the energy uses, so the two cannot drift.
+    adj = _adjacency(expand_stars(edges))
     loops: list[LoopSpec] = []
     seen: set[frozenset[str]] = set()
     unsearched = 0

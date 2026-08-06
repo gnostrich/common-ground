@@ -761,6 +761,15 @@ CLAIMED_PROPERTY_SITES: tuple[dict[str, str], ...] = (
     {"site": "engine/holes.py:enumerate_holes",
      "claim": "the cross-product is never materialized; bounded before materialization",
      "control": "tests/test_correspondence.py:HoleEnumerationIsStructural"},
+    {"site": "engine/blocks.py:expand_stars",
+     "claim": "a member's coupling does not grow with its sibling count; the implied "
+              "face-pair weight is w/(k-1), anchored at k=2 where a fiber is one declared "
+              "pair",
+     "control": "tests/test_apex.py:DeviationCostIsIndependentOfK"},
+    {"site": "engine/blocks.py:edges_from_fibers",
+     "claim": "k members contribute k edges, not k(k-1)/2; a large fiber cannot dominate "
+              "its block by size",
+     "control": "tests/test_apex.py:TheFactorizationIsAStar"},
     {"site": "engine/blocks.py:loop_edges",
      "claim": "edges are exactly the declared same_claim pairs, not a clique",
      "control": "tests/test_correspondence.py:HolonomyExclusion"},

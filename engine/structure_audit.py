@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .blocks import build_fibers, edges_from_fibers
+from .blocks import build_fibers, edges_from_fibers, expand_stars
 from .pipeline import Ledger
 
 EVIDENCE = "unary-evidence"
@@ -111,8 +111,13 @@ def classify_factors(ledger: Ledger) -> tuple[dict[str, int], list[str]]:
         counts[QPRIOR] += 1 if s.id in have_prior else 0
         counts[TYPECON] += 1                      # the slot's type is a factor on it
 
+    # THROUGH THE CANONICAL EXPANSION. This module asks chart-level questions about SLOT
+    # pairs — is this edge intra-chart or inter-chart — and an apex has no chart, so reading
+    # apex-star edges directly classifies every face-edge as intra-chart by accident (both
+    # endpoints resolve to None, which compares equal). Fourth consumer of fiber structure,
+    # and the first one found by a failing audit rather than by the sweep.
     chart_of = ledger.chart_of
-    for e in ledger.edges:
+    for e in expand_stars(ledger.edges):
         if e.origin in ("lexicon", "preminted"):
             counts[QPRIOR] += 1
         elif e.origin == _CORRESPONDENCE_ORIGIN:
@@ -127,9 +132,10 @@ def classify_factors(ledger: Ledger) -> tuple[dict[str, int], list[str]]:
 
 def spurious_edges(ledger: Ledger) -> list[str]:
     """Edges whose weight is not derivable from the fibers — hand-set / spurious factors."""
-    derived = {(e.u, e.v): e.weight for e in edges_from_fibers(ledger.fibers, ledger.slots)}
+    derived = {(e.u, e.v): e.weight
+               for e in expand_stars(edges_from_fibers(ledger.fibers, ledger.slots))}
     out: list[str] = []
-    for e in ledger.edges:
+    for e in expand_stars(ledger.edges):
         if e.origin == _CORRESPONDENCE_ORIGIN:
             d = derived.get((e.u, e.v))
             if d is None or abs(d - e.weight) > 1e-9:
@@ -148,7 +154,11 @@ def membership_violations(ledger: Ledger) -> list[str]:
     is a string-overlap / similarity grouping and makes the audit RED. This is the check the
     Jaccard membership evaded.
     """
-    corr = {(e.u, e.v) for e in ledger.edges if e.origin == _CORRESPONDENCE_ORIGIN}
+    # Through the expansion, for the same reason: `build_fibers` takes SLOT PAIRS, and an
+    # apex-star edge is a slot paired with a node that is not a slot. Reading them raw makes
+    # every fiber look unreproducible from its own declarations.
+    corr = {(e.u, e.v) for e in expand_stars(ledger.edges)
+            if e.origin == _CORRESPONDENCE_ORIGIN}
     expected = {frozenset(f.slots) for f in build_fibers(ledger.slots, corr)}
     actual = {frozenset(f.slots) for f in ledger.fibers}
     out: list[str] = []

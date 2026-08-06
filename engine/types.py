@@ -186,6 +186,17 @@ class QEdge:
     origin: str  # "fiber" | "lexicon" | "preminted"
 
     def crosses_charts(self, chart_of: dict[str, Chart]) -> bool:
+        """Does this edge join two charts? An APEX endpoint is chart-neutral.
+
+        An apex is the coequalizer of a fiber, not a claim: it has no nu, no address and no
+        chart, so it lives over every chart its faces do and over none of its own. Reading its
+        absence from `chart_of` as "a different chart" would make every face-edge of a
+        same-chart fiber look cross-chart, which is what happened the moment apex-star
+        replaced all-pairs — an intra-chart sheaf edge started reporting itself as a
+        translation.
+        """
+        if str(self.u).startswith("apex:") or str(self.v).startswith("apex:"):
+            return False
         return chart_of.get(self.u) != chart_of.get(self.v)
 
 
@@ -221,8 +232,17 @@ class Block:
     edges: tuple[QEdge, ...]
 
     def neighbours(self) -> dict[str, list[tuple[str, float]]]:
+        """Slot-to-slot adjacency, THROUGH THE CANONICAL EXPANSION.
+
+        An apex is not a slot, so `e.u in adj` is false for every apex-star face-edge and this
+        would return an empty adjacency for every fibered block — silently, as an empty dict
+        rather than an error. Sixth consumer of fiber structure, and the first one found by
+        sweeping for the pattern instead of by a downstream zero.
+        """
+        from .blocks import expand_stars
+
         adj: dict[str, list[tuple[str, float]]] = {s: [] for s in self.slots}
-        for e in self.edges:
+        for e in expand_stars(self.edges):
             if e.u in adj and e.v in adj:
                 adj[e.u].append((e.v, e.weight))
                 adj[e.v].append((e.u, e.weight))

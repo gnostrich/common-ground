@@ -226,6 +226,37 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   adjudicated an empty list and reported a clean census over nothing — which it did, and the
   census of all zeroes is what showed it. A repair applied where the thing being repaired does
   not yet exist reports success.
+- **CONSTANTS ARE DERIVED, NEVER CHOSEN — the template, beside the aging halving.** A
+  constant enters this system only through an ANCHOR CASE where freedom is zero, with algebra
+  dictating everything else. Apex-star's `k/(k-1)` is the second instance and the clearest:
+  the bare consensus form is all-pairs divided by k, which is the de-duplication wanted at
+  k=120 and an OVER-correction at k=2 — where a fiber IS one declared pair and the two
+  factorizations must agree exactly. Fixing k=2 fixes the whole family, and the per-face
+  coefficient falls out k-independent. The same discipline produced the meter's implied
+  face-pair weight `w/(k-1)`, which is `w` at the anchor by construction. **A number nobody
+  could have chosen differently is not a parameter.**
+- **AN APEX MAY HAVE NO DEGREE OF FREEDOM ITS FACES DO NOT DETERMINE, and the first
+  implementation gave it three.** A coequalizer is not a free latent: the first version gave
+  the apex a uniform initial state, its own entropy term and its own gradient — three tuned
+  knobs sitting in the ENERGY CORE, which is the class this project exists to delete. It is
+  now derived consensus, `p_bar = (1/k) sum p_j`, recomputed every evaluation: no
+  initialization, no prior, no free entropy, no update rule, zero new parameters. **The floor
+  must come from face-to-face frustration MEDIATED through the apex, never from the apex's
+  own settled state.**
+- **A CONTROL THAT GOES QUIET IS A DEFECT, NOT A PASS.** Apex-star made the loop finder return
+  no cycles — faces are two hops apart through a node that is not a slot — so `measurements`
+  came back empty and `mean_floor()` returned exactly 0.0. The null battery's planted-defect
+  cells iii, iv and v stopped firing, and their tests read as failures only because they
+  assert their own fires. Had they merely checked "no unexpected contest", a total loss of
+  detection power would have shown as green. **A false zero reads as a finding — nothing
+  frustrates — and is worse than an error.**
+- **ONE CANONICAL EXPANSION, OR SIX PRIVATE ONES.** Apex-star changes the REPRESENTATION, not
+  the semantics, so every consumer of fiber structure reads through `engine/blocks.expand_stars`
+  and none re-derives adjacency privately. Six were found: the energy (by construction), the
+  meter's weight map, the loop finder, the structure audit's three functions, the shadow
+  calibration, and block adjacency. **Five of the six were found by a downstream zero and only
+  the last by sweeping for the pattern** — which is the wrong ratio, and the reason the sweep
+  is now a standing step rather than a reaction.
 - Similarity substituted for a declared relation (Jaccard fibers). **DELETED.**
 - Term overlap in the ANSWER path. **DELETED.** (Navigation is not evidence.)
 - Docstrings claiming mechanisms the call graph lacks ("index", "settlement runs", "provably

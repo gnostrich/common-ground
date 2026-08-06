@@ -113,6 +113,55 @@ class FreeEnergy:
     edges: tuple[QEdge, ...]
     beta: float
     clamped: frozenset[str] = frozenset()
+    #: THE APEX IS NOT A VARIABLE. It has no initial state, no prior, no entropy and no update
+    #: rule of its own — it is the DERIVED CONSENSUS of its faces, recomputed from the current
+    #: marginals every time this energy is evaluated. Zero new parameters.
+    #:
+    #: The first version of this made it a latent node with a uniform seed, its own entropy
+    #: term and its own gradient. That is three degrees of freedom the faces do not determine,
+    #: sitting in the energy core — a tuned knob in exactly the place this project deletes
+    #: them. A coequalizer is not an independent unknown; it is what the faces already agree
+    #: on, and the floor must come from face-to-face frustration MEDIATED through it, never
+    #: from an apex's own settled state.
+    #:
+    #: With p_bar = (1/k) sum_j p_j the coupling is
+    #:
+    #:     (lambda*w/2) * (k/(k-1)) * sum_i ||p_i - p_bar||^2
+    #:
+    #: and its gradient is lambda*w*(k/(k-1))*(p_i - p_bar), because sum_j (p_j - p_bar)
+    #: vanishes identically. No latent appears in either expression.
+    #:
+    #: THE k/(k-1) IS DERIVED, NOT TUNED, and leaving it out was a real physics error caught
+    #: by the k=2 case. The identity sum_i ||p_i - p_bar||^2 = (1/k) sum_{i<j} ||p_i - p_j||^2
+    #: means the bare consensus form is all-pairs divided by k — which is the de-duplication
+    #: wanted at k=120 and an OVER-correction at k=2, where a fiber is exactly one declared
+    #: pair and the two factorizations must agree exactly. Normalising by k/(k-1) makes k=2
+    #: reproduce the declared pair term and leaves the per-face coefficient tending to
+    #: lambda*w as k grows, which is the k-independence the whole change is for.
+
+    def _stars(self, p: Mapping[str, Vector]) -> list[tuple[float, list[str], Vector]]:
+        """(weight, faces, consensus) per apex. Read off the edges; nothing is stored."""
+        from .blocks import is_apex
+
+        groups: dict[str, tuple[float, list[str]]] = {}
+        for edge in self.edges:
+            apex = edge.u if is_apex(edge.u) else (edge.v if is_apex(edge.v) else None)
+            if apex is None:
+                continue
+            face = edge.v if apex == edge.u else edge.u
+            if p.get(face) is None:
+                continue
+            w, faces = groups.get(apex, (edge.weight, []))
+            faces.append(face)
+            groups[apex] = (w, faces)
+        out = []
+        for _apex, (w, faces) in groups.items():
+            if len(faces) < 2:
+                continue           # a star with one face couples nothing to anything
+            k = float(len(faces))
+            bar = [math.fsum(p[f][i] for f in faces) / k for i in range(NBV)]
+            out.append((w, faces, bar))
+        return out
 
     def _e(self, s: str) -> Vector:
         return self.evidence.get(s) or [0.0] * NBV
@@ -146,6 +195,14 @@ class FreeEnergy:
                 (pu[k] - pv[k]) ** 2 for k in range(NBV)
             )
 
+        # APEX-STAR, as derived consensus. Each face is pulled toward what its fiber currently
+        # agrees on, not toward each of its siblings separately — so a member's coupling does
+        # not grow with how many siblings it has, and a large fiber cannot rigidify itself.
+        for w, faces, bar in self._stars(p):
+            norm = len(faces) / (len(faces) - 1.0)
+            total += 0.5 * LAMBDA * w * norm * math.fsum(
+                (p[f][k] - bar[k]) ** 2 for f in faces for k in range(NBV))
+
         return total
 
     def gradient(self, p: Mapping[str, Vector]) -> dict[str, Vector]:
@@ -175,6 +232,19 @@ class FreeEnergy:
             if gv is not None:
                 for k in range(NBV):
                     gv[k] += coef * (pv[k] - pu[k])
+
+        # d/dp_i of (lambda*w/2) sum_j ||p_j - p_bar||^2 is lambda*w*(p_i - p_bar): the
+        # cross-terms cancel because sum_j (p_j - p_bar) is identically zero. There is no
+        # apex gradient because there is no apex variable.
+        for w, faces, bar in self._stars(p):
+            coef = LAMBDA * w * (len(faces) / (len(faces) - 1.0))
+            for f in faces:
+                g = grad.get(f)
+                if g is None:
+                    continue
+                pf = p[f]
+                for k in range(NBV):
+                    g[k] += coef * (pf[k] - bar[k])
 
         return grad
 

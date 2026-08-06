@@ -331,15 +331,30 @@ class Fibers(unittest.TestCase):
         self.assertEqual([tuple(f.slots) for f in fibers], [("a", "b", "c")])
 
     def test_edge_weight_is_the_declared_weight(self):
-        from engine.blocks import DECLARED_WEIGHT
+        """THROUGH THE CANONICAL EXPANSION, because apex-star changed the representation.
+
+        A two-member fiber emits two face-edges to its apex rather than one edge between the
+        members. That is the representation; the SEMANTICS are unchanged, and this control is
+        about the semantics — a declared correspondence is asserted, not scored, so it carries
+        the declared weight. Asserting the raw edge count here would have been asserting the
+        old shape, which is how a real control turns into a fossil of an old implementation.
+        `expand_stars` is the one view every consumer reads through, and at k=2 it must give
+        back exactly the declared pair at exactly the declared weight.
+        """
+        from engine.blocks import DECLARED_WEIGHT, expand_stars, is_apex
         slots = self._slots(
             ("a", "\x01en\x01x", "assert", "english"),
             ("b", "\x01lean\x01y", "assert", "lean"),
         )
-        edges = edges_from_fibers(build_fibers(slots, correspondence=[("a", "b")]), slots)
+        raw = edges_from_fibers(build_fibers(slots, correspondence=[("a", "b")]), slots)
+        self.assertEqual(2, len(raw), "apex-star emits one face-edge per member")
+        self.assertTrue(all(is_apex(e.u) or is_apex(e.v) for e in raw))
+
+        edges = expand_stars(raw)
         self.assertEqual(len(edges), 1)
         self.assertEqual(edges[0].weight, DECLARED_WEIGHT)
         self.assertEqual(edges[0].origin, "correspondence")
+        self.assertEqual({"a", "b"}, {edges[0].u, edges[0].v})
 
     def test_a_declared_group_has_no_similarity_size_cap(self):
         from engine.types import Fiber
