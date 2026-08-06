@@ -119,6 +119,38 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   the drifting triple, and an answer journalled without the region it was named in. Both made
   a real measurement unrecoverable after the process exited. If a number is worth logging, the
   thing it counts is worth logging.
+- **A GUARD NUMBER THAT MEASURED THE MACHINERY INSTEAD OF THE CLAIM.** The acceptance guard
+  was a function of generation verbosity: `named_pairs` deduped repeats and `len(void)` did
+  not, so acceptance compared a deduped numerator against a repetition-inflated denominator.
+  It swung 97% -> 2% -> 6% across walk steps according to how much the model had repeated
+  itself, not according to what it had resolved. This is the gate-10 class operating at the
+  METRIC level — a number claiming to measure the field while measuring the apparatus.
+
+  **Second occurrence of the same shape.** The first was K's Hankel input: the block settling
+  trace is a geometric decay whose rate is the solver's schedule, so its top singular value
+  was a property of the optimizer and identical across every site in a block. A guard fed by
+  model output, and a guard fed by solver output, both reported on their own machinery.
+
+  **STANDING CONTROL SHAPE, from the pattern:** any metric fed by model output must be
+  INVARIANT TO VERBOSITY AND REPETITION — computable from the set of distinct things named,
+  never from the count of lines emitted. Any metric fed by solver output must be invariant to
+  the solver's schedule — measured ACROSS separate settlements, never within one trace. A new
+  metric ships with the invariance its input demands, asserted, or it is not a guard.
+  Controls: `tests/test_region.py:AcceptanceMustNotMeasureVerbosity`.
+
+- **`openrouter/auto` silently routed the whole corpus to a LITE model.** 448 of 465 calls
+  went to `google/gemini-2.5-flash-lite`, which on one pinned region emitted 1,789 arrow lines
+  covering 51 distinct pairs — 35 repeats each — and **zero `same_claim` in any of them**. The
+  same region, same prompt, same temperature: `gemini-2.5-flash` gave 24 lines / 24 distinct
+  pairs / 5 `same_claim`; `claude-sonnet-4` gave 16/16/2; `gpt-4o-mini` gave 15/15. Every
+  pinned model has repeats-per-pair of exactly 1.0.
+
+  `same_claim` is the ONLY loop-eligible relation, so a model that never emits it cannot grow
+  a fiber, cannot close a cycle, and cannot produce a floor. The corpus's forest topology —
+  359 of 367 components trees, only 8 cycles in 16,564 arrows — is downstream of a routing
+  default, not of the material. **A model selector is a mechanism parameter, and `auto` means
+  the mechanism was chosen by a vendor's cost heuristic per call.**
+
 - **A process that cannot say what phase it is in.** The walk burned four minutes in an eager
   global closure before its first print, and "silent" meant "unknown whether loading or
   wedged" for twenty-two minutes. This is the process-level form of a docstring claiming a

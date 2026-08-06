@@ -32,7 +32,7 @@ class TwoMeasuresOverOneStructure(unittest.TestCase):
     def test_promotion_is_reweighting_not_transport(self):
         fast, slow = Measure("fast"), Measure("slow")
         addr = "a" * 64
-        fast.reweight(addr, 1.0)
+        fast.reweight(addr, 1.0, by="walk.arrow")
         adm = Admission(site=addr, residuals=("r1",), hankel_top=9.0, second_fdt_floor=1.0,
                         threshold=2.0, gate_pass=True, conservative=True, promoted=True,
                         reason="promoted through the gate", value="T")
@@ -55,8 +55,28 @@ class TwoMeasuresOverOneStructure(unittest.TestCase):
 
     def test_a_plain_weight_table_validates(self):
         m = Measure("slow")
-        m.reweight("a" * 64, 0.5)
+        m.reweight("a" * 64, 0.5, by="perturb.retain")
         m.validate()
+
+    def test_planted_an_unauthorized_write_point_is_refused(self):
+        """RED. Two births, one decay, one transfer — and nothing else. A fifth write-point
+        is how a measure quietly becomes a store nobody can account for."""
+        from engine import EngineError
+        from engine.mz import WRITE_POINTS
+
+        self.assertEqual(WRITE_POINTS, {"perturb.retain", "walk.arrow",
+                                        "aging.decay", "mz.promote"})
+        m = Measure("fast")
+        for bad in ("ingestion", "settle", "", "corpus.load"):
+            with self.assertRaises(EngineError):
+                m.reweight("a" * 64, 1.0, by=bad)
+
+    def test_arrows_and_slots_share_one_keyspace(self):
+        """A separate table for arrow weights would be the second store this file refuses."""
+        from engine.mz import arrow_key
+
+        self.assertEqual(arrow_key("z", "a"), arrow_key("a", "z"),
+                         "an arrow and its reverse are one relation for occupancy")
 
     def test_planted_a_bool_is_not_a_weight(self):
         from engine import EngineError

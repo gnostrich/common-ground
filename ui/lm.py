@@ -33,7 +33,19 @@ from engine.types import BValue, Document
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # OpenRouter keys start with sk-or-; the operator asked for auto model-selection.
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openrouter/auto")
+#: PINNED, not `auto`. A model selector is a mechanism parameter, and `openrouter/auto`
+#: means the mechanism is chosen by a vendor's cost heuristic per call.
+#:
+#: Measured, one region, same prompt, same temperature 0.0:
+#:   auto -> gemini-2.5-flash-lite   1,789 lines / 51 distinct pairs / 35.1 repeats / 0 same_claim
+#:   gemini-2.5-flash                   24 lines / 24 distinct pairs /  1.0 repeats / 5 same_claim
+#:   claude-sonnet-4                    16 lines / 16 distinct pairs /  1.0 repeats / 2 same_claim
+#:   gpt-4o-mini                        15 lines / 15 distinct pairs /  1.0 repeats / 0 same_claim
+#:
+#: `auto` served 448 of 465 historical calls with the LITE model, and `same_claim` is the only
+#: loop-eligible relation — so a model that never emits it cannot grow a fiber, close a cycle
+#: or produce a floor. The corpus's forest topology is downstream of this default.
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash")
 
 
 _VALID_TYPES = ("assert", "define", "conditional", "normative")
@@ -55,7 +67,7 @@ def api_key(explicit: str | None = None) -> str:
 
 
 def model_for(key: str) -> str:
-    """Always `openrouter/auto` — auto model-selection, per the operator's standing rule."""
+    """The PINNED model. Overridable by `OPENROUTER_MODEL`, never routed per call."""
     if key and not _is_openrouter(key):
         raise RuntimeError(
             "refusing a non-OpenRouter key: this build calls OpenRouter only "

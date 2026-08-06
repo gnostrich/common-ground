@@ -242,10 +242,16 @@ class OpenRouterOnly(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             model_for("sk-ant-abc")
 
-    def test_the_model_is_always_auto(self):
-        from ui.lm import model_for
+    def test_the_model_is_the_pin_not_auto(self):
+        """SUPERSEDED CONTROL. This asserted `openrouter/auto` and encoded the standing rule
+        that a router picks the model. That rule cost the corpus its topology: auto served
+        448 of 465 calls with a lite model that never emits `same_claim`, the only
+        loop-eligible relation. The rule changed, so the control changed with it rather than
+        being deleted — see `TheModelIsPinnedNotRouted` for what replaced it."""
+        from ui.lm import OPENROUTER_MODEL, model_for
 
-        self.assertEqual(model_for("sk-or-v1-whatever"), "openrouter/auto")
+        self.assertEqual(model_for("sk-or-v1-whatever"), OPENROUTER_MODEL)
+        self.assertNotEqual(OPENROUTER_MODEL, "openrouter/auto")
 
 
 class TheWindowIsHonestAboutTheCorpus(unittest.TestCase):
@@ -298,3 +304,32 @@ class TheWindowIsHonestAboutTheCorpus(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheModelIsPinnedNotRouted(unittest.TestCase):
+    """A model selector is a mechanism parameter, not a vendor's per-call cost decision.
+
+    `openrouter/auto` served 448 of 465 calls with `gemini-2.5-flash-lite`, which on one
+    pinned region emitted 1,789 arrow lines over 51 distinct pairs — 35 repeats each — and
+    ZERO `same_claim`. Every pinned model tried had repeats-per-pair of exactly 1.0, and two
+    of three emitted `same_claim`. Since `same_claim` is the only loop-eligible relation, that
+    routing default is upstream of the corpus's forest topology.
+    """
+
+    def test_planted_auto_routing_is_not_the_default(self):
+        from ui.lm import OPENROUTER_MODEL
+
+        self.assertNotEqual(OPENROUTER_MODEL, "openrouter/auto",
+                            "auto lets a cost heuristic choose the mechanism per call")
+        self.assertIn("/", OPENROUTER_MODEL, "a pinned model names its vendor and version")
+
+    def test_model_for_returns_the_pin(self):
+        from ui.lm import OPENROUTER_MODEL, model_for
+
+        self.assertEqual(model_for("sk-or-test"), OPENROUTER_MODEL)
+
+    def test_a_non_openrouter_key_is_still_refused(self):
+        from ui.lm import model_for
+
+        with self.assertRaises(RuntimeError):
+            model_for("sk-ant-nope")

@@ -66,6 +66,32 @@ HISTORY_DEPTH = 2 * HANKEL_WINDOW
 
 FAST, SLOW = "fast", "slow"
 
+#: THE ONLY PLACES A MEASURE MAY BE WRITTEN. Two births, one decay, one transfer.
+#:
+#:   perturb.retain — a retained claim and its retained attachment arrows are born at 1.0.
+#:                    This is where new fast material comes from on the window side.
+#:   walk.arrow     — a novel arrow the sampler extracted is born at 1.0. Same reason: an
+#:                    extraction-tier proposal IS fast occupancy, by definition.
+#:   aging.decay    — the only DECREMENT. Halve on visited-unconfirmed, strike on superseded
+#:                    or contradicted (D14).
+#:   mz.promote     — the only SLOW write. Promotion is re-weighting, never transport.
+#:
+#: Ingestion is deliberately absent: corpus material is not a proposal and has no fast
+#: occupancy. Anything else calling `reweight` is a fifth write-point, and a fifth
+#: write-point is how a measure quietly becomes a store nobody can account for.
+WRITE_POINTS = frozenset({"perturb.retain", "walk.arrow", "aging.decay", "mz.promote"})
+
+
+def arrow_key(a: str, b: str) -> str:
+    """An ARROW's address under the measures. Unordered, because an arrow and its reverse
+    are one relation for the purpose of occupancy even though they are two proposals.
+
+    Arrows and slots share one keyspace on purpose. The measures range over the ONE
+    hypergraph, and a separate table for arrow weights would be the second store this file
+    exists to refuse — which is exactly what `Aging` used to be before it wrote through here.
+    """
+    return f"{a}|{b}" if a <= b else f"{b}|{a}"
+
 
 @dataclass(slots=True)
 class Measure:
@@ -95,8 +121,20 @@ class Measure:
     def of(self, addr: str) -> float:
         return float(self.weight.get(addr, 0.0))
 
-    def reweight(self, addr: str, w: float) -> None:
-        """Promotion and aging are BOTH this. Nothing is copied, moved or deleted."""
+    def reweight(self, addr: str, w: float, *, by: str) -> None:
+        """Promotion and aging are BOTH this. Nothing is copied, moved or deleted.
+
+        `by` NAMES THE WRITE-POINT and is required. The authorized set is closed, so a new
+        caller is a deliberate amendment rather than a line somebody added — and the failure
+        is loud at the write rather than discovered later as an occupancy nobody can explain.
+        """
+        from . import EngineError
+
+        if by not in WRITE_POINTS:
+            raise EngineError(
+                f"{by!r} is not an authorized write-point. A measure is written at exactly "
+                f"{sorted(WRITE_POINTS)} — two births, one decay, one transfer — and a fifth "
+                f"is how a measure becomes a store nobody can account for.")
         self.weight[addr] = float(w)
 
 
@@ -316,5 +354,5 @@ def promote(admission: Admission, fast: Measure, slow: Measure) -> None:
     """
     if not admission.promoted:
         return
-    slow.reweight(admission.site, 1.0)
-    fast.reweight(admission.site, 0.0)
+    slow.reweight(admission.site, 1.0, by="mz.promote")
+    fast.reweight(admission.site, 0.0, by="mz.promote")
