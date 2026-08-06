@@ -1,0 +1,84 @@
+#!/bin/bash
+# RECOVERY AFTER A CONTAINER RECLAIM. Idempotent; safe to run when nothing is wrong.
+#
+# WHY THIS EXISTS. The container is reclaimed roughly hourly and the restored checkout is
+# whatever snapshot the platform kept — on 2026-08-06 it came back SIXTY-TWO COMMITS STALE
+# with a clean `git status`, which is the dangerous shape: nothing looks wrong. Two agents
+# spent minutes reading code that had been deleted weeks earlier, and three uncommitted
+# worktrees were gone for good. Git is the only durable store, so recovery is: believe the
+# remote, not the disk.
+#
+# WHAT IT DOES NOT DO. It does not fetch secrets — they live outside the tree and outside git
+# on purpose (the repo is public). It NAMES the ones that are missing instead of pretending
+# the environment is whole, because a recovery script that reports success on a half-restored
+# container is worse than none.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+BRANCH="${1:-claude/new-session-57sgrp}"
+fail=0
+
+echo "== branch =="
+git rev-parse --abbrev-ref HEAD
+
+echo "== fetch $BRANCH =="
+for i in 1 2 3 4; do
+  git fetch origin "$BRANCH" && break
+  echo "  fetch failed, retry $i"; sleep $((2 ** i))
+done
+
+BEHIND=$(git rev-list --count "HEAD..origin/$BRANCH" 2>/dev/null || echo "?")
+AHEAD=$(git rev-list --count "origin/$BRANCH..HEAD" 2>/dev/null || echo "?")
+echo "  ahead $AHEAD / behind $BEHIND"
+if [ "$BEHIND" != "0" ] && [ "$BEHIND" != "?" ]; then
+  # UNCOMMITTED WORK IS PRESERVED, NEVER DISCARDED. A stale container's leftovers are usually
+  # worthless, but "usually" is not a licence to delete somebody's work: it goes to a stash
+  # that is named, so it can be found later or dropped deliberately.
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "  stashing local changes before fast-forward"
+    git stash push -u -m "restore: pre-ff leftovers $(git rev-parse --short HEAD)"
+  fi
+  git merge --ff-only "origin/$BRANCH" || { echo "  FF FAILED — diverged, resolve by hand"; fail=1; }
+fi
+echo "  now at $(git log --oneline -1)"
+
+echo "== push gate =="
+# core.hooksPath is LOCAL git config and does not survive a reclaim. Without it the gate that
+# refuses a red suite is silently off, which is how a red suite got pushed once already.
+./hooks/install >/dev/null 2>&1
+echo "  core.hooksPath = $(git config core.hooksPath || echo 'NOT SET')"
+[ "$(git config core.hooksPath)" = "hooks" ] || fail=1
+
+echo "== browser controls =="
+if python -c "import playwright" 2>/dev/null; then
+  echo "  playwright present"
+else
+  echo "  installing playwright (chromium is baked into the image; do NOT download browsers)"
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pip install --quiet playwright 2>&1 | tail -1
+fi
+ls -d /opt/pw-browsers/chromium-*/ >/dev/null 2>&1 \
+  && echo "  chromium present" \
+  || { echo "  NO CHROMIUM — the page-must-RUN controls will SKIP, not pass"; fail=1; }
+
+echo "== corpus =="
+if [ -f runs/corpus.snapshot ]; then
+  python - <<'PY'
+from engine.corpus_state import CorpusSnapshot, SNAPSHOT_PATH
+s = CorpusSnapshot.load(SNAPSHOT_PATH)
+print(f"  {len(s.slots)} slots on disk")
+PY
+else
+  echo "  NO CORPUS on disk. It is gitignored by policy and never ships in an image."
+  echo "  The DEPLOY keeps its own copy on a Railway volume, so the served window is"
+  echo "  unaffected; only local corpus-backed checks are. Do not rebuild without being asked."
+fi
+
+echo "== secrets (outside git, by policy — this only reports) =="
+SD="$(ls -d /tmp/claude-*/-home-user-common-ground/*/scratchpad 2>/dev/null | head -1)"
+for f in railway.env openrouter.env aristotle.env window.env; do
+  if [ -n "$SD" ] && [ -f "$SD/$f" ]; then echo "  $f present"; else echo "  $f MISSING"; fi
+done
+[ -n "$SD" ] && echo "  scratchpad: $SD" || echo "  scratchpad: NOT FOUND"
+
+echo
+[ "$fail" -eq 0 ] && echo "RESTORE OK" || echo "RESTORE INCOMPLETE — see the lines above"
+exit "$fail"
