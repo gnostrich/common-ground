@@ -7,7 +7,6 @@
   "OI-5",
   "OI-26",
   "OI-28",
-  "OI-30",
   "OI-38",
   "OI-40"
  ],
@@ -344,10 +343,19 @@
    "unresolved": []
   },
   "OI-30": {
-   "statement": "A known cause must not absorb an unknown one: deltas decomposed by cause. `[P: the lean-delta separation precedent]`",
-   "enforcement_sites": [],
-   "controls": [],
-   "process_only": true,
+   "statement": "A known cause must not absorb an unknown one: deltas decomposed by cause. `engine/decompose` is the vocabulary. A remainder has three places to go and two are lies \u2014 folded into the largest named cause, or silently dropped \u2014 so only the third is offered: `unattributed`, always present, including at zero, because a missing key and a zero read identically to somebody skimming. Over-attribution RAISE",
+   "enforcement_sites": [
+    "engine/decompose.py:decompose",
+    "engine/decompose.py:attributed",
+    "engine/journal.py"
+   ],
+   "controls": [
+    "tests/test_decompose.py:TheRemainderIsALWAYSNamed",
+    "tests/test_decompose.py:OI24LivesInsideOI30",
+    "tests/test_decompose.py:TheJournalNAMESWhatItsCallsDid",
+    "tests/test_decompose.py:PlantedAbsorption"
+   ],
+   "process_only": false,
    "unresolved": []
   },
   "OI-31": {

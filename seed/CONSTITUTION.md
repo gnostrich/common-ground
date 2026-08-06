@@ -284,7 +284,15 @@ harness can fail and pass. `[P; validation harness shape]`
 re-run so numbers can't be read to suit. `[E: RETEST fixtures; P]`
 
 **OI-30** A known cause must not absorb an unknown one: deltas decomposed by cause.
-`[P: the lean-delta separation precedent]`
+`engine/decompose` is the vocabulary. A remainder has three places to go and two are lies —
+folded into the largest named cause, or silently dropped — so only the third is offered:
+`unattributed`, always present, including at zero, because a missing key and a zero read
+identically to somebody skimming. Over-attribution RAISES; a negative remainder is arithmetic
+covering a double count. OI-24 composes into it: a decomposition of a ZERO total is `refused`,
+not "everything explained". *WAS VIOLATED:* `Journal.totals()` reported `asked` (from the
+answer counters) beside `calls` (from the call log) with the gap between the two denominators
+unnamed. `[C: tests/test_decompose.py — the planted class rebuilds both lies and shows the
+folded one still adds up; only the honest one says which part nothing explains]`
 
 **OI-31** Every empirical claim carries provenance (era, model, region, prompt hash);
 quarantine over deletion — SIX applications (lite arrows, keyword verdicts, containment leads,
