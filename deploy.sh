@@ -18,6 +18,11 @@ if [ "$DIRTY" -ne 0 ]; then
   git status --short -- . ':(exclude)runs' >&2
   exit 1
 fi
-echo "$COMMIT" > runs/BUILD
+# The stamp reaches the image as an ENV VAR, not a file. `runs/BUILD` is gitignored and
+# `railway up` honours gitignore, so the file never shipped — which is precisely why the
+# first stamped deploy still reported `unknown`. The variable is set from the real HEAD
+# here, immediately before the push, so it cannot name anything else.
+echo "$COMMIT" > runs/BUILD          # for a local run, which reads the file
 echo "deploying $COMMIT"
+railway variables --set "CG_COMMIT=$COMMIT" --skip-deploys >/dev/null
 railway up --detach
