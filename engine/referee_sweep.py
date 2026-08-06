@@ -75,6 +75,8 @@ REFEREES = {
     "atlas.py": "reports what the journal contains",
     "claims_sweep.py": "sweeps claims",
     "seed_lock.py": "decides whether the seed is locked",
+    "structure_trace.py": "decides when a question is about shape rather than displacement",
+    "export_sheet.py": "renders the portable context sheet",
 }
 
 #: Exemptions. Each carries the reason it is a declared grammar rather than a resemblance.

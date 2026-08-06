@@ -60,6 +60,8 @@ details.scope[open]>summary{margin-bottom:.6rem}
     </label>
     <button class="go" onclick="act()">perturb</button>
     <button onclick="reset_()">reset current</button>
+    <button id="exportbtn" onclick="exportSheet()" disabled
+      title="the compiled sheet as a paste-ready preamble: the question, every moved claim verbatim with its index and arrows, the attachments, and the absences the field reports. Perturb once, carry it to any model.">export context</button>
   </div>
   <div id="lmstate" class="muted"></div>
   <div id="err" class="err"></div>
@@ -312,7 +314,40 @@ async function act(){
   renderAnswer(r);
   renderScope(r);
   renderPhases(r);
+  // THE SHEET travels with the answer. Enabling the button only once a real record exists
+  // means it can never export a preamble for a perturbation that did not happen.
+  LAST_SHEET = r.sheet || '';
+  $('exportbtn').disabled = !LAST_SHEET;
   $('scope').open = false;
+}
+
+// THE COMPILED SHEET, portable. A VIEW over the record the last perturbation produced —
+// nothing is recomputed, so the sheet always describes the answer on screen.
+let LAST_SHEET = '';
+async function exportSheet(){
+  if(!LAST_SHEET) return;
+  const b = $('exportbtn'), was = b.textContent;
+  try {
+    await navigator.clipboard.writeText(LAST_SHEET);
+    b.textContent = 'copied \u2713';
+  } catch(e) {
+    // Clipboard is permission-gated and silently unavailable over some origins. Falling
+    // back to a visible textarea beats a button that appears to do nothing.
+    const w = window.open('', '_blank');
+    if(w){
+      w.document.write('<pre style="white-space:pre-wrap">' + esc(LAST_SHEET) + '</pre>');
+    } else {
+      // Built as an element, never as markup: a second entry box on the page is a second
+      // entry surface whatever it is for, and the one-box control is right to refuse one.
+      const box = document.createElement('pre');
+      box.className = 'nu';
+      box.style.cssText = 'white-space:pre-wrap;max-height:300px;overflow:auto;user-select:all';
+      box.textContent = LAST_SHEET;
+      $('answer').prepend(box);
+    }
+    b.textContent = 'opened \u2197';
+  }
+  setTimeout(() => { b.textContent = was; }, 2000);
 }
 
 // THE ANSWER IS THE OUTPUT. First, full width, and the two things it stands on are stated in

@@ -20,6 +20,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from engine.export_sheet import sheet
 from engine.grounded import check_answer
 from engine.inbound import INBOUND_SYSTEM
 
@@ -254,6 +255,11 @@ class Handler(BaseHTTPRequestHandler):
                 verdict = check_answer(reply, compiled).as_record()
                 self._send(200, json.dumps({
                     "answer": reply, "grounded_on": grounded_on, "faithful": verdict,
+                    # THE PORTABLE SHEET. A VIEW over the record this request already made —
+                    # it is returned WITH the answer rather than behind a second endpoint, so
+                    # exporting cannot re-run a perturbation or produce a sheet describing a
+                    # different one than the operator is looking at.
+                    "sheet": sheet(compiled),
                     "lm_available": lm_available(key), "compiled": compiled,
                     "phases": phases, "corpus_header": corpus_header()}))
             else:

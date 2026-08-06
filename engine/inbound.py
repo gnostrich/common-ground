@@ -63,6 +63,7 @@ from .corpus_state import CorpusSnapshot
 from .extract import DeterministicExtractor
 from .perturb import perturb, relax_from
 from .relax import Relaxation, relax
+from .structure_trace import signature_of, structure_lines
 from .types import Document
 
 #: How many neighbouring slots a single landing may contribute. A landing inside a large
@@ -132,6 +133,9 @@ class CompiledInput:
     #: The numbered objects the answer may cite. Empty when nothing attached and nothing
     #: moved, in which case an answer citing anything is citing something that is not there.
     citations: list = field(default_factory=list)
+    #: Why the structural layer was or was not compiled. Both branches are stated, so a reader
+    #: never has to infer from an absent block that the question was not structural.
+    signature: object | None = None
 
     @property
     def reached(self) -> int:
@@ -160,6 +164,7 @@ class CompiledInput:
             "attachment": self.attachment.as_record() if self.attachment else None,
             "stages": dict(self.stages),
             "citations": [c.as_record() for c in self.citations],
+            "signature": self.signature.as_record() if self.signature else None,
         }
 
 
@@ -444,6 +449,17 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     lines.extend(moved_lines)
     lines.append("")
 
+    # THE STRUCTURE LAYER, when the question was about shape rather than displacement. The
+    # signature is read off the records — all-bears-on attachment and zero arrow reach — so
+    # this is a compile step, not a mode the operator has to select. See
+    # engine/structure_trace.py for why relaxation cannot answer a Pi-1 question.
+    sig = signature_of(att, rel)
+    out_signature = sig
+    if sig.structural:
+        lines.append(sig.render())
+        lines.extend(structure_lines(snapshot, cites, Citable))
+        lines.append("")
+
     contested_here = sum(1 for m in rel.moved if m.contested)
     reached = sum(1 for m in rel.moved if m.hops > 0)
     status = (f"RELAXED: {len(rel.moved)} slot(s) moved across {rel.blocks_settled} settled "
@@ -466,6 +482,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
                         facts=facts, field_status=status, conditioned=True, relaxation=rel,
                         attachment=att, citations=cites)
     out.stages = stages
+    out.signature = out_signature
     return out
 
 
