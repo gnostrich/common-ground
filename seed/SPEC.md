@@ -60,6 +60,30 @@ is not in the diagram, and its absence is constitutional (**OI-41**).
 - **earning** → K's kernel measures its residual and reweights iff it qualifies
 - **claimed** → the authorship pullback
 
+### §10a — THE ACT IS READ, NOT PRE-SET (normative)
+
+Same object, different presentation. The two coordinates and the one arrow are unchanged; what
+changes is **where they are set from**. The attachment call emits an additional gated
+coordinate — the READING of the utterance's act — and the toggles become **overrides**, with
+read-from-speech the default.
+
+- **Read like any proposal.** A declared token in a closed vocabulary (`ACT: explore
+  keep-nothing`, `ACT: claim-of 7 keep`), EXTRACTION tier, through the one inlet,
+  resolve-or-void. **Never inferred from prose:** a reading taken from the shape of a sentence
+  would be a fluency judgement steering warrant.
+- **THE CONSERVATIVE DIRECTION INVERTS.** Everywhere else an unknown mode defaults to ASSERT,
+  because the risk is stripping warrant from something the operator meant to stand behind.
+  When the machine is READING rather than being told, the risk reverses — a misread that
+  invents a claim confers authorship nobody asserted. **When unsure whether you claimed,
+  assume you didn't.** Ambiguity resolves to explore/keep-nothing.
+- **Misreads are visible, never silent.** Every response opens with the reading; the next
+  utterance corrects it, and a correction **re-stamps the prior record with an era trail** —
+  the original reading is kept, not overwritten.
+- **`claim-of [n]` resolves to the DISPLAYED BYTES or VOIDS.** Never paraphrased: a pullback
+  onto a reconstruction would land on something the operator never read.
+- **The locks are unchanged.** Authorship attaches only to operator words; the reading decides
+  how an utterance is TREATED and confers nothing by itself.
+
 **WHY THIS IS CLOSED.** Two binary indices plus one constructible arrow is the complete
 free-parameter set the object exposes to the operator. Any future proposal to add a mode, a
 strength slider, an accept control or a warrant knob **must first show which arrow of the

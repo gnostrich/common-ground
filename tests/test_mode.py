@@ -119,8 +119,10 @@ class TheModeReachesTheACT(unittest.TestCase):
     def test_both_endpoints_receive_the_mode(self):
         from engine.constants import REPO_ROOT
         page = (REPO_ROOT / "ui" / "index.html").read_text(encoding="utf-8")
-        self.assertIn("'/propose', {text, chart, mode}", page)
-        self.assertIn("'/ask', {question:text, chart, mode}", page)
+        # The override flag travels too: read-from-speech is the default, and saying so on
+        # the wire means the server never has to guess whether a checkbox was deliberate.
+        self.assertIn("'/propose', {text, chart, mode, override}", page)
+        self.assertIn("'/ask', {question:text, chart, mode, override}", page)
 
     def test_the_server_normalizes_and_stamps(self):
         import inspect

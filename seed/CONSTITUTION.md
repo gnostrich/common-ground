@@ -219,6 +219,16 @@ shipped in code, tests and UI with zero mentions in either normative document �
 machinery, unwritten law, which is B5's definition of unconstitutional.
 `[E: engine/mode.py, engine/claim.py, SPEC.md Part I §10; C: tests/test_claim.py:TheTwoByTwoIsForcedAndComplete, tests/test_mode.py:AllFourCellsAreMeaningful]`
 
+**OI-43** **WHEN THE MACHINE READS RATHER THAN IS TOLD, THE CONSERVATIVE DIRECTION INVERTS.**
+An unknown TOLD mode defaults to ASSERT, because defaulting the other way would strip warrant
+from something the operator meant to stand behind. An unread or ambiguous ACT defaults to
+EXPLORE/KEEP-NOTHING, because a misread that invents a claim confers authorship nobody
+asserted. **When unsure whether you claimed, assume you didn't.** The two defaults point
+opposite ways on purpose, and each is the safe direction for its own failure mode. Every
+reading is DISPLAYED and correctable; a correction re-stamps with an era trail rather than
+overwriting, so a misread can be seen after the fact.
+`[E: engine/posture.py; C: tests/test_posture.py:TheConservativeDirectionINVERTS, tests/test_posture.py:ACorrectionRestampsWithAnERATRAIL]`
+
 **OI-21** The ETS feel is the acceptance bar: no silence without a consulted-and-declined
 trace; response graded with bias sharpness; stateful; no phrasing cliffs.
 `[C: the battery — no_silent_zero/graded/no_cliff/stateful/one_path]`

@@ -64,6 +64,9 @@ details.scope[open]>summary{margin-bottom:.6rem}
     <label title="assert: what you type carries your AUTHORSHIP — you are standing behind it. brainstorm: what you type is bias only and never becomes a claim, in this session or any other; what the medium proposes enters at EXTRACTION like every other proposal, and agreeing with it here confers nothing — re-assert it through the normal act if you want it to count.">
       <input id="brainstorm" type="checkbox"> brainstorm
     </label>
+    <label title="by default the act is READ from what you type — 'keep that one' is a retain intent, 'that's mine' is a claim, 'what if' is exploration — and the reading is shown at the top of every response so a misread is visible and correctable by your next message. Tick this to override the reading with the toggles instead.">
+      <input id="override" type="checkbox"> override reading
+    </label>
     <button class="go" onclick="act()">perturb</button>
     <button onclick="reset_()">reset current</button>
     <button id="exportbtn" onclick="exportSheet()" disabled
@@ -294,7 +297,10 @@ async function act(){
   // /ask (perturb-and-release). Same region call either way — the flag decides only what
   // survives it, which is what "one box" means rather than two forms sharing a button.
   const retain = $('retain').checked;
-  const mode = $('brainstorm').checked ? 'brainstorm' : 'assert';
+  // READ FROM SPEECH BY DEFAULT. The toggles are overrides, and saying so on the
+  // wire means the server never has to guess whether the checkbox was deliberate.
+  const override = $('override').checked;
+  const mode = override ? ($('brainstorm').checked ? 'brainstorm' : 'assert') : null;
   const text = $('text').value, chart = $('chart').value;
   $('answer').innerHTML = '<span class="muted">'
     + (retain ? 'perturbing and retaining…' : 'perturbing the field…') + '</span>';
@@ -311,8 +317,8 @@ async function act(){
       + `<span class="muted">(the attachment call is 76-94% of it)</span></span>`;
   }, 1000);
   try {
-    r = retain ? await post('/propose', {text, chart, mode})
-               : await post('/ask', {question:text, chart, mode});
+    r = retain ? await post('/propose', {text, chart, mode, override})
+               : await post('/ask', {question:text, chart, mode, override});
   } catch(e) {
     clearInterval(tick);
     $('answer').innerHTML = `<span class="err">the request failed: ${esc(String(e))}</span>`;
@@ -456,6 +462,14 @@ function renderAnswer(r){
   // "accept" beside it — warrant rises by K-measurement or by authorship, and a third
   // arrow up the tier poset is not in the diagram (OI-41).
   LAST_RECORD = r;
+  // THE READING, AT THE TOP. A misread must be visible to be correctable — the next utterance
+  // can say "no, I was claiming that" and the prior record is re-stamped with an era trail.
+  const rd = r.reading;
+  const readline = rd
+    ? `<div class="rests"><b>${esc(rd.display)}</b>`
+      + (rd.reason ? ` <span class="muted">— ${esc(rd.reason)}</span>` : '')
+      + `</div>`
+    : '';
   const sentences = (r.answer || '').split(/(?<=[.!?])(?:\s*(?:\[[^\]]*\]\s*)*)\s+/)
                                     .filter(x => x.trim().length > 20);
   const body = sentences.length
@@ -465,7 +479,7 @@ function renderAnswer(r){
         + `AUTHORSHIP with this record named as its source. Not an approval — a new object."`
         + ` onclick="claimSentence(${i})">claim</button> `).join('')
     : esc(r.answer);
-  $('answer').innerHTML = rests + `<div class="answer">${body}</div>` + gate;
+  $('answer').innerHTML = readline + rests + `<div class="answer">${body}</div>` + gate;
 }
 
 // THE SCOPE. Inspection surface, one click below: what moved, how far, and by which declared

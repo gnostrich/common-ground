@@ -1,7 +1,7 @@
 {
  "schema": "common-ground/oi-registry/v0",
  "note": "Machine-readable per CONSTITUTION.md B1. An OI with no [C:] control is WEAK and listed for mechanization; the auditor FAILS if any entry is unresolvable, because a registry naming controls that do not exist is the map-not-territory failure applied to the constitution itself.",
- "count": 42,
+ "count": 43,
  "weak": [
   "OI-2",
   "OI-5",
@@ -458,6 +458,18 @@
    "controls": [
     "tests/test_claim.py:TheTwoByTwoIsForcedAndComplete",
     "tests/test_mode.py:AllFourCellsAreMeaningful"
+   ],
+   "process_only": false,
+   "unresolved": []
+  },
+  "OI-43": {
+   "statement": "**WHEN THE MACHINE READS RATHER THAN IS TOLD, THE CONSERVATIVE DIRECTION INVERTS.** An unknown TOLD mode defaults to ASSERT, because defaulting the other way would strip warrant from something the operator meant to stand behind. An unread or ambiguous ACT defaults to EXPLORE/KEEP-NOTHING, because a misread that invents a claim confers authorship nobody asserted. **When unsure whether you claimed, ",
+   "enforcement_sites": [
+    "engine/posture.py"
+   ],
+   "controls": [
+    "tests/test_posture.py:TheConservativeDirectionINVERTS",
+    "tests/test_posture.py:ACorrectionRestampsWithAnERATRAIL"
    ],
    "process_only": false,
    "unresolved": []

@@ -201,6 +201,27 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, json.dumps({"error": "not found"}))
 
+    @staticmethod
+    def _reading_of(compiled, body):
+        """The act as read, or the override, as a record. Never absent.
+
+        A response with no reading is a response whose treatment of the utterance nobody can
+        see, which is the state this whole coordinate exists to leave behind.
+        """
+        from engine.posture import Reading, parse as parse_act
+
+        att = (compiled or {}).get("attachment") or {}
+        read = att.get("reading")
+        if body.get("override"):
+            told = normalize_mode(body.get("mode"))
+            r = Reading(act=("assert" if told == "assert" else "explore"),
+                        persistence="keep-nothing",
+                        reason="the operator overrode the reading with the toggles")
+            return r.as_record()
+        if isinstance(read, dict):
+            return read
+        return parse_act("").as_record()
+
     def _seed(self):
         """THE DATA CHANNEL. The corpus arrives here or not at all.
 
@@ -404,6 +425,10 @@ class Handler(BaseHTTPRequestHandler):
                     # THE MODE IS ON THE RECORD, always. A record that cannot say which act
                     # produced it cannot be re-read later as what it was.
                     "mode": mode_stamp(mode), "act": mode_cell(mode, False),
+                    # THE READING, at the top of the response. Read from the utterance unless
+                    # the operator ticked the override; either way it is DISPLAYED, so a
+                    # misread is correctable by the next message rather than silent.
+                    "reading": self._reading_of(compiled, b),
                     # EVERY CALL, BOTH CHANNELS, RAW — including the attachment call, which
                     # decides what the answer can be about. With digests, so the displayed
                     # bytes can be verified to be the sent bytes.

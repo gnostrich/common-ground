@@ -51,6 +51,7 @@ import time as _time
 
 from .transcript import CURRENT as TRANSCRIPT
 
+from .posture import parse as parse_act
 from .region import (BEARS_ON, BIAS_CHART, REGION_SIZE, REGION_SYSTEM, Region, anchor_for,
                      arrows_from, build_region, parse_region, render_region, residuals)
 from .relax import Relaxation, relax
@@ -106,6 +107,9 @@ class Perturbation:
     calls: int = 0
     cost: float = 0.0
     error: str = ""
+    #: HOW THE UTTERANCE'S ACT WAS READ — a gated proposal, displayed at the top of every
+    #: response so a misread is visible and correctable rather than silent.
+    reading: object = None
     #: The region could not be aimed — no live arrow anywhere to aim it at. Stated, because
     #: unstated it looks exactly like a region that was aimed.
     unanchored: bool = False
@@ -182,6 +186,7 @@ class Perturbation:
             "unanchored": self.unanchored,
             "note": self.note,
             "error": self.error,
+            "reading": (self.reading.as_record() if self.reading is not None else None),
         }
 
     @property
@@ -288,6 +293,9 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
         _sys, _user = REGION_SYSTEM, render_region(region)
         _t = _time.time()
         raw, usage = transport(_sys, _user)
+        # THE ACT, READ. Parsed from the same reply the arrows come from — one call, one
+        # grammar. A missing or ambiguous ACT line reads conservatively and says so.
+        out.reading = parse_act(raw or "", era=str((usage or {}).get("model") or ""))
         TRANSCRIPT.record("propose", _sys, _user, raw or "",
                           model=str((usage or {}).get("model") or ""),
                           seconds=_time.time() - _t)

@@ -56,6 +56,7 @@ call. There is no candidate list left to be truncated, so there is no truncation
 
 from __future__ import annotations
 
+from .posture import ACT_GRAMMAR
 import re
 from dataclasses import dataclass, field
 
@@ -127,6 +128,10 @@ REGION_SYSTEM = (
     "is discarded. If the bias really is a claim, the three kinds above apply to it too. "
     "Relate the corpus objects to EACH OTHER in the same answer — that is the diagram, and the "
     "bias is one object in it, not the question being asked about it."
+    # THE ACT LINE. Codomain syntax, one sentence — the razor. What the operator's
+    # utterance DOES is read here, at attachment, like every other proposal: a declared
+    # token in a closed vocabulary, resolve-or-void, never inferred from prose.
+    "\n\n" + ACT_GRAMMAR
 )
 
 #: The verbatim task line, kept separate so it can be asserted against.
