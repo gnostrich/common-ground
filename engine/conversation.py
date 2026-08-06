@@ -64,6 +64,45 @@ class AttributedClaim:
     locator: str          # "turn:{turn}:{speaker}:{sentence}"
 
 
+#: THE TWO ERAS, and why this is a tag rather than a purge.
+#:
+#: Until `engine/referee_sweep.py` caught it, which turn ANSWERED which claim was decided by
+#: `p_keys & _keywords(r.claim)` — an intersection of word bags standing in for aboutness.
+#: Every verdict in every ledger built before the replacement rests on that pairing. They are
+#: not known-wrong: an overlap-paired verdict is often the right one, and the cue that decided
+#: it came from a declared list either way. They are UNCONFIRMED, which is a different status,
+#: and it is the same one lite-era arrows and quarantined stock carry.
+#:
+#: So they are tagged, not trusted and not deleted — the third application of the pattern.
+#: Anything reading this ledger for a signal (K-calibration, the conversation chart's
+#: accept/reject) treats `keyword-era` as a LEAD pending re-confirmation, exactly as it treats
+#: a lead-model arrow. Deleting them would throw away work that may well be sound; trusting
+#: them would launder a resemblance mechanism's output into a warrant.
+KEYWORD_ERA = "keyword-era"
+ADJACENCY_ERA = "adjacency-era"
+
+#: Verdicts a `keyword-era` record may not carry into a promotion path without re-confirmation.
+UNCONFIRMED_ERAS = frozenset({KEYWORD_ERA})
+
+
+def is_lead(pv: "ProposalVerdict") -> bool:
+    """A verdict whose PAIRING came from the replaced mechanism. Not wrong — unconfirmed."""
+    return pv.verdict_method in UNCONFIRMED_ERAS
+
+
+def era_of_record(rec: dict) -> str:
+    """The era of a verdict READ BACK FROM DISK, where an absent tag means the keyword era.
+
+    The dataclass defaults to `adjacency-era`, which is correct for a record this build
+    produced. It is exactly wrong for a record persisted before the tag existed: those were
+    all paired by the word bag, and defaulting them to the new era would launder the thing
+    being quarantined. A missing field is therefore read as the OLD era, never the current
+    one — the same rule `engine/staleness.py` applies when it refuses to read `unknown` as
+    `fresh`.
+    """
+    return str(rec.get("verdict_method") or KEYWORD_ERA)
+
+
 @dataclass(frozen=True, slots=True)
 class ProposalVerdict:
     proposal: str
@@ -74,6 +113,12 @@ class ProposalVerdict:
     decided_turn: int | None
     cue: str | None              # the phrase that decided it
     locator: str
+    #: WHICH MECHANISM ASSIGNED THIS VERDICT. `keyword-era` records were paired by a word-bag
+    #: intersection that `engine/referee_sweep.py` has since refused; `adjacency-era` records
+    #: were paired by declared turn structure. The distinction travels WITH the record because
+    #: a verdict is only as good as the pairing that produced it, and the era cannot be
+    #: reconstructed from the record afterwards.
+    verdict_method: str = ADJACENCY_ERA
 
 
 def parse_transcript(text: str) -> list[Turn]:
@@ -169,11 +214,13 @@ def proposal_verdict_ledger(text: str) -> list[ProposalVerdict]:
             break
         if decided is None:
             ledger.append(ProposalVerdict(p.claim, p.speaker, p.turn, "open",
-                                          None, None, None, p.locator))
+                                          None, None, None, p.locator,
+                                          verdict_method=ADJACENCY_ERA))
         else:
             verdict, cue, r = decided
             ledger.append(ProposalVerdict(p.claim, p.speaker, p.turn, verdict,
-                                          r.speaker, r.turn, cue, p.locator))
+                                          r.speaker, r.turn, cue, p.locator,
+                                          verdict_method=ADJACENCY_ERA))
     return ledger
 
 
@@ -184,6 +231,12 @@ def as_fast_tape_entries(ledger: list[ProposalVerdict]) -> list[dict[str, object
     (they would still have to clear the Hankel > second-FDT ∧ conservative-extension gate),
     `rejected`/`open` age out. K is INERT at v0 — this returns the signal, it promotes
     nothing.
+
+    A `keyword-era` verdict is NOT a promotion candidate, whatever it says. Its pairing came
+    from the word-bag mechanism, so the verdict is a LEAD: it survives, it is visible, and it
+    cannot carry into a promotion path until a re-run under declared adjacency confirms it.
+    The record says which era it came from and why it is held, so a reader downstream is never
+    left inferring that an absent candidacy means a negative verdict.
     """
     return [
         {
@@ -193,7 +246,12 @@ def as_fast_tape_entries(ledger: list[ProposalVerdict]) -> list[dict[str, object
             "verdict": pv.verdict,
             "decided_by": pv.decided_by,
             "cue": pv.cue,
-            "promotion_candidate": pv.verdict in ("accepted", "sharpened"),
+            "verdict_method": pv.verdict_method,
+            "lead": is_lead(pv),
+            "promotion_candidate": (pv.verdict in ("accepted", "sharpened")
+                                    and not is_lead(pv)),
+            "held": ("paired by the replaced keyword-overlap mechanism; re-run under declared "
+                     "adjacency to confirm" if is_lead(pv) else ""),
         }
         for pv in ledger
     ]

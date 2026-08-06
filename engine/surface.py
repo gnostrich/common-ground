@@ -25,7 +25,7 @@ from typing import Sequence
 import json
 
 from . import seed_lock
-from .conversation import ProposalVerdict, proposal_verdict_ledger
+from .conversation import ProposalVerdict, is_lead, proposal_verdict_ledger
 from .constants import BETA_ARMS, SEED_DIR, shadow
 from .extract import build_k_extractors
 from .pipeline import Ledger, build_ledger, run_meter
@@ -157,8 +157,12 @@ class Report:
                       "certificates": list(a.certificates),
                       "no_cycle_support": list(a.no_cycle_support)} for a in self.arms],
             "translator_drift": self.translator_drift,
+            # The era travels with every rendered verdict. A reader that cannot see which
+            # mechanism paired it has no way to know whether it is a warrant or a lead.
             "verdicts": [{"proposal": v.proposal, "proposer": v.proposer, "verdict": v.verdict,
-                          "decided_by": v.decided_by, "cue": v.cue} for v in self.verdicts],
+                          "decided_by": v.decided_by, "cue": v.cue,
+                          "verdict_method": v.verdict_method, "lead": is_lead(v)}
+                         for v in self.verdicts],
             "status": self.status,
         }
 
