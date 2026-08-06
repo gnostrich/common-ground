@@ -218,8 +218,16 @@ def cmd_build_snapshot() -> None:
     arrows = correspondences_from_deltas(deltas)
     snap = build_snapshot_direct(deltas, arrows, source_counts(deltas))
     snap.save(SNAPSHOT_PATH)
+    # THE MATERIAL DIGEST, recorded at build. Without it nothing can later tell whether the
+    # snapshot still describes the material it was derived from, and snapshot-wins becomes
+    # silent rather than visible.
+    from engine.corpus_sources import resolve
+    from engine.staleness import record as record_digest
+
+    roots = [str(src.path) for src in resolve() if src.enabled and src.present and src.path]
+    stale = record_digest(roots)
     print(json.dumps({"saved": SNAPSHOT_PATH, "seconds": round(time.time() - started, 1),
-                      **snap.header()}, indent=2))
+                      "material": stale.as_record(), **snap.header()}, indent=2))
 
 
 def cmd_measure_cross_repo() -> None:

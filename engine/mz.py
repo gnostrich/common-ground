@@ -46,7 +46,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .mint_tape import Promotion, TapeReading, act_on_mint, read_tape
+from .mint_tape import (HANKEL_WINDOW, Promotion, TapeReading, act_on_mint,
+                        read_tape)
 
 #: Least declared degree that makes a slot SLOW-SETTLED by structure. Two is the smallest
 #: degree at which a slot can be the middle of a length-2 path — the smallest degree at which
@@ -54,9 +55,14 @@ from .mint_tape import Promotion, TapeReading, act_on_mint, read_tape
 #: touch, so this is a property of the graph rather than a tuned threshold.
 SETTLED_DEGREE = 2
 
-#: How many of the most recent extraction answers form a site's gathered history. The Hankel
-#: window is what reads it; this bounds what is gathered.
-HISTORY_DEPTH = 64
+#: How many of the most recent extraction answers form a site's gathered history.
+#:
+#: DERIVED, not chosen. A Hankel matrix of window `w` consumes `2w-1` samples, so a history
+#: shorter than that yields an EMPTY matrix, no singular values, and `hankel_top = 0.0` — a
+#: gate that can never fire, reporting itself as a clean refusal. That is exactly what
+#: happened at 64: HISTORY_DEPTH equalled HANKEL_WINDOW and every site scored zero. The depth
+#: is now tied to the window so the two cannot drift apart again.
+HISTORY_DEPTH = 2 * HANKEL_WINDOW
 
 FAST, SLOW = "fast", "slow"
 
@@ -192,6 +198,49 @@ class Admission:
                    reason=p.reason, value=p.value,
                    effective_rank=reading.effective_rank,
                    stream_length=reading.stream_length)
+
+
+#: How an answer at a site scores in that site's own history. Bounded in [0, 1] ON PURPOSE:
+#: the gate compares a Hankel singular value of this series against `3 x second_fdt_floor`,
+#: and holonomy is a probability distance bounded by 2. A series on [0, 1] puts the two on
+#: the same order. The block SETTLING TRACE, which this replaced, ran to ~50 in energy units
+#: and made the comparison dimensionally incoherent — 123 against 0.36 is not a test.
+#:
+#: The relative weights are a CHOICE and are stated as one: an identity is worth more to a
+#: site's history than a refinement, which is worth more than an instance. Nothing derives
+#: them; they order the three kinds the base already has.
+ANSWER_WEIGHT = {"same_claim": 1.0, "refines": 0.5, "instance_of": 0.25, "none": 0.0}
+
+
+def site_history(records, site: str, depth: int = HISTORY_DEPTH) -> tuple[tuple[float, ...],
+                                                                         tuple[str, ...]]:
+    """THE SITE'S OWN recent fast history, in time order — and nobody else's.
+
+    This is what the hyperedge formulation exists to provide, and the first wiring did not
+    deliver it. It used the residual stream of the BLOCK the site sits in, which produced two
+    compounding defects, both measured on the live field:
+
+      * every site in a block got a byte-identical stream, so the "per-site" Hankel test was
+        per-block. Twelve sites returned `hankel_top = 123.3673` to four decimal places.
+      * that stream was a clean geometric decay at rate ~0.7745 — the SETTLING SCHEDULE. Its
+        top singular value is a property of the solver, not of the claim, so the test could
+        not discriminate between sites even in principle.
+
+    Here the series is the site's own answers, in the order they were given: what the medium
+    said about this claim, over time. Two sites with different histories get different series
+    by construction, and a site with no history gets an empty one rather than somebody else's.
+    """
+    hist: list[float] = []
+    members: list[str] = []
+    for rec in records:
+        if rec.get("kind") != "ask":
+            continue
+        if rec.get("src_slot") != site and rec.get("dst_slot") != site:
+            continue
+        hist.append(ANSWER_WEIGHT.get(str(rec.get("answer", "none")), 0.0))
+        members.append(f"{rec.get('t','')}:{rec.get('src_slot','')[:8]}"
+                       f"->{rec.get('dst_slot','')[:8]}:{rec.get('answer','')}")
+    return tuple(hist[-depth:]), tuple(members[-depth:])
 
 
 def boundary_sites(degree: dict[str, int], hot: dict[str, int],

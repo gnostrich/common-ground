@@ -143,6 +143,48 @@ class TheHyperedgeCarriesAHistory(unittest.TestCase):
         self.assertFalse(adm.promoted)
         self.assertGreater(adm.hankel_top, 0.0, "the residual was real; the floor was not")
 
+    def test_the_history_is_the_sites_own_answers(self):
+        from engine.mz import site_history
+
+        recs = [{"kind": "ask", "src_slot": "A", "dst_slot": "B", "answer": "same_claim",
+                 "t": "1"},
+                {"kind": "ask", "src_slot": "C", "dst_slot": "D", "answer": "refines",
+                 "t": "2"},
+                {"kind": "ask", "src_slot": "B", "dst_slot": "A", "answer": "none", "t": "3"}]
+        hist, members = site_history(recs, "A")
+        self.assertEqual(hist, (1.0, 0.0), "only A's own answers, in time order")
+        self.assertEqual(len(members), 2)
+        self.assertEqual(site_history(recs, "ZZZ")[0], (),
+                         "a site with no history gets an empty one, not somebody else's")
+
+    def test_planted_two_distinct_sites_must_not_share_a_stream(self):
+        """RED. The first wiring gave every site in a block the block's settling trace, so
+        twelve distinct sites returned hankel_top = 123.3673 to four decimal places. Identical
+        streams across distinct sites means the per-site test is not per-site."""
+        from engine.mz import site_history
+
+        recs = [{"kind": "ask", "src_slot": "A", "dst_slot": "X", "answer": "same_claim",
+                 "t": "1"},
+                {"kind": "ask", "src_slot": "B", "dst_slot": "Y", "answer": "instance_of",
+                 "t": "2"}]
+        a, _ = site_history(recs, "A")
+        b, _ = site_history(recs, "B")
+        self.assertNotEqual(a, b, "distinct sites returned a byte-identical history")
+
+    def test_the_history_is_unit_matched_to_the_threshold(self):
+        """The gate compares a Hankel singular value of this series against 3x a holonomy
+        floor. Holonomy is a probability distance bounded by 2; the series must be on the
+        same order or the comparison is not a test. The block trace it replaced ran to ~50."""
+        from engine.mz import ANSWER_WEIGHT, site_history
+
+        self.assertTrue(all(0.0 <= v <= 1.0 for v in ANSWER_WEIGHT.values()))
+        recs = [{"kind": "ask", "src_slot": "A", "dst_slot": f"d{i}",
+                 "answer": k, "t": str(i)}
+                for i, k in enumerate(["same_claim", "refines", "instance_of", "none"] * 40)]
+        hist, _ = site_history(recs, "A")
+        self.assertTrue(all(0.0 <= v <= 1.0 for v in hist),
+                        "a site history must stay on the threshold's order of magnitude")
+
     def test_conservative_extension_still_blocks(self):
         s = BoundarySite(site="a" * 64, degree=3, clamped=False, hot=6,
                          history=tuple(1.0 / (i + 1) for i in range(12)),
