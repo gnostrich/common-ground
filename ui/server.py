@@ -30,7 +30,8 @@ from engine.mode import cell as mode_cell, normalize as normalize_mode, stamp as
 from engine.inbound import INBOUND_SYSTEM
 
 from .current import Current, ask_the_corpus, corpus_header
-from .lm import LAST_SERVED, LMClient, answer, api_key, lm_available
+from . import lm as _lm
+from .lm import LMClient, answer, api_key, lm_available
 
 HERE = Path(__file__).resolve().parent
 INDEX = HERE / "index.html"
@@ -416,8 +417,13 @@ class Handler(BaseHTTPRequestHandler):
                     _t_lm = time.time()
                     reply = client.complete(system, grounded_on,
                                             float(b.get("temperature", 0.2)), 1200).strip()
+                    # READ THROUGH THE MODULE. `from .lm import LAST_SERVED` binds the
+                    # empty string at import time and never sees `lm.py`'s rebinding, so the
+                    # render call reported "no model named" on every deploy while the propose
+                    # call — which reads its model off the response — named it correctly. A
+                    # from-import of a mutable module global is a snapshot, not a reference.
                     TRANSCRIPT.record("render", system, grounded_on, reply,
-                                      model=str(LAST_SERVED or ""),
+                                      model=str(_lm.LAST_SERVED or ""),
                                       seconds=time.time() - _t_lm)
                 else:
                     reply = ("(no key — the LM is not answering. What it would have received "

@@ -202,6 +202,36 @@ class TheTranscriptIsPERACT(unittest.TestCase):
             server.shutdown()
 
 
+class TheRenderCallNAMESItsModel(unittest.TestCase):
+    """`from .lm import LAST_SERVED` binds a value, not a reference.
+
+    The propose call reads its model off its own response and named it correctly; the render
+    call read a module global through a from-import, which captured "" at import time and
+    never saw the rebinding. Every deploy reported "no model named" on the render half of the
+    transcript — the half the operator reads to know what voiced the answer.
+    """
+
+    def test_the_server_reads_the_model_through_the_MODULE(self):
+        import ui.lm as lm
+        import ui.server as server
+
+        self.assertFalse(hasattr(server, "LAST_SERVED"),
+                         "a from-import of a mutable module global is a snapshot, not a "
+                         "reference; the server must read ui.lm.LAST_SERVED")
+        self.assertIs(getattr(server, "_lm"), lm)
+
+    def test_a_rebinding_in_lm_is_VISIBLE_to_the_server(self):
+        import ui.lm as lm
+        import ui.server as server
+
+        before = lm.LAST_SERVED
+        try:
+            lm.LAST_SERVED = "control/model-x"
+            self.assertEqual(server._lm.LAST_SERVED, "control/model-x")
+        finally:
+            lm.LAST_SERVED = before
+
+
 class TheProposerLedgerIsVisibleAndReadOnly(unittest.TestCase):
     """The window shows the daemon's own journal, and cannot promote through it."""
 
