@@ -261,7 +261,7 @@ class TheAnswerIsFIRST(unittest.TestCase):
             p.perturb()
             v = p.page.inner_text("#answer .verdict")
             self.assertIn("faithful: []", v)
-            self.assertIn("cites a claim that was shown", v)
+            self.assertIn("cite a claim that was shown", v)
 
     def test_a_red_verdict_is_shown_ON_the_answer_with_its_failing_sentences(self):
         with _Server(RED_ASK) as url, _Page(url) as p:

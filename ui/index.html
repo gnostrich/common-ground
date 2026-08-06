@@ -72,13 +72,16 @@ details.scope[open]>summary{margin-bottom:.6rem}
   <div class="grid">
     <div>
       <h2>The current settling</h2>
-      <div id="settle"></div>
+      <div id="settle" class="muted">nothing has entered the current. A <b>release</b>
+      perturbation changes nothing here by design — tick <b>retain</b> to deposit a claim.</div>
     </div>
     <div>
       <h2>The floor — what won't reconcile</h2>
-      <div id="floor"></div>
+      <div id="floor" class="muted">measured over the current, which is empty until something
+      is retained. The corpus-wide floor is in the header above.</div>
       <h2>The gate — what K deposited</h2>
-      <div id="gate"></div>
+      <div id="gate" class="muted">K has considered nothing yet: it reads the current, and
+      the current is empty.</div>
     </div>
   </div>
 
@@ -143,7 +146,13 @@ function esc(s){return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>'
 async function reset_(){ await post('/reset',{}); render(null); }
 
 function render(st){
-  if(!st){ $('proposals').innerHTML='nothing proposed yet.'; $('settle').innerHTML=''; $('floor').innerHTML=''; $('gate').innerHTML=''; $('lmstate').textContent=''; return; }
+  // A RESET restores the STATED empty text, not an empty box. Blank panels read as a broken
+  // page; the whole point of these three is that empty is a fact about the current.
+  if(!st){ $('proposals').innerHTML='nothing proposed yet.';
+    $('settle').innerHTML='<span class="muted">nothing has entered the current. A <b>release</b> perturbation changes nothing here by design \u2014 tick <b>retain</b> to deposit a claim.</span>';
+    $('floor').innerHTML='<span class="muted">measured over the current, which is empty until something is retained.</span>';
+    $('gate').innerHTML='<span class="muted">K has considered nothing yet: it reads the current, and the current is empty.</span>';
+    $('lmstate').textContent=''; return; }
   $('lmstate').innerHTML = st.lm_available
      ? 'LM source: <b>on</b> (Opus proposing in parallel through the same inlet)'
      : '<b>LM source omitted (no key) — engine runs live.</b> The deterministic "me" source '
@@ -343,22 +352,35 @@ function renderAnswer(r){
     rests = `<div class="rests">Nothing in the field responded to what you typed — `
           + `${esc((X.silence) || (c.field_status||''))}</div>`;
   }
-  // THE GATE, RENDERED. Two structural failures, both about citations: a sentence resting on
-  // nothing shown, or on a number never emitted. The previous version compared words and was
-  // red on five of six correct answers; nothing here compares text.
+  // THE GATE, RENDERED. Four structural failures, none of them lexical. An absence claim is
+  // a first-class legal form, not a permanent RED: a sentence about what the trace LACKS
+  // cannot cite a line, and three of eleven sentences in a live answer were exactly that.
   const f = r.faithful;
+  const LABEL = {
+    uncited:     'rests on nothing shown',
+    unresolved:  'cites a line that was never shown',
+    vacuous:     'says something is absent, but nothing was shown to be absent from',
+    unwarranted: 'names a silence the field does not report',
+  };
   let gate = '';
   if(f){
+    const neg = f.asserted_absent || 0;
     gate = f.ok
-      ? `<div class="verdict ok">faithful: [] — every sentence cites a claim that was shown `
-        + `(${f.cited}/${f.checked} sentences cited; ${(f.resolved||[]).length} distinct `
-        + `citation(s) resolved against ${f.citable} citable line(s)).</div>`
+      ? `<div class="verdict ok">faithful: [] — ${f.cited}/${f.checked} sentence(s) cite a `
+        + `claim that was shown`
+        + (neg ? `, ${neg} assert an absence the field reports` : '')
+        + ` (${(f.resolved||[]).length} distinct citation(s) against ${f.citable} citable `
+        + `line(s)${(f.warrants||[]).length ? '; warrants ' + f.warrants.map(esc).join(', ') : ''}).</div>`
       : `<div class="verdict bad">FAITHFULNESS RED — `
-        + `${f.violations.filter(v=>v.kind==='uncited').length} uncited, `
-        + `${f.violations.filter(v=>v.kind==='unresolved').length} unresolved, `
-        + `of ${f.checked} sentence(s).</div>`
-        + f.violations.map(v => `<div class="viol"><b>${v.kind==='uncited' ? 'rests on nothing shown'
-            : 'cites ' + v.numbers.join(', ') + ' — never shown'}</b> — ${esc(v.sentence)}</div>`).join('');
+        + Object.keys(LABEL).map(k => {
+            const n = f.violations.filter(v => v.kind === k).length;
+            return n ? `${n} ${k}` : '';
+          }).filter(Boolean).join(', ')
+        + `, of ${f.checked} sentence(s).</div>`
+        + f.violations.map(v => `<div class="viol"><b>${esc(LABEL[v.kind] || v.kind)}`
+            + ((v.numbers||[]).length ? ` (${v.numbers.join(', ')})` : '')
+            + (v.warrant ? ` [${esc(v.warrant)}]` : '')
+            + `</b> — ${esc(v.sentence)}</div>`).join('');
   }
   $('answer').innerHTML = rests + `<div class="answer">${esc(r.answer)}</div>` + gate;
 }
