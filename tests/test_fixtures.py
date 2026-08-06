@@ -152,10 +152,19 @@ class AbsenceClaimsAreCitable(unittest.TestCase):
         v = check_answer("The region could not be aimed at all [∅anchor].", self._c())
         self.assertFalse(v.ok)
 
-    def test_every_warrant_the_grammar_accepts_is_in_the_prompt(self):
+    def test_the_absence_form_the_prompt_states_is_the_one_the_checker_accepts(self):
+        """The prompt states `[∅]`; the checker accepts it and the named warrants too.
+
+        Asserting that all seven warrant names appear in the prompt is a fossil of the version
+        that recited its own grammar back as an answer. What must hold is that the form the
+        model IS shown is a form the checker accepts.
+        """
+        from engine.grounded import check_answer
         from engine.inbound import INBOUND_SYSTEM
-        for name in WARRANTS:
-            self.assertIn(f"[∅{name}]", INBOUND_SYSTEM)
+        self.assertIn("[∅]", INBOUND_SYSTEM)
+        self.assertTrue(check_answer(
+            "Nothing in this field speaks to that question at all. [∅]",
+            {"citations": [{"n": 1}]}).ok)
 
 
 class SummarySentencesMustCite(unittest.TestCase):
@@ -201,8 +210,11 @@ class SummarySentencesMustCite(unittest.TestCase):
         and enforced, not that a particular paragraph still exists to exhort about it.
         """
         from engine.grammar import BLOCKS
-        self.assertTrue(any(k == "GRAMMAR" and "several objects names all of them" in t
-                            for k, t in BLOCKS))
+        # THE RULE LIVES IN THE CHECKER, not in the prompt. The grammar spec was REMOVED
+        # from the visible prompt because the model recited it: a page of rules is the most
+        # salient text in a context and a rule is a thing a model can talk about. What the
+        # prompt states is the codomain's syntax; what enforces it is below.
+        self.assertTrue(any(k == "FORM" for k, _ in BLOCKS))
         self.assertFalse(check_answer(
             "Taken together these claims all concern the settling floor.",
             {"citations": [{"n": 1}, {"n": 2}]}).ok)

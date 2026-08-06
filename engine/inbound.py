@@ -140,6 +140,11 @@ class CompiledInput:
     #: Per-stage wall clock. A window that takes half a minute must be able to say WHICH
     #: stage took it — the same rule as the walk's phase announcements: silence must never
     #: mean unknown-phase.
+    #: THE SCOPE VIEW. Everything the renderer must NOT see — the mechanism prose, the
+    #: field statistics, the floor status — kept on the record so it is inspectable
+    #: rather than deleted. Removed from the renderer's input; not removed from the world.
+    scope: str = ""
+    diagnostics: tuple = ()
     stages: dict = field(default_factory=dict)
     #: The numbered objects the answer may cite. Empty when nothing attached and nothing
     #: moved, in which case an answer citing anything is citing something that is not there.
@@ -180,7 +185,11 @@ class CompiledInput:
             "stages": dict(self.stages),
             "citations": [c.as_record() for c in self.citations],
             "signature": self.signature.as_record() if self.signature else None,
-            "order_salt": self.order_salt, "groups": list(self.groups),
+            "order_salt": self.order_salt,
+            # THE SCOPE VIEW travels with the record. What the renderer must not see is not
+            # thereby hidden from the operator: it is one click below, on the page.
+            "scope": self.scope,
+            "diagnostics": list(self.diagnostics), "groups": list(self.groups),
         }
 
 
@@ -244,6 +253,55 @@ def land(text: str, snapshot: CorpusSnapshot, chart: str = "english") -> list[La
             block=tuple(block)[:NEIGHBOUR_CAP], arrows=tuple(_arrows_for(snapshot, d.slot)),
         ))
     return out
+
+
+#: FIELD STATISTICS ARE SCOPE DATA, NEVER RENDERER INPUT. Void counts, dropped-mover counts
+#: and settling-cap counts describe the MEASUREMENT, not the field, and a model handed them
+#: alongside the claims enumerates them — it answered a question about certified positivity by
+#: reciting how many lines were void. They stay in the record for the collapsed scope view and
+#: leave the string the renderer reads.
+DIAGNOSTICS: list = []
+
+#: A STATE LINE carries a numbered object, a declared relation, or a stated absence. Anything
+#: else is explanation, and explanation in the renderer's input gets recited back as an
+#: answer. Recognised by the emitters' own declared prefixes — not by reading the prose.
+_STATE_PREFIXES = ("[", "  -", "   -", "ARROW", "ABSENT", "==", "  ")
+
+
+def _dedupe_claims(state: list) -> list:
+    """OI-10's counting rule, on the render input: one line per distinct CLAIM.
+
+    Identical lines were already collapsed, which was not enough. A claim reached both as an
+    ATTACHMENT and as a MOVED slot appears twice under different prefixes — `[4] BEARS ON ->
+    [english] machine-checked positivity results...` and `[32] [english] machine-checked
+    positivity results...` — same sentence, two numbers. The renderer then cited both, and the
+    weld rule convicted it for relating two objects with no arrow between them. They are one
+    object. The duplication was the defect and the weld was the symptom.
+
+    The FIRST occurrence keeps its number: attachments are emitted before movers, and an
+    attachment line says how the input reached the field, which the mover line does not.
+    """
+    seen, out = set(), []
+    for line in state:
+        body = line.split("] ", 1)[-1]
+        body = body.split("-> ", 1)[-1].strip()
+        if not body or not line.strip().startswith("["):
+            out.append(line)
+            continue
+        if body in seen:
+            continue
+        seen.add(body)
+        out.append(line)
+    return out
+
+
+def _is_state(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return False
+    if stripped.startswith("[") or stripped.startswith("-") or stripped.startswith("=="):
+        return True
+    return stripped.startswith("WHAT THIS PROPOSITION IS LINKED TO")
 
 
 def _region_block(pert, cites: list | None = None) -> str:
@@ -316,7 +374,7 @@ def _region_block(pert, cites: list | None = None) -> str:
                      f"information about which claims the input bears on, and say so.")
         lines.append(line)
     if pert.void:
-        lines.append(f"({pert.void} line(s) were VOID: outside the region, self-paired, "
+        DIAGNOSTICS.append(f"({pert.void} line(s) were VOID: outside the region, self-paired, "
                      f"intra-chart, or an unknown kind. Discarded with the reason, never "
                      f"repaired into a nearby address.)")
     if pert.error:
@@ -473,8 +531,13 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
             origin = ("the bias landed here" if m.hops == 0
                       else f"reached in {m.hops} declared hop(s), weakest arrow "
                            f"{m.weakest_tier}")
-            lines.append(f"  [{n}] [{m.chart}/{m.type}] value={m.value} warrant={m.tier} "
-                         f"({mark}) shift={m.shift:.4f} — {origin}")
+            # THE CLAIM ITSELF. It was missing: the line printed chart, value, warrant, a
+            # shift to four decimals and how the bias arrived, and NOT the sentence. Twenty-
+            # four numbered objects with no content, so the only citable text in the whole
+            # input was the attachment block — and the answer cited [4] twice because [4] was
+            # one of the few lines that said anything. A state line whose state is metadata
+            # about the state is not a state line.
+            lines.append(f"  [{n}] [{m.chart}] {display(m.nu)}")
             lines.append(f"      {display(m.nu)}")
             for step in m.path:
                 lines.append(f"      VIA {step.render()}")
@@ -487,11 +550,11 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
             lines.extend(links[:6])
 
     if rel.moved_dropped:
-        lines.append(f"({rel.moved_dropped} further slot(s) moved and are not shown — the "
+        DIAGNOSTICS.append(f"({rel.moved_dropped} further slot(s) moved and are not shown — the "
                      f"list is cut at the least-responsive end, and the count is stated "
                      f"rather than the cut being silent.)")
     if rel.blocks_skipped:
-        lines.append(f"({rel.blocks_skipped} block(s) exceeded the settling cap and were NOT "
+        DIAGNOSTICS.append(f"({rel.blocks_skipped} block(s) exceeded the settling cap and were NOT "
                      f"relaxed. Anything they hold is unmeasured here, not absent.)")
     return lines, facts
 
@@ -635,10 +698,30 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     lines.append("BOUNDARY CONDITION (what was typed; it is the constraint, not the content):")
     lines.append(text)
 
+    # THE RENDERER RECEIVES STATE AND THE QUESTION. NOTHING ELSE.
+    #
+    # It was receiving 18,474 characters of which the first eight lines explained the
+    # MECHANISM — what a region is, that a hash is not a similarity, that two kinds of arrow
+    # came back and are not the same fact, that both are ephemeral. Every word of that is
+    # true and none of it is state, and a model handed it recited it: asked what the
+    # certified positivity work establishes, it described the sampling procedure and
+    # enumerated void counts. That is the prompt-strip defect one layer down — editorial in
+    # the INPUT rather than in the instructions — and it is the same fix.
+    #
+    # The explanatory prose and the field statistics stay in the RECORD for the collapsed
+    # scope view. `compiled` is what the renderer reads, and it is numbered objects, declared
+    # relations, stated absences, and the question.
+    scope_text = "\n".join(lines)
+    state = [ln for ln in lines if _is_state(ln)]
+    state = _dedupe_claims(state)
+    state.append("")
+    state.append("QUESTION:")
+    state.append(text)
     _phase("rendering")
     stages["render"] = round(_time.time() - _t0 - sum(stages.values()), 3)
     stages["total"] = round(_time.time() - _t0, 3)
-    out = CompiledInput(typed=text, compiled="\n".join(lines), landings=landings,
+    out = CompiledInput(typed=text, compiled="\n".join(state), landings=landings,
+                        scope=scope_text, diagnostics=tuple(DIAGNOSTICS),
                         facts=facts, field_status=status, conditioned=True, relaxation=rel,
                         attachment=att, citations=cites)
     out.stages = stages

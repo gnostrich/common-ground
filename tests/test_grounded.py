@@ -166,8 +166,8 @@ class TheGrammarRequiresCitations(unittest.TestCase):
         from engine.grammar import BLOCKS
         from engine.inbound import INBOUND_SYSTEM
         self.assertIn("[4]", INBOUND_SYSTEM, "the citation form must be shown")
-        self.assertTrue(any(k == "GRAMMAR" and "Every sentence ends with" in t
-                            for k, t in BLOCKS))
+        self.assertTrue(any(k == "FORM" for k, _ in BLOCKS),
+                        "the codomain's syntax must be stated — it is the type annotation")
         self.assertFalse(check_answer("This sentence rests on nothing at all whatsoever.",
                                       _compiled([1])).ok)
 
@@ -297,11 +297,37 @@ class HonestNegativesHaveALegalForm(unittest.TestCase):
                          "[1][\u2205:2].", self._c())
         self.assertTrue(v.ok, [x.render() for x in v.uncited + v.unresolved])
 
-    def test_the_prompt_states_every_warrant_it_will_accept(self):
-        from engine.inbound import INBOUND_SYSTEM
+    def test_every_warrant_the_checker_accepts_RESOLVES_against_the_record(self):
+        """The real property, and the one that outlived the prompt listing them.
+
+        This asserted that every `[∅gap]`-style form appears in the prompt. It cannot: the
+        grammar spec was REMOVED from the visible prompt because the model recited it, and
+        what remains states the codomain's syntax — `[n]` per sentence, `[∅]` for absence —
+        not the full warrant vocabulary. Listing seven warrant names is grammar detail, and
+        grammar detail in the prompt is exactly what got recited back as an answer.
+
+        The warrants are still ACCEPTED, and this is what makes accepting them honest: every
+        name resolves against something `warrants_held` reads off the relaxation record. A
+        model that names one the field does not report is flagged; a model that never names
+        one is fine, and the bare `[∅]` the prompt does state is always available.
+        """
+        from engine.grounded import WARRANTS, warrants_held
+        compiled = {"relaxation": {"rows": [], "responded": False, "blocks_skipped": 1,
+                                   "moved_dropped": 1},
+                    "attachment": {"attachment": [], "void": 1, "unanchored": True,
+                                   "discrimination": {"red": True}},
+                    "conditioned": False}
+        held = warrants_held(compiled)
         for name in WARRANTS:
-            self.assertIn(f"[\u2205{name}]", INBOUND_SYSTEM,
-                          f"the grammar accepts {name} but never tells the model it exists")
+            if name == "rel":
+                continue        # licensed by the weld rule itself, not by a field statistic
+            self.assertIn(name, held,
+                          f"the checker accepts [∅{name}] but nothing on the record can hold it")
+
+    def test_the_prompt_states_the_absence_form_it_expects(self):
+        from engine.inbound import INBOUND_SYSTEM
+        self.assertIn("[∅]", INBOUND_SYSTEM,
+                      "a model cannot write an absence marker it has never been shown")
 
 
 class ThePromptIsWIREGrammarAndNothing(unittest.TestCase):

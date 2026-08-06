@@ -79,7 +79,9 @@ _ABSENT = re.compile(r"\[\u2205(?::([\d,\s]+))?([a-z_]+)?\]")
 
 #: Sentence boundary. Splitting decides WHERE a sentence ends; the only thing done with the
 #: sentence afterwards is reading its brackets.
-_SENT = re.compile(r"(?<=[.!?])[\"')\]]*\s+(?=[A-Z\"'(\[])|\n{2,}")
+#: A run of citation tokens: [4], [∅gap], [!]. Used to decide where a sentence ENDS, never
+#: to compare anything.
+_CITE_RUN = re.compile(r"\s*(?:\[(?:\d+|∅[^\]]*|!)\])+")
 
 #: A line too short to assert anything. Requiring a citation on "Yes." produces noise.
 MIN_SENTENCE_CHARS = 25
@@ -297,8 +299,37 @@ def citable_numbers(compiled: dict) -> set[int]:
 
 
 def sentences(answer: str) -> list[str]:
-    """Split on terminal punctuation. Fragments below `MIN_SENTENCE_CHARS` are scaffolding."""
-    return [s for s in _SENT.split(answer or "") if len(s.strip()) >= MIN_SENTENCE_CHARS]
+    """Split on terminal punctuation, KEEPING each sentence's trailing citations.
+
+    A regex split could not do this. Models write "…forms. [4][32] It also…", and splitting on
+    the full stop made the trailing bracket its own sentence — counted as uncited — while the
+    sentence it belonged to lost its citation. Both halves wrong from one split, and widening
+    the separator to swallow the brackets deleted them instead. So this scans: a sentence ends
+    at its terminator PLUS any run of citation tokens that follows it, which is where the
+    author put them.
+
+    Fragments below `MIN_SENTENCE_CHARS` are scaffolding, not assertions.
+    """
+    text = answer or ""
+    out, start, i = [], 0, 0
+    while i < len(text):
+        if text[i] in ".!?":
+            j = i + 1
+            while j < len(text) and text[j] in "\"')]":
+                j += 1
+            m = _CITE_RUN.match(text, j)
+            if m:
+                j = m.end()
+            rest = text[j:]
+            if not rest.strip() or re.match(r"\s+[A-Z\"\'(\[]", rest) or rest.startswith("\n\n"):
+                out.append(text[start:j])
+                start = j
+                i = j
+                continue
+        i += 1
+    if text[start:].strip():
+        out.append(text[start:])
+    return [s for s in out if len(s.strip()) >= MIN_SENTENCE_CHARS]
 
 
 def check_answer(answer: str, compiled: dict) -> Verdict:

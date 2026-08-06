@@ -37,37 +37,42 @@ from __future__ import annotations
 
 #: The only legal kinds of prompt block. A style instruction has no tag here, which is what
 #: makes "no editorial content" checkable rather than aspirational.
-KINDS = ("WIRE", "GRAMMAR", "STATE")
+KINDS = ("WIRE", "TASK", "FORM")
 
 #: Why the field is silent. Closed, and every name resolves against something the relaxation
 #: record actually reports — see `engine.grounded.warrants_held`.
 WARRANTS = ("gap", "cap", "cut", "attach", "anchor", "indiscriminate", "void", "rel")
 
+#: THE PROMPT. Three blocks and nothing else.
+#:
+#: THE GRAMMAR SPEC IS NOT HERE, and that is the fix rather than an omission. The previous
+#: version stated six rules — every sentence ends with citations, absence markers take these
+#: forms, relations need arrows, contested objects carry [!] — and the model RECITED THEM. It
+#: answered by describing the format it had been given, because a page of rules is the most
+#: salient text in the context and a rule is a thing a model can talk about.
+#:
+#: A spec that is not in the prompt cannot be recited. The CHECKER is what enforces the
+#: grammar — `engine.grounded.check_answer` flags uncited, unresolved, vacuous, unwarranted,
+#: welded and uncontested sentences — and enforcement was always where the rules lived. What
+#: the model needs is the minimum to COMPLY: how to write a citation, and how to write the
+#: absence marker it cannot otherwise express. That is FORM, and it is one block.
+#:
+#: THE TASK BLOCK IS THE STRIP'S MISSING MINIMUM. Removing the editorial codex also removed
+#: the only sentence that said what to DO, leaving state and rules and no verb — so the model
+#: did the only thing state-plus-rules affords: it described them. "Answer the question from
+#: this state" is not a style instruction; it is the task, and a prompt without one is not
+#: minimal, it is incomplete.
 BLOCKS: tuple[tuple[str, str], ...] = (
     ("WIRE",
-     "The input is a settled field. Each line is one object: its chart in brackets, its "
-     "claim, and a number in square brackets. Lines marked ARROW state a measured relation "
-     "between two numbered objects. Lines marked ABSENT state something the field reports it "
-     "does not have. A line marked (!) is CONTESTED: the field holds more than one value for "
-     "it."),
-    ("GRAMMAR",
-     "Every sentence ends with either bracketed numbers naming the objects it rests on — [4] "
-     "or [2][7] — or an absence marker. A sentence resting on several objects names all of "
-     "them."),
-    ("GRAMMAR",
-     "Absence markers: [∅] for absent from the whole input, [∅:3,7] for absent from "
-     "those lines, and [∅gap] [∅cap] [∅cut] [∅attach] [∅anchor] "
-     "[∅indiscriminate] [∅void] to name why the field is silent. Use only a marker "
-     "the input states."),
-    ("GRAMMAR",
-     "A sentence asserting a relation between objects must cite the ARROW line that states "
-     "that relation. Objects appearing together in the input are not thereby related. Where "
-     "no arrow states it, the sentence carries [∅rel]."),
-    ("GRAMMAR",
-     "A sentence citing a contested object carries [!] as well as its numbers."),
-    ("GRAMMAR",
-     "Numbers resolve against the lines shown. A number not shown, a marker the input does "
-     "not state, and a sentence with neither are each flagged."),
+     "Below is a settled field and a question. Each line is one object: its chart in "
+     "brackets, its claim, and a number in square brackets. ARROW lines state a measured "
+     "relation between two numbered objects. ABSENT lines state what the field reports it "
+     "does not have. (!) marks an object the field holds more than one value for."),
+    ("TASK",
+     "Answer the question from this state."),
+    ("FORM",
+     "End each sentence with the bracketed numbers it rests on — [4] or [2][7]. For "
+     "something the field does NOT contain, write [∅] instead."),
 )
 
 

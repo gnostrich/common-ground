@@ -97,8 +97,11 @@ class ContestIsCarriedIntoTheCompiledInput(unittest.TestCase):
 
     def test_the_floor_status_is_always_stated(self):
         out = compile_input("The cone is positive under composition.", _snapshot([_TEXT_A]))
-        self.assertIn("floor:", out.compiled)
-        self.assertIn("GAP", out.compiled, "an unmeasured floor must be named a GAP")
+        # THE FLOOR IS SCOPE DATA. It describes the MEASUREMENT, not the field,
+        # and a model handed it recites it. It stays on the record.
+        self.assertIn("floor", (out.field_status or "") + str(out.as_record()))
+        self.assertIn("GAP", str(out.as_record()),
+                      "an unmeasured floor must be named a GAP on the record")
 
 
 class EveryFactTracesToTheField(unittest.TestCase):

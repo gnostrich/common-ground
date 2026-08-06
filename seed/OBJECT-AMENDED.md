@@ -280,6 +280,32 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   **THE PAIR IS THE STANDING SHAPE for anything that touches question text: the sweep refuses
   bags, and specificity is derived.** A module that needs a curated vocabulary to work is a
   module whose mechanism has not been found yet.
+- **THE PROSE LIED ABOUT THE MECHANISM, AND THE LIE GENERATED A REPAIR ORDER.** Clean-state
+  item 4 — "the region bounds the answer's universe; settlement and readout must run over the
+  whole field" — was a correct instruction for a defect that **did not exist in the code**.
+  `relax_from` has settled over the whole snapshot since the commit that introduced it; only
+  attachment was ever lineup-bounded, which is right. What was wrong was a DISCLAIMER: "the
+  rest of the corpus is UNMEASURED IN THIS REGION", sitting in the renderer's input directly
+  above the whole-field results, where it read as a bound on the answer. **Description-drift
+  produced a false repair**, and an audit that assumed the prose was reporting the code would
+  have "fixed" a mechanism that was already correct.
+  Joins OI-18 and OI-26 as the strongest instance of relocated editorial. **THE RULE: any
+  prose describing MECHANISM BEHAVIOUR — in a prompt, a page, or a docstring — must be
+  traceable to a control that verifies that behaviour, or it is unverified description and is
+  flagged.** Gate 10 already says this for docstrings claiming mechanisms; this extends it to
+  every surface, because the sentence that misled here was on a page, not in a docstring.
+- **MUTUALLY-CONCEALING DEFECTS: one bug blinded the control that would have caught another.**
+  The moved-line emitter printed warrant, value and shift and omitted the CLAIM. Separately,
+  the shuffle-law control asserted `sorted(lines_a) == sorted(lines_b)` across two order
+  salts. With no claim text every line was `[n] [english/assert] value=T shift=...` —
+  **interchangeable placeholders, which sort to the same multiset whatever the content is** —
+  so the control passed, and could never have detected content drift, for as long as the
+  emitter stayed broken. Each defect hid the other: the emitter made the control vacuous, and
+  the vacuous control reported the emitter fine.
+  This is the canonical case for B2's liveness requirement, and it sharpens it: **a planted
+  defect must exercise the property, not merely the code path.** The shuffle control's plant
+  now includes CONTENT drift, not only order — a control that plants only what it already
+  survives is a control asserting its own reflection.
 - Similarity substituted for a declared relation (Jaccard fibers). **DELETED.**
 - Term overlap in the ANSWER path. **DELETED.** (Navigation is not evidence.)
 - Docstrings claiming mechanisms the call graph lacks ("index", "settlement runs", "provably

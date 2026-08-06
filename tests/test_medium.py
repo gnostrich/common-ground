@@ -423,8 +423,31 @@ class OrderCarriesNoSignal(unittest.TestCase):
         self.assertNotEqual(a, b, "the order is systematic — position is ranking something")
 
     def test_the_content_is_identical_across_orders(self):
+        """The same CLAIMS, whatever the order — compared by claim, not by numbered line.
+
+        This compared `sorted(lines)` and passed for the wrong reason: the emitter did not
+        print the claim text, so all six lines were `[n] [english/assert] value=... shift=...`
+        and differed only in their number. Interchangeable lines sort to the same multiset
+        whatever the content is, so the control could not have detected content drift — it was
+        asserting that six placeholders are six placeholders. With the claims restored the
+        numbers genuinely follow the order, which is what a shuffle DOES, and the property
+        being defended is that the same propositions appear.
+        """
+        def claims(lines):
+            return sorted(ln.split("] ", 1)[-1] for ln in lines if ln.strip().startswith("["))
         a, b = self._lines("saltone"), self._lines("salttwo")
-        self.assertEqual(sorted(a), sorted(b))
+        self.assertEqual(claims(a), claims(b))
+        self.assertEqual(6, len(claims(a)))
+        # THE PLANT MUST EXERCISE THE PROPERTY, NOT THE CODE PATH. Content drift is what this
+        # control exists to catch and is exactly what it could not catch while the emitter
+        # printed no claims. Planting a changed claim proves the comparison can fail.
+        drifted = list(a)
+        for i, ln in enumerate(drifted):
+            if ln.strip().startswith("["):
+                drifted[i] = ln.replace("claim", "DIFFERENT")
+                break
+        self.assertNotEqual(claims(drifted), claims(b),
+                            "the shuffle control cannot see content drift")
 
     def test_the_same_salt_reproduces_the_same_sheet(self):
         # An unrecorded random order would make a sheet unreproducible; the salt is on the

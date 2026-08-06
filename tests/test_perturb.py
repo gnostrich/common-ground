@@ -215,8 +215,13 @@ class TheRegionIsASampleAndSaysSo(unittest.TestCase):
         snap = _corpus()
         t, _ = _transport("0 -bears_on-> 1")
         out = compile_input("what is the common thread", snap, transport=t)
-        self.assertIn("UNMEASURED", out.compiled)
-        self.assertIn("NOT the part of the corpus that matches", out.compiled)
+        # THE SAMPLE DISCLAIMER IS SCOPE DATA, and the horizon audit showed why that
+        # matters: settlement has ALWAYS run over the whole snapshot, so a disclaimer sitting
+        # in the renderer's input read as a bound on the ANSWER when it only ever bounded
+        # ATTACHMENT. It stays on the record, one click below, saying what it actually says.
+        scope = out.scope
+        self.assertIn("UNMEASURED", scope)
+        self.assertIn("NOT the part of the corpus that matches", scope)
 
     def test_planted_the_budget_disclaimer_is_gone(self):
         """There is no candidate list, so a sentence about how much of one was reached would
