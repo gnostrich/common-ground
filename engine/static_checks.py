@@ -791,6 +791,10 @@ CLAIMED_PROPERTY_SITES: tuple[dict[str, str], ...] = (
     {"site": "engine/inbound.py:compile_input",
      "claim": "compiled from what the field did, with no fallback mechanism",
      "control": "tests/test_relax.py:SilenceIsAResultNotADegradation"},
+    {"site": "engine/blocks.py:order_cycle",
+     "claim": "a cycle need not span its fiber; girth by BFS is polynomial, so no fiber is "
+              "ever declined and the (n-1)! Hamiltonian search is gone",
+     "control": "tests/test_structure.py:ACycleNeedNotSpanItsFiber"},
     {"site": "engine/static_checks.py:check_proposer_discipline",
      "claim": "the daemon cannot promote; enforced on the source, not promised in prose",
      "control": "tests/test_continuous.py:ProposerDisciplineIsStatic"},

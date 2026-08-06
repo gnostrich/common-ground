@@ -18,7 +18,6 @@ the declared same_claim pairs and never a clique over a fiber.
 from __future__ import annotations
 
 from collections import defaultdict
-from itertools import permutations
 from typing import Iterable, Mapping, Sequence
 
 from .constants import REWIRE_PASSES
@@ -212,13 +211,9 @@ def _adjacency(edges: Sequence[QEdge]) -> dict[str, set[str]]:
     return adj
 
 
-#: Largest fiber `order_cycle` will brute-force. 8 members is 5,040 orderings, which is
-#: instant; 12 is 40 million, which is not. Above this the fiber is reported unmeasured
-#: rather than searched, because the search is a Hamiltonian cycle and does not get cheap.
-CYCLE_BRUTE_MAX = 8
-
-#: How many fibers the last `loops_from_fibers` call declined to search. Module-level so the
-#: read view can state it without threading a return value through five call sites.
+#: Kept at 0 and always 0. The Hamiltonian search that needed a bound is gone — girth by
+#: BFS is polynomial, so no fiber is ever declined. The name survives one release because
+#: `loops_from_fibers` reported it and a reader may look for it; it is not a cap.
 LOOPS_UNSEARCHED = 0
 
 
@@ -236,62 +231,84 @@ def order_cycle(
     chart_of: Mapping[str, Chart],
     adj: Mapping[str, set[str]],
 ) -> tuple[str, ...] | None:
-    """A cyclic ordering of `members` in which every consecutive pair is a Q edge.
+    """A CYCLE in Q among `members` — the shortest one, not one spanning all of them.
 
-    Returns `None` when no such ordering exists — the members are in one fiber but Q does
-    not connect them in a cycle, so there is nothing to measure a holonomy around. That is
-    the tree case, and it now yields no loop at all rather than a spec whose closing edge
-    is missing.
+    Returns `None` when the members carry no cycle at all: they are in one fiber but Q is a
+    tree over them, so there is nothing to measure a holonomy around. That is the tree case
+    and it yields no loop, rather than a spec whose closing edge is missing.
 
-    Among valid orderings it prefers the one with the most chart alternations, which is
-    what makes a restatement loop come out as the genuine triangle
-    `Eng_1 -> Lean -> Eng_2 -> Eng_1` rather than `Eng_1 -> Eng_2 -> Lean -> Eng_1`. Both
-    are cycles over the same three slots, but only the first traverses the correspondence
-    twice and the paraphrase once, which is the shape PREREG's matrix names. Ties break
-    lexicographically so the choice is deterministic and replayable from the seed.
+    THE CORRECTION. This used to demand a cycle through EVERY member — a Hamiltonian cycle —
+    and that was an over-strong accident rather than a definition. Holonomy is measured around
+    a cycle in the fundamental groupoid; nothing requires that cycle to span its fiber. The
+    cost of the accident was total and silent: on the live field, EIGHT same_claim components
+    contained a real closed english<->python cycle and the constructor reported zero loops,
+    because each had a leaf hanging off it. The floor, K, and every composition measurement
+    were blocked behind a leaf.
 
-    Brute force over member orderings is exact and cheap for SMALL declared groups. It is
-    `(n-1)!` orderings, and this docstring recorded that as a limitation for large groups
-    while the code had no bound at all — so the limitation went live rather than being hit as
-    a stated one. At 16,564 declared arrows a fifteen-member fiber is 87 billion orderings,
-    and the read view stopped returning: the window would not answer, its first page load
-    never completed, and it read as a broken deploy rather than as a search that could not
-    finish. `CYCLE_BRUTE_MAX` bounds it.
+    Two things follow, and both are improvements rather than trades:
 
-    Above the bound this returns `None` and the fiber is UNMEASURED, which is the honest
-    outcome and not the same as "no loop here". Finding a cycle through EVERY member is a
-    Hamiltonian-cycle search and is NP-hard, so no bound makes it cheap; changing what counts
-    as a loop would change the measurement, which is an operator's ruling and not a
-    performance fix. The count is reported instead — see `loops_from_fibers`.
+      * NP-hardness goes away. A Hamiltonian-cycle search has no cheap bound, which is why
+        `CYCLE_BRUTE_MAX` existed and why an unbounded `(n-1)!` search once stopped the read
+        view from ever returning. Girth by breadth-first search is polynomial — O(V*E) — so
+        the cap is DELETED rather than raised, and no fiber is ever left unsearched.
+      * The preference survives. Among shortest cycles this still prefers the most chart
+        alternations, then a crossing on the first step, then lexicographic order — so a
+        restatement loop still reads `Eng_1 -> Lean -> Eng_2 -> Eng_1`, and the choice is
+        deterministic and replayable from the seed.
     """
-    if len(members) < 3:
-        return None
-    if len(members) > CYCLE_BRUTE_MAX:
+    inside = set(members)
+    if len(inside) < 3:
         return None
 
-    first, rest = members[0], list(members[1:])
     best: tuple[str, ...] | None = None
-    best_key: tuple[int, bool, tuple[str, ...]] | None = None
+    best_key: tuple | None = None
 
-    for perm in permutations(rest):
-        order = (first, *perm)
-        # Both traversal directions are enumerated rather than filtered to a canonical one.
-        # They are the same edge set, but holonomy starts at `slots[0]` and walks forward,
-        # so the direction decides whether a restatement cycle opens on the correspondence
-        # leg or on the paraphrase leg. The key below picks; its lexicographic tail keeps
-        # the choice deterministic.
-        n = len(order)
-        if any(order[(i + 1) % n] not in adj.get(order[i], ()) for i in range(n)):
-            continue
-        # Prefer, in order: most chart alternations; then a crossing on the very first
-        # step, so a restatement cycle reads literally `Eng_1 -> Lean -> Eng_2 -> Eng_1`
-        # rather than starting on the paraphrase leg; then lexicographic, for determinism.
-        opens_on_a_crossing = chart_of.get(order[0]) != chart_of.get(order[1])
-        key = (-_alternations(order, chart_of), not opens_on_a_crossing, order)
-        if best_key is None or key < best_key:
-            best, best_key = order, key
-
+    # Standard girth-by-BFS: from each root, the first non-tree edge encountered closes a
+    # cycle through that root, and the minimum over all roots is the true shortest cycle.
+    for root in sorted(inside):
+        parent: dict[str, str | None] = {root: None}
+        depth: dict[str, int] = {root: 0}
+        queue = [root]
+        while queue:
+            x = queue.pop(0)
+            for y in sorted(adj.get(x, ())):
+                if y not in inside:
+                    continue
+                if y not in depth:
+                    parent[y], depth[y] = x, depth[x] + 1
+                    queue.append(y)
+                elif parent.get(x) != y:
+                    cycle = _close(x, y, parent)
+                    if cycle is None:
+                        continue
+                    key = (len(cycle),
+                           -_alternations(cycle, chart_of),
+                           chart_of.get(cycle[0]) == chart_of.get(cycle[1]),
+                           cycle)
+                    if best_key is None or key < best_key:
+                        best, best_key = cycle, key
     return best
+
+
+def _close(x: str, y: str, parent: Mapping[str, str | None]) -> tuple[str, ...] | None:
+    """The cycle formed by the non-tree edge (x, y), read off the BFS parent chains.
+
+    Returns `None` if the two chains share any vertex besides their meeting point — that
+    would be a figure-eight rather than a simple cycle, and holonomy around a walk that
+    repeats a slot is not holonomy around a loop.
+    """
+    px: list[str] = [x]
+    while parent[px[-1]] is not None:
+        px.append(parent[px[-1]])          # type: ignore[arg-type]
+    py: list[str] = [y]
+    while parent[py[-1]] is not None:
+        py.append(parent[py[-1]])          # type: ignore[arg-type]
+    sx, sy = set(px), set(py)
+    shared = sx & sy
+    if len(shared) != 1:
+        return None
+    cycle = tuple(px[::-1] + py[:-1])
+    return cycle if len(set(cycle)) == len(cycle) and len(cycle) >= 3 else None
 
 
 def loops_from_fibers(
@@ -335,11 +352,6 @@ def loops_from_fibers(
     for fiber in fibers:
         members = [s for s in sorted(fiber.slots) if allowed is None or s in allowed]
         if len(members) < 3:
-            continue
-        if len(members) > CYCLE_BRUTE_MAX:
-            # NOT "no loop here". The search was declined, and a declined search reported as
-            # an absence is the failure mode this whole codebase is built against.
-            unsearched += 1
             continue
         key = frozenset(members)
         if key in seen:

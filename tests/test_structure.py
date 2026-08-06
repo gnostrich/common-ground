@@ -102,3 +102,114 @@ class EveryDeclaredGapIsFenced(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ACycleNeedNotSpanItsFiber(unittest.TestCase):
+    """The over-strong accident, and the three cycles it hid.
+
+    `order_cycle` demanded a Hamiltonian cycle — one through EVERY fiber member. Holonomy is
+    measured around a cycle in the fundamental groupoid and nothing requires it to span its
+    fiber, so the requirement was an accident rather than a definition. It cost everything:
+    on the live field, eight same_claim components held a real closed english<->python cycle
+    and the constructor reported zero, because each had a leaf hanging off it. Floor, K and
+    every composition measurement were blocked behind a leaf.
+
+    The three cycles below are taken verbatim from that field (runs/proposer.ledger.jsonl,
+    reconstructed 2026-08-06). They are the regression: if any stops being found, the
+    accident is back.
+    """
+
+    @staticmethod
+    def _adj(edges):
+        from engine.blocks import _adjacency
+
+        return _adjacency(edges)
+
+    def _graph(self, pairs, charts):
+        from engine.types import QEdge
+
+        edges = [QEdge(u=u, v=v, weight=1.0, origin="fiber") for u, v in pairs]
+        return self._adj(edges), charts
+
+    def test_a_four_cycle_with_a_leaf_hanging_off_it_is_still_found(self):
+        """The exact shape of all eight: a closed 4-cycle plus one pendant vertex."""
+        from engine.blocks import order_cycle
+
+        e1, p1, e2, p2, leaf = "e1", "p1", "e2", "p2", "leaf"
+        charts = {e1: "english", p1: "python", e2: "english", p2: "python",
+                  leaf: "python"}
+        adj, charts = self._graph(
+            [(e1, p1), (p1, e2), (e2, p2), (p2, e1), (e1, leaf)], charts)
+        got = order_cycle([e1, p1, e2, p2, leaf], charts, adj)
+        self.assertIsNotNone(got, "a real cycle was hidden by one pendant vertex")
+        self.assertEqual(len(got), 4, "the cycle is the 4-cycle, not the whole fiber")
+        self.assertNotIn(leaf, got)
+
+    def test_the_three_exhibited_field_cycles_are_found(self):
+        """Verbatim from the live ledger. Each is a 4-cycle inside a 5- or 6-slot fiber."""
+        from engine.blocks import order_cycle
+
+        cases = [
+            (("4f386cc9", "ebd19bf0", "14480763", "340b7d56"),
+             ("python", "english", "python", "english"), ("x1",)),
+            (("51e674e8", "c02e6161", "db189459", "93571a5b"),
+             ("python", "english", "python", "english"), ("x1", "x2")),
+            (("24cb0c8b", "24b0a96d", "abe4809f", "08344658"),
+             ("english", "python", "english", "python"), ("x1", "x2")),
+        ]
+        for ring, kinds, leaves in cases:
+            charts = dict(zip(ring, kinds))
+            pairs = [(ring[i], ring[(i + 1) % 4]) for i in range(4)]
+            for i, lf in enumerate(leaves):          # the pendants that hid it
+                charts[lf] = "python" if kinds[0] == "english" else "english"
+                pairs.append((ring[i], lf))
+            adj, charts = self._graph(pairs, charts)
+            got = order_cycle(list(ring) + list(leaves), charts, adj)
+            self.assertIsNotNone(got, f"lost the field cycle {ring[0]}…")
+            self.assertEqual(set(got), set(ring))
+
+    def test_planted_a_tree_fiber_still_reports_no_loop(self):
+        """The forest case must stay a non-answer. 359 of 367 field components are trees."""
+        from engine.blocks import order_cycle
+
+        charts = {"e": "english", "a": "python", "b": "python", "c": "go"}
+        adj, charts = self._graph([("e", "a"), ("e", "b"), ("e", "c")], charts)
+        self.assertIsNone(order_cycle(["e", "a", "b", "c"], charts, adj),
+                          "a star has no cycle and must not produce a spec")
+
+    def test_planted_a_figure_eight_yields_a_simple_cycle(self):
+        """Two cycles meeting at a vertex is not one loop. Holonomy around a walk that
+        repeats a slot is not holonomy around a loop, so `_close` refuses that shape and the
+        search returns one of the two simple cycles instead."""
+        from engine.blocks import order_cycle
+
+        charts = {"a": "english", "b": "python", "c": "english",
+                  "d": "python", "e": "english"}
+        adj, charts = self._graph(
+            [("a", "b"), ("b", "c"), ("c", "a"), ("c", "d"), ("d", "e"), ("e", "c")],
+            charts)
+        got = order_cycle(["a", "b", "c", "d", "e"], charts, adj)
+        self.assertIsNotNone(got)
+        self.assertEqual(len(set(got)), len(got), "a slot must not repeat in a loop")
+        self.assertEqual(len(got), 3, "the shortest simple cycle, not the figure-eight")
+
+    def test_the_brute_force_cap_is_gone_not_raised(self):
+        """Girth by BFS is polynomial, so no fiber is ever declined."""
+        import engine.blocks as B
+
+        self.assertFalse(hasattr(B, "CYCLE_BRUTE_MAX"))
+        self.assertEqual(B.LOOPS_UNSEARCHED, 0)
+
+    def test_a_large_fiber_no_longer_hangs(self):
+        """The 43-member field fiber took an unbounded (n-1)! search before."""
+        import time
+
+        from engine.blocks import order_cycle
+
+        n = 43
+        charts = {f"s{i}": ("english" if i % 2 else "python") for i in range(n)}
+        pairs = [(f"s{i}", f"s{i+1}") for i in range(n - 1)]      # a path: no cycle
+        adj, charts = self._graph(pairs, charts)
+        t = time.time()
+        self.assertIsNone(order_cycle([f"s{i}" for i in range(n)], charts, adj))
+        self.assertLess(time.time() - t, 5.0)
