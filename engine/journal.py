@@ -202,7 +202,7 @@ class Journal:
     def record_ask(self, *, src_chart: str, src_slot: str, dst_chart: str, dst_slot: str,
                    type: str, answer: str, evidence: str, relation: str,
                    proposer: str, prompt_hash: str, tier: str,
-                   region_id: str = "") -> dict:
+                   region_id: str = "", model: str = "") -> dict:
         """One answered candidate. `region_id` identifies the CO-PRESENT SET it was named in.
 
         Without it, re-confirmation cannot be told from re-measurement. An arrow named twice
@@ -219,6 +219,13 @@ class Journal:
         }
         if region_id:
             rec["region_id"] = region_id
+        if model:
+            # THE SERVED MODEL, not the requested one. `openrouter/auto` routed 448 of 465
+            # calls to a lite model that repeats 35x and never emits `same_claim`, and
+            # nothing in the record said so — the arrows it produced are indistinguishable
+            # from any other after the fact. A model selector is a mechanism parameter, so
+            # which model actually answered belongs in the evidence, not in a log line.
+            rec["model"] = model
         return self._write(rec)
 
     def record_admission(self, admission) -> dict:

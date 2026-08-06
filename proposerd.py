@@ -328,6 +328,7 @@ def cmd_walk(n: int) -> None:
     try:
         for _ in range(n):
             s, proposals, region = step(walk, snapshot, transport, old_stock=old_stock)
+            served_model = getattr(transport, "served_model", "") or model
             for arrow in arrows_from(proposals):
                 hole = Hole(src_chart=arrow.src_chart, src_slot=arrow.src_slot, src_nu="",
                             dst_chart=arrow.dst_chart, dst_slot=arrow.dst_slot, dst_nu="",
@@ -344,7 +345,7 @@ def cmd_walk(n: int) -> None:
                     dst_chart=arrow.dst_chart, dst_slot=arrow.dst_slot, type="assert",
                     answer=arrow.kind, evidence=arrow.evidence[0] if arrow.evidence else "",
                     relation="region", proposer="lm", prompt_hash="region",
-                    tier="EXTRACTION")
+                    tier="EXTRACTION", model=served_model)
             log_step(s)
             print(f"  [{s.n}] {s.kind:11} members={s.members:>3} named={s.named:>3} "
                   f"void={s.void:>3} novel={s.novel:>3} conf={s.confirmed_declared:>2} "
@@ -468,8 +469,13 @@ def _openrouter_transport():
 
     def transport(system: str, user: str) -> tuple[str, dict]:
         raw = client.complete(system, user, 0.0, max_tokens=16000)
-        return raw, dict(client.last_usage)
+        usage = dict(client.last_usage)
+        # THE SERVED MODEL, carried out of the call. What was requested and what answered
+        # are different facts, and only the second one is evidence about an arrow.
+        transport.served_model = usage.get("model") or client.model
+        return raw, usage
 
+    transport.served_model = client.model
     return transport, client.model
 
 

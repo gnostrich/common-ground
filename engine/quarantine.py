@@ -83,6 +83,52 @@ def quarantined_pairs(journal_path: str | Path, path: str | Path = QUARANTINE_PA
     return (out - reconfirmed) | (out & unresolved)
 
 
+#: Models whose arrows are LEADS, not evidence. Measured, one region, temperature 0.0:
+#: `gemini-2.5-flash-lite` emitted 1,789 arrow lines over 51 distinct pairs — 35 repeats
+#: each — and ZERO `same_claim` in any of them. Every other model tried had repeats-per-pair
+#: of exactly 1.0. `same_claim` is the only loop-eligible relation, so arrows from a model
+#: that never emits it cannot be trusted to describe the field's topology.
+#:
+#: They are RETAINED IN FULL and stay readable, countable and auditable. What is withdrawn is
+#: their ability to act — the same three exclusions quarantine already defines. Re-extraction
+#: on a pinned model is what promotes them out, one region at a time.
+LEAD_MODELS = frozenset({"google/gemini-2.5-flash-lite"})
+
+
+def lite_pairs(journal_path: str | Path,
+               lead_models: frozenset[str] = LEAD_MODELS) -> set[tuple[str, str]]:
+    """Pairs whose ONLY support is an arrow served by a lead model.
+
+    A pair re-proposed by a pinned model is clean stock and leaves this set, which is how
+    Track A's tranches promote arrows out as they land. Records written before model tagging
+    existed carry NO model, and those are treated as UNTAGGED rather than clean: 448 of 465
+    historical calls went to the lite model, so absence of a tag is not evidence of a good
+    one.
+    """
+    from .correspondence import KINDS
+
+    lead: set[tuple[str, str]] = set()
+    clean: set[tuple[str, str]] = set()
+    p = Path(journal_path)
+    if not p.exists():
+        return lead
+    with p.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if rec.get("kind") != "ask" or rec.get("answer") not in KINDS:
+                continue
+            pair = (rec.get("src_slot", ""), rec.get("dst_slot", ""))
+            model = rec.get("model", "")
+            if model and model not in lead_models:
+                clean.add(pair)
+            else:
+                lead.add(pair)
+    return lead - clean
+
+
 def non_acting(journal_path: str | Path, aging=None,
                path: str | Path = QUARANTINE_PATH) -> set[tuple[str, str]]:
     """THE ONE NON-ACTING SET. Two reasons to be in it; one set, one exclusion path.
@@ -99,4 +145,8 @@ def non_acting(journal_path: str | Path, aging=None,
     out = quarantined_pairs(journal_path, path)
     if aging is not None:
         out = out | aging.dormant_pairs()
+    # A THIRD REASON, same set: the arrow's only support came from a model whose output is
+    # a lead rather than evidence. Not a third mechanism — `lite_pairs` produces pairs and
+    # hands them here, exactly as `Aging` does.
+    out = out | lite_pairs(journal_path)
     return out
