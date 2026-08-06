@@ -167,6 +167,79 @@ class TheGrammarLineIsCodomainSyntax(unittest.TestCase):
         self.assertEqual(1, ACT_GRAMMAR.count("."))
 
 
+
+class TheREADReachesTheWINDOW(unittest.TestCase):
+    """The parser was green for a release while the reading was dead on the wire.
+
+    `parse()` read `ACT: explore` correctly every time. The perturbation stored it correctly
+    every time. And the window reported "the medium emitted no ACT line" on EVERY request ever
+    served — because the reading lived on `Perturbation.trace()` and `ui/server._reading_of`
+    reads `Perturbation.as_record()`. Two halves that never met, with a green suite on both.
+
+    The conservative direction (OI-43) is what hid it: unread ACT falls to explore/keep-nothing,
+    which is right when nothing was said and silently WRONG when `ACT: assert` was. The operator
+    would have been downgraded on every assertion and told the medium had said nothing.
+
+    So these controls run at the layer the defect lived at — the record the consumer reads, and
+    the HTTP response it becomes — never at the parser, which was never the problem.
+    """
+
+    def test_the_reading_is_on_the_record_the_window_reads(self):
+        from engine.perturb import Perturbation
+
+        p = Perturbation()
+        p.reading = parse("ACT: assert\nb0 -bears_on-> e1")
+        rec = p.as_record()
+        self.assertIn("reading", rec, "as_record is what ui/server._reading_of consults")
+        self.assertEqual(rec["reading"]["act"], "assert")
+
+    def test_the_record_and_the_trace_AGREE(self):
+        """Two emitters of one fact is the shape that let them diverge unnoticed."""
+        from engine.perturb import Perturbation
+
+        for line in ("ACT: assert", "ACT: explore", "ACT: claim-of 3", ""):
+            with self.subTest(line=line):
+                p = Perturbation()
+                p.reading = parse(line)
+                self.assertEqual(p.as_record()["reading"], p.trace()["reading"])
+
+    def test_the_SERVED_response_carries_the_medium_s_act(self):
+        """END TO END, over HTTP, with a transport that says `ACT: assert`. This is the exact
+        assertion that would have failed for the whole release."""
+        import json
+        import threading
+        import urllib.request
+        from http.server import HTTPServer
+
+        import ui.current as current
+        from ui.server import Handler
+
+        def _fake(system, user):
+            return "ACT: assert\nb0 -bears_on-> e1", {"model": "control/x", "cost": 0.0}
+
+        real = current._region_transport
+        current._region_transport = lambda key=None: _fake
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        t = threading.Thread(target=server.serve_forever, daemon=True)
+        t.start()
+        try:
+            body = json.dumps({"question": "is the cone positive",
+                               "chart": "english"}).encode()
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{server.server_address[1]}/ask", data=body,
+                headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=120) as r:
+                out = json.load(r)
+        finally:
+            server.shutdown()
+            current._region_transport = real
+        reading = out.get("reading") or {}
+        self.assertNotIn("emitted no ACT line", reading.get("reason", ""),
+                         f"the medium said ACT: assert and the window did not hear it: {reading}")
+        self.assertEqual(reading.get("act"), "assert", reading)
+
+
+
 if __name__ == "__main__":
     unittest.main()
 

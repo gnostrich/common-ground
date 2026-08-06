@@ -215,6 +215,13 @@ class Perturbation:
             "extracted": len(self.extracted),
             "void": self.void, "calls": self.calls, "cost": round(self.cost, 6),
             "error": self.error,
+            # THE READING BELONGS ON THE RECORD, not only on the trace. It lived on `trace()`
+            # alone while the window read it off `as_record()`, so `_reading_of` fell through
+            # to "the medium emitted no ACT line" on EVERY request ever served — including the
+            # ones where the reply opened with `ACT: explore`. The parser was green the whole
+            # time. A parser that works and a record the consumer does not read is not a
+            # working mechanism; it is two halves that never met.
+            "reading": (self.reading.as_record() if self.reading is not None else None),
             "note": ("The typed input entered a REGION as one more object, over the pseudo-"
                      "chart `bias`, and one call completed the diagram. Arrows to the bias "
                      "object are attachment and are EPHEMERAL: conditioning-only, never "
