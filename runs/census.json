@@ -1,0 +1,22 @@
+{
+  "measured_at": "2026-08-05T10:46:55Z",
+  "measured_by": "engine.holes.holes_by_subtree_all(max_depth=1)",
+  "elapsed_seconds": 662.2,
+  "note": "Depth-1 subtree candidates per chart pair. A pair absent from this table has NO candidates at that granularity \u2014 that is a measured zero, not a gap in the measurement.",
+  "subtree": {
+    "conversation x english": 32180670,
+    "english x tabular": 20798398,
+    "conversation x tabular": 11076003,
+    "english x python": 1507927,
+    "conversation x python": 714217,
+    "english x go": 632775,
+    "english x lean": 537625,
+    "go x tabular": 333510,
+    "python x tabular": 229013,
+    "lean x tabular": 116102,
+    "conversation x lean": 109815,
+    "conversation x go": 67006,
+    "lean x python": 942,
+    "go x python": 373
+  }
+}

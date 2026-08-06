@@ -39,8 +39,7 @@ SETTLE_GRAD_TOL: float = float(C["settle_grad_tol"])
 SETTLE_MAX_ITERS: int = int(C["settle_max_iters"])
 SETTLE_MAX_BACKTRACKS: int = int(C["settle_max_backtracks"])
 
-# --- fibers and casting -----------------------------------------------------------
-FIBER_CAP: int = int(C["fiber_cap"])
+# --- casting ----------------------------------------------------------------------
 CAST_T2_START: float = float(C["cast_t2_start"])
 CAST_T2_END: float = float(C["cast_t2_end"])
 CAST_T2_DECAY: float = float(C["cast_t2_decay"])
@@ -118,11 +117,16 @@ def shadow_probes() -> dict[str, Any]:
     return _load(SHADOW_PROBES_PATH)
 
 
-# --- fiber construction (a prior; gate 2 confines it to energy) -------------------
-FIBER_TOKEN_PREFIX: int = int(C["fiber"]["token_prefix"])
-FIBER_INTRA_THRESHOLD: float = float(C["fiber"]["intra_chart_jaccard_threshold"])
-FIBER_CROSS_THRESHOLD: float = float(C["fiber"]["cross_chart_jaccard_threshold"])
-STOPWORDS: frozenset[str] = frozenset(C["fiber"]["stopwords"])
+#: Face admission (engine/faces.py). Multi-word faces are admissible by construction; a
+#: single-word face is admissible only if its English document frequency is below this
+#: fraction — a MEASURED corpus property, replacing the curated stop list that missed
+#: with/real/mark/state/value.
+FACE_SINGLE_WORD_MAX_DF: float = float(
+    C.get("face_admission", {}).get("single_word_max_df_fraction", 0.001))
+
+# Fiber membership is EXACT declared correspondence (engine/correspondence.py), not a
+# similarity threshold, so there are no fiber-similarity constants: the `fiber` block and
+# `fiber_cap` were removed from seed/CONSTANTS.json in the same seed-morphism.
 
 # --- markers (part of the addressing function; plastic under gate 4) --------------
 MARKERS_DEONTIC: tuple[str, ...] = tuple(C["markers"]["deontic"])

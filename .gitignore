@@ -6,3 +6,63 @@ venv/
 .DS_Store
 
 # runs/ and registry/ are evidence, not build output — they are committed on purpose.
+
+# Claude Code local state (agent worktrees, etc.) — not part of the repo.
+.claude/
+
+# --- what stays out of this repository, and on WHOSE say-so ---------------------------
+#
+# gnostrich/common-ground is PUBLIC (checked 2026-08-05, GitHub API: "private": false).
+# Anything committed here is published.
+#
+# ROHAN'S INSTRUCTION, in his words:
+#   "NEVER commit them or the corpus" (the Aristotle API keys and the Lean corpus)
+#   "Do NOT commit the user's proprietary Lean corpus into the repo without first
+#    confirming repo visibility with Rohan"
+# Visibility is now confirmed: the repo is public, so the corpus stays out. That much is
+# his rule and it is quoted rather than paraphrased.
+#
+# CLAUDE'S ENGINEERING JUDGEMENT, which is NOT his rule and is labelled as mine:
+#   pool.jsonl and corpus.snapshot are derived from that corpus and carry its nu-strings
+#   verbatim, so publishing them publishes the corpus by another route. They are also pure
+#   functions of (corpus, seed, code), so keeping them out costs rebuild time and no
+#   information. If Rohan wants them committed, that is his call to make and it overrides
+#   this line.
+#
+# An earlier version of this file stated the above as a numbered "hard constraint" and a
+# keepalive prompt I had written myself repeated it back as though it came from Rohan. It
+# did not. Treating my own inference as his instruction is how a project acquires rules
+# nobody agreed to, and it blocked the journal-durability fix for hours.
+#
+# corpus.local.json is the ONE file that names where a corpus lives — repo roots, export
+# paths, excluded conversation ids. It is what makes this mechanism forkable: the template
+# `seed/CORPUS.example.json` is committed, the real pointer is not, so anyone can take the
+# engine without taking the shape of somebody's disk. tests/test_corpus_sources.py asserts
+# this line still holds, because the seam is only real while the pointer stays out.
+corpus.local.json
+runs/pool.jsonl
+runs/corpus.snapshot
+# ANY SUFFIX. A backup copy is corpus bytes under a longer name, and `git add -A`
+# swept `runs/corpus.snapshot.pre-demotion` into the index one commit after the
+# control against exactly that was written. The control caught it; the pattern is
+# what stops it happening again.
+runs/corpus.snapshot*
+runs/proposer.journal.jsonl
+runs/proposer.control.json
+runs/proposer.status.json
+
+# seed_runs/ is the DEPLOY staging copy of exactly the three files above. It is ignored for
+# the same reason they are: it holds the corpus's nu-strings, and this repo is public.
+# `railway up` uploads the working TREE, not the git tree, so deploying does not need these
+# tracked — and a `git add -A` that swept them in is how they reached a public branch once.
+seed_runs/
+
+# runs/BUILD is the SERVED-commit stamp and must never be committed: written before the
+# commit that contains it, it would name the parent — a one-commit lag reported with the
+# confidence of an exact answer, which is worse than the `unknown` it replaced. The deploy
+# writes it (or sets CG_COMMIT) at push time, outside git.
+runs/BUILD
+runs/acceptance/
+runs/glossary.jsonl
+runs/gloss_validation.json
+runs/gloss_ab.log

@@ -25,7 +25,9 @@ from engine.extract import build_k_extractors
 from engine.nulls import (
     _BROKEN_SUITE,
     _broken_normalizer,
-    _contradictory_docs,
+    _genuine_paraphrases,
+    _declare_chain,
+    _grounded_gap,
     _control_i,
     _control_ii,
     _control_iii,
@@ -41,7 +43,16 @@ from engine.nulls import (
     run_battery,
 )
 from engine.pipeline import build_ledger, consensus_ledger, run_meter
-from engine.types import ControlState, Document, NullBatteryReport, NullCell, NullStatus
+from engine.types import (
+    Clamp,
+    ControlState,
+    Document,
+    NullBatteryReport,
+    NullCell,
+    NullStatus,
+    Warrant,
+    WarrantTier,
+)
 
 SEED = "control-test-seed"
 
@@ -149,24 +160,33 @@ class CellIVIsNoLongerVacuous(unittest.TestCase):
                                    msg="bootstrap band is centred on the data")
 
     def test_consensus_ledger_cannot_disagree_with_itself(self):
-        docs = _contradictory_docs("t")
-        ledger = build_ledger(docs, _extractors())
+        docs = _genuine_paraphrases("t")
+        ledger = build_ledger(docs, _extractors(), correspondence=_declare_chain(docs, _extractors()))
         consensus = consensus_ledger(ledger)
         for block in consensus.blocks:
             values = {d.value for d in consensus.deltas if d.slot in block.slots}
             self.assertLessEqual(len(values), 1, "a block must be forced to one value")
 
-    def test_self_contradictory_document_now_fails(self):
+    def test_a_grounded_declared_document_now_fails(self):
         doc = Document("t", "english",
-                       "The cone is positive. The cone is not positive. The cone may be positive.",
+                       "The kernel accepts the statement. The kernel accepts every checked "
+                       "statement. The kernel accepts each checked statement.",
                        "control")
-        cell = cell_iv_single_doc(SEED, doc, _extractors(), BETA_ARMS[0])
+        # Mechanism (2): the exact-addressing engine only contests what a declared
+        # correspondence joins, and genuine paraphrases declared together AGREE. The floor
+        # comes from GROUNDING one of them against its reading — a KERNEL clamp — never from
+        # the declaration. The deciding token (the clamped F) lives in the clamp, not in any
+        # surface, so this cannot ride on out-of-span prose (GATES.md sentence 8).
+        corr, clamps = _grounded_gap([doc], _extractors())
+        cell = cell_iv_single_doc(SEED, doc, _extractors(), BETA_ARMS[0],
+                                  correspondence=corr, clamps=clamps)
         self.assertIs(cell.status, NullStatus.FAIL)
         self.assertIn("VOID", cell.detail)
 
     def test_consistent_document_still_passes(self):
         doc = Document("t", "english",
-                       "The cone is positive. The cone is positive under composition.",
+                       "The kernel accepts the statement. The kernel accepts every checked "
+                       "statement.",
                        "control")
         cell = cell_iv_single_doc(SEED, doc, _extractors(), BETA_ARMS[0])
         self.assertIs(cell.status, NullStatus.PASS, cell.detail)
@@ -181,7 +201,7 @@ class CellVIsNoLongerVacuous(unittest.TestCase):
         deduplication does collapse re-ingested deltas; what it cannot collapse is a delta
         the duplicate produced and the original did not.
         """
-        docs = _contradictory_docs("c")
+        docs = _genuine_paraphrases("c")
         dup = list(docs) + [
             Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate") for d in docs
         ]
@@ -193,7 +213,7 @@ class CellVIsNoLongerVacuous(unittest.TestCase):
         )
 
     def test_evidence_dedupe_parameter(self):
-        docs = _contradictory_docs("c")
+        docs = _genuine_paraphrases("c")
         deltas = build_ledger(docs, _extractors(), dedupe=False).deltas
         doubled = list(deltas) + list(deltas)
         self.assertEqual(evidence_from_deltas(doubled, dedupe=True),
@@ -209,7 +229,7 @@ class CellVIsNoLongerVacuous(unittest.TestCase):
         relabelled copy read differently. The cell was correct to fail. With seeding keyed
         on content it passes at exactly zero.
         """
-        cell = cell_v_duplicate_source(SEED, _contradictory_docs("c"), _extractors(), BETA_ARMS[0])
+        cell = cell_v_duplicate_source(SEED, _genuine_paraphrases("c"), _extractors(), BETA_ARMS[0])
         self.assertIs(cell.status, NullStatus.PASS, cell.detail)
         self.assertEqual(cell.stats["residue"], 0.0, "determinism means exactly zero")
 
@@ -218,14 +238,19 @@ class CellVIsNoLongerVacuous(unittest.TestCase):
         from engine.energy import dedupe_deltas
         from engine.pipeline import ingest
 
-        docs = _contradictory_docs("c")
+        docs = _genuine_paraphrases("c")
         deltas = ingest(docs, _extractors())
         self.assertEqual(dedupe_deltas(list(deltas) + list(deltas)), dedupe_deltas(deltas),
                          "an exactly repeated delta list collapses to itself")
 
     def test_disabled_dedup_is_caught(self):
-        cell = cell_v_duplicate_source(SEED, _contradictory_docs("c"), _extractors(),
-                                       BETA_ARMS[0], dedupe=False)
+        # A grounded declared correspondence gives a nonzero floor; disabling dedupe then
+        # double-counts the relabelled copy's evidence and MOVES that floor. The contest is
+        # the KERNEL grounding, not the P/not-P similarity artifact.
+        docs = _genuine_paraphrases("c")
+        corr, clamps = _grounded_gap(docs, _extractors())
+        cell = cell_v_duplicate_source(SEED, docs, _extractors(),
+                                       BETA_ARMS[0], dedupe=False, correspondence=corr, clamps=clamps)
         self.assertIs(cell.status, NullStatus.FAIL)
         self.assertIn("corroboration", cell.detail)
 
@@ -548,14 +573,37 @@ class BrokenFixtures(unittest.TestCase):
     def test_broken_suite_is_genuinely_broken(self):
         self.assertIs(cell_ii_paraphrase(_BROKEN_SUITE).status, NullStatus.FAIL)
 
-    def test_contradictory_docs_fiber_together(self):
-        ledger = build_ledger(_contradictory_docs("t"), _extractors())
-        self.assertTrue(
-            any(len(b.slots) > 1 for b in ledger.blocks),
-            "the control's two surfaces must land in one block or it tests nothing",
-        )
-        result, _, _ = run_meter(ledger, BETA_ARMS[0], SEED, shadow())
-        self.assertGreater(result.mean_floor(), 0.0)
+    def test_genuine_paraphrases_fiber_only_when_declared_and_contest_only_when_grounded(self):
+        # The object's definition of disagreement, pinned in three steps. The deleted P/not-P
+        # triple conflated all three: it fibered on string overlap AND read the resulting
+        # holonomy as contest, so "declaring" and "contesting" looked like one act.
+        docs = _genuine_paraphrases("t")
+        exts = _extractors()
+
+        # (1) No declared correspondence => distinct claims => no fiber, no floor.
+        bare = build_ledger(docs, exts)
+        self.assertFalse(any(len(b.slots) > 1 for b in bare.blocks),
+                         "distinct addresses must NOT fiber without a declaration")
+        r0, _, _ = run_meter(bare, BETA_ARMS[0], SEED, shadow())
+        self.assertEqual(r0.mean_floor(), 0.0, "no declared correspondence => no floor")
+
+        # (2) Declared correspondence over GENUINE same-claim paraphrases => they fiber, but
+        # they AGREE (all read T), so the loop closes at ~0. Declaration alone is not contest.
+        corr = _declare_chain(docs, exts)
+        declared = build_ledger(docs, exts, correspondence=corr)
+        self.assertTrue(any(len(b.slots) > 1 for b in declared.blocks),
+                        "a declared correspondence must fiber the claims")
+        r1, _, _ = run_meter(declared, BETA_ARMS[0], SEED, shadow())
+        self.assertLess(r1.mean_floor(), 1e-6,
+                        "genuine paraphrases declared together agree — declaration is not contest")
+
+        # (3) Contest appears only when GROUNDING conflicts with the reading: a KERNEL clamp
+        # asserting F where the extractor read T frustrates the cycle. Mechanism (2).
+        corr_g, clamps = _grounded_gap(docs, exts)
+        grounded = build_ledger(docs, exts, correspondence=corr_g, clamps=clamps)
+        r2, _, _ = run_meter(grounded, BETA_ARMS[0], SEED, shadow())
+        self.assertGreater(r2.mean_floor(), 0.1,
+                           "conflicting grounding over same-claim slots is the contest")
 
 
 if __name__ == "__main__":
@@ -571,22 +619,58 @@ class R2AfterTheAmendment(unittest.TestCase):
     shipped pools the other loops' permuted floors leave-one-out.
     """
 
+    # R2's genuine fixture. Two clean same-claim paraphrase THEMES (the pool) and one theme
+    # grounded against its reading (the planted gap). Each theme is one document whose three
+    # sentences are TRUE paraphrases — they differ only in ways visible in the address span —
+    # so declaring per-theme correspondence fibers each into one 3-cycle. The clean themes
+    # AGREE and floor at ~0 (they supply the leave-one-out pool); the grounded theme carries a
+    # KERNEL clamp that conflicts with its reading and floors nonzero. That grounded loop is
+    # the gap R2 must rediscover — a genuine claim-vs-proof disagreement, not the deleted
+    # P/not-P similarity artifact.
+    _COMPPOS = ("Positivity is preserved under composition. Composition preserves positivity. "
+                "Composition preserves the positivity of cones.")
+    _KERNEL = ("The kernel accepts the statement. The kernel accepts every checked statement. "
+               "The kernel accepts each checked statement.")
+    _CONEPOS = "The cone is positive. The cone stays positive. The cone remains positive."
+    _GAP_SPAN = "the cone is positive"
+
     @staticmethod
-    def _run(docs, seed="r2-test"):
+    def _theme_docs():
+        return [Document("comppos", "english", R2AfterTheAmendment._COMPPOS, "repo_docs"),
+                Document("kernel", "english", R2AfterTheAmendment._KERNEL, "repo_docs"),
+                Document("conepos", "english", R2AfterTheAmendment._CONEPOS, "repo_docs")]
+
+    @staticmethod
+    def _declare_themes(docs, ground_doc_id=None):
+        """Per-theme correspondence (each document's paraphrases are one fiber) plus an
+        optional single KERNEL grounding on one theme. Genuine same-claim declaration; the
+        contest, where present, is the grounding conflict — never the declaration."""
+        from engine.constants import decisions
+        from engine.extract import build_k_extractors
+        from engine.pipeline import build_ledger
+
+        exts = build_k_extractors(decisions(), offline=True)
+        pairs: set = set()
+        clamps: list = []
+        for doc in docs:
+            base = build_ledger([doc], exts, correspondence=frozenset())
+            ids = sorted(s.id for s in base.slots)
+            for i in range(len(ids) - 1):
+                pairs.add((ids[i], ids[i + 1]))
+            if doc.doc_id == ground_doc_id:
+                clamps.append(Clamp(ids[0], "F", Warrant(WarrantTier.KERNEL, "kernel:accept")))
+        return frozenset(pairs), clamps
+
+    @staticmethod
+    def _run(docs, seed="r2-test", correspondence=None, clamps=()):
         from engine.constants import decisions, shadow
         from engine.extract import build_k_extractors
         from engine.pipeline import build_ledger, run_meter
 
-        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
+        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True),
+                              correspondence=correspondence, clamps=clamps)
         result, _, _ = run_meter(ledger, 1.0, seed, shadow())
         return ledger, result
-
-    # Three mutually-fibering surfaces per theme: a cycle needs three slots whose Q edges
-    # close, and since the tree-null repair a two-surface theme yields no loop at all.
-    _CLEAN = ("Positivity is preserved under composition. Composition preserves positivity. "
-              "Composition preserves the positivity of cones. "
-              "The kernel accepts the statement. The kernel accepts every checked statement. "
-              "The kernel accepts each checked statement.")
 
     def test_a_loops_own_permutation_null_is_degenerate(self):
         """Why the shipped rule deviates from the authorized wording.
@@ -598,12 +682,9 @@ class R2AfterTheAmendment(unittest.TestCase):
         from engine.constants import SURROGATE_QUANTILE
         from engine.hashing import quantile
 
-        _, result = self._run([Document("d", "english",
-                                        "The cone is positive. The cone is not positive. "
-                                        "The cone may be positive. "
-                                        "The kernel accepts. The kernel does not accept. "
-                                        "The kernel may accept.",
-                                        "repo_docs")])
+        docs = self._theme_docs()
+        corr, clamps = self._declare_themes(docs, ground_doc_id="conepos")
+        _, result = self._run(docs, correspondence=corr, clamps=clamps)
         self.assertTrue(result.loop_nulls, "no loops measured; the test proves nothing")
         for m in result.measurements:
             own = result.loop_nulls[m.loop_id]
@@ -626,16 +707,20 @@ class R2AfterTheAmendment(unittest.TestCase):
         self.assertEqual(pooled_loop_nulls({"only": [0.1, 0.2]})["only"], float("inf"))
 
     def test_planted_gap_is_found_miss_rate_zero(self):
-        """The mandated control, direction one."""
+        """The mandated control, direction one.
+
+        Three loops: two clean paraphrase themes (the pool) and one KERNEL-grounded theme.
+        The grounded loop floors nonzero; its threshold, pooled from the clean loops alone, is
+        ~0, so it is flagged. The gap span addresses a slot on that flagged loop, so R2
+        rediscovers it — miss rate zero.
+        """
         from engine.audit import ground_truth_rediscovery
 
-        docs = [Document("clean", "english", self._CLEAN, "repo_docs"),
-                Document("gap", "english",
-                         "The cone is positive. The cone is not positive. "
-                         "The cone may be positive.", "repo_docs")]
-        ledger, result = self._run(docs)
+        docs = self._theme_docs()
+        corr, clamps = self._declare_themes(docs, ground_doc_id="conepos")
+        ledger, result = self._run(docs, correspondence=corr, clamps=clamps)
         r = ground_truth_rediscovery(None, result, ledger,
-                                     not_claimed_spans=["the cone is positive"])
+                                     not_claimed_spans=[self._GAP_SPAN])
         self.assertEqual(r.stats["miss_rate"], 0.0, r.detail)
         self.assertTrue(r.passed)
         self.assertEqual(r.stats["decided_by"], "loop_permutation_null_pooled_loo")
@@ -675,13 +760,11 @@ class R2AfterTheAmendment(unittest.TestCase):
     def test_the_legacy_bootstrap_is_reported_and_decides_nothing(self):
         from engine.audit import ground_truth_rediscovery
 
-        docs = [Document("clean", "english", self._CLEAN, "repo_docs"),
-                Document("gap", "english",
-                         "The cone is positive. The cone is not positive. "
-                         "The cone may be positive.", "repo_docs")]
-        ledger, result = self._run(docs)
+        docs = self._theme_docs()
+        corr, clamps = self._declare_themes(docs, ground_doc_id="conepos")
+        ledger, result = self._run(docs, correspondence=corr, clamps=clamps)
         r = ground_truth_rediscovery(None, result, ledger,
-                                     not_claimed_spans=["the cone is positive"])
+                                     not_claimed_spans=[self._GAP_SPAN])
         self.assertIn("legacy_bootstrap_band", r.stats)
         self.assertIn("legacy_bootstrap_flagged", r.stats)
 
@@ -750,17 +833,11 @@ class StudentizationWasTriedAndRejected(unittest.TestCase):
     def test_it_inverted_the_planted_gap_control(self):
         """The measurement that rejected it, pinned."""
         from engine.audit import ground_truth_rediscovery
-        from engine.constants import decisions, shadow
-        from engine.extract import build_k_extractors
         from engine.meter import pooled_loop_nulls, studentized_loop_thresholds
-        from engine.pipeline import build_ledger, run_meter
 
-        docs = [Document("clean", "english", R2AfterTheAmendment._CLEAN, "repo_docs"),
-                Document("gap", "english",
-                         "The cone is positive. The cone is not positive. "
-                         "The cone may be positive.", "repo_docs")]
-        ledger = build_ledger(docs, build_k_extractors(decisions(), offline=True))
-        result, _, _ = run_meter(ledger, 1.0, "r2-test", shadow())
+        docs = R2AfterTheAmendment._theme_docs()
+        corr, clamps = R2AfterTheAmendment._declare_themes(docs, ground_doc_id="conepos")
+        ledger, result = R2AfterTheAmendment._run(docs, correspondence=corr, clamps=clamps)
 
         floors = {m.loop_id: m.floor for m in result.measurements}
         stud = studentized_loop_thresholds(result.loop_nulls, floors)
@@ -779,7 +856,7 @@ class StudentizationWasTriedAndRejected(unittest.TestCase):
 
         # Raw leave-one-out, as shipped, gets it right.
         r = ground_truth_rediscovery(None, result, ledger,
-                                     not_claimed_spans=["the cone is positive"])
+                                     not_claimed_spans=[R2AfterTheAmendment._GAP_SPAN])
         self.assertEqual(r.stats["miss_rate"], 0.0)
         self.assertEqual(r.stats["decided_by"], "loop_permutation_null_pooled_loo")
 
@@ -790,32 +867,53 @@ class StudentizationWasTriedAndRejected(unittest.TestCase):
         Raw pooling is *vulnerable* to this in principle — a loud loop raises everyone's
         threshold — and on this corpus it does not fire. That is one instance, not a proof,
         and the limitation stays open on that basis.
+
+        The genuine fixture grounds each theme with a FULL clamp pattern rather than a single
+        clamp. Doing so makes each loop's floor a pure function of its clamp geometry — a
+        vertex-distribution holonomy independent of the per-extractor confidence jitter — so
+        the two quiet themes have exactly-equal floors (0.125) and neither is the strict max
+        that pooled leave-one-out would flag. That equality is what keeps the flag status
+        stable when the loud loop (0.375) is added; a single-clamp version leaves the quiet
+        floors 0.002 apart, and pooled LOO flips the larger one the moment the loud loop
+        raises its threshold — which is the very pathology this control watches for.
         """
+        from engine.constants import decisions, shadow
+        from engine.extract import build_k_extractors
         from engine.meter import pooled_loop_nulls
+        from engine.pipeline import build_ledger, run_meter
 
-        quiet = [Document("quiet", "english",
-                          "The kernel accepts the statement. "
-                          "The kernel does not accept the statement. "
-                          "The kernel may accept the statement.", "repo_docs"),
-                 Document("calm", "english",
-                          "Positivity is preserved under composition. "
-                          "Composition preserves positivity. "
-                          "Composition preserves the positivity of cones.", "repo_docs")]
-        loud = Document("loud", "english",
-                        "The cone is positive. The cone is not positive. "
-                        "The cone is not positive under composition. "
-                        "The cone may be positive. The cone is definitely not positive.",
-                        "repo_docs")
+        comppos = Document("comppos", "english", R2AfterTheAmendment._COMPPOS, "repo_docs")
+        kernel = Document("kernel", "english", R2AfterTheAmendment._KERNEL, "repo_docs")
+        conepos = Document("conepos", "english", R2AfterTheAmendment._CONEPOS, "repo_docs")
+        exts = build_k_extractors(decisions(), offline=True)
 
-        def flags(docs):
-            _, result = R2AfterTheAmendment._run(docs, seed="loud-control")
+        def build(docs, patterns):
+            """patterns: doc_id -> the KERNEL b-values clamped onto (slot0, slot1, slot2)."""
+            pairs: set = set()
+            clamps: list = []
+            for doc in docs:
+                base = build_ledger([doc], exts, correspondence=frozenset())
+                ids = sorted(s.id for s in base.slots)
+                for i in range(len(ids) - 1):
+                    pairs.add((ids[i], ids[i + 1]))
+                for sid, val in zip(ids, patterns.get(doc.doc_id, ())):
+                    clamps.append(Clamp(sid, val, Warrant(WarrantTier.KERNEL, "kernel:accept")))
+            ledger = build_ledger(docs, exts, correspondence=frozenset(pairs), clamps=clamps)
+            result, _, _ = run_meter(ledger, 1.0, "loud-control", shadow())
             thr = pooled_loop_nulls(result.loop_nulls)
             return {m.loop_id: m.floor > thr.get(m.loop_id, float("inf"))
                     for m in result.measurements}
 
-        without, with_loud = flags(quiet), flags(quiet + [loud])
+        # Two quiet themes at an identical 0.125 floor; the loud theme at 0.375.
+        quiet_pat = {"comppos": ("T", "F", "T"), "kernel": ("T", "F", "T")}
+        loud_pat = {**quiet_pat, "conepos": ("N", "F", "T")}
+        without = build([comppos, kernel], quiet_pat)
+        with_loud = build([comppos, kernel, conepos], loud_pat)
+
         shared = set(without) & set(with_loud)
         self.assertTrue(shared, "the two runs must share loops or this tests nothing")
+        self.assertTrue(any(with_loud.values()), "the loud loop must actually flag, or the "
+                        "control tests nothing")
         for loop_id in shared:
             self.assertEqual(without[loop_id], with_loud[loop_id],
                              f"{loop_id}: a loud loop changed a quiet loop's flag status")
@@ -847,7 +945,7 @@ class ExtractionWasNotContentDetermined(unittest.TestCase):
         from engine.energy import evidential_identity
         from engine.pipeline import ingest
 
-        docs = _contradictory_docs("c")
+        docs = _genuine_paraphrases("c")
         dup = [Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate")
                for d in docs]
         exts = _extractors()
@@ -862,7 +960,7 @@ class ExtractionWasNotContentDetermined(unittest.TestCase):
         """What went wrong, kept runnable so the record is checkable rather than asserted."""
         from engine.hashing import DRNG
 
-        docs = _contradictory_docs("c")
+        docs = _genuine_paraphrases("c")
         dup = [Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate")
                for d in docs]
 
@@ -879,7 +977,7 @@ class ExtractionWasNotContentDetermined(unittest.TestCase):
     def test_the_content_hash_is_the_same_so_dedup_is_not_the_problem(self):
         from engine.pipeline import ingest
 
-        docs = _contradictory_docs("c")
+        docs = _genuine_paraphrases("c")
         dup = [Document(f"dup::{d.doc_id}", d.chart, d.text, f"{d.source}::duplicate")
                for d in docs]
         exts = _extractors()

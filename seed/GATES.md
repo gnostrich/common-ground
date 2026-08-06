@@ -18,6 +18,60 @@ weakenable only by another authorized, logged amendment.
 5. No floor is read before the null battery passes on the same seed hash.
 6. Every statistical verdict is decided against a null constructed under the no-effect hypothesis (permutation / phase-randomization / independent surrogate), never against a resample of the observation. *(Added 2026-07-30 by PREREG-AMENDMENT-1; not KICKOFF text.)*
 7. All generative keys are content-and-seed only; artifact identity lives in provenance exclusively. *(Added 2026-07-30 with the DRNG repair; not KICKOFF text.)*
+8. Any property attributed to a slot is computed over that slot's address span; nothing outside the span may influence what the slot asserts. *(Added 2026-08-04 by operator authorization with the span repair; not KICKOFF text.)*
+9. A correspondence is a directed, typed morphism between two slot addresses, entering as a claim through the one inlet. Uncertainty about a correspondence is expressed as warrant, never as a fuzzy morphism type. *(Added 2026-08-04 by operator authorization with the correspondence build; not KICKOFF text.)*
+
+### On sentence 9
+
+The base category's morphisms are **claims**, disposed like every other claim. There is no
+side registry that writes structure directly: the correspondence set is DERIVED from accepted
+correspondence claims, so `propose()` remains the single door and the one-write-path assertion
+still covers it.
+
+Three kinds and no fourth. `same_claim` is an isomorphism class and is the **only** kind that
+carries holonomy; its reverse is a **separate claim** with a separate address, so an
+unreciprocated arrow is reported as open rather than assumed symmetric. `refines` and
+`instance_of` are directed and non-invertible: they contribute coupling structure but are
+**excluded from loops**, because a round trip through a non-invertible arrow never closes.
+
+**There is no `approximates` kind, and this is constitutional.** Uncertainty about whether two
+slots say the same thing is expressed as *low warrant on a `same_claim` proposal* — an LM
+proposal enters at `EXTRACTION`, the operator's confirmation at `AUTHORSHIP`, a kernel-verified
+translation at `KERNEL`. Fuzziness lives in the warrant ladder, not in the structure. A fuzzy
+arrow type would put a similarity score back inside the algebra, which is exactly the defect
+this build deleted: a graded morphism is a threshold wearing a type's clothes.
+
+Extraction-tier correspondences may form **provisional** fibers and loops and be reported as
+such, but they never clamp and K never promotes them: promotion requires `AUTHORSHIP` or
+stronger (`engine/types.py:PROMOTION_FLOOR`).
+
+### On sentence 8
+
+Sentence 1 makes the slot the identity of a claim. Sentence 8 is its consequence: if a
+property is *attributed to* that slot — its b-value, its confidence, its claim-form — it must
+be a function of the claim's identity, and therefore computed over `nu(chart, surface)` and
+nothing wider. `classify` already carried this discipline explicitly ("so that classification
+and addressing cannot disagree"); the sentence generalizes it to every slot-attributed
+property, because two defects of exactly this shape were found in one pass:
+
+- **#2, the b-value.** `_value_for` ran on the raw segment. The Lean segmenter spans one
+  declaration head to the next, so proof bodies and trailing docstrings — often prose about a
+  *neighbouring* declaration — reached the value. A stray `no `/`does not`/`might` in a comment
+  flipped a theorem to F/N and manufactured contest against the identical statement elsewhere.
+  On the real corpus, **52 of 59** single-slot "contests" had their deciding token outside the
+  address span; all 59 were voided.
+- **#3, the confidence.** The draw was seeded on `doc.content_hash` and consumed in document
+  order, so editing a comment moved a slot's confidence and inserting a declaration shifted
+  every later slot's. Gate-7 clean (content-keyed, no identity) and still wrong: variance
+  driven by document *composition* is not extractor noise.
+
+Both took the same form — **a property whose seed or input is wider than the slot's address**
+— so the check is shaped to that form rather than to either instance. `surface` is exempt by
+construction: it is the provenance target, a fact about where the claim was found, not a
+property of what the claim asserts.
+
+Rejected alternatives, recorded: addressing the *full* span would put proof bodies into claim
+identity and destroy proof-irrelevance; re-bounding the segmenter only relocates the mismatch.
 
 ### On sentence 7
 

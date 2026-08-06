@@ -10,6 +10,13 @@ projection step is needed, and the update is a single elementwise multiply.
 rises, so the step is halved whenever it would — up to SETTLE_MAX_BACKTRACKS times — and
 each halving is counted into the run log rather than hidden. If no descending step can be
 found, settling stops and the certificate is stamped `violated`; it never silently ascends.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MEASURE — this IS the dynamics: entropic mirror descent to stationarity with a
+monotone descent certificate.
+Q3 motivated its shape. The certificate is what makes a settled block reportable at all;
+without it a floor is a number with no claim behind it.
+
 """
 
 from __future__ import annotations
@@ -53,6 +60,9 @@ def initial_state(
 
     clamps = clamps or {}
     state: dict[str, Vector] = {}
+    # NO APEX IS SEEDED. It has no initial state because it is not a variable: its value at
+    # every sweep is the mean of its faces' current marginals, derived in `FreeEnergy._stars`.
+    # Seeding one would be giving the energy core a free parameter.
     for s in block.slots:
         c = clamps.get(s)
         if c is not None:

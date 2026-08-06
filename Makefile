@@ -1,4 +1,4 @@
-.PHONY: help status test lock verify nulls demo p0 p1 pin gate6 gate7 faithfulness probes clean
+.PHONY: help status test lock verify nulls demo p0 p1 pin gate6 gate7 faithfulness probes three-moves structure claims report clean
 
 help:
 	@echo "status  — decisions, lock state, lexicon pins, phase readiness"
@@ -11,7 +11,11 @@ help:
 	@echo "gate7   — generative-key sweep (GATES.md sentence 7)"
 	@echo "faithfulness — theory object -> code site -> control audit"
 	@echo "probes  — commitment -> probe -> status battery + chart plug-in audit"
+	@echo "claims  — gate 10: every claimed property (complexity/index/exactness) is warranted by a control"
+	@echo "structure — the live factor graph IS the algebra (nodes/factors/frustration; declared gaps fenced)"
+	@echo "three-moves — belonging audit: every extension = swap-base/add-measure/add-morphism (seed/OBJECT.md)"
 	@echo "demo    — synthetic end-to-end smoke run, writes nothing"
+	@echo "report  — usable surface: render the fixture run (reports/fixture-report.md + .html)"
 	@echo "p0 / p1 — phase gates"
 
 status:
@@ -40,6 +44,18 @@ faithfulness:
 
 probes:
 	@python3 -m engine.probe_report
+
+three-moves:
+	@python3 -m engine.three_moves_sweep
+
+structure:
+	@python3 -m engine.structure_sweep
+
+claims:
+	@python3 -m engine.claims_sweep
+
+report:
+	@python3 cli.py report --md reports/fixture-report.md --html reports/fixture-report.html
 
 demo:
 	@python3 cli.py demo

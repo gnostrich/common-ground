@@ -1,0 +1,35 @@
+# WHAT SHIPS TO THE DEPLOY. Railway reads this INSTEAD of .gitignore when it exists, which is
+# the entire reason it exists here: `seed_runs/` is deliberately gitignored — it holds a copy
+# of the operator's corpus and must never be committed to a public repository — and Railway
+# was therefore skipping it too. The seeding path in `ui/boot.py` has consequently never
+# shipped anything, so a volume that took its snapshot on first boot kept it forever, and the
+# deploy served material 1.2 days and 50,000 arrows behind local under a commit stamp that
+# matched HEAD exactly.
+#
+# So: everything .gitignore excludes for repository hygiene stays excluded here, and the one
+# category that is excluded for PUBLICATION rather than for hygiene — the corpus staging copy —
+# ships. The distinction is the point: not-in-git and not-on-the-deploy are different
+# decisions, and conflating them silently disabled a mechanism nobody could see was off.
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+node_modules/
+.DS_Store
+
+# Evidence the deploy writes for itself. Shipping these would overwrite the live record.
+runs/pool.jsonl
+runs/proposer.control.json
+runs/proposer.status.json
+runs/BUILD
+runs/acceptance/
+runs/glossary.jsonl
+runs/gloss_validation.json
+runs/gloss_ab.log
+
+# Scratch and local tooling.
+scratchpad/
+*.tar.gz

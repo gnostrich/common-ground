@@ -10,12 +10,13 @@ Two implementations:
 - `DeterministicExtractor` — offline, rule-based, hash-seeded. This is what the null
   battery and every dry run use. It has no network dependency, so a run's addressing and
   settlement are reproducible from the seed hash without an API key.
-- `AnthropicExtractor` — the real k=3 arm from D4. Refuses to construct unless live
   extraction is explicitly enabled *and* a spend cap is set, so leaving D4's spend cap
   blank keeps it off rather than defaulting it to unlimited.
 """
 
 from __future__ import annotations
+
+import ast
 
 import json
 import os
@@ -27,7 +28,7 @@ from . import EngineError
 from .constants import BVALUES
 from .hashing import DRNG
 from .charts import chart_spec
-from .normalize import address, classify
+from .normalize import address, classify, nu
 from .types import BValue, ClaimForm, Delta, Document, Provenance, Warrant, WarrantTier
 
 #: A span as produced by a concrete extractor. The warrant is deliberately absent.
@@ -57,13 +58,29 @@ def _segment_prose(text: str) -> list[tuple[str, str]]:
 
 
 def _segment_lean(text: str) -> list[tuple[str, str]]:
+    """One span per declaration, locator `<head>:<name>` — the NAME, not the position.
+
+    This used to emit `decl:<i>`, an ordinal. That made the Lean chart the only code chart
+    whose declaration name had to be re-derived downstream (`holes_by_declaration` called
+    `faces.declarations` on the surface to get it back), which is why hole enumeration could
+    only ever be written for Lean. Python and Go already reported `def:name` / `func:Name`.
+    All three now report the same shape, so a declaration key is readable from provenance in
+    exactly one way for every code chart.
+
+    The locator is provenance — a fact about where the claim was found — not part of the
+    address (gate 1) and not an input to any key (gate 7), so no slot id moves.
+    """
+    from .faces import declarations
+
     matches = list(_LEAN_DECL_RE.finditer(text))
     out: list[tuple[str, str]] = []
     for i, m in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         chunk = text[m.start():end].strip()
-        if chunk:
-            out.append((chunk, f"decl:{i}"))
+        if not chunk:
+            continue
+        named = next(iter(declarations(chunk)), None)
+        out.append((chunk, f"{named[0]}:{named[1]}" if named else f"decl:{i}"))
     return out
 
 
@@ -84,12 +101,133 @@ def _segment_tabular(text: str) -> list[tuple[str, str]]:
     return out
 
 
+def _segment_conversation(text: str) -> list[tuple[str, str]]:
+    """One candidate span per speaker-attributed claim; the speaker rides in the locator.
+
+    Delegates to the conversation module's transcript parser (which has no engine deps, so
+    importing it here makes no cycle). This is the third leg of the plug-in seam for the
+    `conversation` behavior — no dispatch edit, just a registered segmenter.
+    """
+    from .conversation import segment_conversation
+
+    return segment_conversation(text)
+
+
+
+#: A Go top-level declaration head. `func (r *T) M(...)` is a method; the receiver type is
+#: part of the name, because `T.M` and `U.M` are different declarations.
+_GO_DECL_RE = re.compile(
+    r"^(?:func\s+(?:\(\s*\w+\s+\*?(?P<recv>\w+)\s*\)\s*)?(?P<fn>\w+)"
+    r"|type\s+(?P<ty>\w+)"
+    r"|(?:const|var)\s+(?P<cv>\w+))",
+    re.MULTILINE)
+
+
+def _segment_go(text: str) -> list[tuple[str, str]]:
+    """One candidate span per top-level declaration, head to the next head.
+
+    Go's own parser is not available here — the engine is stdlib-only and shelling out to
+    `go` would make segmentation depend on a toolchain being installed, the same objection
+    `_nu_go` records. So this segments the way `_segment_lean` does: on declaration heads at
+    column zero, which Go's formatting guarantees for top-level declarations because gofmt
+    puts them there. Nested closures are not spanned separately, the same simplification
+    `_segment_lean` makes for a Lean declaration's internal `have`s.
+
+    A method's locator carries its receiver (`func:T.M`), because `T.M` and `U.M` are
+    different declarations and a locator that conflated them would attribute one's evidence
+    to the other.
+    """
+    heads = [m for m in _GO_DECL_RE.finditer(text) if m.start() == 0 or text[m.start() - 1] == "\n"]
+    out: list[tuple[str, str]] = []
+    for i, m in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+        span = text[m.start():end].strip()
+        if not span:
+            continue
+        if m.group("fn"):
+            name = f"{m.group('recv')}.{m.group('fn')}" if m.group("recv") else m.group("fn")
+            kind = "func"
+        elif m.group("ty"):
+            name, kind = m.group("ty"), "type"
+        else:
+            name, kind = m.group("cv"), "const"
+        out.append((span, f"{kind}:{name}"))
+    return out
+
+
 #: Per-chart span segmenters, keyed by the manifest's behavior id — the third leg of the
 #: chart plug-in seam (normalizer and classifier are the other two, in engine/normalize.py).
+def _segment_python(text: str) -> list[tuple[str, str]]:
+    """One candidate span per top-level `def`/`class` and per method inside a class.
+
+    Uses the real `ast` module — unlike `_nu_python`, this runs on a whole document that
+    is a real file on disk (or, in a test, a deliberately-valid fixture), so a parse
+    failure is a genuine malformed-source signal rather than adversarial fuzz. `ast.parse`
+    is wrapped rather than left to raise: a corpus file with a syntax error yields zero
+    candidate spans instead of crashing the extractor, which is the totality gate 1's
+    idempotence check assumes of every stage downstream of `nu`.
+
+    Granularity mirrors `_segment_lean`'s flat per-declaration spans: module-level
+    functions/classes and one level of method inside a class, no deeper nesting (a nested
+    closure is not spanned separately, same simplification `_segment_lean` makes for a
+    Lean declaration's internal `have`s).
+    """
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError, RecursionError):
+        return []
+
+    # `ast.get_source_segment` splits the WHOLE file into lines on every call, so a module
+    # with n declarations costs O(n * len(text)). On the operator's repositories that made
+    # ingest of 1,405 Python files take longer than the entire rest of the corpus. The line
+    # table is built once here and sliced; the spans are byte-identical.
+    lines = text.splitlines(keepends=True)
+
+    def segment(node: ast.AST) -> str:
+        lo = getattr(node, "lineno", 0)
+        hi = getattr(node, "end_lineno", lo)
+        if not lo:
+            return ""
+        return "".join(lines[lo - 1:hi]).strip()
+
+    out: list[tuple[str, str]] = []
+
+    def walk(node: ast.AST, prefix: str) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                qual = f"{prefix}.{child.name}" if prefix else child.name
+                span = segment(child)
+                if span:
+                    kind = "class" if isinstance(child, ast.ClassDef) else "def"
+                    out.append((span, f"{kind}:{qual}"))
+                if isinstance(child, ast.ClassDef):
+                    walk(child, qual)   # one level: methods, not nested closures
+
+    walk(tree, "")
+    return out
+
+
+def _segment_correspondence(text: str) -> list[tuple[str, str]]:
+    """One candidate span per correspondence claim — one arrow per line, whole and unsplit.
+
+    A correspondence surface is atomic: splitting it would address half an arrow.
+    """
+    out: list[tuple[str, str]] = []
+    for i, raw in enumerate(text.splitlines()):
+        span = raw.strip()
+        if span:
+            out.append((span, f"arrow:{i}"))
+    return out
+
+
 _SEGMENTERS: dict[str, "Callable[[str], list[tuple[str, str]]]"] = {
     "prose": _segment_prose,
     "lean": _segment_lean,
     "tabular": _segment_tabular,
+    "conversation": _segment_conversation,
+    "correspondence": _segment_correspondence,
+    "python": _segment_python,
+    "go": _segment_go,
 }
 
 _TABLE_SEP_ROW_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")
@@ -179,18 +317,39 @@ class DeterministicExtractor(Extractor):
         # The per-extractor stream that makes k=3 informative is untouched: `extractor_id`
         # and `prompt_id` still separate the three readers. What is removed is the one
         # component that let a label change what was read.
-        rng = DRNG("extract", self.extractor_id, self.prompt_id, doc.content_hash)
         for surface, locator in self._candidate_spans(doc):
+            # GATES sentence 8: every slot-attributed property is computed over the slot's
+            # ADDRESS SPAN. The stream is therefore keyed on the slot address — the hash of
+            # (nu, type) — not on the whole document.
+            #
+            # Seeding on `doc.content_hash` and drawing in document order was UNFAITHFUL
+            # SUBSTITUTION #3: editing a comment, or a DIFFERENT declaration, moved a slot's
+            # confidence (measured 0.91832 -> 0.91440 on a byte-identical claim), and
+            # inserting one declaration shifted every subsequent slot's draw. That is variance
+            # driven by document COMPOSITION, which was never extractor noise. The k=3
+            # ensemble's disagreement is preserved: `extractor_id` and `prompt_id` still
+            # separate the three readers, so what dies is composition-variance only.
+            span_type = classify(doc.chart, surface)
+            slot_address, address_span = address(doc.chart, surface, span_type)
+            rng = DRNG("extract", self.extractor_id, self.prompt_id, slot_address)
             keep_draw = rng.random()
             jitter = rng.uniform(-0.12, 0.12)
             # Selectivity shifts which marginal spans each extractor keeps.
             if keep_draw < self.selectivity:
                 continue
-            lowered = surface.casefold()
-            value, base = self._value_for(lowered)
+            # The b-value is valued over `nu(chart, surface)` — the same normalized span
+            # `classify` uses — so that valuation and addressing cannot disagree. Valuing the
+            # raw segment was UNFAITHFUL SUBSTITUTION #2: the Lean segmenter runs a span from
+            # one declaration head to the next, so proof bodies and trailing docstrings (often
+            # prose about the NEXT declaration) reached the value. A stray "no "/"does not"/
+            # "might" in a comment flipped a theorem to F/N and manufactured contest against
+            # the identical statement in another file — 52 of 59 observed contests were
+            # exactly this. The claim's truth-value must be a function of the claim's
+            # identity, and the address span is that identity.
+            value, base = self._value_for(address_span.casefold())
             yield Span(
                 surface=surface,
-                type=classify(doc.chart, surface),
+                type=span_type,
                 value=value,
                 confidence=max(0.05, min(1.0, base + jitter)),
                 locator=locator,
@@ -221,101 +380,24 @@ _EXTRACTION_SCHEMA = {
 }
 
 
-class AnthropicExtractor(Extractor):
-    """The live k=3 arm. Off unless explicitly enabled with a spend cap (D4).
-
-    Both conditions are required, and neither has a permissive default: an unset
-    `COMMON_GROUND_ENABLE_LLM` keeps it off, and an unset spend cap keeps it off even if
-    the flag is set. D4's spend cap being blank therefore blocks live extraction rather
-    than silently meaning "no limit".
-    """
-
-    ENABLE_ENV = "COMMON_GROUND_ENABLE_LLM"
-
-    def __init__(
-        self,
-        extractor_id: str,
-        prompt_id: str,
-        model: str,
-        prompt_text: str,
-        spend_cap_usd: float | None,
-        max_tokens: int = 16000,
-    ) -> None:
-        if os.environ.get(self.ENABLE_ENV, "").strip().lower() not in {"1", "true", "yes", "on"}:
-            raise EngineError(
-                f"live extraction is off: set {self.ENABLE_ENV}=1 to enable it. "
-                "The offline DeterministicExtractor is what P0-P2 and the null battery use."
-            )
-        if spend_cap_usd is None:
-            raise EngineError(
-                "D4 spend cap is unresolved. Live extraction refuses to run without an "
-                "explicit cap; an unset cap is not an unlimited cap."
-            )
-        super().__init__(extractor_id, prompt_id)
-        self.model = model
-        self.prompt_text = prompt_text
-        self.spend_cap_usd = float(spend_cap_usd)
-        self.max_tokens = max_tokens
-        self._client = None
-
-    def _get_client(self):
-        if self._client is None:
-            try:
-                import anthropic  # imported lazily so the offline path needs no SDK
-            except ImportError as exc:  # pragma: no cover - environment dependent
-                raise EngineError(
-                    "the anthropic SDK is not installed; live extraction is unavailable"
-                ) from exc
-            self._client = anthropic.Anthropic()
-        return self._client
-
-    def _spans(self, doc: Document) -> Iterable[Span]:
-        client = self._get_client()
-        response = client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            system=self.prompt_text,
-            output_config={"format": {"type": "json_schema", "schema": _EXTRACTION_SCHEMA}},
-            messages=[
-                {
-                    "role": "user",
-                    # The document's *identity* is deliberately not in the prompt. A
-                    # doc_id here would let the model's reading depend on what the file
-                    # was called, so the same text under two labels could extract
-                    # differently — the live-path form of the defect the offline seeding
-                    # carried. Identity labels evidence in `Provenance`; it never reaches
-                    # anything that generates.
-                    "content": (
-                        f"chart: {doc.chart}\ncontent: {doc.content_hash[:16]}"
-                        f"\n\n---\n{doc.text}"
-                    ),
-                }
-            ],
-        )
-        if response.stop_reason == "refusal":
-            raise EngineError(
-                f"extraction refused for doc {doc.doc_id}; the run's k-coverage is "
-                "incomplete and the result must not be treated as a full extraction"
-            )
-        text = next((b.text for b in response.content if b.type == "text"), "")
-        payload = json.loads(text)
-        for i, claim in enumerate(payload.get("claims", [])):
-            yield Span(
-                surface=claim["surface"],
-                type=claim["type"],
-                value=claim["value"],
-                confidence=float(claim["confidence"]),
-                locator=claim.get("locator") or f"claim:{i}",
-            )
-
-
 def build_k_extractors(decisions: dict, offline: bool = True) -> list[Extractor]:
-    """Construct the k=3 bank described by D4.
+    """Construct the k=3 bank described by D4. Deterministic extractors, always.
 
-    Offline is the default everywhere in P0-P2. The three offline extractors are given
-    distinct ids and distinct selectivity so that they disagree the way three real
-    (model, prompt) pairs would, rather than agreeing trivially.
+    `offline` is kept in the signature because every caller passes it explicitly and a
+    silent signature change is the kind of thing that reads as working until it doesn't.
+    It no longer selects anything: the live arm was an `AnthropicExtractor` and it is
+    DELETED, not disabled. The operator's rule is that every LM call the engine makes goes
+    through OpenRouter, and a dormant second provider in the extractor bank is a rule
+    enforced by nobody calling it — which stops being true after one edit.
+
+    Live LM extraction, when it returns, goes through `ui/lm.py:LMProposer`, which is the
+    OpenRouter path and refuses a non-`sk-or-` key outright.
     """
+    if not offline:
+        raise EngineError(
+            "live extraction was an Anthropic path and has been deleted. Every LM call "
+            "goes through OpenRouter (ui/lm.py:LMProposer); there is no second provider."
+        )
     specs = decisions.get("D4", {}).get("extractors", [])
     if not specs:
         raise EngineError("D4 declares no extractors")
@@ -330,22 +412,6 @@ def build_k_extractors(decisions: dict, offline: bool = True) -> list[Extractor]
             for i, spec in enumerate(specs)
         ]
 
-    from .constants import SEED_DIR
-
-    cap = decisions.get("D4", {}).get("spend_cap_usd")
-    out: list[Extractor] = []
-    for spec in specs:
-        prompt_path = SEED_DIR / "PROMPTS" / f"{spec['prompt']}.md"
-        out.append(
-            AnthropicExtractor(
-                extractor_id=spec["id"],
-                prompt_id=spec["prompt"],
-                model=spec["model"],
-                prompt_text=prompt_path.read_text(encoding="utf-8"),
-                spend_cap_usd=cap,
-            )
-        )
-    return out
 
 
 def slots_from_deltas(deltas: Sequence[Delta]):

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import unittest
 
-from engine.blocks import build_fibers, content_tokens, edges_from_fibers, jaccard
+from engine.blocks import build_fibers, edges_from_fibers
 from engine.constants import BVALUE_INDEX, CHARTS, NBV
 from engine.energy import dedupe_deltas, evidence_from_deltas, lexicon_prior
 from engine.extract import DeterministicExtractor, build_k_extractors
@@ -190,6 +190,13 @@ class Deduplication(unittest.TestCase):
 
 
 class LinAlg(unittest.TestCase):
+    def test_singular_values_are_deterministic(self):
+        # Gate 10: the docstring says the routine is deterministic; this is what makes that
+        # a property of the build rather than a description of intent. The mint tape's
+        # Hankel reading depends on it.
+        m = [[3.0, 1.0, 0.0], [0.5, 2.0, 1.0], [0.0, 1.0, 1.0]]
+        self.assertEqual(singular_values(m), singular_values(m))
+
     def test_singular_values_of_a_diagonal_matrix(self):
         svs = singular_values([[3.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 1.0]])
         for got, want in zip(svs, [3.0, 2.0, 1.0]):
@@ -213,12 +220,47 @@ class LinAlg(unittest.TestCase):
 
 
 class MintTape(unittest.TestCase):
-    def test_tape_is_logged_only_and_refuses_to_be_acted_on(self):
-        reading = read_tape([float(i) for i in range(200)], second_fdt_floor=0.1)
-        self.assertFalse(reading.mint_enabled)
+    def test_mint_is_live_but_refuses_when_disabled(self):
+        # K is live (mint_enabled=true), so act_on_mint reports the gate rather than raising.
+        reading = read_tape([0.9 ** i for i in range(200)], second_fdt_floor=0.0)
+        self.assertTrue(reading.mint_enabled)
+        self.assertIsInstance(act_on_mint(reading), bool)
+        # With mint explicitly disabled the quarantine is intact — it refuses.
         with self.assertRaises(Exception) as ctx:
-            act_on_mint(reading)
+            act_on_mint(reading, enabled=False)
         self.assertIn("mint is OFF", str(ctx.exception))
+
+    def test_K_promotes_a_real_mode_but_planted_noise_never_promotes(self):
+        from engine.mint_tape import MintController
+
+        # A clean single-mode decay clears the Hankel gate; a flat/noise residual does not.
+        real = read_tape([0.9 ** i for i in range(200)], second_fdt_floor=1e-6)
+        noise = read_tape([0.001] * 200, second_fdt_floor=0.5)  # top SV << 3*0.5 threshold
+        self.assertTrue(real.mint_flag)
+        self.assertFalse(noise.mint_flag, "noise below the floor must not flag")
+
+        k = MintController(enabled=True)
+        promoted = k.consider("slot-real", "T", real, source="test")
+        self.assertTrue(promoted.promoted, promoted.reason)
+        blocked = k.consider("slot-noise", "T", noise, source="test")
+        self.assertFalse(blocked.promoted, "planted noise must never promote")
+        self.assertEqual(set(k.corpus), {"slot-real"})
+
+    def test_K_is_conservative_and_reversible(self):
+        from engine.mint_tape import MintController
+
+        real = read_tape([0.9 ** i for i in range(200)], second_fdt_floor=1e-6)
+        k = MintController(enabled=True)
+        first = k.consider("s", "T", real)
+        self.assertTrue(first.promoted)
+        # A contradicting value is refused (conservative-extension), corpus unchanged.
+        clash = k.consider("s", "F", real)
+        self.assertFalse(clash.promoted)
+        self.assertFalse(clash.conservative)
+        self.assertEqual(k.corpus["s"], "T")
+        # Reversible.
+        self.assertTrue(k.revert(first))
+        self.assertNotIn("s", k.corpus)
 
     def test_geometric_decay_is_low_rank(self):
         stream = [0.9 ** i for i in range(200)]
@@ -253,19 +295,70 @@ class Determinism(unittest.TestCase):
 
 
 class Fibers(unittest.TestCase):
-    def test_fiber_cap_is_enforced(self):
-        from engine.constants import FIBER_CAP
+    """Membership is EXACT declared correspondence — no similarity, no threshold, no cap."""
+
+    def _slots(self, *specs):
+        from engine.types import Slot
+        return [Slot(id=i, nu=n, type=t, chart=c) for (i, n, t, c) in specs]
+
+    def test_no_correspondence_means_no_fiber_even_with_total_token_overlap(self):
+        # Two DISTINCT slots that share every word do NOT fiber without a declared
+        # correspondence. There is no similarity path left in the engine.
+        slots = self._slots(
+            ("a", "\x01en\x01the cone is positive", "assert", "english"),
+            ("b", "\x01en\x01the cone is not positive", "assert", "english"),
+        )
+        self.assertEqual(build_fibers(slots), [])
+        self.assertEqual(build_fibers(slots, correspondence=[]), [])
+
+    def test_declared_correspondence_forms_exactly_that_fiber(self):
+        slots = self._slots(
+            ("a", "\x01en\x01x", "assert", "english"),
+            ("b", "\x01lean\x01y", "assert", "lean"),
+            ("c", "\x01en\x01z", "assert", "english"),
+        )
+        fibers = build_fibers(slots, correspondence=[("a", "b")])
+        self.assertEqual([tuple(f.slots) for f in fibers], [("a", "b")])
+        self.assertNotIn("c", {s for f in fibers for s in f.slots})  # undeclared -> frozen
+
+    def test_declared_correspondence_is_transitive(self):
+        slots = self._slots(
+            ("a", "\x01en\x01x", "assert", "english"),
+            ("b", "\x01lean\x01y", "assert", "lean"),
+            ("c", "\x01en\x01z", "assert", "english"),
+        )
+        fibers = build_fibers(slots, correspondence=[("a", "b"), ("b", "c")])
+        self.assertEqual([tuple(f.slots) for f in fibers], [("a", "b", "c")])
+
+    def test_edge_weight_is_the_declared_weight(self):
+        """THROUGH THE CANONICAL EXPANSION, because apex-star changed the representation.
+
+        A two-member fiber emits two face-edges to its apex rather than one edge between the
+        members. That is the representation; the SEMANTICS are unchanged, and this control is
+        about the semantics — a declared correspondence is asserted, not scored, so it carries
+        the declared weight. Asserting the raw edge count here would have been asserting the
+        old shape, which is how a real control turns into a fossil of an old implementation.
+        `expand_stars` is the one view every consumer reads through, and at k=2 it must give
+        back exactly the declared pair at exactly the declared weight.
+        """
+        from engine.blocks import DECLARED_WEIGHT, expand_stars, is_apex
+        slots = self._slots(
+            ("a", "\x01en\x01x", "assert", "english"),
+            ("b", "\x01lean\x01y", "assert", "lean"),
+        )
+        raw = edges_from_fibers(build_fibers(slots, correspondence=[("a", "b")]), slots)
+        self.assertEqual(2, len(raw), "apex-star emits one face-edge per member")
+        self.assertTrue(all(is_apex(e.u) or is_apex(e.v) for e in raw))
+
+        edges = expand_stars(raw)
+        self.assertEqual(len(edges), 1)
+        self.assertEqual(edges[0].weight, DECLARED_WEIGHT)
+        self.assertEqual(edges[0].origin, "correspondence")
+        self.assertEqual({"a", "b"}, {edges[0].u, edges[0].v})
+
+    def test_a_declared_group_has_no_similarity_size_cap(self):
         from engine.types import Fiber
-
-        with self.assertRaises(ValueError):
-            Fiber("f", tuple(f"s{i}" for i in range(FIBER_CAP + 1)))
-
-    def test_tokens_split_camel_case_and_underscores(self):
-        self.assertIn("posi", content_tokens("\x01lean\x01theorem comp_pos : IsPositive"))
-
-    def test_jaccard_bounds(self):
-        self.assertEqual(jaccard(frozenset(), frozenset({"a"})), 0.0)
-        self.assertEqual(jaccard(frozenset({"a"}), frozenset({"a"})), 1.0)
+        Fiber("big", tuple(f"s{i}" for i in range(9)))  # must not raise (no FIBER_CAP)
 
 
 if __name__ == "__main__":

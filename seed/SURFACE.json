@@ -1,0 +1,37 @@
+{
+  "_": "PINNED PHRASINGS for the human reading surface. These are FREE CHOICES — nothing in the object fixes the wording — so they are frozen ones. A surface whose words drift renders a different answer each release from the same measurement, and nobody could tell which changed. Change these by explicit operator amendment and bump `revision`.",
+  "revision": 1,
+  "pinned": "2026-08-05",
+  "layer1": {
+    "heading": "I read your input as being about:",
+    "corresponds": "restates or sharpens:",
+    "bears_on": "bears on:",
+    "declined": "The proposer was consulted and drew no arrow to your input.",
+    "declined_detail": "It was seated in a diagram of {objects} corpus claim(s) with {declared} declared arrow(s) already in it, and related none of them to what you typed. That is a decline, not a filter — and the rest of the corpus was not in this region, so it is unmeasured rather than ruled out."
+  },
+  "layer2": {
+    "heading": "What answered:",
+    "direct": "touched directly",
+    "reached": "reached through:",
+    "contested": "this touched a live disagreement",
+    "none": "Nothing in the field moved when your input was applied."
+  },
+  "layer3": {
+    "contested": "This pressed on contested ground at: {where}",
+    "weakest": "Weakest link in the chain: {arrow}, warranted at {tier}",
+    "floor": "Floor: {floor}",
+    "faint": "The field answered faintly — thin structure here, and everything it moved is provisional.",
+    "moderate": "The field answered with moderate strength.",
+    "firm": "The field answered firmly — the structure it moved through is confirmed."
+  },
+  "trace_toggle": "show the trace",
+  "forbidden": [
+    "the field believes",
+    "the engine thinks",
+    "the corpus knows",
+    "I found",
+    "relevant results",
+    "best match"
+  ],
+  "forbidden_why": "Gate 10 applies to the surface's wording as much as to a docstring. The surface RENDERS measured facts in plain words; it may not attribute a mental state to the field, and it may not use retrieval vocabulary, because the one thing this engine is not doing is matching."
+}

@@ -18,7 +18,11 @@ from engine.types import Block, Clamp, Document, Warrant, WarrantTier
 
 FLAT = [0.0, 0.0, 0.0, 0.0]
 
-# A small corpus that fibers and contests, so there is real structure to preserve.
+# A small corpus with real structure to preserve under relabelling: many slots, deltas,
+# blocks and evidence. Under exact addressing it forms NO fibers, loops or floors without a
+# declared correspondence (the P/not-P surfaces are distinct claims, not a similarity
+# contest), so the loop/floor invariants below hold over an empty set — the slot, evidence
+# and shadow-calibration invariants are what carry the relabel-independence claim here.
 CORPUS = [
     Document("pos", "english", "The cone is positive. Positivity is preserved under "
              "composition. Composition preserves the positivity of cones.", "repo_docs"),
@@ -349,10 +353,20 @@ class TheChartRegistryIsAPlugInSeam(unittest.TestCase):
         self.assertEqual(v["blocking_sites"], [],
                          "no engine site may hardcode the chart set any longer")
 
-    def test_the_manifest_declares_three_charts(self):
-        from engine.charts import chart_names
+    def test_the_manifest_declares_the_charts(self):
+        # The manifest is the source of truth; adding a chart is a manifest row, not an
+        # engine edit. So this asserts the known charts are present and each is a real,
+        # tag-distinct chart — not a brittle frozen tuple that a legitimate move-1 addition
+        # (e.g. the conversation chart) would break.
+        from engine.charts import chart_names, chart_spec, is_chart
 
-        self.assertEqual(chart_names(), ("english", "lean", "tabular"))
+        names = chart_names()
+        for expected in ("english", "lean", "tabular", "conversation"):
+            self.assertIn(expected, names)
+        tags = [chart_spec(n).tag_id for n in names]
+        self.assertEqual(len(tags), len(set(tags)), "chart tags must be distinct")
+        for n in names:
+            self.assertTrue(is_chart(n))
 
     def test_a_chart_not_in_the_manifest_is_rejected(self):
         from engine.normalize import nu

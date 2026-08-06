@@ -8,11 +8,12 @@ nothing about the run.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Mapping, Sequence
+from typing import Iterable, Mapping, Sequence
 
 from .blocks import (
     build_blocks,
     build_fibers,
+    ChartMap,
     edges_from_fibers,
     is_contested,
     loops_from_fibers,
@@ -86,6 +87,7 @@ def build_ledger(
     prior_leaning: Mapping[str, BValue] | None = None,
     edge_filter=None,
     dedupe: bool = True,
+    correspondence: Iterable[tuple[str, str]] | None = None,
 ) -> Ledger:
     """Full ingestion path.
 
@@ -93,17 +95,61 @@ def build_ledger(
     for null cell (v)'s positive control: it disables the content-hash deduplication that
     makes re-ingestion idempotent, so the control can confirm the cell actually detects a
     double-counted source rather than passing because nothing was ever at risk.
+
+    `correspondence` is the DECLARED fiber-membership relation (exact slot-id pairs). It
+    defaults to `engine/correspondence.py:declared_correspondence()` — empty at v0. It is a
+    parameter so a control can declare a correspondence for a planted case; there is no
+    similarity path that would manufacture one.
     """
     deltas = ingest(documents, extractors)
     if dedupe:
         deltas = dedupe_deltas(deltas)
+    return ledger_from_deltas(
+        deltas, clamps=clamps, prior_leaning=prior_leaning,
+        edge_filter=edge_filter, evidence_dedupe=dedupe, correspondence=correspondence,
+    )
+
+
+def ledger_from_deltas(
+    deltas: Sequence[Delta],
+    clamps: Sequence[Clamp] = (),
+    prior_leaning: Mapping[str, BValue] | None = None,
+    edge_filter=None,
+    evidence_dedupe: bool = True,
+    correspondence: Iterable[tuple[str, str]] | None = None,
+) -> Ledger:
+    """Build the ledger from pre-made deltas — the shared tail of `build_ledger`.
+
+    Exposed so cross-instance coupling can join two instances' deltas and rebuild one ledger
+    over both, without re-running extraction. `correspondence` defaults to the seed's declared
+    correspondence (empty at v0 — the gap); pass an explicit set to declare one.
+    """
+    from .blocks import loop_edges, structural_edges
+    from .correspondence import correspondences_from_deltas, loop_pairs
+
+    deltas = list(deltas)
     slots = slots_from_deltas(deltas)
-    fibers = build_fibers(slots)
-    edges = edges_from_fibers(fibers, slots)
+
+    # Correspondence is DERIVED from accepted correspondence-chart claims that came through
+    # the inlet — never read from a side registry, which is what keeps `propose()` the single
+    # write-path. An explicit `correspondence=` (a set of pairs, or typed arrows) overrides,
+    # so a control can plant a correspondence without publishing one.
+    if correspondence is None:
+        arrows = correspondences_from_deltas(deltas)
+        fibers = build_fibers(slots, loop_pairs(arrows))
+        # Loop edges are exactly the declared `same_claim` pairs; `refines`/`instance_of`
+        # couple as structure but can carry no holonomy (GATES 9).
+        edges = loop_edges(slots, arrows) + [
+            e for e in structural_edges(slots, arrows)
+            if e.origin != "correspondence:same_claim"
+        ]
+    else:
+        fibers = build_fibers(slots, correspondence)
+        edges = edges_from_fibers(fibers, slots)
     if edge_filter is not None:
         edges = list(edge_filter(edges))
     blocks = build_blocks(slots, edges, deltas)
-    chart_of = {s.id: s.chart for s in slots}
+    chart_of = ChartMap({s.id: s.chart for s in slots})
     active = {s.id for s in slots}
     loops = loops_from_fibers(fibers, chart_of, restrict_to=active, edges=edges)
 
@@ -113,7 +159,7 @@ def build_ledger(
         fibers=fibers,
         edges=edges,
         blocks=blocks,
-        evidence=evidence_from_deltas(deltas, dedupe=dedupe),
+        evidence=evidence_from_deltas(deltas, dedupe=evidence_dedupe),
         priors=lexicon_prior([s.id for s in slots], prior_leaning),
         chart_of=chart_of,
         loops=loops,
@@ -124,9 +170,17 @@ def build_ledger(
 def consensus_ledger(ledger: Ledger) -> Ledger:
     """The same ledger with every block forced to internal agreement.
 
-    Per block, every delta is rewritten to the block's modal b-value. The result is a
-    ledger that *cannot* disagree with itself, so its floor is the numerical residue of
-    the pipeline and nothing else.
+    Per block, every delta is rewritten to the block's modal b-value, and clamps are
+    dropped. The result is a ledger that *cannot* disagree with itself, so its floor is the
+    numerical residue of the pipeline and nothing else.
+
+    Dropping clamps is part of forcing agreement, not a convenience. A clamp that pins a
+    slot against its block's modal value is itself a disagreement — it is exactly the
+    mechanism-(2) grounding conflict a floor is made of — so a "cannot disagree with itself"
+    null must neutralise it. Were the clamp retained, a planted grounding conflict would push
+    the consensus floor up by its own value, the band would rise to meet the observed floor,
+    and cell (iv)'s control could never fire: the same resample-of-the-observation pathology
+    that made the bootstrap band vacuous, wearing a clamp.
 
     This is the null null cell (iv) needs. Bootstrapping the observed floors gives a band
     centred on the observed data, which makes `floor <= band` true at any floor — the test
@@ -170,7 +224,7 @@ def consensus_ledger(ledger: Ledger) -> Ledger:
         priors=ledger.priors,
         chart_of=ledger.chart_of,
         loops=ledger.loops,
-        clamps=ledger.clamps,
+        clamps=[],  # a forced-agreement null carries no grounding conflict; see the docstring
     )
 
 

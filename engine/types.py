@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from typing import Literal, Sequence
 
-from .constants import BVALUES, CLAIM_FORMS, FIBER_CAP
+from .constants import BVALUES, CLAIM_FORMS
 
 #: A chart is a value declared in seed/CHARTS.json, not a closed type. The seam that
 #: made a third chart addable by manifest (item 2 refactor) lives in engine/charts.py;
@@ -32,13 +32,25 @@ class WarrantTier(IntEnum):
 
     KERNEL = 0  # Lean kernel-accept under the pinned toolchain (D6)
     CI_RECEIPT = 1  # CI-green test receipt
-    PREMINTED = 2  # D5 pre-minted lexicon entry
-    REPO_DOC = 3  # README / STATEMENTS / docs, with repo provenance
-    EXTRACTION = 4  # k-extractor output. Never grounds.
+    AUTHORSHIP = 2  # the operator's explicit confirmation of a specific claim
+    PREMINTED = 3  # D5 pre-minted lexicon entry
+    REPO_DOC = 4  # README / STATEMENTS / docs, with repo provenance
+    EXTRACTION = 5  # k-extractor output. Never grounds.
 
 
 #: Gate 3. The only two tiers that may clamp.
 TOP_TIER: frozenset[WarrantTier] = frozenset({WarrantTier.KERNEL, WarrantTier.CI_RECEIPT})
+
+#: The weakest tier K will promote. A correspondence proposed by the LM is EXTRACTION and may
+#: form a PROVISIONAL fiber and be reported, but it never promotes to the slow corpus until the
+#: operator confirms it at AUTHORSHIP (or a kernel-verified translation grounds it outright).
+#: Tiers are ordered strongest-first, so "at least authorship" is `tier <= AUTHORSHIP`.
+PROMOTION_FLOOR: WarrantTier = WarrantTier.AUTHORSHIP
+
+
+def promotable(tier: WarrantTier) -> bool:
+    """True iff `tier` is strong enough for K to promote it into the slow corpus."""
+    return tier <= PROMOTION_FLOOR
 
 #: Energy weight contributed by a warrant tier, used by `energy.py`. A non-clamping
 #: warrant can be arbitrarily heavy and still never fix a value — that is the whole
@@ -46,6 +58,7 @@ TOP_TIER: frozenset[WarrantTier] = frozenset({WarrantTier.KERNEL, WarrantTier.CI
 TIER_WEIGHT: dict[WarrantTier, float] = {
     WarrantTier.KERNEL: 8.0,
     WarrantTier.CI_RECEIPT: 6.0,
+    WarrantTier.AUTHORSHIP: 5.0,
     WarrantTier.PREMINTED: 4.0,
     WarrantTier.REPO_DOC: 2.0,
     WarrantTier.EXTRACTION: 1.0,
@@ -145,21 +158,20 @@ class Delta:
 
 @dataclass(frozen=True, slots=True)
 class Fiber:
-    """A co-reference *hypothesis* over at most FIBER_CAP slots.
+    """A co-reference group declared by exact correspondence.
 
     Membership never merges addresses. Two slots in a fiber keep distinct ids and settle
     to their own distributions; the fiber only licenses an equivalence-prior edge, which
-    by gate 2 can enter F as energy and nothing more.
+    by gate 2 can enter F as energy and nothing more. Size is unbounded — a declared
+    correspondence group is as large as it is declared to be, with no similarity cap.
+    (Limitation, recorded: the brute-force cycle search in `blocks.order_cycle` is only
+    tractable for small groups; a large declared group needs a non-brute-force cycle finder.)
     """
 
     id: str
     slots: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        if len(self.slots) > FIBER_CAP:
-            raise ValueError(
-                f"fiber {self.id} has {len(self.slots)} slots, cap is {FIBER_CAP}"
-            )
         if len(set(self.slots)) != len(self.slots):
             raise ValueError(f"fiber {self.id} has duplicate slots")
 
@@ -174,6 +186,17 @@ class QEdge:
     origin: str  # "fiber" | "lexicon" | "preminted"
 
     def crosses_charts(self, chart_of: dict[str, Chart]) -> bool:
+        """Does this edge join two charts? An APEX endpoint is chart-neutral.
+
+        An apex is the coequalizer of a fiber, not a claim: it has no nu, no address and no
+        chart, so it lives over every chart its faces do and over none of its own. Reading its
+        absence from `chart_of` as "a different chart" would make every face-edge of a
+        same-chart fiber look cross-chart, which is what happened the moment apex-star
+        replaced all-pairs — an intra-chart sheaf edge started reporting itself as a
+        translation.
+        """
+        if str(self.u).startswith("apex:") or str(self.v).startswith("apex:"):
+            return False
         return chart_of.get(self.u) != chart_of.get(self.v)
 
 
@@ -209,8 +232,17 @@ class Block:
     edges: tuple[QEdge, ...]
 
     def neighbours(self) -> dict[str, list[tuple[str, float]]]:
+        """Slot-to-slot adjacency, THROUGH THE CANONICAL EXPANSION.
+
+        An apex is not a slot, so `e.u in adj` is false for every apex-star face-edge and this
+        would return an empty adjacency for every fibered block — silently, as an empty dict
+        rather than an error. Sixth consumer of fiber structure, and the first one found by
+        sweeping for the pattern instead of by a downstream zero.
+        """
+        from .blocks import expand_stars
+
         adj: dict[str, list[tuple[str, float]]] = {s: [] for s in self.slots}
-        for e in self.edges:
+        for e in expand_stars(self.edges):
             if e.u in adj and e.v in adj:
                 adj[e.u].append((e.v, e.weight))
                 adj[e.v].append((e.u, e.weight))

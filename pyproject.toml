@@ -10,10 +10,10 @@ requires-python = ">=3.11"
 # asserts this stays true.
 dependencies = []
 
-[project.optional-dependencies]
-# Live k=3 extraction only (D4). Gated behind COMMON_GROUND_ENABLE_LLM plus a spend cap;
-# imported lazily so the offline path never touches it.
-live = ["anthropic>=0.60"]
+# No optional dependencies either. There was one — `live = ["anthropic>=0.60"]`, for a k=3
+# extractor that no longer exists: the LM path is OpenRouter over stdlib urllib, and the
+# Anthropic extractor was deleted rather than left dormant. An extra that installs a client
+# nothing imports is a claim about this project that stopped being true.
 
 [tool.setuptools]
 packages = ["engine", "adapters"]

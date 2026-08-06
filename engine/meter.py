@@ -46,6 +46,13 @@ the floor. Warm is reported alongside as path debt, per the paired-loop-side inv
 
 `read_floor` requires a `NullBatteryReport` that passed **on the same seed hash**. There
 is no other function in this module that returns a floor.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MEASURE — the invariant read off the settled measure; hol on Pi_1(B).
+Q3 motivated it. Holonomy is only measurable where the subgraph has cycles; on a forest it
+is necessarily zero, and reporting that zero as agreement would be reporting a fact about
+the graph's shape as a fact about the corpus.
+
 """
 
 from __future__ import annotations
@@ -274,10 +281,19 @@ def measured_shadow(
 
 
 def edge_weight_map(edges: Sequence[QEdge]) -> dict[tuple[str, str], float]:
+    """Face-to-face coupling weights, with apex stars expanded to what they IMPLY.
+
+    The meter asks how strongly two SLOTS are coupled. Under apex-star there is no
+    slot-to-slot edge — the faces couple through their fiber's consensus — so a literal
+    lookup misses every pair. The expansion is `engine.blocks.expand_stars`, shared with the
+    loop finder so the two views are the same identity rather than two copies of it.
+    """
+    from .blocks import expand_stars
+
     out: dict[tuple[str, str], float] = {}
-    for e in edges:
-        key = (e.u, e.v)
-        out[key] = max(out.get(key, 0.0), e.weight)
+    for e in expand_stars(edges):
+        for key in ((e.u, e.v), (e.v, e.u)):
+            out[key] = max(out.get(key, 0.0), e.weight)
     return out
 
 
@@ -474,7 +490,14 @@ def measure(
     # closure defect, compared against what the seed declared for that chart pair. This is
     # what backtracking became once it stopped being counted as holonomy.
     calibration: list[ShadowCalibration] = []
-    for edge in sorted(block.edges, key=lambda e: (e.u, e.v)):
+    # THROUGH THE CANONICAL EXPANSION. Shadow calibration is per SLOT PAIR — it asks what a
+    # translation between two charts loses — and an apex has no chart, so reading apex-star
+    # edges raw produced no cross-chart rows at all and `translator_drift()` came back empty.
+    # Fifth consumer of fiber structure; same one view as the energy, the loop finder and the
+    # structure audit.
+    from .blocks import expand_stars
+
+    for edge in sorted(expand_stars(block.edges), key=lambda e: (e.u, e.v)):
         cu, cv = chart_of.get(edge.u), chart_of.get(edge.v)
         crosses = cu != cv
         declared = _declared_defect(cu, cv, shadow_cfg)

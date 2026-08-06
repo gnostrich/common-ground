@@ -1,0 +1,32 @@
+{
+  "_": "THE STANDING BATTERY. Three pinned inputs, one pinned paraphrase pair, run against every deployed build. The wording is FIXED: a battery whose inputs drift measures a different thing each time it runs and cannot detect a regression. Change these only by an explicit operator amendment, and record the date, because every prior result was measured against the old wording.",
+  "pinned": "2026-08-05",
+  "inputs": [
+    {
+      "id": "sharp",
+      "shape": "a claim the corpus holds verbatim, with declared arrows on it",
+      "text": "no renderer/decoder is imported here on the cloud path (no cloud decoder)",
+      "expect": "TIGHTEST. Correspondence-kind attachments (same_claim/refines/instance_of) are available because the input asserts a proposition. A small, tight moved region.",
+      "why_this_one": "254 declared arrows touch this slot — the most-connected English claim in the corpus at the time of pinning. If a perturbation cannot travel from here it cannot travel anywhere, so a failure on this input is a failure of the mechanism rather than of the corpus."
+    },
+    {
+      "id": "question",
+      "shape": "a question about the corpus",
+      "text": "how do the cloud decoder path and the renderer import rule relate",
+      "expect": "BETWEEN. A question asserts nothing, so same_claim is unavailable to it and bears_on should dominate — but it names two specific things, so the region it conditions should still be narrower than a bare topic's.",
+      "why_this_one": "It is the shape the window is actually used in, and it is the shape that produced the original silence: a question yields no claim spans, so the extractor gate bounced it before the field was ever consulted."
+    },
+    {
+      "id": "vague",
+      "shape": "a bare topic phrase",
+      "text": "common structure across the lean work",
+      "expect": "LOOSEST. bears_on only, and a diffuse region. `none` everywhere is a legal outcome and must still carry a consulted-and-declined trace.",
+      "why_this_one": "A topic asserts nothing and names nothing specific. It is the input most likely to be answered by a lookup pretending to be a field, so it is the one where a regression to retrieval would show first."
+    }
+  ],
+  "paraphrase_pair": {
+    "_": "THE CLIFF TEST. Two near-identical phrasings must not produce full-response versus nothing. A cliff means something exact is gating the path — which is the inherited defect: attachment made exact by inheriting gate 1's identity rule.",
+    "a": "how do the cloud decoder path and the renderer import rule relate",
+    "b": "how does the cloud decoder path relate to the renderer import rule"
+  }
+}

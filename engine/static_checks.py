@@ -289,6 +289,15 @@ GATE6_SITES: tuple[dict[str, object], ...] = (
         "note": "Built on the conforming surrogate. Mint is OFF; the flag is logged and "
                 "never acted on, so this decides nothing regardless.",
     },
+    {
+        "site": "engine/surface.py:report_from_ledger", "role": "diagnostic",
+        "reference": "none — reads the meter's already-computed q95 and second_fdt_floor",
+        "conforming": True,
+        "note": "The usable surface / window is a render-only view. It reads q95 and the "
+                "second-FDT floor to DISPLAY them and decides nothing against either; it "
+                "builds no band. Both numbers are shown side by side so a reader compares "
+                "them rather than the surface picking one.",
+    },
 )
 
 #: Functions exempt from classification: they take a band as an argument or are the
@@ -375,19 +384,17 @@ def gate6_report() -> list[dict[str, object]]:
 GENERATIVE_KEY_SITES: tuple[dict[str, object], ...] = (
     {
         "site": "engine/extract.py:DeterministicExtractor._spans",
-        "key": "DRNG('extract', extractor_id, prompt_id, doc.content_hash)",
+        "key": "DRNG('extract', extractor_id, prompt_id, slot_address)",
         "keying": "content",
-        "note": "Repaired. Was seeded on `doc.doc_id`, which made the inclusion draw a "
-                "function of what a document was called; a relabelled copy extracted "
-                "differently and null cell (v) failed. `extractor_id`/`prompt_id` still "
-                "separate the three readers, so k=3 keeps its variance.",
-    },
-    {
-        "site": "engine/extract.py:AnthropicExtractor._spans",
-        "key": "prompt carries chart + content hash, never doc_id",
-        "keying": "content",
-        "note": "Repaired alongside. The prompt used to state `doc_id`, so the model's "
-                "reading could depend on the label — the live-path form of the same defect.",
+        "note": "Repaired TWICE. First: seeded on `doc.doc_id`, which made the inclusion draw "
+                "a function of what a document was called (gate 7). Then UNFAITHFUL "
+                "SUBSTITUTION #3: seeded on `doc.content_hash` and drawn in document order, "
+                "so a slot's confidence moved when a comment or a DIFFERENT declaration "
+                "changed, and inserting a declaration shifted every later slot's draw — "
+                "gate-7 clean but gate-8 violating. Now keyed on the SLOT ADDRESS "
+                "(hash(nu, type)), so a claim's draw is a function of that claim alone. "
+                "`extractor_id`/`prompt_id` still separate the three readers, so k=3 keeps "
+                "its ensemble variance; only composition-variance died.",
     },
     {
         "site": "engine/cast.py:cast",
@@ -572,3 +579,515 @@ def generative_key_report() -> list[dict[str, object]]:
         (dict(s) for s in GENERATIVE_KEY_SITES),
         key=lambda s: (order.get(str(s["keying"]), 9), str(s["site"])),
     )
+
+
+# --- gate 8: slot-attributed properties are computed over the address span ----------
+
+#: The fields of a `Span` that are ATTRIBUTED TO THE SLOT, and so must be functions of the
+#: slot's address span. `surface` and `locator` are excluded by construction: they are the
+#: provenance target — facts about where the claim was found, not about what it asserts.
+SLOT_ATTRIBUTED_FIELDS: frozenset[str] = frozenset({"value", "type", "confidence"})
+
+#: Expressions WIDER than a slot's address. Both #2 and #3 took this exact form — a
+#: slot-attributed property whose seed or input reaches past the address span into the
+#: document. Anything here appearing in a slot-attributed computation is a gate-8 violation.
+WIDER_THAN_ADDRESS: tuple[str, ...] = (
+    "doc.content_hash",   # the whole document (#3: the confidence jitter's seed)
+    "doc.text",           # the whole document
+    "content_hash",
+    "doc_id",             # identity, also a gate-7 matter
+    "doc.source",
+)
+
+
+def _names_used(node: ast.AST) -> set[str]:
+    """Dotted names and bare identifiers appearing anywhere in `node`."""
+    out: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Attribute):
+            parts, cur = [child.attr], child.value
+            while isinstance(cur, ast.Attribute):
+                parts.append(cur.attr)
+                cur = cur.value
+            if isinstance(cur, ast.Name):
+                parts.append(cur.id)
+                out.add(".".join(reversed(parts)))
+        elif isinstance(child, ast.Name):
+            out.add(child.id)
+    return out
+
+
+def check_span_discipline(root: Path | None = None) -> StaticCheckResult:
+    """Sentence 8: nothing wider than the slot's address may reach a slot-attributed property.
+
+    Shaped to the FORM both defects took rather than to either instance. In any function that
+    constructs a `Span(...)`, the check walks the assignments feeding the slot-attributed
+    fields (`value`, `type`, `confidence`) and fails if a document-wide expression — the
+    document's text, its content hash, its id, its source — reaches them, directly or through
+    a local binding (including a `DRNG(...)` seed, which is how #3 hid: gate-7 clean because
+    it was content-keyed, gate-8 violating because the content was the whole file).
+
+    `surface`/`locator` are exempt: they are provenance, not attribution.
+    """
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+
+    for path in sorted((base / "engine").rglob("*.py")):
+        rel = str(path.relative_to(base)).replace("\\", "/")
+        if rel == "engine/static_checks.py":
+            continue  # names the forbidden expressions in prose and in the table above
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
+        result.checked_files += 1
+        for qualname, node in _top_level_functions(tree):
+            spans = [c for c in ast.walk(node)
+                     if isinstance(c, ast.Call) and getattr(c.func, "id", None) == "Span"]
+            if not spans:
+                continue
+            result.checked_functions += 1
+
+            # Local bindings: name -> the wide expressions its value was built from. One
+            # pass in source order is enough for the straight-line extractor bodies here.
+            tainted: dict[str, str] = {}
+            for stmt in ast.walk(node):
+                targets = []
+                if isinstance(stmt, ast.Assign):
+                    targets = stmt.targets
+                elif isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+                    targets = [stmt.target]
+                else:
+                    continue
+                used = _names_used(stmt.value)
+                wide = sorted(used & set(WIDER_THAN_ADDRESS)) or sorted(
+                    n for n in used if n in tainted
+                )
+                if not wide:
+                    continue
+                reason = ", ".join(tainted.get(w, w) for w in wide)
+                for t in targets:
+                    for nm in ([t.id] if isinstance(t, ast.Name) else
+                               [e.id for e in getattr(t, "elts", []) if isinstance(e, ast.Name)]):
+                        tainted[nm] = reason
+
+            for call in spans:
+                for kw in call.keywords:
+                    if kw.arg not in SLOT_ATTRIBUTED_FIELDS:
+                        continue
+                    used = _names_used(kw.value)
+                    direct = sorted(used & set(WIDER_THAN_ADDRESS))
+                    via = sorted(n for n in used if n in tainted)
+                    if direct or via:
+                        why = ", ".join(direct + [f"{n} <- {tainted[n]}" for n in via])
+                        result.violations.append(
+                            Violation(rel, call.lineno, "gate 8: out-of-span attribution",
+                                      f"{qualname}: Span.{kw.arg} depends on {why}")
+                        )
+    return result
+
+
+# --- gate 10: a claimed property is warranted by a control, or it is not claimed ------
+
+#: Docstring/comment phrasings that assert a PROPERTY OF THE CODE rather than describe what
+#: it does. Three instances of a claim the implementation did not honour were found in one
+#: build — a partition "provably identical", a "span-keyed" confidence, and an "index-driven"
+#: anchoring that scanned — so the check is shaped to the FORM (a claimed property) rather
+#: than to any one of them. Docstrings are not warrants.
+CLAIM_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("complexity", r"\bO\(\s*[^)]*\)"),
+    ("complexity", r"\b(?:does not|doesn't|never)\s+(?:grow|scale)s?\b"),
+    ("complexity", r"\bindependent of the (?:total|number|count)\b"),
+    ("index", r"\bindex-driven\b|\binverted index\b|\blookup,? not\b|\blookup rather than\b"),
+    ("index", r"\bnever enumerat\w*\b|\bno enumeration\b|\bnot a scan\b"),
+    ("exactness", r"\bprovably identical\b|\bbit-identical\b|\bexactly identical\b"),
+    ("exactness", r"\bequivalence (?:is )?proven\b|\bidentical to the global\b"),
+    ("exactness", r"\bexact(?:ly)? equivalent\b|\bno .{0,24} is dropped\b"),
+)
+
+#: MECHANISM claims: a docstring saying the code RUNS something — settles, relaxes, perturbs
+#: an energy — is a claim about the call graph, and the call graph is decidable. This category
+#: exists because `engine/inbound.py` said "settlement runs with the input as soft evidence"
+#: from the day it was written while calling `settle` nowhere; it did a dict lookup and fell
+#: back to word matching. Two earlier instances the same day (a coverage caveat naming charts
+#: that had since changed, an atlas note asserting no cycle had closed after one had) were
+#: stale FACTS, which derivation fixes. This one is different in kind: it described a
+#: mechanism the module did not contain, and no amount of deriving a number would catch it.
+#: So the check is: if you claim the mechanism, your module must reference it.
+MECHANISM_CLAIMS: tuple[tuple[str, str, frozenset[str]], ...] = (
+    ("settlement",
+     r"\bsettlement runs?\b|\bruns? settlement\b|\bsettles? the\b"
+     r"|\brelaxation runs?\b|\bruns? (?:the )?relaxation\b|\brelaxes? the\b",
+     frozenset({"settle", "anneal", "relax", "FreeEnergy", "SettledBlock"})),
+    ("energy",
+     r"\bperturbs? the (?:field|energy|corpus)\b|\bas soft (?:evidence|constraint)\b"
+     r"|\benters? the .{0,24}\benergy\b|\bmirror descent\b",
+     frozenset({"settle", "anneal", "relax", "FreeEnergy", "evidence_from_deltas",
+                "lexicon_prior", "BIAS_WEIGHT"})),
+    ("index",
+     r"\bindex-driven\b|\binverted index\b|\blookup,? not\b|\blookup rather than\b"
+     r"|\bnever enumerat\w*\b|\bno enumeration\b|\bnot a scan\b|\bbuilt once\b",
+     frozenset({"dict", "defaultdict", "setdefault", "Counter", "lru_cache", "cache",
+                "Index", "postings", "_index", "index"})),
+    # The LM is QUERIED over a region. "Relaxes"/"settles" applied to it is a motivating
+    # picture, not a mechanism: the wire format is justified by diagram-completion, and
+    # borrowed physics vocabulary is exactly how a picture hardens into a claimed mechanism.
+    ("lm_physics",
+     r"\b(?:the )?(?:LM|model|medium)\s+(?:relaxes|settles|equilibrat\w+)\b"
+     r"|\brelaxation medium\b|\bone settling\b",
+     frozenset()),
+    ("propagation",
+     r"\bpropagates? (?:through|over|across)\b|\breached through declared\b"
+     r"|\bwhat moved\b",
+     frozenset({"settle", "relax", "structural_edges", "loop_edges", "build_blocks",
+                "build_fibers", "Moved"})),
+)
+
+#: Modules exempt from the mechanism check because they DEFINE the machinery rather than
+#: claim to use it. Naming them here is itself auditable; an empty set would be a lie and a
+#: wildcard would make the check vacuous.
+MECHANISM_DEFINERS: frozenset[str] = frozenset({
+    "engine/settle.py", "engine/energy.py", "engine/meter.py", "engine/blocks.py",
+})
+
+
+#: Every site that makes such a claim, and the CONTROL that verifies it. A claim with no
+#: control is a violation: either the property is asserted by a test, or the claim comes out
+#: of the prose. `control` names a test that must exist.
+CLAIMED_PROPERTY_SITES: tuple[dict[str, str], ...] = (
+    {"site": "engine/faces.py:anchors_for_english",
+     "claim": "index-driven; cost independent of total face count",
+     "control": "tests/test_faces.py:AnchoringIsIndexDrivenNotAScan"},
+    {"site": "engine/faces.py:first_word_index",
+     "claim": "lookup instead of scan; built once in O(faces)",
+     "control": "tests/test_faces.py:AnchoringIsIndexDrivenNotAScan"},
+    {"site": "engine/holes.py:enumerate_holes",
+     "claim": "the cross-product is never materialized; bounded before materialization",
+     "control": "tests/test_correspondence.py:HoleEnumerationIsStructural"},
+    {"site": "engine/blocks.py:expand_stars",
+     "claim": "a member's coupling does not grow with its sibling count; the implied "
+              "face-pair weight is w/(k-1), anchored at k=2 where a fiber is one declared "
+              "pair",
+     "control": "tests/test_apex.py:DeviationCostIsIndependentOfK"},
+    {"site": "engine/blocks.py:edges_from_fibers",
+     "claim": "k members contribute k edges, not k(k-1)/2; a large fiber cannot dominate "
+              "its block by size",
+     "control": "tests/test_apex.py:TheFactorizationIsAStar"},
+    {"site": "engine/blocks.py:loop_edges",
+     "claim": "edges are exactly the declared same_claim pairs, not a clique",
+     "control": "tests/test_correspondence.py:HolonomyExclusion"},
+    {"site": "engine/nulls.py:cell_v_duplicate_source",
+     "claim": "a genuine duplicate leaves the floor bit-identical (residue exactly 0)",
+     "control": "tests/test_controls.py:CellVIsNoLongerVacuous"},
+    {"site": "engine/linalg.py:singular_values",
+     "claim": "deterministic — same input, same output",
+     "control": "tests/test_engine.py:test_singular_values_are_deterministic"},
+    {"site": "engine/static_checks.py:check_span_discipline",
+     "claim": "shaped to the form, catches indirect taint",
+     "control": "tests/test_span_discipline.py:PlantedDefectsMakeItRed"},
+    {"site": "engine/extract.py:_segment_python",
+     "claim": "linear in the file: the line table is built once, not per declaration",
+     "control": "tests/test_code_charts.py:SegmentationIsPerDeclaration"},
+    {"site": "engine/compose.py:compose",
+     "claim": "the hub cap is enforced and whatever it drops is counted, not truncated",
+     "control": "tests/test_continuous.py:CompositionIsBounded"},
+    {"site": "engine/continuous.py:wait_for_slot",
+     "claim": "a restart cannot reset the rate budget (window read off the durable log)",
+     "control": "tests/test_continuous.py:RateLimitSurvivesRestart"},
+    {"site": "engine/relax.py:relax",
+     "claim": "settlement runs on the real corpus; the response is what moved",
+     "control": "tests/test_relax.py:TheFieldIsActuallyRelaxed"},
+    {"site": "engine/relax.py:_paths_from",
+     "claim": "propagation is over declared arrows only; every reached slot carries its path",
+     "control": "tests/test_relax.py:EveryCompiledFactTracesToDeclaredStructure"},
+    {"site": "engine/inbound.py:compile_input",
+     "claim": "compiled from what the field did, with no fallback mechanism",
+     "control": "tests/test_relax.py:SilenceIsAResultNotADegradation"},
+    {"site": "engine/blocks.py:order_cycle",
+     "claim": "a cycle need not span its fiber; girth by BFS is polynomial, so no fiber is "
+              "ever declined and the (n-1)! Hamiltonian search is gone",
+     "control": "tests/test_structure.py:ACycleNeedNotSpanItsFiber"},
+    {"site": "engine/static_checks.py:check_proposer_discipline",
+     "claim": "the daemon cannot promote; enforced on the source, not promised in prose",
+     "control": "tests/test_continuous.py:ProposerDisciplineIsStatic"},
+)
+
+
+# --- the amendment: a mechanism fix cites its MOVE and its Q (OBJECT-AMENDED.md) ---------
+
+#: The modules that ARE the object's mechanism — where the base, the measure, the dynamics
+#: and the morphisms live. A change here is a change to the thing itself, not to a report
+#: about it, so `seed/OBJECT-AMENDED.md` requires it to say which of the three moves it is
+#: and which diagnostic question motivated it. The list is explicit rather than pattern-matched
+#: because "is this mechanism?" is exactly the judgement the protocol exists to stop people
+#: making on the fly.
+MECHANISM_MODULES: frozenset[str] = frozenset({
+    "engine/perturb.py",       # ADD A MORPHISM — the boundary condition, as an object
+    "engine/region.py",        # ADD A MORPHISM — the region proposer
+    "engine/walk.py",          # ADD A MORPHISM — the sampler that aims it
+    "engine/relax.py",         # the read-side dynamics
+    "engine/settle.py",        # the dynamics
+    "engine/energy.py",        # the measure
+    "engine/blocks.py",        # the base's morphisms, as a graph
+    "engine/correspondence.py",# the morphisms themselves
+    "engine/mint_tape.py",     # K: fast -> slow
+    "engine/meter.py",         # the invariant
+})
+
+#: The only legal moves. Verbatim from the amendment; a citation naming anything else is
+#: creep, which is the whole point of requiring the citation.
+LEGAL_MOVES: frozenset[str] = frozenset({
+    "SWAP THE BASE", "ADD A MEASURE", "ADD A MORPHISM",
+})
+
+#: The diagnostic questions a citation may name.
+DIAGNOSTIC_QUESTIONS: frozenset[str] = frozenset({"Q1", "Q2", "Q3", "Q4", "Q5"})
+
+_MOVE_RE = r"MOVE:\s*([A-Z][A-Z ]+[A-Z])"
+_Q_RE = r"\b(Q[1-5])\b"
+
+
+def check_move_citation(root: Path | None = None) -> StaticCheckResult:
+    """Every mechanism module cites its MOVE and the diagnostic question behind it.
+
+    `seed/OBJECT-AMENDED.md` makes the three moves and the diagnostic protocol binding rather
+    than advisory, and this is where "binding" is cashed out. A module that changes the object
+    must say, in its own docstring, which of the three legal moves it is and which question in
+    the protocol motivated it. A citation naming a fourth move is creep and fails; a module
+    with no citation fails; a citation naming no question fails.
+
+    This does not check that the citation is TRUE — no static check could. It checks that the
+    author was made to answer the question before landing, which is the failure the protocol
+    was written for: refining a wrong mechanism instead of asking the diagram whether it can
+    work at all.
+    """
+    import re as _re
+
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+    for rel in sorted(MECHANISM_MODULES):
+        path = base / rel
+        if not path.exists():
+            # A named module that is not there is a violation, not a skip. The first draft of
+            # this list named `engine/mint.py`, which does not exist; the check passed and
+            # quietly covered seven modules while claiming eight.
+            result.violations.append(Violation(
+                rel, 1, "amendment: mechanism module missing",
+                f"{rel} is listed in MECHANISM_MODULES but does not exist — the list has "
+                f"rotted and this gate is covering less than it names"))
+            continue
+        result.checked_files += 1
+        doc = ast.get_docstring(ast.parse(path.read_text(encoding="utf-8"))) or ""
+
+        moves = _re.findall(_MOVE_RE, doc)
+        if not moves:
+            result.violations.append(Violation(
+                rel, 1, "amendment: no MOVE cited",
+                f"{rel} is a mechanism module and must cite one of {sorted(LEGAL_MOVES)} "
+                f"in its module docstring as `MOVE: <move>`"))
+            continue
+        illegal = [m.strip() for m in moves if m.strip() not in LEGAL_MOVES]
+        if illegal:
+            result.violations.append(Violation(
+                rel, 1, "amendment: illegal MOVE cited",
+                f"{rel} cites {illegal}; the only legal moves are {sorted(LEGAL_MOVES)}. "
+                f"A fix that is none of the three is creep and is REJECTED."))
+        if not _re.search(_Q_RE, doc):
+            result.violations.append(Violation(
+                rel, 1, "amendment: no diagnostic question cited",
+                f"{rel} cites a MOVE but names no diagnostic question. The protocol is "
+                f"answered IN ORDER before the code is read; say which of "
+                f"{sorted(DIAGNOSTIC_QUESTIONS)} motivated this."))
+    return result
+
+
+# --- the unattended-proposer discipline (GATES 3 + 10, on the source) --------------------
+
+#: The modules the continuous proposer is made of. Everything it can do lives here.
+PROPOSER_MODULES: tuple[str, ...] = (
+    "engine/continuous.py",
+    "engine/journal.py",
+    "engine/compose.py",
+)
+
+#: Names the proposer may never mention. A background process that runs unattended must not
+#: be *able* to promote, clamp, or confer authorship — so the check is that it does not name
+#: the machinery at all, which is decidable on the AST rather than argued about in review.
+#: `promotable` is deliberately absent: the daemon asserts non-promotability before it writes.
+FORBIDDEN_IN_PROPOSER: frozenset[str] = frozenset({
+    "MintController", "mint_tape", "Clamp", "clamp", "clamp_eligible",
+    "AUTHORSHIP", "KERNEL", "CI_RECEIPT", "PREMINTED", "confirm", "PROMOTION_FLOOR",
+})
+
+#: The one method on the proposer allowed to reach the inlet. Every other path must route
+#: through it, so the tier assertion cannot be bypassed by adding a second call site.
+INLET_GUARD: tuple[str, str] = ("engine/continuous.py", "_enter")
+
+
+def check_proposer_discipline(root: Path | None = None) -> StaticCheckResult:
+    """The unattended proposer cannot promote, and has exactly one door to the inlet.
+
+    Two AST facts, both decidable:
+
+    1. No module of the proposer *names* promotion machinery — no `MintController`, no
+       `AUTHORSHIP`, no `Clamp`. Docstrings and comments are not Name nodes, so the check
+       reads what the code can do rather than what it says about itself.
+    2. `FastTape.propose` is called from exactly one place in `engine/continuous.py`, and
+       that place is the method carrying the EXTRACTION-tier assertion. A second call site
+       would be a way past the assertion, so a second call site is a violation.
+    """
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+
+    for rel in PROPOSER_MODULES:
+        tree = _read(rel, base)
+        if tree is None:
+            result.violations.append(Violation(rel, 0, "missing module", "proposer surface"))
+            continue
+        result.checked_files += 1
+        for node in ast.walk(tree):
+            name = None
+            if isinstance(node, ast.Name):
+                name = node.id
+            elif isinstance(node, ast.Attribute):
+                name = node.attr
+            elif isinstance(node, ast.alias):
+                name = (node.asname or node.name).rsplit(".", 1)[-1]
+            if name in FORBIDDEN_IN_PROPOSER:
+                result.violations.append(Violation(
+                    rel, getattr(node, "lineno", 0), f"names {name}",
+                    "the unattended proposer must not reach promotion machinery"))
+
+    guard_rel, guard_fn = INLET_GUARD
+    tree = _read(guard_rel, base)
+    if tree is not None:
+        sites: list[tuple[int, str]] = []
+        for parent in ast.walk(tree):
+            if not isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            result.checked_functions += 1
+            for node in ast.walk(parent):
+                if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "propose"):
+                    sites.append((node.lineno, parent.name))
+        if len(sites) != 1 or sites[0][1] != guard_fn:
+            result.violations.append(Violation(
+                guard_rel, sites[0][0] if sites else 0, "inlet call sites",
+                f"expected exactly one .propose() call, inside {guard_fn}; found "
+                f"{[f'{fn}:{ln}' for ln, fn in sites]}"))
+    return result
+
+
+def _claims_in(text: str) -> list[tuple[str, str]]:
+    """(kind, matched phrase) for every property-claim phrasing in `text`."""
+    import re as _re
+
+    found: list[tuple[str, str]] = []
+    for kind, pattern in CLAIM_PATTERNS:
+        for m in _re.finditer(pattern, text, _re.IGNORECASE):
+            found.append((kind, m.group(0)))
+    return found
+
+
+
+def _mechanism_claims_in(text: str, rel: str, mentioned: set[str]) -> list[tuple[str, str]]:
+    """Mechanism claims in `text` that the module has no machinery to back.
+
+    A claim is UNBACKED when the phrase appears and the module references none of the names
+    that could carry it out. That is deliberately weak — referencing `settle` is not proof it
+    is called on the right thing — but it is decidable, and it is exactly strong enough to
+    catch the defect that occurred: prose describing a call graph that does not exist.
+    """
+    import re as _re
+
+    if rel in MECHANISM_DEFINERS:
+        return []
+    out: list[tuple[str, str]] = []
+    for kind, pattern, evidence in MECHANISM_CLAIMS:
+        if evidence & mentioned:
+            continue
+        m = _re.search(pattern, text, _re.IGNORECASE)
+        if m:
+            out.append((kind, m.group(0)))
+    return out
+
+
+def check_claim_discipline(root: Path | None = None) -> StaticCheckResult:
+    """Gate 10: any function claiming a complexity bound, an index, an exactness property or
+    an equivalence must have that property enforced by a named control — or not claim it.
+
+    Walks every function in `engine/`, reads its docstring AND its inline comments, and fails
+    on any property-claim whose site is not registered in `CLAIMED_PROPERTY_SITES` with a
+    control that exists. A prose claim is a description of intent; only a control makes it a
+    property of the build.
+    """
+    import io
+    import tokenize
+
+    base = root or REPO_ROOT
+    result = StaticCheckResult()
+    registered = {str(s["site"]): s for s in CLAIMED_PROPERTY_SITES}
+
+    for path in sorted((base / "engine").rglob("*.py")):
+        rel = str(path.relative_to(base)).replace("\\", "/")
+        if rel == "engine/static_checks.py":
+            continue          # defines the claim vocabulary itself
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=rel)
+        result.checked_files += 1
+
+        # Comments, by line, so a claim in a comment counts exactly like one in a docstring.
+        comments: dict[int, str] = {}
+        try:
+            for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+                if tok.type == tokenize.COMMENT:
+                    comments[tok.start[0]] = tok.string
+        except tokenize.TokenError:
+            pass
+
+        # Every NAME the module mentions anywhere. A mechanism claim is a claim about the
+        # call graph, so the evidence for it is whether the machinery is referenced at all —
+        # decidable on the AST rather than argued about in review.
+        mentioned = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+        mentioned |= {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+        for n in ast.walk(tree):
+            if isinstance(n, ast.ImportFrom):
+                mentioned |= {a.name for a in n.names}
+            elif isinstance(n, ast.Import):
+                mentioned |= {a.name.split(".")[-1] for a in n.names}
+
+        # The MODULE docstring, checked like any other. This is where the false claim lived:
+        # `engine/inbound.py` asserted "settlement runs with the input as soft evidence" at
+        # module level for the whole life of the file, and a function-only sweep never saw it.
+        for kind, phrase in _mechanism_claims_in(ast.get_docstring(tree) or "", rel, mentioned):
+            result.violations.append(Violation(
+                rel, 1, f"gate 10: unbacked {kind} claim",
+                f"module docstring claims [{phrase}] but {rel} references none of the "
+                f"machinery that would perform it"))
+
+        for qualname, node in _top_level_functions(tree):
+            result.checked_functions += 1
+            text = ast.get_docstring(node) or ""
+            lo, hi = node.lineno, getattr(node, "end_lineno", node.lineno)
+            text += "\n" + "\n".join(c for ln, c in comments.items() if lo <= ln <= hi)
+            for kind, phrase in _mechanism_claims_in(text, rel, mentioned):
+                result.violations.append(Violation(
+                    rel, node.lineno, f"gate 10: unbacked {kind} claim",
+                    f"{qualname} claims [{phrase}] but {rel} references none of the "
+                    f"machinery that would perform it"))
+            claims = _claims_in(text)
+            if not claims:
+                continue
+            site = f"{rel}:{qualname}"
+            row = registered.get(site)
+            if row is None:
+                kinds = ", ".join(sorted({k for k, _ in claims}))
+                phrases = "; ".join(sorted({p for _, p in claims})[:3])
+                result.violations.append(Violation(
+                    rel, node.lineno, f"gate 10: unwarranted {kinds} claim",
+                    f"{qualname} claims [{phrases}] with no control registered"))
+                continue
+            control = str(row.get("control", ""))
+            test_file = control.split(":", 1)[0]
+            if not control or not (base / test_file).exists():
+                result.violations.append(Violation(
+                    rel, node.lineno, "gate 10: control missing",
+                    f"{qualname} cites control {control!r} which does not exist"))
+    return result

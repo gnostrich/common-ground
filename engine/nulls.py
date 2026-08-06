@@ -49,6 +49,8 @@ from .types import (
     NullBatteryReport,
     NullCell,
     NullStatus,
+    Warrant,
+    WarrantTier,
 )
 
 # Fuzz alphabet: deliberately nasty. Control characters, the tag sentinel, markdown,
@@ -171,12 +173,20 @@ def cell_iii_empty_corpus(
     preminted: Sequence[Document],
     extractors: Sequence[Extractor],
     beta: float,
+    correspondence=None,
+    clamps: Sequence[Clamp] = (),
 ) -> NullCell:
     """Seed alone must generate zero contest.
 
     Runs on the pre-minted entries only, with no corpus. If the priors were fighting each
     other, the floor would be non-zero before a single document was read, and every later
     floor reading would be measuring the seed rather than the ledger.
+
+    `correspondence` defaults to the seed's declared correspondence (empty at v0), and
+    `clamps` defaults to none. They are parameters only so the positive control can DECLARE a
+    correspondence over genuine paraphrases and GROUND one of them against its reading — the
+    object's mechanism (2) — and prove this cell can still fail; the real battery run passes
+    neither, so with no fiber and no grounding the seed alone produces a floor of exactly 0.
     """
     if not preminted:
         return NullCell(
@@ -189,7 +199,7 @@ def cell_iii_empty_corpus(
             stats={"preminted_documents": 0},
         )
 
-    ledger = build_ledger(preminted, extractors)
+    ledger = build_ledger(preminted, extractors, correspondence=correspondence, clamps=clamps)
     result, _, _ = run_meter(ledger, beta, seed_hash, load_shadow())
     floor = result.mean_floor()
     ok = floor == 0.0
@@ -214,12 +224,20 @@ def cell_iv_single_doc(
     document: Document | None,
     extractors: Sequence[Extractor],
     beta: float,
+    correspondence=None,
+    clamps: Sequence[Clamp] = (),
 ) -> NullCell:
     """One document, k=3 extraction, cold floor ~ 0 within surrogate noise.
 
     A single document cannot disagree with anything but itself, so any floor it produces
     is extraction variance. Failing means extraction is too noisy at this scale — and per
     KICKOFF section 4 that voids the run, which is a publishable verdict, not a defect.
+
+    `correspondence`/`clamps` are parameters only so the positive control can plant the
+    object's mechanism (2): declare the document's genuine paraphrases as one proposition and
+    GROUND one against its reading. The consensus band this cell reads the floor against is
+    computed clamp-free (see `consensus_ledger`), so a planted grounding conflict shows up as
+    a floor above the band rather than inflating the band by its own value.
     """
     if document is None:
         return NullCell(
@@ -229,7 +247,7 @@ def cell_iv_single_doc(
             stats={},
         )
 
-    ledger = build_ledger([document], extractors)
+    ledger = build_ledger([document], extractors, correspondence=correspondence, clamps=clamps)
     if not ledger.loops:
         return NullCell(
             cell="iv.single-doc",
@@ -288,6 +306,8 @@ def cell_v_duplicate_source(
     extractors: Sequence[Extractor],
     beta: float,
     dedupe: bool = True,
+    correspondence=None,
+    clamps: Sequence[Clamp] = (),
 ) -> NullCell:
     """One corpus ingested twice under distinct provenance: zero residue, zero rank growth.
 
@@ -316,8 +336,10 @@ def cell_v_duplicate_source(
     ]
 
     shadow_cfg = load_shadow()
-    once = build_ledger(list(corpus), extractors, dedupe=dedupe)
-    twice = build_ledger(doubled, extractors, dedupe=dedupe)
+    once = build_ledger(list(corpus), extractors, dedupe=dedupe,
+                        correspondence=correspondence, clamps=clamps)
+    twice = build_ledger(doubled, extractors, dedupe=dedupe,
+                         correspondence=correspondence, clamps=clamps)
 
     r1, _, cold1 = run_meter(once, beta, seed_hash, shadow_cfg)
     r2, _, cold2 = run_meter(twice, beta, seed_hash, shadow_cfg)
@@ -627,20 +649,28 @@ _BROKEN_SUITE = {
 }
 
 
-def _contradictory_docs(source: str) -> list[Document]:
-    """THREE surfaces that fiber together and disagree, so Q closes a genuine cycle.
+def _genuine_paraphrases(source: str) -> list[Document]:
+    """THREE genuine same-claim paraphrases: the kernel-accepts triple.
 
-    Two surfaces used to be enough, because a two-member fiber emitted the backtracking
-    walk `u -> v -> u` and that was counted as holonomy. The tree-null repair ended that: a
-    cycle needs at least three slots, all of whose edges are present in Q. A fixture built
-    on two surfaces would now produce no loop at all, and every control resting on it would
-    go quietly dead — which is exactly the failure mode the positive-control rule exists to
-    catch, so the fixture is fixed rather than the controls weakened.
+    This replaces the deleted P/¬P triple ("The cone is positive / not positive / may be
+    positive"). That triple declared three GENUINELY-DIFFERENT claims (P, ¬P, ◇P) to be one
+    fiber and read the resulting holonomy as a contest — a similarity artifact: the contest
+    was manufactured by asserting that unequal claims were equal. These three surfaces instead
+    assert THE SAME claim — the kernel accepts each checked statement — so a declared
+    correspondence over them is a TRUE same-claim correspondence. They differ only in ways
+    visible in the address span (`nu`: "the statement" vs "every checked statement" vs "each
+    checked statement"), and extraction reads all three as T (positive assertions, no negation
+    in the span), so on their own they AGREE and close a ZERO-floor cycle.
+
+    The contest a control needs is planted by GROUNDING one of them against its reading — a
+    KERNEL clamp asserting a b-value the extractor did not read there (`_grounded_gap`) — never
+    by the declaration alone. That is the object's mechanism (2): a declared correspondence
+    over genuinely-same-claim slots with conflicting grounding.
     """
     return [
-        Document(f"{source}:pos", "english", "The cone is positive.", source),
-        Document(f"{source}:neg", "english", "The cone is not positive.", source),
-        Document(f"{source}:mod", "english", "The cone may be positive.", source),
+        Document(f"{source}:a", "english", "The kernel accepts the statement.", source),
+        Document(f"{source}:b", "english", "The kernel accepts every checked statement.", source),
+        Document(f"{source}:c", "english", "The kernel accepts each checked statement.", source),
     ]
 
 
@@ -654,26 +684,84 @@ def _control_ii() -> tuple[bool, str]:
     return cell.status is NullStatus.FAIL, "suite with a non-colliding known-same pair"
 
 
+def _declare_chain(docs: Sequence[Document], extractors: Sequence[Extractor]) -> frozenset:
+    """Positive-control helper: DECLARE the fixture's claims as one proposition.
+
+    The exact-addressing engine forms no fiber without a declared correspondence, so a control
+    that needs a loop must DECLARE it — a chain over the fixture's slots connects them into one
+    fiber, which (with >=3 slots) closes a genuine cycle in Q. This is mechanism-neutral: it
+    declares co-reference, nothing more. Whether the loop carries a nonzero floor is decided by
+    the grounding, not the declaration — genuine paraphrases declared this way AGREE and floor
+    at zero until a clamp grounds one against its reading (`_grounded_gap`). The real battery
+    run declares nothing, and the same fixture produces no loop at all.
+    """
+    base = build_ledger(list(docs), extractors, correspondence=frozenset())
+    ids = sorted(s.id for s in base.slots)
+    return frozenset((ids[i], ids[i + 1]) for i in range(len(ids) - 1))
+
+
+def _grounded_gap(
+    docs: Sequence[Document], extractors: Sequence[Extractor]
+) -> tuple[frozenset, list[Clamp]]:
+    """Mechanism (2), built the object's way: DECLARE genuine paraphrases as one proposition
+    AND GROUND one of them against its extracted reading.
+
+    Returns `(correspondence, clamps)`. The correspondence is the chain over the fixture's
+    slots (one fiber; a >=3-member fiber closes a cycle). The clamp is a single KERNEL-tier
+    grounding on one fibered slot, asserting a b-value the extractor did NOT read there. The
+    clamp is a SEPARATE constraint set — its value is never derived from any surface — so the
+    planted contradiction cannot ride on out-of-span prose (GATES.md sentence 8): the deciding
+    token lives in the clamp, not in text the segmenter happened to include. Together the two
+    close a FRUSTRATED holonomy loop (the clamped end pinned against the reading its
+    paraphrases share), so the cold floor is nonzero. Drop the clamp and the genuine
+    paraphrases agree and the floor is zero — the contest is the grounding conflict, never the
+    declaration.
+    """
+    base = build_ledger(list(docs), extractors, correspondence=frozenset())
+    ids = sorted(s.id for s in base.slots)
+    corr = frozenset((ids[i], ids[i + 1]) for i in range(len(ids) - 1))
+    read: dict[str, str] = {}
+    for d in base.deltas:
+        read.setdefault(d.slot, d.value)
+    target = ids[0]
+    contra = "F" if read.get(target) != "F" else "T"  # a value the extractor did not read
+    clamps = [Clamp(target, contra, Warrant(WarrantTier.KERNEL, "kernel:accept"))]
+    return corr, clamps
+
+
 def _control_iii(seed_hash: str, extractors: Sequence[Extractor], beta: float) -> tuple[bool, str]:
-    cell = cell_iii_empty_corpus(seed_hash, _contradictory_docs("seed"), extractors, beta)
-    return cell.status is NullStatus.FAIL, "pre-minted entries that contradict each other"
+    docs = _genuine_paraphrases("seed")
+    corr, clamps = _grounded_gap(docs, extractors)
+    cell = cell_iii_empty_corpus(
+        seed_hash, docs, extractors, beta, correspondence=corr, clamps=clamps
+    )
+    return (cell.status is NullStatus.FAIL,
+            "pre-minted paraphrases declared one proposition, KERNEL-grounded against their reading")
 
 
 def _control_iv(seed_hash: str, extractors: Sequence[Extractor], beta: float) -> tuple[bool, str]:
     doc = Document(
-        "control:self-contradictory", "english",
-        "The cone is positive. The cone is not positive. The cone may be positive.",
+        "control:kernel-accepts", "english",
+        "The kernel accepts the statement. The kernel accepts every checked statement. "
+        "The kernel accepts each checked statement.",
         "control",
     )
-    cell = cell_iv_single_doc(seed_hash, doc, extractors, beta)
-    return cell.status is NullStatus.FAIL, "one document that contradicts itself"
+    corr, clamps = _grounded_gap([doc], extractors)
+    cell = cell_iv_single_doc(
+        seed_hash, doc, extractors, beta, correspondence=corr, clamps=clamps
+    )
+    return (cell.status is NullStatus.FAIL,
+            "one document's paraphrases declared one proposition, KERNEL-grounded against their reading")
 
 
 def _control_v(seed_hash: str, extractors: Sequence[Extractor], beta: float) -> tuple[bool, str]:
+    docs = _genuine_paraphrases("corpus")
+    corr, clamps = _grounded_gap(docs, extractors)
     cell = cell_v_duplicate_source(
-        seed_hash, _contradictory_docs("corpus"), extractors, beta, dedupe=False
+        seed_hash, docs, extractors, beta, dedupe=False, correspondence=corr, clamps=clamps
     )
-    return cell.status is NullStatus.FAIL, "content-hash deduplication disabled"
+    return (cell.status is NullStatus.FAIL,
+            "content-hash deduplication disabled over a KERNEL-grounded declared correspondence")
 
 
 def _control_vi(registry: Registry | None) -> tuple[bool, str]:

@@ -1,19 +1,35 @@
-"""Mint tape: residual stream -> Hankel singular values. LOGGED ONLY. Mint is OFF.
+"""Mint tape + the memory kernel K — now LIVE, gate-guarded.
 
-The tape watches the settlement's residual stream for structure. A residual that decays
-like a single mode has a rank-1 Hankel block; extra singular values above the noise mean
-the settlement is carrying dynamics the single-mode picture does not explain.
+The tape watches the settlement's residual stream for structure. A residual that decays like
+a single mode has a rank-1 Hankel block; extra singular values above the noise mean the
+settlement is carrying dynamics the single-mode picture does not explain.
 
-Nothing acts on it at v0. `MINT_ENABLED` is False in SEED.lock, `act_on_mint()` raises
-unconditionally, and the threshold — 3x the second-FDT surrogate floor — is computed and
-written to the log so it can be read later, never to gate anything now. Null cell (v)
-uses the tape's effective rank: ingesting the same corpus twice under distinct provenance
-must produce zero rank growth, because a duplicate is not new information.
+**K is live (operator-authorized).** `act_on_mint` no longer refuses; it reports whether a
+residual clears the Hankel gate, and `MintController.consider` promotes a fast-tape entry
+(a proposal + its verdict) into the slow corpus IFF:
+
+    Hankel(residual) > second-FDT floor   (the tape's own gate)
+    AND conservative-extension            (the promotion does not overwrite an existing
+                                           corpus entry with a different value)
+
+This is the NELL hazard the build quarantined for v0; the gate is the whole safety. Promotion
+is gate-only — nothing reaches the corpus around it — every promotion is logged in
+`MintController.log` and reversible via `revert()`, and a planted-noise control asserts that a
+residual below the floor never promotes. `MINT_ENABLED` is the master switch (now true in the
+seed); with it false `act_on_mint` still refuses, so the quarantine is one seed-flip away in
+either direction. Null cell (v) uses the tape's effective rank: ingesting the same corpus
+twice under distinct provenance must produce zero rank growth.
+
+-- THE AMENDMENT (seed/OBJECT-AMENDED.md), cited because this is mechanism --
+MOVE: ADD A MORPHISM — K : fast -> slow, the memory kernel.
+Q5 motivated its singularity. There is ONE write path into the corpus. A second promoter,
+however well gated, is the failure mode that produces NELL.
+
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Sequence
 
 from . import EngineError
@@ -30,7 +46,7 @@ class TapeReading:
     stream_length: int
     threshold: float
     mint_flag: bool
-    mint_enabled: bool = False
+    mint_enabled: bool = MINT_ENABLED
 
     def as_record(self) -> dict[str, object]:
         return {
@@ -45,11 +61,7 @@ class TapeReading:
 
 
 def residual_stream(settled: SettledBlock) -> list[float]:
-    """F_t - F_final over the settling trace.
-
-    Non-negative and decaying whenever the certificate is monotone, which is what makes
-    its Hankel spectrum interpretable as relaxation modes rather than noise.
-    """
+    """F_t - F_final over the settling trace. Non-negative and decaying under a monotone cert."""
     if not settled.f_trace:
         return []
     final = settled.f_trace[-1]
@@ -61,7 +73,7 @@ def read_tape(
     second_fdt_floor: float,
     window: int = HANKEL_WINDOW,
 ) -> TapeReading:
-    """Hankel spectrum of the residual stream. Computes the threshold; does not act."""
+    """Hankel spectrum of the residual stream, with the promotion threshold."""
     matrix = hankel(stream, window)
     svs = singular_values(matrix) if matrix else []
     threshold = MINT_THRESHOLD_MULTIPLE * second_fdt_floor
@@ -72,7 +84,6 @@ def read_tape(
         window=window,
         stream_length=len(stream),
         threshold=threshold,
-        # Logged, never acted on. A True here is a note in the run log and nothing else.
         mint_flag=bool(svs) and top > threshold > 0.0,
         mint_enabled=MINT_ENABLED,
     )
@@ -83,14 +94,81 @@ def rank_growth(before: TapeReading, after: TapeReading) -> int:
     return after.effective_rank - before.effective_rank
 
 
-def act_on_mint(reading: TapeReading) -> None:
-    """Never callable at v0.
+def act_on_mint(reading: TapeReading, *, enabled: bool | None = None) -> bool:
+    """Does this residual clear the Hankel gate for promotion?
 
-    Present so that any future code that tries to *use* the tape has to come through a
-    function that refuses, rather than reading `mint_flag` directly and quietly acting.
+    Raises when mint is DISABLED — the quarantine — so a caller cannot read `mint_flag`
+    directly and quietly act while the switch is off. When enabled, returns the gate result
+    (Hankel top singular value above the second-FDT-derived threshold). This is only the
+    numeric half of the gate; `MintController.consider` also requires conservative-extension.
     """
-    raise EngineError(
-        "mint is OFF at v0 (SEED.lock: mint_enabled=false). The tape is logged only; "
-        f"mint_flag={reading.mint_flag} carries no authority and must not gate anything. "
-        "Enabling mint is plastic under gate 4 and requires a cold re-anneal."
-    )
+    enabled = MINT_ENABLED if enabled is None else enabled
+    if not enabled:
+        raise EngineError(
+            "mint is OFF (mint_enabled=false); the tape is logged only and carries no "
+            "authority. Enabling it is plastic under gate 4 and requires a cold re-anneal."
+        )
+    return bool(reading.mint_flag and reading.threshold > 0.0)
+
+
+@dataclass(slots=True)
+class Promotion:
+    """One K decision: whether a fast-tape entry entered the slow corpus, and why."""
+    slot: str
+    value: str
+    source: str          # e.g. "conversation:accepted"
+    hankel_top: float
+    threshold: float
+    gate_pass: bool      # Hankel gate cleared
+    conservative: bool   # does not overwrite an existing entry with a different value
+    promoted: bool
+    reason: str
+
+    def as_record(self) -> dict[str, object]:
+        return {
+            "slot": self.slot, "value": self.value, "source": self.source,
+            "hankel_top": self.hankel_top, "threshold": self.threshold,
+            "gate_pass": self.gate_pass, "conservative": self.conservative,
+            "promoted": self.promoted, "reason": self.reason,
+        }
+
+
+@dataclass(slots=True)
+class MintController:
+    """The live memory kernel: promotes fast-tape entries into the slow corpus, gate-only.
+
+    The corpus is the durable settled section (slot -> value). `consider` is the ONLY way an
+    entry reaches it, and it reaches it iff both halves of the gate hold. Every decision is
+    appended to `log`, and `revert` undoes a promotion — so the tape entering the corpus is
+    always auditable and reversible.
+    """
+    enabled: bool = MINT_ENABLED
+    corpus: dict[str, str] = field(default_factory=dict)
+    log: list[Promotion] = field(default_factory=list)
+
+    def consider(self, slot: str, value: str, reading: TapeReading,
+                 source: str = "tape") -> Promotion:
+        gate_pass = act_on_mint(reading, enabled=self.enabled)   # raises if disabled
+        existing = self.corpus.get(slot)
+        conservative = existing is None or existing == value
+        promoted = bool(gate_pass and conservative)
+        reason = ("promoted through the gate" if promoted
+                  else "blocked: not conservative (would overwrite a settled value)"
+                  if not conservative else "blocked: residual below the Hankel floor (noise)")
+        top = reading.singular_values[0] if reading.singular_values else 0.0
+        p = Promotion(slot, value, source, top, reading.threshold, gate_pass, conservative,
+                      promoted, reason)
+        if promoted:
+            self.corpus[slot] = value
+        self.log.append(p)
+        return p
+
+    def revert(self, promotion: Promotion) -> bool:
+        """Undo a promotion. Returns True if the corpus entry was removed."""
+        if promotion.promoted and self.corpus.get(promotion.slot) == promotion.value:
+            del self.corpus[promotion.slot]
+            return True
+        return False
+
+    def promoted(self) -> list[Promotion]:
+        return [p for p in self.log if p.promoted]

@@ -21,13 +21,26 @@ from engine.router import (
 
 
 class VerbatimArtifacts(unittest.TestCase):
-    """Rule 1: code / logs / traces are pinned and not extracted."""
+    """Rule 1: code / logs / traces are pinned and not extracted — at SPAN level.
 
-    def test_a_fenced_code_block_is_verbatim(self):
+    Updated 2026-08-04 with the span-level repair. The fenced BLOCK is still never extracted;
+    what changed is that the prose around it no longer goes down with it. The old assertion
+    (whole document -> verbatim on one fence) encoded the defect, so it is replaced rather
+    than kept: on the real repositories it discarded 226 of 742 markdown files.
+    """
+
+    def test_a_fenced_code_block_is_pinned_and_never_extracted(self):
         r = route("notes.md", "Here is code:\n```\nx = 1\n```\n")
+        self.assertEqual(r.destination, "english", "the prose around the fence survives")
+        self.assertEqual(len(r.verbatim_spans), 1, "the fence is pinned by content hash")
+        self.assertNotIn("x = 1", r.document.text, "fence content must not reach an extractor")
+        self.assertIn("Here is code", r.document.text)
+        self.assertTrue(r.content_hash, "the whole artifact is still pinned by content hash")
+
+    def test_a_document_that_is_only_a_fence_is_wholly_verbatim(self):
+        r = route("snippet.md", "```\nx = 1\n```\n")
         self.assertEqual(r.destination, VERBATIM)
         self.assertIsNone(r.document, "a verbatim artifact must not reach an extractor")
-        self.assertTrue(r.content_hash, "it is pinned by content hash")
 
     def test_a_stack_trace_is_verbatim(self):
         trace = ('Traceback (most recent call last):\n'
@@ -40,15 +53,22 @@ class VerbatimArtifacts(unittest.TestCase):
 
 
 class LeanRouting(unittest.TestCase):
-    """Rules 2-3: elaborating .lean -> Lean; non-elaborating -> shelf, counted separately."""
+    """Rules 2-3: .lean ALWAYS enters the Lean chart; elaboration decides clamp eligibility.
+
+    INVERTED. These tests used to assert that a non-elaborating .lean was shelved. That was
+    the defect: GATES sentence 3 governs GROUNDING ("only top-tier warrants ground
+    (clamp-eligible)"), not chart ENTRY, and shelving conflated the two — costing the GitHub
+    corpus all 407 of its .lean files while the Aristotle corpus ran 12,041 Lean slots at
+    extraction tier with zero clamps through the adapter's (correct) rule.
+    """
 
     THM = "theorem foo (h : P) : Q := by simp\n"
 
-    def test_non_elaborating_lean_is_shelved_with_a_reason(self):
+    def test_non_elaborating_lean_still_enters_the_chart_not_clamp_eligible(self):
         r = route("a.lean", self.THM)
-        self.assertEqual(r.destination, SHELF)
-        self.assertIn("elaboration-error", r.reason)
-        self.assertIsNone(r.document, "an unverified proof must not become a Lean slot")
+        self.assertEqual(r.destination, LEAN, "entry does not require kernel-acceptance")
+        self.assertIn("NOT clamp-eligible", r.reason)
+        self.assertIsNotNone(r.document, "an unverified proof is readable; it just grounds nothing")
 
     def test_elaborating_lean_reaches_the_lean_chart(self):
         r = route("a.lean", self.THM, lean_elaborates=lambda _t: (True, "kernel-accepted"))
@@ -123,12 +143,14 @@ class TheReportHeaderCarriesCounts(unittest.TestCase):
         self.assertEqual(counts[TABULAR], 1)
         self.assertEqual(counts[VERBATIM], 1)
         self.assertEqual(counts["shelf:unclassified"], 1)
-        self.assertEqual(sum(1 for k in counts if k.startswith("shelf:elaboration-error")), 1)
+        # No elaboration-error shelf any more: .lean enters the chart, not clamp-eligible.
+        self.assertEqual(sum(1 for k in counts if k.startswith("shelf:elaboration-error")), 0)
+        self.assertEqual(counts[LEAN], 1)
 
-        # to_charts excludes verbatim and shelved.
+        # to_charts excludes verbatim and shelved — lean now reaches a chart.
         charts = report.to_charts()
-        self.assertEqual(len(charts), 2, "only english + tabular reach a chart")
-        self.assertEqual({d.chart for d in charts}, {ENGLISH, TABULAR})
+        self.assertEqual(len(charts), 3, "english + tabular + lean reach a chart")
+        self.assertEqual({d.chart for d in charts}, {ENGLISH, TABULAR, LEAN})
 
         header = report.header()
         self.assertTrue(header.startswith("routing:"))
@@ -158,3 +180,142 @@ def is_chart(name):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VerbatimIsASpanNotADocument(unittest.TestCase):
+    """A README's prose is not forfeit because a usage example sits beside it.
+
+    The old rule shelved the whole artifact on one fence: 226 of 742 real markdown files,
+    2.21M characters of prose discarded to avoid extracting 225k of code.
+    """
+
+    DOC = (
+        "# Positivity checker\n\n"
+        "The cone is positive under composition.\n\n"
+        "```python\n"
+        "def is_positive(cone):\n"
+        "    return cone.det > 0\n"
+        "```\n\n"
+        "Every generator is checked before the cone is accepted.\n"
+    )
+
+    def test_prose_reaches_english_and_the_fence_does_not(self):
+        from engine.extract import DeterministicExtractor
+
+        routed = route("repo||README.md", self.DOC, "repo")
+        self.assertEqual(routed.destination, "english")
+        self.assertIsNotNone(routed.document)
+        self.assertEqual(len(routed.verbatim_spans), 1, "the fenced block must be pinned")
+
+        surfaces = " ".join(
+            d.surface for d in DeterministicExtractor("t", "p").extract(routed.document))
+        self.assertIn("cone is positive under composition", surfaces.casefold())
+        self.assertIn("every generator is checked", surfaces.casefold())
+        for token in ("def is_positive", "cone.det", "return cone"):
+            self.assertNotIn(token, surfaces,
+                             f"{token!r} came from inside the fence; it must be pinned only")
+
+    def test_zero_claims_come_from_inside_the_fence(self):
+        """PLANTED: the fence body is a sentence-shaped claim, so a leak would be visible."""
+        from engine.extract import DeterministicExtractor
+
+        doc = ("Real prose about the cone.\n\n```\n"
+               "The fenced sentence is a decoy and must never become a claim.\n```\n")
+        routed = route("repo||d.md", doc, "repo")
+        self.assertEqual(routed.destination, "english")
+        surfaces = [d.surface.casefold()
+                    for d in DeterministicExtractor("t", "p").extract(routed.document)]
+        self.assertTrue(any("real prose about the cone" in s for s in surfaces))
+        self.assertFalse(any("decoy" in s for s in surfaces),
+                         "a fenced sentence became a claim")
+
+    def test_a_file_that_is_only_a_fence_is_still_a_whole_artifact(self):
+        routed = route("repo||snippet.md", "```\nprint(1)\n```\n", "repo")
+        self.assertEqual(routed.destination, "verbatim-artifact")
+        self.assertIsNone(routed.document)
+        self.assertEqual(len(routed.verbatim_spans), 1)
+
+    def test_an_unclosed_fence_runs_to_the_end(self):
+        routed = route("repo||trunc.md", "Prose first.\n\n```python\ndef f():\n    pass\n", "repo")
+        self.assertEqual(routed.destination, "english")
+        self.assertIn("Prose first", routed.document.text)
+        self.assertNotIn("def f()", routed.document.text)
+
+    def test_log_and_trace_keep_document_level_treatment_and_say_why(self):
+        """No delimiter exists for these, so the extent would have to be guessed."""
+        doc = "Notes.\n\nTraceback (most recent call last)\n  File \"x.py\", line 3\nBoom\n"
+        routed = route("repo||crash.md", doc, "repo")
+        self.assertEqual(routed.destination, "verbatim-artifact")
+        self.assertIn("no span delimiter", routed.reason)
+
+    def test_existing_addresses_do_not_move(self):
+        """ADDITIVE, not plastic: a document with no fence addresses byte-identically."""
+        from engine.extract import DeterministicExtractor
+
+        plain = "The cone is positive under composition. Every generator is checked.\n"
+        routed = route("repo||plain.md", plain, "repo")
+        ids = [d.slot for d in DeterministicExtractor("t", "p").extract(routed.document)]
+        self.assertTrue(ids)
+        # the same prose, now with a fence appended, must produce the SAME slot ids
+        withfence = plain + "\n```\ncode()\n```\n"
+        routed2 = route("repo||plain2.md", withfence, "repo")
+        ids2 = [d.slot for d in DeterministicExtractor("t", "p").extract(routed2.document)]
+        self.assertEqual(ids, ids2, "removing a fence must not move a prose address")
+
+
+class BinaryIsNotADocument(unittest.TestCase):
+    """A lossy decode of binary must never reach an extractor.
+
+    Found by measurement, not by review: six `.npz` NumPy archives in the operator's repos
+    were decoding to ~1.9M characters each, routing to ENGLISH, and producing roughly 3,500
+    claims apiece out of noise. Two independent guards, because either alone has a hole: the
+    manifest keys on the EXTENSION and cannot know a declared-text file holds binary, and the
+    content check cannot know that `.npz` was never meant to be read.
+    """
+
+    def test_an_undeclared_extension_is_shelved_not_read_as_prose(self):
+        from engine.languages import rule_for
+
+        self.assertEqual(rule_for("r||x.npz").cls, "shelf")
+        self.assertEqual(route("r||x.npz", "some text").destination, SHELF)
+
+    def test_an_artifact_with_no_extension_still_classifies_by_content(self):
+        """A chat message id has no name to key on; shelving it would lose the export."""
+        from engine.languages import rule_for
+
+        self.assertEqual(rule_for("claude||3f2a-11bb:7").cls, "classify")
+        self.assertEqual(route("claude||3f2a-11bb:7", "The cone is positive.").destination,
+                         ENGLISH)
+
+    def test_a_declared_text_extension_holding_binary_is_still_shelved(self):
+        """PLANTED: the manifest says .txt, the bytes say otherwise. The manifest is wrong."""
+        blob = "header\x00\x00\x01\x02binary payload"
+        got = route("r||dump.txt", blob)
+        self.assertEqual(got.destination, SHELF)
+        self.assertIn("decode lost information", got.reason)
+        self.assertIsNone(got.document, "binary must not reach an extractor")
+
+    def test_a_replacement_character_means_the_decode_lost_information(self):
+        got = route("r||dump.md", "prose then �� undecodable bytes")
+        self.assertEqual(got.destination, SHELF)
+
+    def test_ordinary_unicode_prose_is_not_mistaken_for_binary(self):
+        """The check is a FACT about the decode, not a ratio — real text must pass."""
+        from engine.router import is_binary
+
+        for text in ("Café — naïve ✓", "数学は美しい", "σ, the ill-posed set",
+                     "emoji 🙂 and math ∀x∈ℝ", "a" * 100000):
+            self.assertFalse(is_binary(text), text[:20])
+            self.assertEqual(route("r||n.md", text).destination, ENGLISH)
+
+    def test_the_two_guards_are_independent(self):
+        """Neither subsumes the other, which is why both exist."""
+        from engine.languages import rule_for
+        from engine.router import is_binary
+
+        # extension guard catches it, content guard would not (this .npz decodes cleanly)
+        self.assertEqual(rule_for("r||a.npz").cls, "shelf")
+        self.assertFalse(is_binary("clean text that happens to be named .npz"))
+        # content guard catches it, extension guard would not (.txt is declared text)
+        self.assertEqual(rule_for("r||a.txt").cls, "classify")
+        self.assertTrue(is_binary("x\x00y"))

@@ -72,14 +72,6 @@ BLOCKING_SITES: tuple[BlockingSite, ...] = (
                             "matching",
         severity="dispatch",
     ),
-    BlockingSite(
-        site="engine/blocks.py:content_tokens",
-        hardcodes='body[:4] in ("en\\x01", "lean") to strip the chart tag',
-        manifest_would_need="tag stripping driven by the same declared tag table, or fiber "
-                            "tokens for a third chart would keep their tag and never match "
-                            "anything",
-        severity="data",
-    ),
 )
 
 
@@ -143,6 +135,77 @@ def _docstring_node(node: ast.AST) -> ast.AST | None:
     return None
 
 
+#: The router's dispatch: which chart an extension enters. This was NOT audited before
+#: 2026-08-04, and the omission is why the audit reported PASS while routing was compiled in.
+ROUTING_SITE = "engine/router.py"
+
+
+def audit_routing(root: Path | None = None) -> list[BlockingSite]:
+    """Does the ROUTER dispatch by manifest, or by a file-extension literal in its source?
+
+    The audit passed for two weeks while `route()` decided Lean with
+    `name.endswith(".lean")`. Addressing was declarative and routing was not, so a chart
+    could be fully declared — named, tagged, normalized, classified, segmented — and still
+    have nothing reach it. A plug-in audit that does not check routing is measuring half the
+    contract.
+
+    Form-shaped and decidable: any string constant that looks like a file extension
+    (`.` followed by letters/digits) appearing as CODE in the router is a dispatch literal.
+    Docstrings and comments are not Constants in an expression position the walk counts, so
+    the module may still *describe* the extensions it used to hardcode.
+    """
+    import re as _re
+
+    base = root or REPO_ROOT
+    path = base / ROUTING_SITE
+    if not path.exists():
+        return []
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=ROUTING_SITE)
+    docstrings = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                                 ast.AsyncFunctionDef)):
+            continue
+        body = getattr(node, "body", None)
+        if (isinstance(body, list) and body and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)):
+            docstrings.add(id(body[0].value))
+    ext_re = _re.compile(r"^\.[A-Za-z][A-Za-z0-9]{0,7}$")
+    found: list[BlockingSite] = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+            continue
+        if id(node) in docstrings or not ext_re.match(node.value):
+            continue
+        found.append(BlockingSite(
+            site=f"{ROUTING_SITE}:line {node.lineno}",
+            hardcodes=f"file-extension literal {node.value!r} in router code",
+            manifest_would_need="a row in seed/LANGUAGES.json mapping the extension to a "
+                                "chart, read by engine/languages.rule_for",
+            severity="dispatch"))
+    return found
+
+
+def routing_reaches(chart: str) -> tuple[bool, str]:
+    """Behavioural half: does an artifact with a manifest-declared extension REACH `chart`?
+
+    The AST check proves no literal decides routing; this proves the manifest actually does.
+    Both are needed — source with no literals that also routes nothing would pass the first.
+    """
+    from .languages import CHART, rules
+    from .router import route
+
+    for rule in rules().values():
+        if rule.cls != CHART or rule.chart != chart:
+            continue
+        got = route(f"probe||probe{rule.ext}", "probe body", "audit")
+        if got.destination != chart:
+            return False, (f"{rule.ext} is declared to enter {chart} but routed to "
+                           f"{got.destination}")
+        return True, ""
+    return False, f"no LANGUAGES.json row routes any extension to {chart}"
+
+
 def attempt_manifest_only(chart: str = "tabular") -> tuple[bool, str]:
     """Introduce a third chart without touching engine code. Report where it stops.
 
@@ -164,11 +227,14 @@ def attempt_manifest_only(chart: str = "tabular") -> tuple[bool, str]:
 
 
 def verdict(root: Path | None = None) -> dict[str, object]:
-    blocking = audit(root)
+    blocking = audit(root) + audit_routing(root)
     ok, obstruction = attempt_manifest_only()
+    routes, route_problem = routing_reaches("lean")
     return {
-        "manifest_only_possible": ok,
-        "first_obstruction": obstruction,
+        "manifest_only_possible": ok and routes,
+        "first_obstruction": obstruction or route_problem,
+        "routing_is_declarative": not audit_routing(root),
+        "manifest_routes_to_lean": routes,
         "blocking_sites": [
             {"site": s.site, "severity": s.severity, "hardcodes": s.hardcodes,
              "manifest_would_need": s.manifest_would_need}

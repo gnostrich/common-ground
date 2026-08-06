@@ -7,13 +7,18 @@ page rather than an inference.
 
 The rules, in order (first match wins):
 
-1. **fenced code block / log / stack trace -> verbatim-artifact.** Pinned by content hash,
-   **not extracted** — a stack trace is not a claim, and running an extractor over it would
-   manufacture b-values from noise.
-2. **`.lean` that elaborates -> Lean chart.** Elaboration is an *injected* predicate; with
-   no pinned Lean toolchain (D6 unresolved) the default cannot verify, so:
-3. **`.lean` that does not elaborate -> shelf**, `elaboration-error`, counted separately
-   from ordinary shelving so a broken proof is distinguishable from off-topic text.
+1. **fenced blocks -> verbatim SPANS, lifted out and pinned by content hash**; the prose
+   around them is routed on its own merits. A stack trace is not a claim and an extractor
+   over it would manufacture b-values from noise — but neither is a README's usage section
+   forfeit because it sits beside one. Verbatim is a property of a span, and a fence is a
+   delimiter the author wrote. A document that is *entirely* fenced blocks, or whose prose
+   residue still reads as log/trace (those have no delimiter — a stated limitation), is a
+   whole verbatim artifact.
+2. **`.lean` -> Lean chart, always.** Gate 3 governs GROUNDING, not entry, so a Lean file
+   enters on the strength of being Lean, at extraction tier.
+3. **Elaboration decides CLAMP ELIGIBILITY only.** It is an *injected* predicate; with no
+   pinned toolchain (D6 unresolved) the default cannot verify, so the slot enters
+   `NOT clamp-eligible` — present and readable, grounding nothing.
 4. **well-formed markdown table -> tabular chart.**
 5. **malformed markdown table -> prose**, tagged `malformed-table`, so a table that failed
    to parse is still read rather than lost.
@@ -35,20 +40,42 @@ from typing import Callable
 
 from .charts import is_chart
 from .hashing import sha256_text
+from .companions import doc_companions, lean_docstrings
+from .languages import CHART, REFERENCE, SHELF as SHELF_CLASS, rule_for
 from .types import Document
 
 # Destinations.
 ENGLISH = "english"
 LEAN = "lean"
 TABULAR = "tabular"
+CONVERSATION = "conversation"
 VERBATIM = "verbatim-artifact"
 SHELF = "shelf"
 
 _FENCE_RE = re.compile(r"^\s*```", re.MULTILINE)
+#: A complete fenced block: an opening fence, its body, and a CLOSING fence of the same kind.
+#: The backreference is what makes it a span rather than a guess — the block's extent is
+#: written in the document by its author, not inferred.
+_FENCE_BLOCK_RE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})[^\n]*\n.*?^[ \t]{0,3}\1[ \t]*$",
+                             re.DOTALL | re.MULTILINE)
+#: A fence opened and never closed runs to the end of the document. Same delimiter, one end.
+_OPEN_FENCE_RE = re.compile(r"^[ \t]{0,3}(?:`{3,}|~{3,})[^\n]*\n.*\Z", re.DOTALL | re.MULTILINE)
 _TRACEBACK_RE = re.compile(r"Traceback \(most recent call last\)|^\s+at .+:\d+\)?$", re.MULTILINE)
 _LOG_LINE_RE = re.compile(r"^\s*\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d|^(DEBUG|INFO|WARN|ERROR|FATAL)\b", re.MULTILINE)
 _TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$", re.MULTILINE)
 _INLINE_MATH_RE = re.compile(r"\$[^$\n]+\$|\\\([^\n]*?\\\)")
+
+#: A Lean declaration docstring (`/-- ... -/`) and a module/section doc (`/-! ... -/`).
+#: These are natural-language STATEMENTS about the declaration they precede — the most
+#: perfectly co-located prose that can exist, since they sit ON the declaration.
+_LEAN_DOCSTRING_RE = re.compile(r"/--(.*?)-/", re.DOTALL)
+_LEAN_SECTION_DOC_RE = re.compile(r"/-!(.*?)-/", re.DOTALL)
+#: The declaration a docstring is attached to: Lean convention puts the doc immediately
+#: before its declaration, so the head that follows is the one being documented.
+_NEXT_DECL_RE = re.compile(
+    r"\s*(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+|noncomputable\s+|partial\s+|unsafe\s+"
+    r"|nonrec\s+|scoped\s+|local\s+)*"
+    r"(theorem|lemma|def|abbrev|structure|class|instance|inductive|axiom)\s+([^\s:({\[]+)")
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +86,12 @@ class RoutedDoc:
     content_hash: str
     document: Document | None = None   # None for verbatim/shelf — not sent to extractors
     math_tokens: tuple[str, ...] = ()  # opaque hashes of inline math preserved from prose
+    #: Content hashes of the fenced blocks lifted out of this document. They are pinned as
+    #: artifacts of record and never extracted; the prose around them is routed normally.
+    verbatim_spans: tuple[str, ...] = ()
+    #: English documents derived from a Lean file's docstrings. ADDITIVE: they are extra
+    #: claims in the English chart and do not touch the Lean document or its address.
+    companions: tuple[Document, ...] = ()
 
 
 @dataclass(slots=True)
@@ -73,12 +106,24 @@ class RoutingReport:
         return out
 
     def header(self) -> str:
+        """The tally, and what was HELD. A reference-tier count is the coverage caveat:
+        it says in a number what the engine did not read, so a figure derived from this run
+        cannot be quoted as if it covered the whole repository."""
         parts = [f"{k}={v}" for k, v in sorted(self.counts().items())]
         return "routing: " + ", ".join(parts) if parts else "routing: (empty)"
 
     def to_charts(self) -> list[Document]:
-        """Only the documents that reached a chart. Verbatim and shelved are excluded."""
-        return [r.document for r in self.routed if r.document is not None]
+        """Only the documents that reached a chart. Verbatim and shelved are excluded.
+
+        Includes docstring companions: a Lean docstring is an English claim about the
+        declaration it sits on, so it reaches the English chart alongside the Lean document.
+        """
+        out: list[Document] = []
+        for r in self.routed:
+            if r.document is not None:
+                out.append(r.document)
+            out.extend(r.companions)
+        return out
 
 
 def _nfc(text: str) -> str:
@@ -102,9 +147,80 @@ def _tokenize_math(text: str) -> tuple[str, list[str]]:
     return _INLINE_MATH_RE.sub(_sub, text), tokens
 
 
+#: U+FFFD is what a decoder emits when the bytes were not valid UTF-8; a NUL byte does not
+#: occur in text. Either one means the decode LOST INFORMATION, so what is in hand is not the
+#: document — it is a lossy rendering of a binary file.
+_NOT_TEXT = ("\x00", "\ufffd")
+
+
+def is_binary(text: str) -> bool:
+    """True when this string is a lossy decode of binary rather than a document.
+
+    The manifest keys on the extension and cannot know that a declared-text file holds
+    binary — a `.txt` that is really a dump, a `.md` that is really a blob. This is the
+    complementary check, and it is a FACT about the decode rather than a threshold: a NUL
+    byte does not occur in text, and U+FFFD is the decoder saying it could not represent
+    what it read. No ratio, nothing to tune.
+
+    Found by measurement: six `.npz` NumPy archives were decoding to ~1.9M characters each
+    and entering the English chart as roughly 3,500 claims apiece of pure noise.
+    """
+    head = text[:8192]
+    return any(marker in head for marker in _NOT_TEXT)
+
+
 def _is_verbatim(text: str) -> bool:
     return bool(_FENCE_RE.search(text) or _TRACEBACK_RE.search(text)
                 or _LOG_LINE_RE.search(text))
+
+
+def _is_log_or_trace(text: str) -> bool:
+    """The verbatim signals that have no span delimiter. See `split_verbatim`."""
+    return bool(_TRACEBACK_RE.search(text) or _LOG_LINE_RE.search(text))
+
+
+def split_verbatim(text: str) -> tuple[str, tuple[str, ...]]:
+    """Separate a document's PROSE from its fenced blocks. Span-level, not document-level.
+
+    Verbatim is a property of a SPAN, not of a document. The old rule shelved an entire
+    artifact if it contained a single fence, which on the real repositories discarded 226 of
+    742 markdown files — 2.21M characters of prose, to avoid extracting 225k characters of
+    code. The prose it discarded is exactly the prose most likely to bridge: a README's usage
+    section is the natural-language statement of what the code beside it does.
+
+    A fenced block is used as the delimiter because it *is* one: the author wrote where the
+    code starts and where it stops, so removing it is reading the document's own markup, not
+    inferring an extent. Each removed block is pinned by content hash and returned, so it is
+    still an artifact of record — it is simply not run through an extractor.
+
+    Log lines and stack traces get NO span treatment here, and that is a stated limitation
+    rather than an oversight: they carry no delimiter, so their extent would have to be
+    guessed, and a guessed extent is the kind of threshold this build removes rather than
+    adds. A document whose prose residue still reads as log/trace stays a whole artifact.
+    On the real corpus that residue is **one document of 227**.
+    """
+    pinned: list[str] = []
+
+    def _pin(match: re.Match) -> str:
+        pinned.append(sha256_text(match.group())[:16])
+        return "\n"
+
+    prose = _FENCE_BLOCK_RE.sub(_pin, text)
+    if _FENCE_RE.search(prose):        # an opening fence that was never closed
+        prose = _OPEN_FENCE_RE.sub(_pin, prose)
+    return prose, tuple(pinned)
+
+
+def _is_conversation(text: str) -> bool:
+    """A transcript: >=3 speaker-attributed turns across >=2 distinct speakers.
+
+    Requiring two speakers and three turns keeps ordinary prose with a stray "Name:" colon
+    from reading as a conversation, while a real dialogue routes to the conversation chart.
+    """
+    from .conversation import parse_transcript
+
+    turns = parse_transcript(text)
+    return len(turns) >= 3 and len({t.speaker for t in turns}) >= 2
 
 
 def _table_shape(text: str) -> str:
@@ -126,9 +242,9 @@ def _table_shape(text: str) -> str:
 def _default_lean_elaborates(text: str) -> tuple[bool, str]:
     """No pinned Lean toolchain (D6 unresolved), so elaboration cannot be verified.
 
-    Returns (False, reason). This is deliberately conservative: an unverifiable proof is
-    shelved with a reason, never waved through into the Lean chart, because a Lean-chart
-    slot that was never kernel-checked would be a grounding claim the engine cannot back.
+    Returns (False, reason). The file still enters the Lean chart — gate 3 is about what may
+    GROUND, not about what may be read — but it enters NOT clamp-eligible, so nothing it says
+    is backed by a kernel receipt the engine does not have.
     """
     return False, "no pinned Lean toolchain (D6 unresolved); elaboration unverified"
 
@@ -143,38 +259,103 @@ def route(
     """Classify one artifact. `name` carries the extension the router keys `.lean` on."""
     raw_hash = sha256_text(text)
     normalized = _nfc(text)
-    is_lean_file = name.endswith(".lean")
 
-    # 1. verbatim artifacts: code / logs / traces — pinned, never extracted.
+    # Which chart an EXTENSION enters is seed data (`seed/LANGUAGES.json`), not a literal in
+    # this file. It used to be `name.endswith(".lean")`, which meant a chart could be
+    # declared, tagged, normalized, classified and segmented and still have nothing route to
+    # it — the half of the plug-in contract the chart audit was not measuring.
+    rule = rule_for(name)
+    if rule.cls == REFERENCE:
+        # Held, and SAID so with a count. The engine has no chart for this language; the
+        # alternative — an `if ext in {...}` at the call site — is how 1,405 .py files became
+        # invisible with nothing in the system reporting a zero.
+        return RoutedDoc(name, SHELF, f"reference-tier: {rule.why or 'no chart for this language'}",
+                         raw_hash)
+    if rule.cls == SHELF_CLASS:
+        return RoutedDoc(name, SHELF, "shelf by manifest", raw_hash)
+    is_lean_file = rule.cls == CHART and rule.chart == LEAN
+    if rule.cls == CHART and not is_lean_file:
+        # Any OTHER manifest-declared chart entry. This branch is what makes the seam real:
+        # standing up a python chart is a CHARTS.json row, a LANGUAGES.json row and three
+        # behavior functions — and no edit here. Doc companions come from DOC_COMPANIONS,
+        # also keyed by chart, so a new language's doc convention is a table entry too.
+        return RoutedDoc(name, rule.chart, "chart by manifest extension", raw_hash,
+                         Document(name, rule.chart, normalized, source),
+                         companions=doc_companions(rule.chart, name, normalized, source))
+
+    # 1. Verbatim is a property of a SPAN. Fenced blocks are lifted out and pinned by hash;
+    #    what remains is the document's prose and is routed on its own merits. A file that is
+    #    nothing but fenced blocks, or whose residue still reads as log/trace (no delimiter
+    #    exists for those), is a whole artifact and is shelved as one — with its spans pinned.
     #    (A .lean file is code too, but it has its own elaboration route below.)
-    if not is_lean_file and _is_verbatim(normalized):
-        return RoutedDoc(name, VERBATIM, "code/log/trace — pinned, not extracted", raw_hash)
+    if is_binary(normalized):
+        # Not a document. Pinned by hash and counted, never extracted — an extractor over a
+        # lossy binary decode manufactures b-values out of noise, which is the same objection
+        # rule 1 makes about stack traces, with a stronger warrant.
+        return RoutedDoc(name, SHELF, "binary: the decode lost information, not a document",
+                         raw_hash)
+
+    pinned: tuple[str, ...] = ()
+    if not is_lean_file:
+        normalized, pinned = split_verbatim(normalized)
+        if pinned and not normalized.strip():
+            # It had fenced blocks and nothing else. An EMPTY document has no spans and is
+            # not an artifact; it falls through to the shelf where it belongs.
+            return RoutedDoc(name, VERBATIM, "entirely fenced/code — pinned, not extracted",
+                             raw_hash, verbatim_spans=pinned)
+        if _is_log_or_trace(normalized):
+            return RoutedDoc(name, VERBATIM,
+                             "log/trace — pinned, not extracted (no span delimiter exists)",
+                             raw_hash, verbatim_spans=pinned)
 
     # 2/3. Lean is keyed on the .lean extension (per the spec). A prose file that merely
     #      mentions "lemma" is prose, not Lean — the content heuristic false-fired on
     #      table headers, so routing to Lean is extension-only.
     if is_lean_file:
+        # GATES sentence 3 governs GROUNDING, not chart ENTRY: "Only top-tier warrants
+        # ground (clamp-eligible): Lean kernel-accept under pinned toolchain". A `.lean`
+        # file therefore enters the Lean chart on the strength of being Lean, at extraction
+        # tier, and elaboration decides only whether it may later CLAMP.
+        #
+        # This used to shelf every non-elaborating file, justified as "a Lean-chart slot
+        # that was never kernel-checked would be a grounding claim the engine cannot back".
+        # That conflated entry with grounding — `adapters/lean_corpus.py` had it right all
+        # along ("refuses to emit clamps while D6 is unresolved, and emits documents only"),
+        # and the Aristotle corpus proves it: 12,041 Lean slots at extraction tier, D6
+        # unresolved, zero clamps. The one line cost 407 GitHub .lean files their chart.
         elaborates, reason = (lean_elaborates or _default_lean_elaborates)(normalized)
+        document = Document(name, LEAN, normalized, source)
+        companions = doc_companions(LEAN, name, normalized, source)
         if elaborates:
-            return RoutedDoc(name, LEAN, "elaborates", raw_hash,
-                             Document(name, LEAN, normalized, source))
-        return RoutedDoc(name, SHELF, f"elaboration-error: {reason}", raw_hash)
+            return RoutedDoc(name, LEAN, "elaborates; clamp-eligible", raw_hash, document,
+                             companions=companions)
+        return RoutedDoc(name, LEAN, f"extraction tier, NOT clamp-eligible: {reason}",
+                         raw_hash, document, companions=companions)
+
+    # 3.5. Speaker-attributed transcript -> conversation chart. Checked before tables/prose
+    #      because a dialogue is neither, and its speaker turns are the segmentation unit.
+    if _is_conversation(normalized):
+        return RoutedDoc(name, CONVERSATION, "speaker-attributed transcript", raw_hash,
+                         Document(name, CONVERSATION, normalized, source),
+                         verbatim_spans=pinned)
 
     # 4/5. Markdown tables: well-formed -> tabular; malformed -> prose, tagged.
     shape = _table_shape(normalized)
     if shape == "well-formed":
         return RoutedDoc(name, TABULAR, "well-formed table", raw_hash,
-                         Document(name, TABULAR, normalized, source))
+                         Document(name, TABULAR, normalized, source), verbatim_spans=pinned)
     if shape == "malformed":
         prose, tokens = _tokenize_math(normalized)
         return RoutedDoc(name, ENGLISH, "malformed-table -> prose", raw_hash,
-                         Document(name, ENGLISH, prose, source), tuple(tokens))
+                         Document(name, ENGLISH, prose, source), tuple(tokens),
+                         verbatim_spans=pinned)
 
     # 6. Prose -> English, with inline math preserved as opaque tokens.
     if normalized.strip():
         prose, tokens = _tokenize_math(normalized)
         return RoutedDoc(name, ENGLISH, "prose", raw_hash,
-                         Document(name, ENGLISH, prose, source), tuple(tokens))
+                         Document(name, ENGLISH, prose, source), tuple(tokens),
+                         verbatim_spans=pinned)
 
     # 7. Everything else (empty / unclassifiable) -> shelf.
     return RoutedDoc(name, SHELF, "unclassified", raw_hash)

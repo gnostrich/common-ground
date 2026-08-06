@@ -1,0 +1,487 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>common-ground — one current</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#666;--line:#e3e3e3;--acc:#2a6;--card:#fafafa;--me:#2a6;--lm:#4a7bd0;--inst:#c98a2a}
+@media (prefers-color-scheme:dark){:root{--bg:#14161a;--fg:#e8e8e8;--mut:#9aa;--line:#2a2f36;--acc:#5db98b;--card:#1b1e24;--me:#5db98b;--lm:#7ea6ef;--inst:#d6a447}}
+:root[data-theme=dark]{--bg:#14161a;--fg:#e8e8e8;--mut:#9aa;--line:#2a2f36;--acc:#5db98b;--card:#1b1e24}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:1.2rem}
+h1{font-size:1.3rem;margin:.2rem 0}h2{font-size:1rem;color:var(--acc);margin:1.4rem 0 .5rem;border-bottom:1px solid var(--line);padding-bottom:.2rem}
+.banner{position:sticky;top:0;background:var(--acc);color:#fff;padding:.5rem .9rem;border-radius:6px;font-weight:600;font-size:13.5px;z-index:5;margin-bottom:1rem}
+textarea{width:100%;min-height:76px;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:.6rem;font:13.5px ui-monospace,Menlo,monospace}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.5rem 0}
+select,input,button{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:.4rem .6rem;font-size:13.5px}
+button{cursor:pointer;font-weight:600}button.go{background:var(--acc);color:#fff;border-color:var(--acc)}
+label{font-size:12.5px;color:var(--mut)}
+.prop{border-left:3px solid var(--line);padding:.25rem .6rem;margin:.25rem 0;font-size:13px;background:var(--card);border-radius:0 4px 4px 0}
+.prop.me{border-left-color:var(--me)}.prop.lm{border-left-color:var(--lm)}.prop.inst{border-left-color:var(--inst)}
+.tag{font-weight:700;font-size:11px;padding:0 .35rem;border-radius:3px;color:#fff}
+.tag.me{background:var(--me)}.tag.lm{background:var(--lm)}.tag.inst{background:var(--inst)}
+.tier{font-size:10.5px;color:var(--mut);border:1px solid var(--line);border-radius:3px;padding:0 .3rem;margin-left:.3rem}
+.b{font-weight:700}.T{color:var(--acc)}.F{color:#d5566b}.B{color:var(--inst)}.N{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:12.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-space:nowrap}th{background:var(--card)}
+.nu{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--mut)}
+.floor{font-size:1.5rem;font-weight:700}.promoted{color:var(--acc)}.blocked{color:var(--mut)}
+.muted{color:var(--mut);font-size:12.5px}.err{color:#d5566b}
+.answer{font-size:16.5px;line-height:1.62;margin:.4rem 0 .2rem;white-space:pre-wrap}
+.answer p{margin:0 0 .75rem}
+.rests{font-size:13.5px;color:var(--mut);border-left:3px solid var(--acc);padding:.15rem .7rem;margin:.5rem 0 1rem}
+.verdict{font-size:12px;margin:.5rem 0}
+.verdict.ok{color:var(--acc)}.verdict.bad{color:#d5566b}
+.viol{border-left:3px solid #d5566b;background:var(--card);padding:.3rem .6rem;margin:.3rem 0;font-size:12.5px}
+details.scope{margin:1rem 0;border-top:1px solid var(--line);padding-top:.6rem}
+details.scope>summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:600;list-style:revert}
+details.scope[open]>summary{margin-bottom:.6rem}
+.grid{display:flex;gap:1.2rem;flex-wrap:wrap}.grid>div{flex:1;min-width:280px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner">One inlet. All proposers equal. Warrant conferred only at the gate.</div>
+  <h1>common-ground — one current</h1>
+  <div id="corpushdr" class="muted">corpus: loading…</div>
+  <div id="buildhdr" class="muted"></div>
+  <p class="muted">One act, one box. What you type is a <b>boundary condition</b>: it enters
+  a REGION of the corpus as one more object, the medium completes the diagram, and what moved
+  comes back. <b>RETAIN</b> decides only what survives that — nothing else differs.</p>
+
+  <textarea id="text" placeholder="Type a claim, a question, or a bare topic — it becomes the boundary condition…"></textarea>
+  <div class="row">
+    <label>chart <select id="chart">
+      <option>english</option><option>lean</option><option>python</option><option>go</option><option>tabular</option><option>conversation</option>
+    </select></label>
+    <label title="release: the input and its attachments evaporate. retain: the input enters the fast tape as a claim at EXTRACTION tier and its correspondence-kind attachments are kept as proposals, born subject to event-quantized aging.">
+      <input id="retain" type="checkbox"> retain
+    </label>
+    <button class="go" onclick="act()">perturb</button>
+    <button onclick="reset_()">reset current</button>
+    <button id="exportbtn" onclick="exportSheet()" disabled
+      title="the compiled sheet as a paste-ready preamble: the question, every moved claim verbatim with its index and arrows, the attachments, and the absences the field reports. Perturb once, carry it to any model.">export context</button>
+  </div>
+  <div id="lmstate" class="muted"></div>
+  <div id="err" class="err"></div>
+
+  <div id="answer"></div>
+
+  <h2>Proposals entering — all sources equal, one tier</h2>
+  <div id="proposals" class="muted">nothing proposed yet.</div>
+
+  <div class="grid">
+    <div>
+      <h2>The current settling</h2>
+      <div id="settle" class="muted">nothing has entered the current. A <b>release</b>
+      perturbation changes nothing here by design — tick <b>retain</b> to deposit a claim.</div>
+    </div>
+    <div>
+      <h2>The floor — what won't reconcile</h2>
+      <div id="floor" class="muted">measured over the current, which is empty until something
+      is retained. The corpus-wide floor is in the header above.</div>
+      <h2>The gate — what K deposited</h2>
+      <div id="gate" class="muted">K has considered nothing yet: it reads the current, and
+      the current is empty.</div>
+    </div>
+  </div>
+
+  <h2>The continuous proposer — global, unattended, EXTRACTION only</h2>
+  <p class="muted">Runs over the whole corpus at a rate you set. It proposes; it never
+  promotes and never confirms. Everything it has asked is below, including every
+  <b>none</b> and every contradiction between what it answered and what the arrows imply.</p>
+  <div class="row">
+    <label>calls/hour <input id="rate" type="number" min="0" max="600" value="30" size="4"></label>
+    <button onclick="ctl({calls_per_hour:parseInt($('rate').value)})">set rate</button>
+    <button onclick="ctl({paused:true})">pause</button>
+    <button onclick="ctl({paused:false,stop:false})">resume</button>
+    <button onclick="ctl({stop:true})">stop</button>
+    <label>cost cap <input id="cap" placeholder="(none)" size="6"></label>
+    <button onclick="ctl({max_cost:$('cap').value})">set cap</button>
+    <button onclick="ledger()">refresh</button>
+  </div>
+  <div id="proposer" class="muted">not loaded — press refresh.</div>
+
+  <details class="scope" id="scope"><summary>show what moved — the scope behind the answer</summary>
+  <p class="muted">The region is a <b>SAMPLE</b> of the corpus chosen by declared structure —
+  arrow-rich, provenance-near, chart-balanced. It is <b>not</b> the part of the corpus that
+  matches your question; nothing here could compute that, and no text is compared. Arrows the
+  medium draws to your input are <b>attachment</b>; arrows it draws among the corpus objects
+  are ordinary extraction, so asking does the sampler's work.</p>
+  <div id="scopehead"></div>
+  <div id="movers"></div>
+  <div id="phases" class="muted"></div>
+  <div class="grid">
+    <div><h2 style="border:none">What I typed</h2><pre id="typed" class="nu"></pre></div>
+    <div><h2 style="border:none">What was compiled from the field</h2><pre id="compiled" class="nu"></pre></div>
+  </div>
+  <div id="landings"></div>
+  </details>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const tagcls = s => s.startsWith('instance') ? 'inst' : (s === 'lm' ? 'lm' : (s === 'me' ? 'me' : 'inst'));
+
+// The access token, if this window is gated. Taken from ?t= once and kept for the session
+// so the token is not left sitting in the address bar of a shared screen. sessionStorage,
+// not localStorage: it should not outlive the tab.
+const TOKEN = (() => {
+  const fromUrl = new URLSearchParams(location.search).get('t');
+  if(fromUrl){
+    try { sessionStorage.setItem('cg_t', fromUrl); } catch(e) {}
+    history.replaceState(null, '', location.pathname);
+    return fromUrl;
+  }
+  try { return sessionStorage.getItem('cg_t') || ''; } catch(e) { return ''; }
+})();
+const withToken = path => TOKEN ? path + (path.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(TOKEN) : path;
+
+async function post(path, body){
+  const r = await fetch(withToken(path), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  return r.json();
+}
+async function get(path){ return (await fetch(withToken(path))).json(); }
+function esc(s){return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+async function reset_(){ await post('/reset',{}); render(null); }
+
+function render(st){
+  // A RESET restores the STATED empty text, not an empty box. Blank panels read as a broken
+  // page; the whole point of these three is that empty is a fact about the current.
+  if(!st){ $('proposals').innerHTML='nothing proposed yet.';
+    $('settle').innerHTML='<span class="muted">nothing has entered the current. A <b>release</b> perturbation changes nothing here by design \u2014 tick <b>retain</b> to deposit a claim.</span>';
+    $('floor').innerHTML='<span class="muted">measured over the current, which is empty until something is retained.</span>';
+    $('gate').innerHTML='<span class="muted">K has considered nothing yet: it reads the current, and the current is empty.</span>';
+    $('lmstate').textContent=''; return; }
+  $('lmstate').innerHTML = st.lm_available
+     ? 'LM source: <b>on</b> (Opus proposing in parallel through the same inlet)'
+     : '<b>LM source omitted (no key) — engine runs live.</b> The deterministic "me" source '
+       + 'proposes; the LM would enter the same inlet if a key were supplied.';
+
+  // proposals, tagged by source, visibly equal (same tier badge)
+  const by = st.proposals_by_source || {};
+  let head = Object.keys(by).map(s=>`<span class="tag ${tagcls(s)}">${esc(s)}</span> ${by[s]}`).join(' &nbsp; ');
+  $('proposals').innerHTML = `<div class="muted">${head}</div>` + st.proposals.map(p=>
+    `<div class="prop ${tagcls(p.source)}"><span class="tag ${tagcls(p.source)}">${esc(p.source)}</span>
+     <span class="tier">${esc(p.tier)}</span> <b class="b ${p.value}">${p.value}</b>
+     <span class="muted">[${esc(p.chart)}/${esc(p.type)}]</span> ${esc(p.surface)}</div>`).join('');
+
+  const eng = st.engine;
+  // settlement: contested blocks + correspondences
+  let s = `<div class="muted">slots ${JSON.stringify(eng.by_chart)} · blocks ${eng.ledger_summary.blocks} · contested ${eng.contested.length}</div>`;
+  if(eng.contested.length){
+    s += eng.contested.map(c=>`<div class="prop"><b>contest</b> ${esc(c.block)}<br>` +
+      c.variants.map(v=>`<span class="b ${v.value}">${v.value}</span> <span class="nu">[${esc(v.chart)}] ${esc(v.nu)}</span>`).join('<br>') + '</div>').join('');
+  } else { s += '<div class="muted">no contest yet — everything agrees.</div>'; }
+  if(eng.correspondences.length){
+    s += '<h2 style="border:none">Cross-chart correspondences</h2>' + eng.correspondences.map(c=>
+      `<div class="prop"><b>${esc(c.charts.join('+'))}</b> <span class="nu">${esc(c.nus.join(' | '))}</span></div>`).join('');
+  }
+  if(eng.verdicts && eng.verdicts.length){
+    s += '<h2 style="border:none">Conversation ledger (fast-tape content)</h2>' + eng.verdicts.map(v=>
+      `<div class="prop"><b>${esc(v.verdict)}</b> ${esc(v.proposer)}&rarr;${esc(v.decided_by||'-')} <span class="muted">${esc(v.proposal)}</span></div>`).join('');
+  }
+  $('settle').innerHTML = s;
+
+  // floor
+  $('floor').innerHTML = eng.arms.map(a=>
+    `<div><span class="floor">${a.mean_floor.toExponential(2)}</span> <span class="muted">cold floor @ beta=${a.beta} · q95 ${a.q95.toExponential(2)} · 2ndFDT ${a.second_fdt_floor.toExponential(2)} · certs ${a.certificates.join(',')||'-'}</span></div>`).join('')
+    + `<p class="muted">${esc(eng.status.P3)}</p>`;
+
+  // gate
+  const proms = st.promotions||[];
+  const yes = proms.filter(p=>p.promoted);
+  $('gate').innerHTML = `<div class="muted">K considered ${proms.length}; promoted ${yes.length}; corpus ${Object.keys(st.corpus).length}.</div>` +
+    proms.map(p=>`<div class="prop"><span class="${p.promoted?'promoted':'blocked'}">${p.promoted?'PROMOTED':'held'}</span>
+      <b class="b ${p.value}">${p.value}</b> <span class="muted">${esc(p.reason)} · top ${p.hankel_top.toExponential(2)} vs thr ${p.threshold.toExponential(2)}</span></div>`).join('');
+}
+
+async function ledger(){ renderLedger(await get('/proposer')); }
+async function ctl(body){ renderLedger(await post('/proposer/control', body)); }
+
+function renderLedger(L){
+  if(L.error){ $('proposer').innerHTML = `<span class="err">${esc(L.error)}</span>`; return; }
+  const t = L.totals||{}, c = L.control||{}, s = L.status||{};
+  const running = s.running ? 'RUNNING' : (c.paused ? 'PAUSED' : 'not running');
+  let h = `<div class="prop"><b>${running}</b> · ${c.calls_per_hour||0} calls/hour`
+        + (c.max_cost!=null ? ` · cap ${esc(String(c.max_cost))}` : ' · no cost cap')
+        + ` · <span class="tier">${esc(L.tier||'')}</span><br>`
+        + `<span class="muted">${esc(s.reason||'')}</span></div>`;
+  h += `<div class="prop">asked <b>${t.asked||0}</b> · arrows <b>${t.arrows||0}</b> · none <b>${t.none||0}</b>`
+     + ` (${((t.none_rate||0)*100).toFixed(1)}%) · contradictions <b>${t.contradictions||0}</b><br>`
+     + `calls ${t.calls||0} (${t.call_errors||0} failed) · tokens ${t.tokens_in||0}/${t.tokens_out||0}`
+     + ` · cost <b>${t.cost||0}</b> <span class="muted">${esc(t.cost_coverage||'')}</span></div>`;
+  const comp = s.composition||{};
+  if(Object.keys(comp).length){
+    h += `<div class="prop">composition: implied <b>${comp.implied||0}</b> · intra-chart residue `
+       + `${comp.residues||0} <span class="muted">(no morphism for these at v0)</span>`
+       + (comp.dropped_by_hub_cap ? ` · hub cap dropped ${comp.dropped_by_hub_cap}` : '') + `</div>`;
+  }
+  const red = (s.gates||[]).filter(g=>!g.ok);
+  h += `<div class="prop">gates: ${red.length ? `<span class="err">RED — ${red.map(g=>esc(g.check)).join(', ')}</span>`
+        : `<span class="promoted">green (${(s.gates||[]).length} static)</span>`} · suite ${esc(String(s.suite||'-')).slice(0,60)}</div>`;
+  if((L.contradictions||[]).length){
+    h += '<h2 style="border:none">Contradictions — flagged, never resolved</h2>' +
+      L.contradictions.map(x=>`<div class="prop"><b class="F">${esc(x.implied)}</b> implied via `
+        + `${esc((x.via||[]).join(' → '))} but answered <b>${esc(x.recorded)}</b>`
+        + `<br><span class="muted">${esc(x.note||'')}</span></div>`).join('');
+  }
+  h += '<h2 style="border:none">Ledger tail</h2>' + (L.recent||[]).slice().reverse().map(r=>{
+    if(r.kind==='ask') return `<div class="prop"><span class="tier">${esc(r.relation)}</span> `
+      + `<b class="${r.answer==='none'?'N':'T'}">${esc(r.answer)}</b> `
+      + `<span class="nu">[${esc(r.src_chart)}] ${esc(r.src_slot)} → [${esc(r.dst_chart)}] ${esc(r.dst_slot)}</span>`
+      + (r.evidence ? `<br><span class="muted">${esc(r.evidence)}</span>` : '') + '</div>';
+    if(r.kind==='call') return `<div class="prop muted">call · ${r.candidates} candidates · `
+      + `${r.ok?'ok':'<span class="err">failed: '+esc(r.error||'')+'</span>'} · cost ${r.cost==null?'unreported':r.cost}</div>`;
+    if(r.kind==='halt') return `<div class="prop err">HALT — ${esc(r.reason)}</div>`;
+    return `<div class="prop muted">${esc(r.kind)}</div>`;
+  }).join('');
+  $('proposer').innerHTML = h;
+}
+
+async function corpus(){
+  try {
+    renderCorpus(await get('/corpus'));
+  } catch(e) {
+    // "loading…" forever is indistinguishable from a wedge. Say what happened.
+    $('corpushdr').innerHTML =
+      `<span class="err">corpus header failed to load: ${esc(String(e))}</span>`;
+  }
+}
+function renderBuild(b){
+  // The SERVED commit, on the page. Deploy skew has been invisible twice; a build that
+  // cannot name itself cannot be caught serving a stale page.
+  if(!b) return;
+  const model = b.model || 'not yet called';
+  const drift = b.model_drift
+    ? ` <span class="err">— PIN DRIFT: configured ${esc(b.model_configured||'?')}</span>` : '';
+  $('buildhdr').innerHTML = (b.warning
+    ? `<span class="err">build: ${esc(b.served||'unknown')} — ${esc(b.warning)}</span>`
+    : `build: <span class="nu">${esc(b.served)}</span>`)
+    + ` &nbsp; model served: <span class="nu">${esc(model)}</span>${drift}`
+    // SNAPSHOT DRIFT. Stale CODE announced itself and stale STATE did not: the deploy served
+    // a corpus 10,000 slots behind local under a commit stamp that matched HEAD exactly.
+    + (b.snapshot
+        ? ` &nbsp; corpus material: <span class="nu">${esc(b.snapshot.age||'?')} old</span>`
+          + ` (${(b.snapshot.slots||0).toLocaleString()} slots, `
+          + `${(b.snapshot.arrows||0).toLocaleString()} arrows)`
+          + (b.snapshot.stale
+              ? ` <span class="err">— STALE: this build names its commit but is serving `
+                + `material the walk has moved past</span>` : '')
+          + (b.snapshot.warning ? ` <span class="err">— ${esc(b.snapshot.warning)}</span>` : '')
+        : '');
+}
+function renderCorpus(h){
+  renderBuild(h && h.build);
+  if(!h || h.error){ $('corpushdr').innerHTML = `<span class="err">${esc((h&&h.error)||'?')}</span>`; return; }
+  if(!h.loaded){ $('corpushdr').innerHTML = `<span class="err">NO CORPUS LOADED</span> — ${esc(h.note||'')}`; return; }
+  $('corpushdr').innerHTML = `corpus <b>${h.slots.toLocaleString()}</b> slots `
+    + `${esc(JSON.stringify(h.by_chart))} · arrows <b>${h.arrows}</b> (${h.same_claim} same_claim) `
+    + `· fibers ${h.fibers.toLocaleString()} · contested <b>${h.contested_slots.toLocaleString()}</b> `
+    + `· loops ${h.loops} · floor <b>${esc(h.floor)}</b>`;
+}
+
+async function act(){
+  // ONE ACT, one flag. RETAIN routes through /propose (perturb-and-retain); RELEASE through
+  // /ask (perturb-and-release). Same region call either way — the flag decides only what
+  // survives it, which is what "one box" means rather than two forms sharing a button.
+  const retain = $('retain').checked;
+  const text = $('text').value, chart = $('chart').value;
+  $('answer').innerHTML = '<span class="muted">'
+    + (retain ? 'perturbing and retaining…' : 'perturbing the field…') + '</span>';
+  let r;
+  // A TICKING ELAPSED COUNTER, not a claimed phase. The server records which stage it was
+  // in and returns them with the result; the page cannot know the current stage without a
+  // stream, and streaming hung the browser. So this reports elapsed time — true — and the
+  // measured stages afterwards, rather than naming a phase it is guessing at.
+  const t0 = Date.now();
+  const tick = setInterval(() => {
+    const s = ((Date.now() - t0) / 1000).toFixed(0);
+    const what = retain ? 'perturbing and retaining' : 'perturbing the field';
+    $('answer').innerHTML = `<span class="muted">${what}… <b>${s}s</b> `
+      + `<span class="muted">(the attachment call is 76-94% of it)</span></span>`;
+  }, 1000);
+  try {
+    r = retain ? await post('/propose', {text, chart})
+               : await post('/ask', {question:text, chart});
+  } catch(e) {
+    clearInterval(tick);
+    $('answer').innerHTML = `<span class="err">the request failed: ${esc(String(e))}</span>`;
+    return;
+  }
+  clearInterval(tick);
+  if(retain){
+    render(r);
+    const R2 = r.retention || {};
+    $('answer').innerHTML = `<div class="prop"><b>RETAINED</b> — claim on the fast tape at `
+      + `EXTRACTION, ${R2.retained_arrows||0} attachment arrow(s) kept as proposals.`
+      + `<div class="muted">${esc(R2.note||'')}</div></div>`;
+    return;
+  }
+  if(r.error){ $('answer').innerHTML = `<span class="err">${esc(r.error)}</span>`; return; }
+  if(r.corpus_header) renderCorpus(r.corpus_header);
+  renderAnswer(r);
+  renderScope(r);
+  renderPhases(r);
+  // THE SHEET travels with the answer. Enabling the button only once a real record exists
+  // means it can never export a preamble for a perturbation that did not happen.
+  LAST_SHEET = r.sheet || '';
+  $('exportbtn').disabled = !LAST_SHEET;
+  $('scope').open = false;
+}
+
+// THE COMPILED SHEET, portable. A VIEW over the record the last perturbation produced —
+// nothing is recomputed, so the sheet always describes the answer on screen.
+let LAST_SHEET = '';
+async function exportSheet(){
+  if(!LAST_SHEET) return;
+  const b = $('exportbtn'), was = b.textContent;
+  try {
+    await navigator.clipboard.writeText(LAST_SHEET);
+    b.textContent = 'copied \u2713';
+  } catch(e) {
+    // Clipboard is permission-gated and silently unavailable over some origins. Falling
+    // back to a visible textarea beats a button that appears to do nothing.
+    const w = window.open('', '_blank');
+    if(w){
+      w.document.write('<pre style="white-space:pre-wrap">' + esc(LAST_SHEET) + '</pre>');
+    } else {
+      // Built as an element, never as markup: a second entry box on the page is a second
+      // entry surface whatever it is for, and the one-box control is right to refuse one.
+      const box = document.createElement('pre');
+      box.className = 'nu';
+      box.style.cssText = 'white-space:pre-wrap;max-height:300px;overflow:auto;user-select:all';
+      box.textContent = LAST_SHEET;
+      $('answer').prepend(box);
+    }
+    b.textContent = 'opened \u2197';
+  }
+  setTimeout(() => { b.textContent = was; }, 2000);
+}
+
+// THE ANSWER IS THE OUTPUT. First, full width, and the two things it stands on are stated in
+// it rather than filed one click away: what the input was read as bearing on, and what the
+// faithfulness gate found. The prose used to ship last because nothing constrained it; the
+// gate is that constraint, and it travels with the prose it judges.
+function renderAnswer(r){
+  const c = r.compiled || {}, A = c.attachment || {};
+  // The record's key is `attachment`; `proposed` was never a key and reading it made every
+  // relaxed response open by saying nothing responded. Both are read now, and the branch is
+  // on `conditioned` — whether the FIELD moved — not on whether attachments happened to parse.
+  const acc = (A.attachment || A.proposed || []);
+  const corr = acc.filter(x => x.kind !== 'bears_on'), bears = acc.filter(x => x.kind === 'bears_on');
+  const X = c.relaxation || {}, D = A.discrimination;
+  let rests;
+  if(c.conditioned){
+    const kinds = [corr.length ? `${corr.length} correspondence` : '',
+                   bears.length ? `${bears.length} bears-on` : ''].filter(Boolean).join(' + ');
+    rests = `<div class="rests">I read what you typed as bearing on `
+          + (acc.length ? `${acc.length} claim(s) in this region — attached by ${esc(kinds)}. `
+                        : `no claim directly — nothing attached, and what follows moved through `
+                          + `the field's own structure. `)
+          + `${X.moved||0} claim(s) moved; `
+          + `${(X.rows||[]).filter(m=>m.hops>0).length} were reached over declared arrows.`
+          + ((X.blocks_skipped||0) ? ` ${X.blocks_skipped} block(s) exceeded the settling cap and are unmeasured.` : '')
+          + `</div>`
+          // THE DISCRIMINATION GUARD, on the answer. Attaching to everything shown is not a
+          // rich result; it is the attachment carrying no information about which claims the
+          // input bears on. It reads as depth unless it is named.
+          + (D && D.red
+              ? `<div class="verdict bad">INDISCRIMINATE ATTACHMENT — ${D.attached} of `
+                + `${D.shown} objects shown were attached to (${Math.round(D.fraction*100)}%, `
+                + `threshold ${Math.round(D.threshold*100)}%). What follows rests on the `
+                + `region's membership, not on a relation the medium discriminated.</div>`
+              : '');
+  } else {
+    rests = `<div class="rests">Nothing in the field responded to what you typed — `
+          + `${esc((X.silence) || (c.field_status||''))}</div>`;
+  }
+  // THE GATE, RENDERED. Four structural failures, none of them lexical. An absence claim is
+  // a first-class legal form, not a permanent RED: a sentence about what the trace LACKS
+  // cannot cite a line, and three of eleven sentences in a live answer were exactly that.
+  const f = r.faithful;
+  const LABEL = {
+    uncited:     'rests on nothing shown',
+    unresolved:  'cites a line that was never shown',
+    vacuous:     'says something is absent, but nothing was shown to be absent from',
+    unwarranted: 'names a silence the field does not report',
+  };
+  let gate = '';
+  if(f){
+    const neg = f.asserted_absent || 0;
+    gate = f.ok
+      ? `<div class="verdict ok">faithful: [] — ${f.cited}/${f.checked} sentence(s) cite a `
+        + `claim that was shown`
+        + (neg ? `, ${neg} assert an absence the field reports` : '')
+        + ` (${(f.resolved||[]).length} distinct citation(s) against ${f.citable} citable `
+        + `line(s)${(f.warrants||[]).length ? '; warrants ' + f.warrants.map(esc).join(', ') : ''}).</div>`
+      : `<div class="verdict bad">FAITHFULNESS RED — `
+        + Object.keys(LABEL).map(k => {
+            const n = f.violations.filter(v => v.kind === k).length;
+            return n ? `${n} ${k}` : '';
+          }).filter(Boolean).join(', ')
+        + `, of ${f.checked} sentence(s).</div>`
+        + f.violations.map(v => `<div class="viol"><b>${esc(LABEL[v.kind] || v.kind)}`
+            + ((v.numbers||[]).length ? ` (${v.numbers.join(', ')})` : '')
+            + (v.warrant ? ` [${esc(v.warrant)}]` : '')
+            + `</b> — ${esc(v.sentence)}</div>`).join('');
+  }
+  $('answer').innerHTML = rests + `<div class="answer">${esc(r.answer)}</div>` + gate;
+}
+
+// THE SCOPE. Inspection surface, one click below: what moved, how far, and by which declared
+// path. Nothing here is new — it is the same trace, no longer competing with the answer.
+function renderScope(r){
+  const c = r.compiled || {}, X = c.relaxation || {}, R = X.rows || [];
+  const A = c.attachment || {};
+  const acc = (A.proposed || []).filter(x => x.accepted);
+  const state = c.conditioned ? ['promoted','THE FIELD RELAXED'] : ['inst','THE FIELD DID NOT RESPOND'];
+  $('scopehead').innerHTML = `<div class="prop"><span class="${state[0]}">${state[1]}</span> `
+    + `<span class="muted">`
+    + (c.conditioned
+        ? `${X.moved||0} slot(s) moved across ${X.blocks_settled||0} settled block(s); `
+          + `${R.filter(m=>m.hops>0).length} reached through declared correspondence; `
+          + `${acc.length} attachment(s)`
+        : esc(X.silence || ''))
+    + `</span></div>`;
+  $('movers').innerHTML = R.length
+    ? '<h2 style="border:none">What moved</h2>' + R.map(m =>
+        `<div class="prop"><b class="b ${m.value}">${esc(String(m.value))}</b> `
+        + `<span class="tier">${esc(m.tier)}</span>`
+        + (m.contested ? ' <b class="F">CONTESTED</b>' : '')
+        + ` <span class="muted">shift ${Number(m.shift||0).toFixed(4)} · `
+        + `${m.hops||0} hop(s) · [${esc(m.chart)}]</span>`
+        + `<br><span class="nu">${esc((m.nu||m.slot||'').slice(0,300))}</span>`
+        + ((m.path||[]).length
+            ? (m.path||[]).map(v => `<br><span class="muted">VIA ${esc(v.kind||'')} `
+                + `[${esc(v.src_chart||'')}]→[${esc(v.dst_chart||'')}]</span>`).join('')
+            : '')
+        + `</div>`).join('')
+    : '<div class="muted">no slot moved.</div>';
+  $('typed').textContent = c.typed || '';
+  $('compiled').textContent = r.grounded_on || '';
+  const L = c.landings || [];
+  $('landings').innerHTML = L.length
+    ? '<h2 style="border:none">Where each typed span landed</h2>' + L.map(l =>
+        `<div class="prop"><span class="${l.hit?'promoted':'blocked'}">${l.hit?'LANDED':'no address'}</span>`
+        + (l.hit ? ` <b class="b ${l.value}">${l.value}</b> <span class="tier">${esc(l.tier)}</span>`
+                 + (l.contested?' <b class="F">CONTESTED</b>':'')
+                 + ` <span class="muted">fiber ${l.fiber} · block ${l.block} · arrows ${(l.arrows||[]).length}</span>` : '')
+        + `<br><span class="nu">${esc(l.surface)}</span></div>`).join('')
+    : '';
+}
+
+// MEASURED stages, with the result. Not a progress channel — these are what the server
+// recorded it was doing, returned once it is done.
+function renderPhases(r){
+  const P = r.phases || [];
+  $('phases').innerHTML = P.length
+    ? 'stages: ' + P.map(p => `${esc(p.stage)} @${p.at}s`).join(' · ')
+    : '';
+}
+corpus();
+</script>
+</body>
+</html>
