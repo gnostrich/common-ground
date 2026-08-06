@@ -51,3 +51,9 @@ runs/proposer.status.json
 # `railway up` uploads the working TREE, not the git tree, so deploying does not need these
 # tracked — and a `git add -A` that swept them in is how they reached a public branch once.
 seed_runs/
+
+# runs/BUILD is the SERVED-commit stamp and must never be committed: written before the
+# commit that contains it, it would name the parent — a one-commit lag reported with the
+# confidence of an exact answer, which is worse than the `unknown` it replaced. The deploy
+# writes it (or sets CG_COMMIT) at push time, outside git.
+runs/BUILD
