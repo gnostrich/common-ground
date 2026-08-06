@@ -199,14 +199,91 @@ def _nu(region: Region, slot: str) -> str:
     return ""
 
 
+def unwalked_mass(snapshot: CorpusSnapshot) -> dict[str, int]:
+    """Per provenance: how many of its slots no arrow has ever touched.
+
+    This is the COVERAGE IMBALANCE, measured, and it is the whole of the exploration term.
+    There is no fraction to declare and no knob to tune: a provenance's pull on the rotation
+    is the mass it has left unwalked, so the pressure is derived from the imbalance itself and
+    SELF-EXTINGUISHES as the walk equalises. When every slot has an arrow the dictionary is
+    empty and the term vanishes rather than continuing to spend calls on a constant.
+
+    Same shape as event-quantized aging replacing an N-based rate: the quantity that decides
+    is the state, not a number somebody chose.
+    """
+    touched: set[str] = set()
+    for a in snapshot.arrows:
+        touched.add(a.src_slot)
+        touched.add(a.dst_slot)
+    out: dict[str, int] = {}
+    for sid, rec in (getattr(snapshot, "slots", None) or {}).items():
+        if sid in touched:
+            continue
+        docs = list(getattr(rec, "docs", None) or ())
+        root = str(docs[0]).split("||")[0] if docs else "?"
+        out[root] = out.get(root, 0) + 1
+    return out
+
+
+def _unwalked_seeds(snapshot: CorpusSnapshot, want: int) -> list[tuple[str, str]]:
+    """One seed per provenance, drawn in proportion to unwalked mass. No constant anywhere.
+
+    Largest-remainder apportionment over the measured masses: a provenance holding a tenth of
+    the corpus's untouched slots gets a tenth of the exploration seeds. A provenance with
+    nothing untouched gets none, which is why the pressure ends by itself.
+    """
+    mass = unwalked_mass(snapshot)
+    total = sum(mass.values())
+    if not total or want <= 0:
+        return []
+    touched: set[str] = set()
+    for a in snapshot.arrows:
+        touched.add(a.src_slot)
+        touched.add(a.dst_slot)
+    by_root: dict[str, list[str]] = {}
+    for sid, rec in sorted((getattr(snapshot, "slots", None) or {}).items()):
+        if sid in touched:
+            continue
+        docs = list(getattr(rec, "docs", None) or ())
+        by_root.setdefault(str(docs[0]).split("||")[0] if docs else "?", []).append(sid)
+
+    exact = {r: want * m / total for r, m in mass.items()}
+    take = {r: int(v) for r, v in exact.items()}
+    for r, _ in sorted(exact.items(), key=lambda kv: (-(kv[1] - int(kv[1])), kv[0])):
+        if sum(take.values()) >= want:
+            break
+        take[r] += 1
+    out: list[tuple[str, str]] = []
+    for root in sorted(take):
+        for sid in by_root.get(root, ())[:take[root]]:
+            out.append((sid, f"seed: {mass[root]:,} slot(s) of {root} carry no arrow yet — "
+                             f"{mass[root] / total:.1%} of the corpus's unwalked mass"))
+    return out
+
+
 def _seed_frontier(walk: Walk, snapshot: CorpusSnapshot) -> None:
-    """Start where structure already is. An isolated claim propagates nothing (Q2)."""
+    """Start where structure already is — AND where it measurably is not.
+
+    Degree seeding alone is self-reinforcing: walked material gets arrows, arrows make it
+    eligible, eligibility routes the walk there, and the walk produces more arrows there.
+    Measured on the live corpus the eligible set was 71% one repository holding 15% of the
+    material, while 12,466 Lean slots had 1.7% of them touched by any arrow. A corpus region
+    nothing has walked can never earn its way into a rotation that admits by arrow count.
+
+    So half the frontier is drawn by declared degree and half by UNWALKED MASS. The split is
+    not a tuned fraction: the exploration half is apportioned by the measured imbalance and
+    empties itself as the walk equalises, at which point the frontier is degree-seeded again
+    with nothing switched off.
+    """
     degree: dict[str, int] = {}
     for a in snapshot.arrows:
         degree[a.src_slot] = degree.get(a.src_slot, 0) + 1
         degree[a.dst_slot] = degree.get(a.dst_slot, 0) + 1
-    for sid, _ in sorted(degree.items(), key=lambda kv: (-kv[1], kv[0]))[:32]:
+    seeds = sorted(degree.items(), key=lambda kv: (-kv[1], kv[0]))[:32]
+    for sid, _ in seeds:
         walk.push(sid, NEIGHBOUR, "seed: already carries declared arrows")
+    for sid, reason in _unwalked_seeds(snapshot, len(seeds) or 32):
+        walk.push(sid, NEIGHBOUR, reason)
 
 
 def step(walk: Walk, snapshot: CorpusSnapshot, transport, size: int = REGION_SIZE,

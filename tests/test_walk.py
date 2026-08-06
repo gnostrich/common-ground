@@ -344,3 +344,87 @@ class AgingIsProposedNotSilentlyChosen(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExplorationPressureIsDERIVEDAndSelfExtinguishing(unittest.TestCase):
+    """No declared fraction. The imbalance is the term, and it ends by itself.
+
+    Degree seeding alone is self-reinforcing: walked material gets arrows, arrows make it
+    eligible, eligibility routes the walk there, and the walk produces more arrows there.
+    Measured on the live corpus the eligible set was 71% one repository holding 15% of the
+    material, while 12,466 Lean slots had 1.7% of them touched by any arrow — so a region
+    nothing had walked could never earn its way into a rotation that admits by arrow count.
+
+    A declared fraction would fix it and never stop paying: a constant keeps spending calls on
+    exploration after the corpus is covered. Unwalked mass is the same shape as event-quantized
+    aging replacing an N-based rate — the state decides, and when the state is even there is
+    nothing left to decide.
+    """
+
+    class _Rec:
+        def __init__(self, docs):
+            self.nu, self.chart, self.type, self.docs = "x", "english", "assert", docs
+
+    class _Arrow:
+        def __init__(self, u, v):
+            self.src_slot, self.dst_slot, self.kind = u, v, "same_claim"
+
+    def _snap(self, slots, arrows=()):
+        class S:
+            pass
+        s = S()
+        s.slots = {k: self._Rec((f"{v}||f.py",)) for k, v in slots.items()}
+        s.arrows = [self._Arrow(u, v) for u, v in arrows]
+        return s
+
+    def test_mass_is_counted_per_provenance_over_ARROW_UNTOUCHED_slots(self):
+        from engine.walk import unwalked_mass
+        snap = self._snap({"a": "A", "b": "A", "c": "B"}, arrows=[("a", "c")])
+        self.assertEqual({"A": 1, "B": 0}, {**{"B": 0}, **unwalked_mass(snap)})
+
+    def test_seeds_are_apportioned_IN_PROPORTION_to_unwalked_mass(self):
+        from engine.walk import _unwalked_seeds
+        slots = {f"a{i}": "BIG" for i in range(90)}
+        slots.update({f"b{i}": "SMALL" for i in range(10)})
+        got = _unwalked_seeds(self._snap(slots), 10)
+        roots = [s[1].split("of ")[1].split(" carry")[0] for s in got]
+        self.assertEqual(9, roots.count("BIG"))
+        self.assertEqual(1, roots.count("SMALL"))
+
+    def test_a_FULLY_WALKED_corpus_produces_NO_exploration_seeds(self):
+        # THE SELF-EXTINGUISHING PROPERTY. This is what a declared fraction cannot do.
+        from engine.walk import _unwalked_seeds, unwalked_mass
+        snap = self._snap({"a": "A", "b": "A"}, arrows=[("a", "b")])
+        self.assertEqual(0, sum(unwalked_mass(snap).values()))
+        self.assertEqual([], _unwalked_seeds(snap, 32))
+
+    def test_a_provenance_with_nothing_left_unwalked_gets_no_seed(self):
+        from engine.walk import _unwalked_seeds
+        snap = self._snap({"a": "DONE", "b": "TODO", "c": "TODO"}, arrows=[("a", "a")])
+        roots = {s[1].split("of ")[1].split(" carry")[0] for s in _unwalked_seeds(snap, 4)}
+        self.assertEqual({"TODO"}, roots)
+
+    def test_pressure_FALLS_as_coverage_rises_without_anything_being_switched_off(self):
+        from engine.walk import unwalked_mass
+        slots = {f"s{i}": "P" for i in range(10)}
+        before = sum(unwalked_mass(self._snap(slots)).values())
+        after = sum(unwalked_mass(
+            self._snap(slots, arrows=[(f"s{i}", f"s{i}") for i in range(8)])).values())
+        self.assertEqual(10, before)
+        self.assertEqual(2, after)
+
+    def test_the_module_declares_no_exploration_constant(self):
+        # A knob is the fallback, not the design. If one ever appears it must be argued for,
+        # and this control is what forces the argument.
+        import re
+        from pathlib import Path
+        src = (Path(__file__).resolve().parent.parent / "engine" / "walk.py").read_text()
+        body = src[src.index("def unwalked_mass"):src.index("def step(walk")]
+        self.assertEqual([], re.findall(r"0\.\d+", body),
+                         "an exploration fraction appeared in the coverage term")
+
+    def test_the_reason_states_the_measured_imbalance_not_a_setting(self):
+        from engine.walk import _unwalked_seeds
+        got = _unwalked_seeds(self._snap({f"s{i}": "P" for i in range(4)}), 2)
+        self.assertIn("carry no arrow yet", got[0][1])
+        self.assertIn("unwalked mass", got[0][1])
