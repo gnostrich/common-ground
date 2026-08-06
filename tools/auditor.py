@@ -142,6 +142,49 @@ def battery() -> list[dict]:
     return rows
 
 
+def registry() -> dict:
+    """B1: every OI-n resolves to real sites and real controls, or the run FAILS.
+
+    A registry naming controls that do not exist is the map-not-territory failure applied to
+    the constitution itself — and building it caught three such entries in its first pass,
+    one of them because the RESOLVER was wrong (an annotated module constant is an AnnAssign,
+    not an Assign, so a symbol that plainly exists reported as missing).
+
+    WEAK entries — enforcement `[P]` only — are reported, never treated as failures. Some
+    invariants describe how work is conducted and a control claiming to check them would be
+    theatre; the honest move is to name them and shrink the list deliberately.
+    """
+    try:
+        from tools.build_registry import build
+        reg = build()
+    except Exception as exc:                       # noqa: BLE001
+        return {"ok": False, "detail": f"the registry could not be built: {exc}"}
+    stale = json.loads((REPO / "seed" / "OI_REGISTRY.json").read_text()) \
+        if (REPO / "seed" / "OI_REGISTRY.json").exists() else {}
+    drifted = stale.get("entries", {}) != reg["entries"]
+    return {"ok": not reg["unresolved"], "count": reg["count"],
+            "weak": reg["weak"], "unresolved": reg["unresolved"],
+            "committed_registry_is_current": not drifted,
+            "detail": (f"{reg['count']} entries, {len(reg['weak'])} WEAK, "
+                       f"{len(reg['unresolved'])} unresolvable")}
+
+
+def conformance() -> dict:
+    """B3: every [E:] site named in CONSTITUTION.md exists at its symbol.
+
+    Drift is a defect in the code OR in the document and is never silently reconciled — the
+    auditor reports the mismatch and the operator rules which side moved.
+    """
+    from tools.build_registry import MAP, resolves
+    missing = [f"{oi}: {ref}" for oi, spec in MAP.items()
+               for ref in spec.get("E", []) + spec.get("C", []) if not resolves(ref)]
+    doc = (REPO / "seed" / "CONSTITUTION.md")
+    return {"ok": not missing and doc.exists(),
+            "constitution_present": doc.exists(),
+            "missing_sites": missing,
+            "detail": f"{len(missing)} constitutional site(s) named but absent"}
+
+
 def liveness() -> dict:
     """EVERY PLANTED-DEFECT CONTROL MUST FIRE. Silence is not a pass.
 
@@ -176,6 +219,8 @@ def audit() -> dict:
     report = {
         "head": _run(["git", "rev-parse", "HEAD"])[1].strip()[:12],
         "sweeps": sweeps(),
+        "registry": registry(),
+        "conformance": conformance(),
         "wire": wire(),
         "battery": battery(),
         "liveness": liveness(),
@@ -185,6 +230,14 @@ def audit() -> dict:
     for s in report["sweeps"]:
         if not s["ok"]:
             findings.append(f"SWEEP {s['check']}: {s['detail'][:200]}")
+    r = report["registry"]
+    if not r.get("ok"):
+        findings.append(f"REGISTRY: unresolvable OI entries — {r.get('unresolved')}")
+    if not r.get("committed_registry_is_current", True):
+        findings.append("REGISTRY: seed/OI_REGISTRY.json is stale against CONSTITUTION.md")
+    c = report["conformance"]
+    if not c.get("ok"):
+        findings.append(f"CONFORMANCE: {c.get('detail')} — {c.get('missing_sites')}")
     w = report["wire"]
     if not w.get("commit_match"):
         findings.append(f"WIRE: serving {w.get('served')} against HEAD {w.get('head')}")
