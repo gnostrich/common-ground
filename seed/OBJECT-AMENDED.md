@@ -125,6 +125,29 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   truncated and the answer could only paraphrase from gist. Gate 8 names this exactly and it
   still shipped, because the cut sat inside a function whose output "looked like" display.
   Removed; the prompt now receives full nu-strings.
+- **TERM SELECTION FOUND THE CORPUS'S VOCABULARY, NOT THE OPERATOR'S.** The medium chart
+  selects terms structurally — a term is a `same_claim` fiber, so the load-bearing vocabulary
+  is exactly the vocabulary that already carries arrows. Run on the live corpus it returned
+  Autosynth's infrastructure vocabulary: session stores, pad models, track roles, owner
+  predicates. That is CORRECT and it is the firewall working — the corpus contains no
+  common-ground material (reflexivity audit: 0 self-referential matches across 80,566 slots),
+  so the densest fibers are necessarily the ingested repositories'. But it means the extracted
+  glosses serve the corpus's densest regions rather than the question vocabulary the operator
+  actually types. **Fiber density is where the arrows are, not where the asking is.**
+  REFINEMENT RECORDED, NOT BUILT: weight term selection by appearance-in-past-perturbations
+  alongside fiber membership — which perturbation a slot was in is declared structure, so this
+  stays structural and adds no frequency-guessing. Held until the set-level gloss verdict at
+  proper n.
+- **A GATE FED AN UNMEASURED QUANTITY.** The first gloss validation ran four fixtures once
+  each and refused the glossary on a citation delta of -0.0036 — one sentence in roughly 275.
+  The gate was right and the input was not a measurement: with no repeats there is no estimate
+  of run-to-run variation, so a delta can only be asserted to be real or noise. The fix is not
+  a looser gate but a powered input — repeats per fixture, arms alternating so model drift
+  lands on both, per-class rows because an average over a +0.61 improvement and a degradation
+  to the limit case is a number about neither, and a delta that is indistinguishable at the
+  run's n is fed to the gate as ZERO rather than as a small movement. **An indistinguishable
+  delta is not a small improvement and not a small worsening; it is no measurement, and
+  passing one to a conjunction lets noise decide.**
 - Similarity substituted for a declared relation (Jaccard fibers). **DELETED.**
 - Term overlap in the ANSWER path. **DELETED.** (Navigation is not evidence.)
 - Docstrings claiming mechanisms the call graph lacks ("index", "settlement runs", "provably
