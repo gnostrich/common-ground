@@ -1,22 +1,38 @@
 {
  "schema": "common-ground/constant-provenance/v0",
- "note": "OI-4: every constant is DERIVED (forced by the object), SWEPT (measured across a range and pinned in a stable band with the sweep as its justification), or CONFESSED (chosen, and said to be chosen, with what would settle it). A constant with no entry is UNMARKED and `engine/constants_sweep` reports it. This file does not judge whether a derivation is good; it enforces that one is CLAIMED, which is the difference between an argument somebody can check and a number nobody can find the argument for.",
+ "note": "OI-4: every constant is DERIVED (forced by the object), SWEPT (measured across a range and pinned in a stable band with the sweep as its justification), or CONFESSED (chosen, and said to be chosen, with what would settle it). A constant with no entry is UNMARKED and `engine/constants_sweep` reports it. This file does not judge whether a derivation is good; it enforces that one is CLAIMED, which is the difference between an argument somebody can check and a number nobody can find the argument for. A constant may move confessed->derived (or ->swept) ONLY with a derivation ARTIFACT attached: a sweep result, an anchor identity, or a measurement. The TRANSITION is the controlled event, not the ratio \u2014 derived overtaking confessed is the GOAL, and a control on the ratio would fire RED on progress.",
  "constants": {
   "BORN": {
    "provenance": "derived",
-   "why": "A record enters whole. Aging halves it on each unconfirmed visit, so the start value fixes the scale and nothing else; 1.0 is the multiplicative identity and any other choice would be the same sequence rescaled."
+   "why": "A record enters whole. Aging halves it on each unconfirmed visit, so the start value fixes the scale and nothing else; 1.0 is the multiplicative identity and any other choice would be the same sequence rescaled.",
+   "artifact": {
+    "kind": "anchor identity",
+    "evidence": "Aging halves on each unconfirmed visit, so the start value fixes the scale and nothing else. 1.0 is the multiplicative identity; any other choice is the same sequence rescaled, which is the anchor argument in one line."
+   }
   },
   "N_ARROW_SIDES": {
    "provenance": "derived",
-   "why": "An arrow has two endpoints. Not a parameter."
+   "why": "An arrow has two endpoints. Not a parameter.",
+   "artifact": {
+    "kind": "anchor identity",
+    "evidence": "An arrow has two endpoints. The value is the arity of the relation, not a parameter of it."
+   }
   },
   "LOOPS_UNSEARCHED": {
    "provenance": "derived",
-   "why": "Girth-by-BFS searches every fiber, so the count of declined searches is structurally zero. It exists to stay reportable if a bound ever returns; the (n-1)! brute force it replaced could decline and did."
+   "why": "Girth-by-BFS searches every fiber, so the count of declined searches is structurally zero. It exists to stay reportable if a bound ever returns; the (n-1)! brute force it replaced could decline and did.",
+   "artifact": {
+    "kind": "measurement",
+    "evidence": "Girth-by-BFS visits every fiber, so the count of DECLINED searches is structurally zero \u2014 measured at 0 on the live corpus across every run since the (n-1)! brute force was replaced, and that predecessor could and did decline."
+   }
   },
   "DECLARED_WEIGHT": {
    "provenance": "derived",
-   "why": "A declared correspondence is asserted, not scored, and there is no similarity to weight it by. The unit weight IS the assertion; apex-star's k/(k-1) implied weight is derived from it by the k=2 anchor."
+   "why": "A declared correspondence is asserted, not scored, and there is no similarity to weight it by. The unit weight IS the assertion; apex-star's k/(k-1) implied weight is derived from it by the k=2 anchor.",
+   "artifact": {
+    "kind": "anchor identity",
+    "evidence": "A declared correspondence is asserted, not scored, and there is no similarity available to weight it by. The unit weight IS the assertion; apex-star's implied w/(k-1) is derived FROM it by the k=2 anchor, where a fiber is one declared pair and freedom is zero."
+   }
   },
   "EPS": {
    "provenance": "confessed",

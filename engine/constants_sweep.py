@@ -136,7 +136,41 @@ def unmarked(root: Path | None = None) -> list[Finding]:
             out.append(Finding(module, name, value,
                                "provenance claimed with no argument — a label is not a "
                                "derivation"))
+        elif entry.get("provenance") in (DERIVED, SWEPT) and not _artifact_ok(entry):
+            out.append(Finding(module, name, value,
+                               f"claims {entry['provenance']!r} with no derivation ARTIFACT. "
+                               f"Moving a constant off `confessed` requires a sweep result, an "
+                               f"anchor identity or a measurement — the transition is the "
+                               f"controlled event."))
     return out
+
+
+#: What an artifact must be. A derived or swept constant carries evidence of ITS KIND; a
+#: confessed one does not, because confessing is the honest absence of one.
+ARTIFACT_KINDS = ("anchor identity", "sweep result", "measurement")
+
+
+def _artifact_ok(entry: dict) -> bool:
+    art = entry.get("artifact") or {}
+    return (art.get("kind") in ARTIFACT_KINDS
+            and len(str(art.get("evidence", "")).strip()) > 40)
+
+
+def ratio() -> dict:
+    """THE DASHBOARD NUMBER, and deliberately not a control.
+
+    Derived overtaking confessed is the GOAL — the beta sweep, the REGION_SIZE measurement,
+    the JUMP_EVERY derivation are each meant to move one across. A control asserting that
+    confessed outnumbers derived would therefore fire RED on progress: right guard today,
+    wrong invariant permanently. So the ratio is REPORTED and the TRANSITION is controlled.
+    """
+    known = provenance()
+    counts: dict[str, int] = {}
+    for entry in known.values():
+        counts[entry["provenance"]] = counts.get(entry["provenance"], 0) + 1
+    return {"counts": counts, "total": len(known),
+            "note": ("reported, not asserted: derived overtaking confessed is the goal, and a "
+                     "control on this ratio would fail the moment the goal is reached")}
 
 
 def render(findings: list[Finding]) -> str:

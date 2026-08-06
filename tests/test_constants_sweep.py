@@ -129,12 +129,83 @@ class TheOpenBetaIsCONFESSEDNotDressed(unittest.TestCase):
         self.assertIn("sweep", why)
         self.assertIn("stable band", why)
 
-    def test_most_constants_are_confessed_and_that_is_reported_honestly(self):
-        # 20 of 24. The point of the sweep is not to make that number small by relabelling;
-        # it is to make it VISIBLE so it can be shrunk by measurement.
-        kinds = [e["provenance"] for e in provenance().values()]
-        self.assertGreater(kinds.count("confessed"), kinds.count("derived"))
+    def test_the_ratio_is_REPORTED_and_never_asserted(self):
+        """THE CONTROL SHAPE, corrected.
+
+        This asserted that confessed outnumbers derived. That is the right guard today and the
+        WRONG INVARIANT PERMANENTLY: derived overtaking confessed is the GOAL — the beta sweep,
+        the REGION_SIZE measurement and the JUMP_EVERY derivation are each meant to move one
+        across — so the control would have fired RED on progress. What it actually guards is
+        the TRANSITION: a constant may move off `confessed` only with a derivation artifact.
+        """
+        from engine.constants_sweep import ratio
+        r = ratio()
+        self.assertEqual(sum(r["counts"].values()), r["total"])
+        self.assertIn("reported, not asserted", r["note"])
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheTRANSITIONIsTheControlledEvent(unittest.TestCase):
+    """A constant moves confessed -> derived/swept only with a derivation artifact."""
+
+    def _with(self, mapping):
+        import engine.constants_sweep as mod
+        d = Path(tempfile.mkdtemp())
+        (d / "m.py").write_text("PLANTED = 0.42\n")
+        p = d / "prov.json"
+        p.write_text(json.dumps({"constants": mapping}))
+        keep = mod.PROVENANCE
+        mod.PROVENANCE = p
+        try:
+            return mod.unmarked(d)
+        finally:
+            mod.PROVENANCE = keep
+
+    def test_derived_WITHOUT_an_artifact_is_RED(self):
+        # The planted regression: relabelling a confessed constant as derived to improve the
+        # ratio. Without evidence attached it is the same number wearing a better word.
+        found = self._with({"PLANTED": {"provenance": "derived",
+                                        "why": "it is obviously forced by the object here"}})
+        self.assertEqual(1, len(found))
+        self.assertIn("no derivation ARTIFACT", found[0].reason)
+
+    def test_swept_WITHOUT_a_sweep_result_is_RED(self):
+        found = self._with({"PLANTED": {"provenance": "swept",
+                                        "why": "we looked at a few values and it seemed fine"}})
+        self.assertEqual(1, len(found))
+
+    def test_derived_WITH_an_anchor_identity_passes(self):
+        self.assertEqual([], self._with({"PLANTED": {
+            "provenance": "derived",
+            "why": "forced by the k=2 anchor where freedom is zero",
+            "artifact": {"kind": "anchor identity",
+                         "evidence": "at k=2 a fiber is one declared pair, so the implied "
+                                     "weight equals the declared weight and nothing is free"}}}))
+
+    def test_an_artifact_of_an_UNKNOWN_KIND_is_RED(self):
+        found = self._with({"PLANTED": {
+            "provenance": "derived", "why": "because it is",
+            "artifact": {"kind": "intuition",
+                         "evidence": "it has always been this and nothing broke so far"}}})
+        self.assertEqual(1, len(found))
+
+    def test_an_artifact_with_no_evidence_is_RED(self):
+        found = self._with({"PLANTED": {
+            "provenance": "derived", "why": "forced by the object",
+            "artifact": {"kind": "measurement", "evidence": "yes"}}})
+        self.assertEqual(1, len(found))
+
+    def test_CONFESSED_needs_no_artifact(self):
+        # Confessing IS the honest absence of one. Requiring evidence to admit you have none
+        # would make honesty the expensive option.
+        self.assertEqual([], self._with({"PLANTED": {
+            "provenance": "confessed",
+            "why": "chosen; a sweep on the battery fixtures would settle it"}}))
+
+    def test_all_four_derived_constants_carry_artifacts(self):
+        for name, entry in provenance().items():
+            if entry["provenance"] in ("derived", "swept"):
+                self.assertIn("artifact", entry, f"{name} claims {entry['provenance']}")
