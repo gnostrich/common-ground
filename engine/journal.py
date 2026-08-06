@@ -30,6 +30,8 @@ and asserts the check catches it.
 
 from __future__ import annotations
 
+from .decompose import decompose as _decompose
+
 import json
 import os
 import time
@@ -157,9 +159,26 @@ class Journal:
         by_kind = {k.split(":", 1)[1]: v for k, v in self.counts.items()
                    if k.startswith("answer:")}
         n_calls = len(self.calls)
+        # OI-30. TWO DENOMINATORS LIVED HERE and neither named the gap between them: `asked`
+        # is derived from the ANSWER counters and `calls` from the call log, so a call that
+        # produced no parseable answer — a refusal, a truncation, a malformed reply — was
+        # counted in one and not the other, and nothing said so. `call_errors` names part of
+        # it; the rest was invisible. A known cause absorbing an unknown one, in the totals
+        # the operator reads to decide whether the daemon is working.
+        _answered = sum(by_kind.values())
+        _errors = self.counts.get("call_errors", 0)
+        calls_decomposed = _decompose(
+            "lm_calls", n_calls,
+            {"produced an answer": min(_answered, n_calls),
+             "errored": min(_errors, max(0, n_calls - min(_answered, n_calls)))},
+            unit="call")
         return {
-            "asked": sum(by_kind.values()),
+            "asked": _answered,
             "answers": by_kind,
+            # WHAT EVERY CALL DID, and what nothing here accounts for. Reported beside the
+            # raw counters rather than replacing them: the counters are what other code
+            # reads, and this is what a reader needs to know they are not the whole story.
+            "calls_by_outcome": calls_decomposed,
             "arrows": sum(v for k, v in by_kind.items() if k != _NONE),
             "none": by_kind.get(_NONE, 0),
             "none_rate": (by_kind.get(_NONE, 0) / sum(by_kind.values())
