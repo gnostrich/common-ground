@@ -147,6 +147,68 @@ def is_apex(node: str) -> bool:
     return str(node).startswith(APEX_PREFIX)
 
 
+class _ApexChart:
+    """The chart of an apex: a sentinel that EQUALS NOTHING, including itself.
+
+    An apex has no chart, and the obvious encoding of that — leaving it out of `chart_of` so
+    lookups return None — is silently wrong in the one place it matters. `chart_of.get(u) ==
+    chart_of.get(v)` on an apex-star face-edge compares None to None, which is TRUE, so every
+    face-edge classified as intra-chart. That is how `engine/structure_audit` mis-classified
+    the whole graph, and nothing raised: two absences compared equal and the answer looked
+    like an answer.
+
+    A sentinel that is never equal to anything cannot do that. `apex == apex` is False,
+    `apex == "english"` is False, `apex != anything` is True — so a comparison that reaches an
+    apex fails to match rather than matching by accident, wherever it is written and whoever
+    writes it next.
+    """
+
+    __slots__ = ()
+
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return True
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __hash__(self) -> int:
+        return id(self)
+
+    def __repr__(self) -> str:
+        return "<apex: no chart>"
+
+
+#: The chart an apex has. Not None — None compares equal to None.
+APEX_CHART = _ApexChart()
+
+
+class ChartMap(dict):
+    """`chart_of` that answers for apexes with the sentinel instead of with an absence.
+
+    A plain dict returns None for a key it lacks, and two Nones compare equal. This returns
+    `APEX_CHART` for any apex node, so the comparison that used to succeed by accident now
+    fails by construction — at the type level, not at each call site.
+    """
+
+    def get(self, key, default=None):
+        if is_apex(key):
+            return APEX_CHART
+        return super().get(key, default)
+
+    def __getitem__(self, key):
+        if is_apex(key):
+            return APEX_CHART
+        return super().__getitem__(key)
+
+    def __missing__(self, key):
+        if is_apex(key):
+            return APEX_CHART
+        raise KeyError(key)
+
+
 def edges_from_fibers(fibers: Sequence[Fiber], slots: Sequence[Slot] = ()) -> list[QEdge]:
     """APEX-STAR: one derived apex per fiber, k face-edges to it. NOT all-pairs.
 
@@ -473,8 +535,13 @@ def backtrack_edges(
     against the shadow the seed declared.
     """
     allowed = set(restrict_to) if restrict_to is not None else None
+    # THROUGH THE CANONICAL EXPANSION. This asks which SLOT PAIRS inside a fiber carry a
+    # round trip, and apex-star has no slot-to-slot edge — the set would be empty and the
+    # measured-shadow channel would silently vanish. Found by the standing sweep, before it
+    # produced a zero.
     present = {
-        (e.u, e.v) if e.u <= e.v else (e.v, e.u) for e in edges if e.weight > 0.0
+        (e.u, e.v) if e.u <= e.v else (e.v, e.u)
+        for e in expand_stars(edges) if e.weight > 0.0
     }
     out: set[tuple[str, str]] = set()
     for fiber in fibers:

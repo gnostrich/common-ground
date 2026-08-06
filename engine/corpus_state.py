@@ -185,6 +185,10 @@ def _demote_containment(arrow_list, slots, docs) -> tuple[list, dict]:
 
     from .adjudicate import DEMOTED_KIND, DOCSTRING_ERA, adjudicate, pigeonhole
 
+    # A PLAIN DICT, deliberately. This is the adjudicator's slot->chart lookup and no apex
+    # can appear in it: kind re-adjudication runs over DECLARED ARROWS, before any fiber or
+    # any coequalizer exists. A sentinel map here would be defending against a node that
+    # cannot reach this function.
     chart_of = {s.id: s.chart for s in slots}
 
     class _Rec:
@@ -249,7 +253,8 @@ def build_snapshot_direct(deltas, arrows: Sequence[Correspondence] | None = None
     field, and plants a defect in each of the two contest arms to prove the comparison can
     fail.
     """
-    from .blocks import build_blocks, build_fibers, loop_edges, loops_from_fibers, structural_edges
+    from .blocks import (ChartMap, build_blocks, build_fibers, loop_edges,
+                         loops_from_fibers, structural_edges)
     from .correspondence import correspondences_from_deltas, loop_pairs
     from .extract import slots_from_deltas
 
@@ -271,7 +276,7 @@ def build_snapshot_direct(deltas, arrows: Sequence[Correspondence] | None = None
         if e.origin != "correspondence:same_claim"
     ]
     blocks = build_blocks(slots, edges, deltas)
-    chart_of = {s.id: s.chart for s in slots}
+    chart_of = ChartMap({s.id: s.chart for s in slots})
     loops = loops_from_fibers(fibers, chart_of, restrict_to=set(chart_of), edges=edges)
 
     snap = CorpusSnapshot(arrows=arrow_list, sources=dict(sources or {}),
@@ -325,7 +330,8 @@ def with_arrows(snapshot: CorpusSnapshot,
     to a slot this snapshot does not contain, and silently keeping it would put an endpoint
     in the graph that has no claim behind it.
     """
-    from .blocks import build_blocks, build_fibers, loop_edges, loops_from_fibers, structural_edges
+    from .blocks import (ChartMap, build_blocks, build_fibers, loop_edges,
+                         loops_from_fibers, structural_edges)
     from .correspondence import loop_pairs
     from .types import Slot
 
@@ -352,7 +358,7 @@ def with_arrows(snapshot: CorpusSnapshot,
         e for e in structural_edges(slots, live)
         if e.origin != "correspondence:same_claim"
     ]
-    chart_of = {s.id: s.chart for s in slots}
+    chart_of = ChartMap({s.id: s.chart for s in slots})
     blocks = build_blocks(slots, edges, [_Presence(s.id) for s in slots])
     loops = loops_from_fibers(fibers, chart_of, restrict_to=set(chart_of), edges=edges)
 

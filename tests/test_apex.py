@@ -307,3 +307,160 @@ class TheApexHasNoDegreeOfFreedom(unittest.TestCase):
         near = f.value({"a": [1.0, 0.0, 0.0, 0.0], "b": [1.0, 0.0, 0.0, 0.0]})
         far = f.value({"a": [1.0, 0.0, 0.0, 0.0], "b": [0.0, 1.0, 0.0, 0.0]})
         self.assertGreater(far, near, "the coupling did not respond to the faces moving")
+
+
+class TheChartOfAnApexEqualsNOTHING(unittest.TestCase):
+    """PLANTED: an apex edge classified intra-chart is RED, and the fix is type-level.
+
+    An apex has no chart. Encoding that as an absence — leaving it out of `chart_of` so
+    lookups return None — is silently wrong in the one place it matters:
+    `chart_of.get(u) == chart_of.get(v)` compares None to None, which is TRUE, so every
+    apex-star face-edge classified as intra-chart. `engine/structure_audit` mis-classified the
+    whole graph that way and nothing raised, because two absences compared equal and the
+    answer looked like an answer.
+    """
+
+    def test_the_sentinel_is_not_equal_to_itself(self):
+        from engine.blocks import APEX_CHART
+        self.assertFalse(APEX_CHART == APEX_CHART)
+        self.assertTrue(APEX_CHART != APEX_CHART)
+
+    def test_the_sentinel_is_not_equal_to_None_or_to_a_chart(self):
+        from engine.blocks import APEX_CHART
+        self.assertFalse(APEX_CHART == None)          # noqa: E711 — the point is the compare
+        self.assertFalse(APEX_CHART == "english")
+        self.assertFalse(None == APEX_CHART)          # noqa: E711
+
+    def test_the_PLANTED_none_equals_none_comparison_no_longer_succeeds(self):
+        # THE EXACT SHAPE THAT SHIPPED. With a plain dict this assertion fails, because
+        # both lookups return None and None == None.
+        from engine.blocks import ChartMap, apex_id
+        apex = apex_id(_F(["a", "b"]))
+        plain = {"a": "english", "b": "lean"}
+        self.assertTrue(plain.get(apex) == plain.get(apex),
+                        "the defect's premise: two absences compare equal")
+        chart_of = ChartMap(plain)
+        self.assertFalse(chart_of.get(apex) == chart_of.get(apex),
+                         "an apex edge would classify as intra-chart")
+
+    def test_ordinary_slots_are_unaffected(self):
+        from engine.blocks import ChartMap
+        cm = ChartMap({"a": "english", "b": "english", "c": "lean"})
+        self.assertTrue(cm.get("a") == cm.get("b"))
+        self.assertFalse(cm.get("a") == cm.get("c"))
+        self.assertEqual("english", cm["a"])
+
+    def test_the_functions_that_build_fibers_use_the_sentinel_map(self):
+        """PER FUNCTION, not per module — and this control's first version was wrong.
+
+        It forbade the plain-dict line anywhere in `corpus_state`, which convicted
+        `_demote_containment`: kind re-adjudication runs over DECLARED ARROWS, before any
+        fiber or coequalizer exists, so no apex can reach it and a sentinel map there would
+        defend against a node that cannot arrive. What must hold is narrower and real — every
+        function that hands a chart map to the fiber and loop machinery builds a ChartMap.
+        """
+        import ast
+        import inspect
+
+        import engine.corpus_state as cs
+        import engine.pipeline as pl
+        for mod, names in ((cs, ("build_snapshot_direct", "with_arrows")),
+                           (pl, ("ledger_from_deltas",))):
+            src = inspect.getsource(mod)
+            tree = ast.parse(src)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef) and node.name in names:
+                    seg = ast.get_source_segment(src, node) or ""
+                    self.assertIn("ChartMap(", seg,
+                                  f"{mod.__name__}:{node.name} builds a plain chart map and "
+                                  "hands it to the fiber machinery")
+
+    def test_a_LIVE_chart_map_answers_for_an_apex(self):
+        """THE TERRITORY HALF. Build a real ledger; ask its map about an apex."""
+        from engine.blocks import APEX_CHART, apex_id
+        from engine.structure_audit import fixture_ledger
+        led = fixture_ledger()
+        apex = apex_id(_F(["a", "b"]))
+        got = led.chart_of.get(apex)
+        self.assertIs(APEX_CHART, got, "a live chart map returned an absence for an apex")
+        self.assertFalse(led.chart_of.get(apex) == led.chart_of.get(apex))
+
+
+class TheEXPANSIONSweepIsSTANDING(unittest.TestCase):
+    """THE CLOSED CLASS. A new direct consumer of fiber edges is RED, not a discovery.
+
+    Six consumers were found. Five of them by a downstream zero — a floor of exactly 0.0, an
+    empty measurement list, a silently empty adjacency — and only one by sweeping for the
+    pattern. This converts "we swept once" into "the sweep is standing": any function that
+    reads a QEdge's endpoints must either route through `expand_stars` or be named here with
+    the reason it does not.
+    """
+
+    #: Functions that touch edge endpoints WITHOUT the expansion, each with why that is right.
+    EXEMPT = {
+        ("blocks.py", "expand_stars"): "it IS the canonical expansion — the one place the star is turned into a face-to-face view",
+        ("blocks.py", "edges_from_fibers"): "it BUILDS the star; expanding here would undo it",
+        ("blocks.py", "build_blocks"): "components must include the apex to connect the "
+                                       "faces; it is excluded from membership afterwards",
+        ("blocks.py", "loop_edges"): "builds edges from declared arrows, never from fibers",
+        ("blocks.py", "structural_edges"): "builds edges from declared arrows, never from fibers",
+        ("blocks.py", "_adjacency"): "a primitive over whatever edge list it is handed",
+        ("energy.py", "_stars"): "reads the star deliberately — it is the apex-aware term",
+        ("energy.py", "value"): "the star term is computed by _stars; pair edges are raw",
+        ("energy.py", "gradient"): "the star term's derivative comes from _stars; the raw loop above it handles ordinary pair edges only",
+        ("types.py", "crosses_charts"): "answers FOR an apex endpoint; expanding is circular",
+        ("lexicon.py", "q_edges"): "builds synonym-prior edges; no fiber is involved",
+        ("blocks.py", "rewire_q_graph"): "the R4 null must preserve the graph it was handed "
+                                         "EXACTLY — same nodes, same degree, same weight "
+                                         "multiset. Expanding first would rewire a different "
+                                         "graph than the one being nulled, which is the "
+                                         "comparison gate 6 forbids.",
+        ("blocks.py", "degree_map"): "the invariant rewire_q_graph must preserve, over "
+                                     "whatever edge list it is handed. Expanding here would "
+                                     "make the invariant describe a different graph.",
+        ("relax.py", "_paths_from"): "walks DECLARED ARROWS, not fiber edges — the block's "
+                                     "edges there are correspondences somebody proposed, "
+                                     "which is what makes a path showable as provenance.",
+    }
+
+    def _candidates(self):
+        import ast
+        from pathlib import Path
+        out = []
+        for f in sorted((Path(__file__).resolve().parent.parent / "engine").glob("*.py")):
+            src = f.read_text(encoding="utf-8")
+            tree = ast.parse(src)
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                seg = ast.get_source_segment(src, node) or ""
+                # A QEdge consumer: reads BOTH endpoints of something in an edge list.
+                if "e.u" not in seg and "edge.u" not in seg:
+                    continue
+                if "e.v" not in seg and "edge.v" not in seg:
+                    continue
+                if "expand_stars" in seg:
+                    continue
+                out.append((f.name, node.name))
+        return out
+
+    def test_every_direct_edge_consumer_is_exempted_with_a_reason(self):
+        unlisted = [c for c in self._candidates() if c not in self.EXEMPT]
+        self.assertEqual([], unlisted,
+                         "new consumer(s) of fiber edges that do not route through "
+                         f"expand_stars and are not exempted: {unlisted}")
+
+    def test_no_exemption_is_a_bare_name(self):
+        for key, why in self.EXEMPT.items():
+            self.assertTrue(why and len(why) > 20, f"{key} exempted without a reason")
+
+    def test_the_sweep_would_catch_a_planted_direct_consumer(self):
+        # The detector must fire on the shape, or the standing sweep is decoration.
+        import ast
+        planted = ast.parse("def f(edges):\n    return [(e.u, e.v) for e in edges]\n")
+        fn = planted.body[0]
+        seg = ast.get_source_segment("def f(edges):\n    return [(e.u, e.v) for e in edges]\n",
+                                     fn)
+        self.assertIn("e.u", seg)
+        self.assertIn("e.v", seg)
+        self.assertNotIn("expand_stars", seg)

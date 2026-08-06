@@ -13,6 +13,7 @@ from typing import Iterable, Mapping, Sequence
 from .blocks import (
     build_blocks,
     build_fibers,
+    ChartMap,
     edges_from_fibers,
     is_contested,
     loops_from_fibers,
@@ -148,7 +149,7 @@ def ledger_from_deltas(
     if edge_filter is not None:
         edges = list(edge_filter(edges))
     blocks = build_blocks(slots, edges, deltas)
-    chart_of = {s.id: s.chart for s in slots}
+    chart_of = ChartMap({s.id: s.chart for s in slots})
     active = {s.id for s in slots}
     loops = loops_from_fibers(fibers, chart_of, restrict_to=active, edges=edges)
 
