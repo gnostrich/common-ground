@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Point git at the versioned hooks. `core.hooksPath` is LOCAL config and does not travel with
+# a clone, which is exactly why the hooks themselves are versioned and this one line is not:
+# a container reclaim loses the config and keeps the hooks, so recovery is one command rather
+# than an archaeology exercise.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+git config core.hooksPath hooks
+echo "core.hooksPath = hooks   (pre-push: refuses a red suite)"
