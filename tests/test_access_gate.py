@@ -111,18 +111,44 @@ class ThePageCarriesTheTokenToEveryEndpoint(unittest.TestCase):
         self.assertEqual(bare, [], "every call must go through withToken(), or it will 401 "
                                    "on a deployed window")
 
-    def test_every_chart_the_engine_has_is_offered_in_the_window(self):
+    def test_every_CONTENT_chart_is_offered_in_the_window(self):
         """PLANTED against the two that were missing: the selectors listed four charts for
-        weeks after python and go were routing."""
+        weeks after python and go were routing.
+
+        The rule is CONTENT charts, and the refinement is not a loosening. A chart you can
+        type a boundary condition into is a chart whose claims are about the world.
+        `correspondence` is what arrows land in, and `medium` carries glosses — statements
+        about how a model reads a word. Neither is something an operator asserts, and
+        `engine/medium.py`'s CONTENT_CHARTS is the same positive list that keeps a gloss out
+        of settlement, so the window and the firewall cannot disagree about which is which.
+        """
         from engine.charts import chart_names
         from engine.constants import REPO_ROOT
+        from engine.medium import CONTENT_CHARTS
 
         text = (REPO_ROOT / "ui" / "index.html").read_text(encoding="utf-8")
         for name in chart_names():
-            if name == "correspondence":
-                continue          # not a chart you type into; it is what the arrows land in
+            if name == "correspondence" or name not in CONTENT_CHARTS:
+                continue
             self.assertIn(f"<option>{name}</option>", text,
                           f"the {name} chart exists but cannot be selected in the window")
+
+    def test_an_INTERFACE_chart_is_NOT_offered_as_something_to_type_into(self):
+        """THE FIREWALL, REACHING THE UI. A gloss is about how a medium reads a word; it is
+        not a claim an operator makes about the world. Offering `medium` in the entry
+        selector would let one be typed straight into content settlement, past the
+        firewall — the breach coming in through the surface rather than through the engine.
+        """
+        from engine.charts import chart_names
+        from engine.constants import REPO_ROOT
+        from engine.medium import CONTENT_CHARTS, MEDIUM_CHART
+
+        text = (REPO_ROOT / "ui" / "index.html").read_text(encoding="utf-8")
+        interface = [n for n in chart_names() if n not in CONTENT_CHARTS]
+        self.assertIn(MEDIUM_CHART, interface, "the medium chart must be an interface chart")
+        for name in interface:
+            self.assertNotIn(f"<option>{name}</option>", text,
+                             f"{name} is an interface chart and must not be typeable")
 
 
 if __name__ == "__main__":

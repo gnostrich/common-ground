@@ -63,6 +63,7 @@ from .corpus_state import CorpusSnapshot
 from .extract import DeterministicExtractor
 from .perturb import perturb, relax_from
 from .relax import Relaxation, relax
+from .medium import glossary_block, load_glosses
 from .structure_trace import signature_of, structure_lines
 from .types import Document
 
@@ -445,6 +446,21 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     if att is not None:
         lines.extend(_region_block(att, cites).splitlines())
         lines.append("")
+        # THE GLOSSARY, before the claims it conditions. Only validated glosses, tagged by the
+        # medium that produced them; a gloss validated elsewhere enters marked as a lead.
+        # WHICH MEDIUM IS SERVING decides whether a gloss is a fact or a lead, and the
+        # engine must not import the web layer to find out. Asked through a try, because a
+        # missing surface means "unknown medium", and an unknown medium demotes every gloss
+        # to a lead rather than promoting it — the safe direction.
+        try:
+            from ui.lm import LAST_SERVED, OPENROUTER_MODEL
+            serving = LAST_SERVED or OPENROUTER_MODEL
+        except Exception:
+            serving = ""
+        gl = glossary_block(load_glosses(), serving, set(), cites, Citable)
+        if gl:
+            lines.extend(gl)
+            lines.append("")
     moved_lines, facts = _relaxed_block(rel, snapshot, cites)
     lines.extend(moved_lines)
     lines.append("")

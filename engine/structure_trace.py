@@ -50,6 +50,10 @@ TOP_FIBERS = 8
 TOP_CLUSTERS = 8
 TOP_LOOPS = 8
 
+#: THE CANONICAL STRUCTURAL QUESTION, verbatim. It has failed enough times to be a fixture
+#: rather than an example, and it lives here so the harness and the battery cite one string.
+STRUCTURAL_QUESTION_DEFAULT = "common thread through the math"
+
 #: A fiber smaller than this is a pair, and a pair is an arrow — already visible as one.
 MIN_FIBER = 3
 

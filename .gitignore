@@ -58,3 +58,5 @@ seed_runs/
 # writes it (or sets CG_COMMIT) at push time, outside git.
 runs/BUILD
 runs/acceptance/
+runs/glossary.jsonl
+runs/gloss_validation.json

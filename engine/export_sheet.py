@@ -99,6 +99,18 @@ def sheet(record: dict) -> str:
                            f"[{step.get('src_chart', '?')}] -> [{step.get('dst_chart', '?')}]")
     out.append("")
 
+    gl = by_kind.get("gloss", [])
+    if gl:
+        out += ["## GLOSSARY — how to read the asker's terms",
+                "Each line is a validated translation between a term this corpus carries and "
+                "the canonical sense a language model reads it in. These are about the "
+                "INTERFACE, not about the world: use them to read the claims below, never as "
+                "claims themselves.",
+                ]
+        for c in gl:
+            out.append(f"[{c['n']}] GLOSS {_trim(c['nu'])}")
+        out.append("")
+
     struct = by_kind.get("fiber", []) + by_kind.get("cluster", []) + by_kind.get("loop", [])
     if struct:
         out += ["## THE CORPUS'S OWN STRUCTURE",
