@@ -180,6 +180,28 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   The entry above this one records the identical mistake in the acceptance guard, and it did
   not stop me making it in a new place. A ledgered failure mode is not a fixed one: it is
   fixed where a control runs, and there was no control on this reading path.
+- **THE MAP IS NOT THE TERRITORY. A control that inspects source text instead of executing
+  the path is testing the map.** Stated as a law because the instances stopped being
+  accidents: any control asserting a RUNTIME property must exercise the runtime.
+    * `POST /seed` raised `NameError` on its first filesystem statement, returned nothing to
+      the client, and Railway reported "Application failed to respond" — while **every one of
+      its controls was green**, because each was a substring check over `inspect.getsource`.
+      "Returns 404 when unconfigured" was checked by grepping for `404`. "The write is
+      atomic" by grepping for `os.replace`. All true of the text; none of the running code.
+    * The page shipped a JS syntax error that killed the whole inline script while 887
+      server-side tests passed, because nothing in the suite parsed what the browser parses.
+    * The page then shipped a null dereference that PARSED cleanly and threw on its first DOM
+      statement, because a parse check is still a check on the text.
+  THE DISTINCTION IS ABOUT WHAT THE CONTROL CLAIMS, not whether it opens a file. A control
+  asserting a SOURCE property — this module contains no tokenizer, no docstring claims a
+  mechanism the call graph lacks, the prompt names every warrant it accepts — legitimately
+  reads source, and "upgrading" one of those to a runtime check destroys the guard. So the
+  sweep classifies rather than converts, and `seed/CONTROL-SWEEP.md` carries the triage.
+  **AND THE SWEEP HAS ITS OWN BLIND SPOT, recorded with it:** a control that DOES execute but
+  with a fixture simpler than the thing it stands for passes this law and fails anyway. Three
+  in one session — a stub with no `id` attribute that took a fallback branch, a bound method
+  that serialised as a method, and a source scan standing in for an HTTP request. Executing
+  is necessary and not sufficient; the fixture has to be as complicated as the real object.
 - Similarity substituted for a declared relation (Jaccard fibers). **DELETED.**
 - Term overlap in the ANSWER path. **DELETED.** (Navigation is not evidence.)
 - Docstrings claiming mechanisms the call graph lacks ("index", "settlement runs", "provably
