@@ -28,6 +28,15 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
 .nu{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--mut)}
 .floor{font-size:1.5rem;font-weight:700}.promoted{color:var(--acc)}.blocked{color:var(--mut)}
 .muted{color:var(--mut);font-size:12.5px}.err{color:#d5566b}
+.answer{font-size:16.5px;line-height:1.62;margin:.4rem 0 .2rem;white-space:pre-wrap}
+.answer p{margin:0 0 .75rem}
+.rests{font-size:13.5px;color:var(--mut);border-left:3px solid var(--acc);padding:.15rem .7rem;margin:.5rem 0 1rem}
+.verdict{font-size:12px;margin:.5rem 0}
+.verdict.ok{color:var(--acc)}.verdict.bad{color:#d5566b}
+.viol{border-left:3px solid #d5566b;background:var(--card);padding:.3rem .6rem;margin:.3rem 0;font-size:12.5px}
+details.scope{margin:1rem 0;border-top:1px solid var(--line);padding-top:.6rem}
+details.scope>summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:600;list-style:revert}
+details.scope[open]>summary{margin-bottom:.6rem}
 .grid{display:flex;gap:1.2rem;flex-wrap:wrap}.grid>div{flex:1;min-width:280px}
 </style>
 </head>
@@ -54,6 +63,8 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
   </div>
   <div id="lmstate" class="muted"></div>
   <div id="err" class="err"></div>
+
+  <div id="answer"></div>
 
   <h2>Proposals entering — all sources equal, one tier</h2>
   <div id="proposals" class="muted">nothing proposed yet.</div>
@@ -87,23 +98,25 @@ th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;white-spa
   </div>
   <div id="proposer" class="muted">not loaded — press refresh.</div>
 
-  <h2>What came back</h2>
+  <details class="scope" id="scope"><summary>show what moved — the scope behind the answer</summary>
   <p class="muted">The region is a <b>SAMPLE</b> of the corpus chosen by declared structure —
   arrow-rich, provenance-near, chart-balanced. It is <b>not</b> the part of the corpus that
   matches your question; nothing here could compute that, and no text is compared. Arrows the
   medium draws to your input are <b>attachment</b>; arrows it draws among the corpus objects
   are ordinary extraction, so asking does the sampler's work.</p>
-  <div id="answer"></div>
+  <div id="scopehead"></div>
+  <div id="movers"></div>
+  <div id="phases" class="muted"></div>
   <div class="grid">
     <div><h2 style="border:none">What I typed</h2><pre id="typed" class="nu"></pre></div>
     <div><h2 style="border:none">What was compiled from the field</h2><pre id="compiled" class="nu"></pre></div>
   </div>
   <div id="landings"></div>
+  </details>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
-$('temp').oninput = e => $('tempv').textContent = e.target.value;
 const tagcls = s => s.startsWith('instance') ? 'inst' : (s === 'lm' ? 'lm' : (s === 'me' ? 'me' : 'inst'));
 
 // The access token, if this window is gated. Taken from ?t= once and kept for the session
@@ -287,26 +300,75 @@ async function act(){
   }
   if(r.error){ $('answer').innerHTML = `<span class="err">${esc(r.error)}</span>`; return; }
   if(r.corpus_header) renderCorpus(r.corpus_header);
-  const c = r.compiled || {};
-  const X = (c.relaxation || {});
-  const R = X.rows || [];
-  // Two states, and both are results. The field responded, or it did not and the reason is
-  // structural. There is no third "we found some words anyway" state to report.
+  renderAnswer(r);
+  renderScope(r);
+  renderPhases(r);
+  $('scope').open = false;
+}
+
+// THE ANSWER IS THE OUTPUT. First, full width, and the two things it stands on are stated in
+// it rather than filed one click away: what the input was read as bearing on, and what the
+// faithfulness gate found. The prose used to ship last because nothing constrained it; the
+// gate is that constraint, and it travels with the prose it judges.
+function renderAnswer(r){
+  const c = r.compiled || {}, A = c.attachment || {};
+  const acc = (A.proposed || []).filter(x => x.accepted);
+  const corr = acc.filter(x => x.kind !== 'bears_on'), bears = acc.filter(x => x.kind === 'bears_on');
+  let rests = '';
+  if(acc.length){
+    const kinds = [corr.length ? `${corr.length} correspondence` : '',
+                   bears.length ? `${bears.length} bears-on` : ''].filter(Boolean).join(' + ');
+    rests = `<div class="rests">I read what you typed as bearing on ${acc.length} claim(s) in `
+          + `this region — attached by ${esc(kinds)}. `
+          + (c.conditioned ? '' : 'Nothing propagated from there.') + `</div>`;
+  } else {
+    rests = `<div class="rests">Nothing in the field responded to what you typed — `
+          + `${esc(((c.relaxation||{}).silence) || (c.field_status||''))}</div>`;
+  }
+  const f = r.faithful;
+  let gate = '';
+  if(f){
+    gate = f.ok
+      ? `<div class="verdict ok">faithful: [] — every sentence traces to a moved claim or an `
+        + `attachment (${f.checked} checked against ${f.ground} words the field supplied).</div>`
+      : `<div class="verdict bad">FAITHFULNESS RED — ${f.violations.length} of ${f.checked} `
+        + `sentence(s) assert material the trace does not carry.</div>`
+        + f.violations.map(v => `<div class="viol"><b>${esc(v.ungrounded.join(' '))}</b> — `
+            + `${esc(v.sentence)}</div>`).join('');
+  }
+  $('answer').innerHTML = rests + `<div class="answer">${esc(r.answer)}</div>` + gate;
+}
+
+// THE SCOPE. Inspection surface, one click below: what moved, how far, and by which declared
+// path. Nothing here is new — it is the same trace, no longer competing with the answer.
+function renderScope(r){
+  const c = r.compiled || {}, X = c.relaxation || {}, R = X.rows || [];
   const A = c.attachment || {};
-  const bears = (A.proposed||[]).filter(x=>x.kind==='bears_on' && x.accepted).length;
-  const corr  = (A.proposed||[]).filter(x=>x.kind!=='bears_on' && x.accepted).length;
-  const how = corr ? `${corr} correspondence` + (bears?` + ${bears} bears-on`:'')
-                   : (bears ? `${bears} bears-on (ephemeral)` : '');
-  const state = c.conditioned ? ['promoted','THE FIELD RELAXED' + (how?` — attached by ${how}`:'')]
-                              : ['inst','THE FIELD DID NOT RESPOND'];
-  $('answer').innerHTML = `<div class="prop"><span class="${state[0]}">${state[1]}</span>`
-    + ` <span class="muted">`
+  const acc = (A.proposed || []).filter(x => x.accepted);
+  const state = c.conditioned ? ['promoted','THE FIELD RELAXED'] : ['inst','THE FIELD DID NOT RESPOND'];
+  $('scopehead').innerHTML = `<div class="prop"><span class="${state[0]}">${state[1]}</span> `
+    + `<span class="muted">`
     + (c.conditioned
         ? `${X.moved||0} slot(s) moved across ${X.blocks_settled||0} settled block(s); `
-          + `${R.filter(m=>m.hops>0).length} reached through declared correspondence`
+          + `${R.filter(m=>m.hops>0).length} reached through declared correspondence; `
+          + `${acc.length} attachment(s)`
         : esc(X.silence || ''))
-    + `</span><br><br><b>answer</b> ${esc(r.answer)}</div>`;
-  $('typed').textContent = c.typed || $('q').value;
+    + `</span></div>`;
+  $('movers').innerHTML = R.length
+    ? '<h2 style="border:none">What moved</h2>' + R.map(m =>
+        `<div class="prop"><b class="b ${m.value}">${esc(String(m.value))}</b> `
+        + `<span class="tier">${esc(m.tier)}</span>`
+        + (m.contested ? ' <b class="F">CONTESTED</b>' : '')
+        + ` <span class="muted">shift ${Number(m.shift||0).toFixed(4)} · `
+        + `${m.hops||0} hop(s) · [${esc(m.chart)}]</span>`
+        + `<br><span class="nu">${esc(m.nu)}</span>`
+        + ((m.path||[]).length
+            ? (m.path||[]).map(v => `<br><span class="muted">VIA ${esc(v.kind||'')} `
+                + `[${esc(v.src_chart||'')}]→[${esc(v.dst_chart||'')}]</span>`).join('')
+            : '')
+        + `</div>`).join('')
+    : '<div class="muted">no slot moved.</div>';
+  $('typed').textContent = c.typed || '';
   $('compiled').textContent = r.grounded_on || '';
   const L = c.landings || [];
   $('landings').innerHTML = L.length
@@ -316,6 +378,15 @@ async function act(){
                  + (l.contested?' <b class="F">CONTESTED</b>':'')
                  + ` <span class="muted">fiber ${l.fiber} · block ${l.block} · arrows ${(l.arrows||[]).length}</span>` : '')
         + `<br><span class="nu">${esc(l.surface)}</span></div>`).join('')
+    : '';
+}
+
+// MEASURED stages, with the result. Not a progress channel — these are what the server
+// recorded it was doing, returned once it is done.
+function renderPhases(r){
+  const P = r.phases || [];
+  $('phases').innerHTML = P.length
+    ? 'stages: ' + P.map(p => `${esc(p.stage)} @${p.at}s`).join(' · ')
     : '';
 }
 corpus();

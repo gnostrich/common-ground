@@ -105,6 +105,26 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
 
 ## FAILURE MODES ALREADY PAID FOR (do not repeat)
 
+- **A CAUTION THAT OUTLIVED ITS DEFECT.** The LM's prose was ruled least-trusted and shipped
+  BELOW the instrument trace during the lookup era — correct then, because nothing constrained
+  it. The faithfulness gate landed and nobody re-examined the ordering, so the surface kept
+  putting a suspicious paragraph last for releases after the suspicion was answerable. **A
+  caution issued against a defect must be re-examined when that defect's fix lands, or the
+  caution becomes its own defect.** Fixed: `engine/grounded.py` gates the answer, the answer
+  is first, and the standing auditor's stale-guard sweep is the trigger that catches the next
+  one instead of waiting for the operator to notice.
+- **A PAGE THAT PARSES AND DIES ANYWAY.** Two page-killing defects shipped in a row while the
+  server suite was green. The first was a syntax error inside a template literal; the second
+  PARSED and threw on its first DOM statement, because a deleted element was still referenced
+  at top level. Both left the header on "corpus: loading…" and the perturb button inert. A
+  static check on a page is not a check on the page: `tests/test_ui_browser.py` loads it in
+  Chromium and fails on any uncaught error, and every `render*` function must be invoked by
+  some live path or it is RED.
+- **A DISPLAY TRIM ON A COMPUTE PATH.** The answer prompt received moved claims cut at 220
+  characters and attachments at 200, so the corpus's own sentences reached the model already
+  truncated and the answer could only paraphrase from gist. Gate 8 names this exactly and it
+  still shipped, because the cut sat inside a function whose output "looked like" display.
+  Removed; the prompt now receives full nu-strings.
 - Similarity substituted for a declared relation (Jaccard fibers). **DELETED.**
 - Term overlap in the ANSWER path. **DELETED.** (Navigation is not evidence.)
 - Docstrings claiming mechanisms the call graph lacks ("index", "settlement runs", "provably

@@ -240,11 +240,11 @@ def _region_block(pert) -> str:
         lines.append(f"-- {len(corresponds)} CORRESPONDENCE attachment(s) --")
     for a in corresponds:
         lines.append(f"ATTACHED via {a.kind} (warrant {a.tier}) -> [{a.dst_chart}] "
-                     f"{display(a.dst_nu)[:200]}")
+                     f"{display(a.dst_nu)}")
     if bias_only:
         lines.append(f"-- {len(bias_only)} BEARS-ON attachment(s) --")
     for a in bias_only:
-        lines.append(f"BEARS ON -> [{a.dst_chart}] {display(a.dst_nu)[:200]}")
+        lines.append(f"BEARS ON -> [{a.dst_chart}] {display(a.dst_nu)}")
     if pert.extracted:
         lines.append(f"({len(pert.extracted)} arrow(s) among the CORPUS objects came back in "
                      f"the same call. Those are ordinary extraction at the same tier the "
@@ -293,7 +293,7 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot) -> tuple[list[str]
                   else f"reached in {m.hops} declared hop(s), weakest arrow "
                        f"{m.weakest_tier}")
         lines.append(f"MOVED [{m.chart}/{m.type}] value={m.value} warrant={m.tier} ({mark}) "
-                     f"shift={m.shift:.4f} — {origin} :: {display(m.nu)[:220]}")
+                     f"shift={m.shift:.4f} — {origin} :: {display(m.nu)}")
         for step in m.path:
             lines.append(f"  VIA {step.render()}")
         facts.append({"kind": "moved", **m.as_record()})
@@ -430,6 +430,22 @@ INBOUND_SYSTEM = (
     "list as keyword matches and do not apologise for lines that look unrelated — being "
     "reached through structure IS the relation, and the VIA lines say what that structure "
     "was. A hop count of 0 means the constraint applied to that claim directly.\n\n"
+    "THE MOVED CLAIMS ARE THE USER'S OWN WRITING, GIVEN TO YOU VERBATIM AND IN FULL. Your "
+    "answer is an EXPANSION OF THEIR QUESTION THROUGH THOSE SENTENCES, not a summary of a "
+    "result list and not a paraphrase from gist. Where a moved claim carries the point, quote "
+    "its sentence — the voice of the answer should be recognisably the corpus's own, arranged "
+    "around the question that was asked. Weave the quoted material into prose; do not list "
+    "it.\n\n"
+    "EVERY PROPOSITION YOU WRITE MUST TRACE TO A MOVED CLAIM OR AN ATTACHMENT SHOWN BELOW. "
+    "This is checked after you answer, mechanically, and an answer that asserts something "
+    "outside the trace is flagged. Nothing licenses you to supply a fact the field did not "
+    "move — not plausibility, not common knowledge, not filling an obvious gap.\n\n"
+    "OPEN WITH THE TWO LINES THAT SAY WHAT THE ANSWER RESTS ON, plainly worded, before the "
+    "prose: one line naming what the input was read as bearing on (the ATTACHED and BEARS ON "
+    "lines, in your own plain phrasing — 'I read your question as bearing on X and Y'), and, "
+    "where something was declined or nothing responded, one line saying so ('nothing in the "
+    "field responded to Z'). The reader must be able to see what the answer stands on without "
+    "opening anything else.\n\n"
     "Answer only from that state. Where the field says CONTESTED, do not resolve it — report "
     "the contest. Where it reports a GAP or says no correspondence carried the perturbation "
     "further, say the relation is unmeasured rather than supplying one. Where it says blocks "
@@ -438,7 +454,6 @@ INBOUND_SYSTEM = (
     "input states. Do not fill the silence: 'nothing in this corpus moved when that was "
     "applied' is a real answer about the corpus, and inventing a plausible one would be a "
     "claim the engine did not make.\n\n"
-    "WRITE AN ANSWER, NOT AN INVENTORY. The user can already see the field. Read what moved, "
-    "then say in prose what it amounts to and where it does not reach. Name a specific claim "
-    "when it carries your point; otherwise leave it out."
+    "WRITE AN ANSWER, NOT AN INVENTORY. Read what moved, then say in prose what it amounts to "
+    "and where it does not reach."
 )

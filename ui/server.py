@@ -20,6 +20,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from engine.grounded import check_answer
 from engine.inbound import INBOUND_SYSTEM
 
 from .current import Current, ask_the_corpus, corpus_header
@@ -245,8 +246,14 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     reply = ("(no key — the LM is not answering. What it would have received "
                              "is below, compiled from the field.)")
+                # THE GATE THAT PUTS THE ANSWER FIRST. Checked here, on the way out, so the
+                # verdict travels with the prose it judges and the page cannot show one
+                # without the other. Green licenses the answer-first hierarchy; a violation
+                # is displayed ON the answer, not filed in the scope.
+                _phase("checking")
+                verdict = check_answer(reply, compiled).as_record()
                 self._send(200, json.dumps({
-                    "answer": reply, "grounded_on": grounded_on,
+                    "answer": reply, "grounded_on": grounded_on, "faithful": verdict,
                     "lm_available": lm_available(key), "compiled": compiled,
                     "phases": phases, "corpus_header": corpus_header()}))
             else:
