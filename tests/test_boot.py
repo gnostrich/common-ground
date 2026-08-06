@@ -228,3 +228,51 @@ class TheSuiteGateIsRunOnceOnlyWhereTheTreeCannotChange(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheSeedingPathMustACTUALLYSHIP(unittest.TestCase):
+    """The mechanism existed, was correct, and could not run.
+
+    `seed_runs/` is gitignored on purpose — it holds a copy of the operator's corpus and must
+    never reach a public repository. Railway falls back to `.gitignore` when no
+    `.railwayignore` exists, so the staging directory was skipped at upload too, and
+    `ui/boot.seed_state` had nothing to copy on any deploy that has ever run. The volume kept
+    whatever it took on first boot; the header eventually reported the material as 1.2 days
+    and 50,000 arrows behind local under a commit stamp matching HEAD exactly.
+
+    NOT-IN-GIT AND NOT-ON-THE-DEPLOY ARE DIFFERENT DECISIONS. Conflating them silently
+    disabled a mechanism nobody could see was off, and these controls exist so it cannot be
+    disabled again by the same accident.
+    """
+
+    def _railwayignore(self) -> str:
+        from engine.constants import REPO_ROOT
+        p = REPO_ROOT / ".railwayignore"
+        self.assertTrue(p.exists(), "without this file Railway falls back to .gitignore and "
+                                    "the seeding directory never ships")
+        return p.read_text(encoding="utf-8")
+
+    def test_the_staging_directory_is_gitignored(self):
+        from engine.constants import REPO_ROOT
+        self.assertIn("seed_runs/", (REPO_ROOT / ".gitignore").read_text(encoding="utf-8"),
+                      "the corpus staging copy must never reach a public repository")
+
+    def test_the_staging_directory_is_NOT_railwayignored(self):
+        body = self._railwayignore()
+        for line in body.splitlines():
+            self.assertNotEqual("seed_runs/", line.strip(),
+                                "excluding it here is what disabled the seeding path")
+
+    def test_the_deploys_own_live_records_are_still_excluded(self):
+        # Shipping these would overwrite the live ledger with upload-time state and re-ask
+        # thousands of pairs already paid for — the exact thing copy-if-absent protects.
+        body = self._railwayignore()
+        for name in ("runs/pool.jsonl", "runs/proposer.control.json", "runs/BUILD"):
+            self.assertIn(name, body, f"{name} must not ship over the deploy's own record")
+
+    def test_the_file_says_WHY_the_two_ignore_lists_differ(self):
+        # A second ignore list that does not explain itself becomes a copy of the first the
+        # next time somebody tidies up.
+        body = self._railwayignore()
+        self.assertIn("PUBLICATION", body)
+        self.assertIn("different", body)
