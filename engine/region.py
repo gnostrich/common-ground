@@ -103,14 +103,17 @@ REGION_SYSTEM = (
     "conversation). ARROWS are typed translations between claims in DIFFERENT charts.\n\n"
     "You are given the objects, the arrows already DECLARED among them, and the arrows those "
     "declared arrows IMPLY by composition. Complete the diagram.\n\n"
-    "Emit only lines of the form  i -kind-> j  with i and j among the OBJECTS shown and kind "
-    "in {same_claim, refines, instance_of}. Nothing else: no prose, no JSON, no claim text, "
+    "Emit only lines of the form  i -kind-> j  where i and j are OBJECT LABELS exactly as "
+    "shown — a chart letter followed by a number, like `e12` or `p7` — and kind is in "
+    "{same_claim, refines, instance_of}. Nothing else: no prose, no JSON, no claim text, "
     "no names.\n"
     "  same_claim   — i and j assert the SAME proposition\n"
     "  refines      — i is a strictly more specific form of j (directed)\n"
     "  instance_of  — i is a particular instance of j\'s general form\n\n"
-    "Do not introduce new objects: an index not shown does not exist in this diagram.\n"
-    "Arrows are CROSS-CHART only; two claims over the same chart are never related here.\n"
+    "Do not introduce new objects: a label not shown does not exist in this diagram.\n"
+    "THE LEGAL ARROW FORMS ARE ENUMERATED IN THE DIAGRAM. Only those forms exist. Two labels "
+    "carrying the SAME chart letter have no legal form between them, so such an arrow cannot "
+    "be written — this is a property of the notation, not a rule to remember.\n"
     "Pairs you do not name are UNMEASURED, not denied. Naming nothing is a legal completion, "
     "and word overlap between two claims is not a reason to relate them.\n\n"
     "A diagram MAY contain exactly one object over the chart `bias`. That is a BOUNDARY "
@@ -128,16 +131,42 @@ REGION_SYSTEM = (
 
 #: The verbatim task line, kept separate so it can be asserted against.
 TASK_LINE = (
-    "Complete the diagram. Emit only lines of the form i -kind-> j with i,j in OBJECTS and "
-    "kind in {same_claim, refines, instance_of}. Do not introduce new objects. Pairs you do "
-    "not name are UNMEASURED, not denied."
+    "Complete the diagram. Emit only lines matching a LEGAL ARROW FORM above, with i,j the "
+    "object labels shown and kind in {same_claim, refines, instance_of}. Do not introduce new "
+    "objects. Pairs you do not name are UNMEASURED, not denied."
 )
+
+#: THE CHART TAG that prefixes every index. One letter per chart, collision-free across the
+#: seven charts in play (english, lean, python, go, tabular, conversation, bias).
+#:
+#: This is what makes cross-chart-only a GRAMMAR rule instead of a prose one. An index reads
+#: `e12` or `p07`, and the legal arrow forms are enumerated per region as chart-pairs — so an
+#: intra-chart arrow has no form to be written in, rather than being written and then refused.
+#: Measured before the change: 827 of 827 voids on one region were intra-chart, and about half
+#: of every response was spent on arrows the engine would discard. Prose said "CROSS-CHART
+#: only" and every medium ignored it at scale; grammar has won every previous round.
+CHART_TAG = {"english": "e", "lean": "l", "python": "p", "go": "g",
+             "tabular": "t", "conversation": "c", BIAS_CHART: "b"}
+
+
+def tag_of(chart: str) -> str:
+    """One letter for a chart. Unknown charts fall back to their own first letter, which is
+    still deterministic and still distinguishes them from any other chart present."""
+    return CHART_TAG.get(chart) or (chart[:1] or "x")
+
+
+def label(chart: str, index: int) -> str:
+    return f"{tag_of(chart)}{index}"
+
 
 #: `i -kind-> j`. The whole wire vocabulary on the way back.
 #: An index is a WHOLE token. Without the guards, `1.0 -same_claim-> 2` matched the `1` out
 #: of `1.0` and silently truncated a float into a valid index — a malformed answer resolving
 #: to a real address, which is the exact shape resolve-or-void exists to prevent.
-_ARROW_RE = re.compile(r"(?<![\w.])(-?\d+)\s*-\s*([a-z_]+)\s*->\s*(-?\d+)(?![\w.])")
+#: A tagged index is `<letter><digits>`; the bare-integer form is still read so that a
+#: response in the old vocabulary parses rather than silently scoring zero.
+_ARROW_RE = re.compile(
+    r"(?<![\w.])([a-z]?)(-?\d+)\s*-\s*([a-z_]+)\s*->\s*([a-z]?)(-?\d+)(?![\w.])")
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,10 +309,22 @@ def render_region(region: Region) -> str:
     """
     lines = ["OBJECTS"]
     for m in region.members:
-        lines.append(f"[{m.index}|{m.chart}] {escape_nu(m.nu)}")
+        lines.append(f"[{label(m.chart, m.index)}] {escape_nu(m.nu)}")
 
+    # THE LEGAL ARROW FORMS, enumerated. Cross-chart-only stops being an instruction the
+    # medium may ignore and becomes the shape of the token itself: with the charts present
+    # tagged, an intra-chart arrow has no form here to be written in. Enumerating FORMS costs
+    # one line per chart-pair — at most fifteen for six charts — where enumerating the legal
+    # index pairs would cost nine hundred.
+    present = sorted({m.chart for m in region.members})
+    forms = [f"  {tag_of(a)}<i> -kind-> {tag_of(b)}<j>"
+             for i, a in enumerate(present) for b in present[i + 1:]]
+    lines += ["", "LEGAL ARROW FORMS (these and no others)"]
+    lines += forms or ["  (none: every object here is over one chart, so no arrow is legal)"]
+    lines += [f"  charts present: {', '.join(f'{tag_of(c)}={c}' for c in present)}"]
+
+    idx = {m.slot: label(m.chart, m.index) for m in region.members}
     lines += ["", "ARROWS (declared)"]
-    idx = {m.slot: m.index for m in region.members}
     declared = [f"{idx[a]} -{k}-> {idx[b]}" for (a, b), k in sorted(region.declared.items())
                 if a in idx and b in idx]
     lines += declared or ["(none)"]
@@ -307,9 +348,23 @@ def parse_region(raw: str, region: Region) -> list[Proposal]:
     """
     out: list[Proposal] = []
     for m in _ARROW_RE.finditer(raw or ""):
-        i, kind, j = int(m.group(1)), m.group(2), int(m.group(3))
+        ti, i, kind, tj, j = (m.group(1), int(m.group(2)), m.group(3),
+                              m.group(4), int(m.group(5)))
         src, dst = region.by_index(i), region.by_index(j)
         line = m.group(0)
+        # A TAG THAT DISAGREES with the object it points at is void. Without this the tag
+        # would be decoration: a medium could write `e5` at a python object and the index
+        # would silently win, which is the resolve-or-void property leaking.
+        if src is not None and ti and ti != tag_of(src.chart):
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
+                                void=f"tag {ti!r} does not match the object's chart "
+                                     f"{src.chart!r}"))
+            continue
+        if dst is not None and tj and tj != tag_of(dst.chart):
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
+                                void=f"tag {tj!r} does not match the object's chart "
+                                     f"{dst.chart!r}"))
+            continue
         bias_arrow = (src is not None and dst is not None
                       and BIAS_CHART in (src.chart, dst.chart))
         if src is None or dst is None:

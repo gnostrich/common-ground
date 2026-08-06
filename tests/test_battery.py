@@ -76,16 +76,23 @@ def _grader(flatten: str = ""):
     """
     def t(system: str, user: str):
         lines = user.splitlines()
-        bias = next((l for l in lines if l.startswith("[0|bias]")), "")
+        bias = next((l for l in lines if l.startswith("[b0]")), "")
         n = sum(1 for l in lines if l.startswith("[") and "|" in l)
         if flatten == "silent":
             return "", {"cost": 0.0}
-        if bias.startswith("[0|bias] \x01en\x01claim ") or "claim 0 concerning" in bias:
+        # Labels are chart-tagged now; the stub answers in the same vocabulary the renderer
+        # emits, which is the point of the change — an untagged answer still parses, but a
+        # fixture that pretends the old format is the only one tests the compatibility path
+        # instead of the live one.
+        labels = [l[1:l.index("]")] for l in lines if l.startswith("[") and "]" in l]
+        b = labels[0] if labels else "b0"
+        rest = labels[1:]
+        if "claim 0 concerning" in bias:
             kind = "same_claim" if flatten != "kind" else "bears_on"
-            return f"0 -{kind}-> 1", {"cost": 0.0}          # a claim: tight, one point
+            return f"{b} -{kind}-> {rest[0]}", {"cost": 0.0}     # a claim: tight, one point
         if "how do" in bias or "how does" in bias:
-            return "\n".join(f"0 -bears_on-> {i}" for i in range(1, min(4, n))), {"cost": 0.0}
-        return "\n".join(f"0 -bears_on-> {i}" for i in range(1, min(9, n))), {"cost": 0.0}
+            return "\n".join(f"{b} -bears_on-> {x}" for x in rest[:3]), {"cost": 0.0}
+        return "\n".join(f"{b} -bears_on-> {x}" for x in rest[:8]), {"cost": 0.0}
 
     return t
 
@@ -369,3 +376,42 @@ class TheBatterySpecIsPinned(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ARateBelowMinimumNIsAReadingNotAFinding(unittest.TestCase):
+    """Derived from the flips, not chosen.
+
+    Every per-model rate stated in one session moved decisively when n grew tenfold:
+    `same_claim` read 21% at n=24, 7.2% at n=2,872, 12.07% at n=23,992; repetition read 2.12
+    at n=2,872 and 8.98 at n=23,992 — back to the value it was said to have improved on.
+    Twice, in the same direction: a reading reported as a finding.
+    """
+
+    def test_the_minimum_is_ten_times_where_the_flips_happened(self):
+        from engine.battery import MIN_RATE_N
+
+        self.assertEqual(MIN_RATE_N, 10_000)
+
+    def test_planted_a_small_sample_refuses_to_be_a_finding(self):
+        from engine.battery import rate
+
+        r = rate(207, 2872, "same_claim")
+        self.assertFalse(r["stated"])
+        self.assertEqual(r["standing"], "reading")
+        self.assertIn("flipped when n grew tenfold", r["note"])
+
+    def test_a_large_sample_is_a_finding(self):
+        from engine.battery import rate
+
+        r = rate(2895, 23992, "same_claim")
+        self.assertTrue(r["stated"])
+        self.assertEqual(r["standing"], "finding")
+        self.assertEqual(r["note"], "")
+
+    def test_the_n_always_travels_with_the_value(self):
+        """Returning the number alone is how a reading becomes a finding: the value gets
+        quoted and the sample size does not travel with it."""
+        from engine.battery import rate
+
+        for n in (0, 1, 24, 2872, 23992):
+            self.assertIn("n", rate(1, n))

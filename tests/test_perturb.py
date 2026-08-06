@@ -114,7 +114,7 @@ class TheBiasIsAnObjectInTheDiagram(unittest.TestCase):
         first = p.region.members[0]
         self.assertEqual(first.index, 0)
         self.assertEqual(first.chart, BIAS_CHART)
-        self.assertIn("[0|bias]", render_region(p.region))
+        self.assertIn("[b0]", render_region(p.region))   # chart-tagged label
 
     def test_planted_the_bias_costs_an_index_it_does_not_widen_the_region(self):
         """A diagram measured at sixty must stay sixty, or the acceptance guard drifts."""

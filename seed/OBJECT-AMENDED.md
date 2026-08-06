@@ -138,6 +138,17 @@ When something "doesn't work", answer these IN ORDER, BEFORE reading any code:
   metric ships with the invariance its input demands, asserted, or it is not a guard.
   Controls: `tests/test_region.py:AcceptanceMustNotMeasureVerbosity`.
 
+  **AND A MINIMUM n, from today's data.** Every per-model rate stated this session flipped
+  when the sample grew tenfold — `same_claim` read 21% at n=24, 7.2% at n=2,872 and 12.07% at
+  n=23,992; repetition read 2.12 at n=2,872 and 8.98 at n=23,992, back to the lite era's 8.83.
+  Twice in one session, in the same direction: a reading was reported as a finding.
+
+  So: **no per-model or per-era rate is reportable below a declared minimum n, and a rate at
+  n is a READING until it has held to ~10n.** The flips happened at exactly 10x, so 10x is
+  the stability the data itself demands. Below that, report the number with its n and call it
+  a reading; above it, call it a finding. `engine/battery.py:MIN_RATE_N` carries the number
+  and `Sample` refuses to state a rate under it.
+
 - **`openrouter/auto` silently routed the whole corpus to a LITE model.** 448 of 465 calls
   went to `google/gemini-2.5-flash-lite`, which on one pinned region emitted 1,789 arrow lines
   covering 51 distinct pairs — 35 repeats each — and **zero `same_claim` in any of them**. The

@@ -22,7 +22,7 @@ import unittest
 from engine.corpus_state import CorpusSnapshot, SlotRecord, with_arrows
 from engine.correspondence import Correspondence
 from engine.extract import DeterministicExtractor
-from engine.region import (
+from engine.region import (label, tag_of, 
     NU_CAP,
     REGION_SYSTEM,
     Member,
@@ -180,7 +180,7 @@ class TheOutputGrammarIsTheTrustedBase(unittest.TestCase):
                                         type="assert", nu=nu, attached=False)])
         body = render_region(region)
         self.assertNotIn("\n" + "a newline", body, "the nu must not break the line format")
-        line = [l for l in body.splitlines() if l.startswith("[0|")][0]
+        line = [l for l in body.splitlines() if l.startswith("[e0]")][0]
         self.assertEqual(unescape_nu(line.split("] ", 1)[1]), nu,
                          "inversion must reproduce the hashed bytes exactly")
 
@@ -284,8 +284,8 @@ class RegionAssemblyIsStructural(unittest.TestCase):
 
     def test_the_object_line_carries_the_chart_because_it_is_the_base_object(self):
         body = render_region(_region(["english", "lean"]))
-        self.assertIn("[0|english]", body)
-        self.assertIn("[1|lean]", body)
+        self.assertIn("[e0]", body)          # chart-tagged label, not a bare index
+        self.assertIn("[l1]", body)
 
     def test_indices_are_dense_and_match_the_rendering(self):
         snap, _ = _corpus([("english", "a claim about cones here"),
@@ -294,7 +294,7 @@ class RegionAssemblyIsStructural(unittest.TestCase):
         self.assertEqual([m.index for m in region.members], list(range(len(region.members))))
         body = render_region(region)
         for m in region.members:
-            self.assertIn(f"[{m.index}|{m.chart}]", body)
+            self.assertIn(f"[{label(m.chart, m.index)}]", body)
 
     def test_the_rendering_never_cuts_because_byte_exact_forbids_it(self):
         """Truncation and byte-exactness cannot both hold, and byte-exactness wins.
@@ -311,7 +311,7 @@ class RegionAssemblyIsStructural(unittest.TestCase):
                                         type="assert", nu=nu, attached=False)])
         body = render_region(region)
         self.assertNotIn("[cut]", body)
-        line = [l for l in body.splitlines() if l.startswith("[0|")][0]
+        line = [l for l in body.splitlines() if l.startswith("[e0]")][0]
         self.assertEqual(unescape_nu(line.split("] ", 1)[1]), nu)
 
     def test_the_rendering_carries_no_slot_ids(self):
@@ -339,7 +339,11 @@ class ThePromptForbidsForcingMatches(unittest.TestCase):
         self.assertIn("no claim text, no names", REGION_SYSTEM)
 
     def test_it_states_the_cross_chart_rule(self):
-        self.assertIn("CROSS-CHART only", REGION_SYSTEM)
+        # The rule is now in the GRAMMAR, not in prose: same-chart labels have no legal
+        # form. Prose said "CROSS-CHART only" and every medium ignored it — 827 of 827 voids
+        # on one region were intra-chart.
+        self.assertIn("LEGAL ARROW FORMS ARE ENUMERATED", REGION_SYSTEM)
+        self.assertIn("SAME chart letter have no legal form", REGION_SYSTEM)
 
     def test_it_forbids_introducing_objects(self):
         self.assertIn("Do not introduce new objects", REGION_SYSTEM)
@@ -410,3 +414,78 @@ class AcceptanceMustNotMeasureVerbosity(unittest.TestCase):
         self.assertAlmostEqual(
             once, many, places=6,
             msg="acceptance moved when only the repetition count changed")
+
+
+class CrossChartIsGrammarNotInstruction(unittest.TestCase):
+    """The last prose rule compiled into the format.
+
+    Prose said "Arrows are CROSS-CHART only" and every medium ignored it at scale: 827 of 827
+    voids on one live region were intra-chart, and about half of every response was spent on
+    arrows the engine would discard. Grammar has won every previous round, so the rule became
+    the shape of the token: labels carry a chart letter, the legal FORMS are enumerated per
+    region, and two same-letter labels have no form between them.
+    """
+
+    def _region(self, charts):
+        from engine.corpus_state import CorpusSnapshot, SlotRecord
+        from engine.normalize import address
+        from engine.region import build_region
+
+        slots = {}
+        for i, c in enumerate(charts):
+            sid, nu = address(c, f"claim number {i}", "assert")
+            slots[sid] = SlotRecord(slot=sid, chart=c, type="assert", nu=nu, value="true",
+                                    confidence=1.0, tier="EXTRACTION", docs=("r||d/f.md",))
+        return build_region(CorpusSnapshot(slots=slots), clamp="", size=len(charts))
+
+    def test_the_legal_forms_are_enumerated_by_chart_pair(self):
+        from engine.region import render_region
+
+        body = render_region(self._region(["english", "python", "lean"]))
+        self.assertIn("LEGAL ARROW FORMS", body)
+        for form in ("e<i> -kind-> l<j>", "e<i> -kind-> p<j>", "l<i> -kind-> p<j>"):
+            self.assertIn(form, body)
+
+    def test_planted_no_same_chart_form_is_offered(self):
+        """The whole point: an intra-chart arrow has no form to be written in."""
+        from engine.region import render_region
+
+        body = render_region(self._region(["english", "english", "python", "python"]))
+        forms = body.split("LEGAL ARROW FORMS")[1].split("ARROWS (declared)")[0]
+        for illegal in ("e<i> -kind-> e<j>", "p<i> -kind-> p<j>"):
+            self.assertNotIn(illegal, forms)
+        self.assertIn("e<i> -kind-> p<j>", forms)
+
+    def test_enumerating_forms_costs_pairs_of_charts_not_pairs_of_objects(self):
+        """One line per chart-pair — at most 15 for six charts — where enumerating legal
+        INDEX pairs on a 60-object region would cost 900."""
+        from engine.region import render_region
+
+        body = render_region(self._region(["english"] * 20 + ["python"] * 20))
+        forms = [l for l in body.split("LEGAL ARROW FORMS")[1]
+                 .split("ARROWS (declared)")[0].splitlines() if "-kind->" in l]
+        self.assertEqual(len(forms), 1, "two charts present -> exactly one legal form")
+
+    def test_planted_a_tag_that_disagrees_with_its_object_is_void(self):
+        """Without this the tag is decoration: a medium could write `e5` at a python object
+        and the index would silently win, which is resolve-or-void leaking."""
+        from engine.region import parse_region
+
+        region = self._region(["english", "python"])
+        eng = next(m for m in region.members if m.chart == "english")
+        py = next(m for m in region.members if m.chart == "python")
+        good = parse_region(f"e{eng.index} -same_claim-> p{py.index}", region)
+        self.assertTrue(good[0].ok, good[0].void)
+        bad = parse_region(f"p{eng.index} -same_claim-> p{py.index}", region)
+        self.assertFalse(bad[0].ok)
+        self.assertIn("does not match the object's chart", bad[0].void)
+
+    def test_an_untagged_answer_still_parses(self):
+        """A response in the old vocabulary must resolve rather than silently score zero."""
+        from engine.region import parse_region
+
+        region = self._region(["english", "python"])
+        eng = next(m for m in region.members if m.chart == "english")
+        py = next(m for m in region.members if m.chart == "python")
+        out = parse_region(f"{eng.index} -same_claim-> {py.index}", region)
+        self.assertTrue(out[0].ok, out[0].void)

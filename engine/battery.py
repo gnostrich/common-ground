@@ -290,6 +290,35 @@ def run(snapshot: CorpusSnapshot, transport, chart: str = "english",
 #: The longitudinal sample's cadence. t0, then weekly.
 SAMPLE_EVERY_DAYS = 7
 
+#: Smallest n at which a per-model or per-era RATE may be stated as a finding.
+#:
+#: Derived from the flips, not chosen. Every such rate stated in one session moved decisively
+#: when n grew tenfold: `same_claim` read 21% at n=24, 7.2% at n=2,872, 12.07% at n=23,992;
+#: repetition read 2.12 at n=2,872 and 8.98 at n=23,992 — back to the value it was said to
+#: have improved on. The instability appeared at 10x, so 10x is the stability the data
+#: demands. A rate below this is a READING, reported with its n; above it, a finding.
+MIN_RATE_N = 10_000
+
+
+def rate(numerator: int, n: int, label: str = "rate") -> dict:
+    """A rate WITH its standing. Never a bare float.
+
+    Returning the number alone is how a reading becomes a finding: the value gets quoted, the
+    sample size does not travel with it, and nobody can tell whether it survived. So the n and
+    the standing ride along, and `stated` is False below the minimum.
+    """
+    return {
+        "label": label,
+        "value": (numerator / n) if n else 0.0,
+        "n": n,
+        "stated": n >= MIN_RATE_N,
+        "standing": "finding" if n >= MIN_RATE_N else "reading",
+        "note": ("" if n >= MIN_RATE_N else
+                 f"n={n:,} is below MIN_RATE_N={MIN_RATE_N:,}. Every per-model rate stated "
+                 f"in one session flipped when n grew tenfold, so this is a reading and may "
+                 f"not be reported as a finding."),
+    }
+
 
 @dataclass(slots=True)
 class Sample:
