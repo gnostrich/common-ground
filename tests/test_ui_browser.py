@@ -220,9 +220,15 @@ class _Page:
         self._pw.stop()
 
     def open_wire(self):
-        """One click, the way the operator opens it. A collapsed `<details>` renders no text,
-        so reading it closed would test the markup rather than what is on screen."""
-        self.page.click("#wiresum")
+        """Ensure the raw-traffic panel is OPEN, then read what is rendered.
+
+        It now opens by default, so this only clicks when it is somehow closed — clicking
+        unconditionally would toggle it shut and read an empty panel, which is how a control
+        starts passing for the wrong reason. A collapsed `<details>` renders no text, so
+        reading it closed would test the markup rather than what is on screen.
+        """
+        if not self.page.locator("#wire").evaluate("e => e.open"):
+            self.page.click("#wiresum")
         self.page.wait_for_function("document.querySelector('#wire').open", timeout=5000)
         return self.page.inner_text("#calls")
 
@@ -398,10 +404,35 @@ class EveryLMCallIsVISIBLERaw(unittest.TestCase):
             self.assertLess(p.page.locator("#answer").bounding_box()["y"],
                             p.page.locator("#wire").bounding_box()["y"])
 
-    def test_it_starts_collapsed(self):
+    def test_it_starts_OPEN(self):
+        """RESTATED, on the operator's third asking.
+
+        This required the panel to start COLLAPSED, by analogy with the scope: answer-first is
+        constitutional and a raw dump is the most tempting thing to hoist above it. The
+        analogy was wrong. The scope is an inspection surface somebody consults when a result
+        surprises them; the raw traffic is a STANDING REQUIREMENT — "every input and output of
+        the LM, even intermediate ones, should be visible raw" — and a thing you must click to
+        see has not been shown, it has been filed. It was also sitting below four panels
+        nobody asked for. Answer-first is unaffected: the answer is still above it.
+        """
         with _Server() as url, _Page(url) as p:
             p.perturb()
-            self.assertFalse(p.page.locator("#wire").evaluate("e => e.open"))
+            self.assertTrue(p.page.locator("#wire").evaluate("e => e.open"),
+                            "the raw traffic must be visible without a click")
+
+    def test_it_sits_DIRECTLY_under_the_answer(self):
+        """Above every other panel. It was at y=904 behind the proposals, the current, the
+        floor and the gate — available, and not shown."""
+        with _Server() as url, _Page(url) as p:
+            p.perturb()
+            ans = p.page.locator("#answer").bounding_box()
+            wire = p.page.locator("#wire").bounding_box()
+            scope = p.page.locator("#scope").bounding_box()
+            self.assertLess(ans["y"], wire["y"], "answer-first still holds")
+            self.assertLess(wire["y"], scope["y"], "the raw traffic sits above the scope")
+            others = p.page.locator("h2").first.bounding_box()
+            self.assertLess(wire["y"], others["y"],
+                            "the raw traffic must precede the panels nobody asked for")
 
 
 @unittest.skipUnless(_HAVE and CHROMIUM and Path(CHROMIUM).exists(), "no chromium/playwright here")

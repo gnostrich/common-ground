@@ -69,6 +69,17 @@ details.scope[open]>summary{margin-bottom:.6rem}
 
   <div id="answer"></div>
 
+  <details class="scope" id="wire" open><summary id="wiresum">raw LM traffic — every call, both directions</summary>
+  <p class="muted">The <b>bytes on the socket</b>, not a summary of them. An act makes more than
+  one call: the <b>propose</b> call completes the region diagram and decides what the answer can
+  possibly be about, and the <b>render</b> call voices the settled state. Showing only the second
+  would show the answer's input and hide its cause. Each block carries the sha256 the server
+  computed when it sent or received those bytes; your browser re-hashes what is on your screen and
+  compares, so <b>what you are shown is what was sent</b> is checkable rather than promised.</p>
+  <div id="calls" class="muted">no call yet.</div>
+  </details>
+
+
   <h2>Proposals entering — all sources equal, one tier</h2>
   <div id="proposals" class="muted">nothing proposed yet.</div>
 
@@ -103,16 +114,6 @@ details.scope[open]>summary{margin-bottom:.6rem}
     <button onclick="ledger()">refresh</button>
   </div>
   <div id="proposer" class="muted">not loaded — press refresh.</div>
-
-  <details class="scope" id="wire"><summary id="wiresum">raw LM traffic — every call, both directions</summary>
-  <p class="muted">The <b>bytes on the socket</b>, not a summary of them. An act makes more than
-  one call: the <b>propose</b> call completes the region diagram and decides what the answer can
-  possibly be about, and the <b>render</b> call voices the settled state. Showing only the second
-  would show the answer's input and hide its cause. Each block carries the sha256 the server
-  computed when it sent or received those bytes; your browser re-hashes what is on your screen and
-  compares, so <b>what you are shown is what was sent</b> is checkable rather than promised.</p>
-  <div id="calls" class="muted">no call yet.</div>
-  </details>
 
   <details class="scope" id="scope"><summary>show what moved — the scope behind the answer</summary>
   <p class="muted">The region is a <b>SAMPLE</b> of the corpus chosen by declared structure —
