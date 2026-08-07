@@ -118,6 +118,8 @@ REGION_SYSTEM = (
     "  refines      — i is a strictly more specific form of j (directed)\n"
     "  instance_of  — i is a particular instance of j\'s general form\n\n"
     "Do not introduce new objects: a label not shown does not exist in this diagram.\n"
+    "An object marked (!) is one the field holds more than one value for. It is an ordinary "
+    "object here and may be related like any other; the mark is state, not an instruction.\n"
     "THE LEGAL ARROW FORMS ARE ENUMERATED IN THE DIAGRAM. Only those forms exist. Two labels "
     "carrying the SAME chart letter have no legal form between them, so such an arrow cannot "
     "be written — this is a property of the notation, not a rule to remember.\n"
@@ -245,6 +247,13 @@ class Member:
     #: bias alone: the operator typed something, and nu is the engine's paraphrase of it.
     #: OI-19 is the whole reason this field exists; see `tests/test_bias_bytes.py`.
     surface: str = ""
+    #: THE FIELD HOLDS MORE THAN ONE VALUE FOR THIS CLAIM. Read off `snapshot.contested` when
+    #: the region is built, and MARKED on the wire, because the grammar requires a sentence
+    #: citing a contested object to carry `[!]` and the medium cannot carry a mark for a fact
+    #: it was never shown. Measured before this existed: 18 `uncontested` convictions across 5
+    #: of 10 probes on a served build, every one on turn 1, every one for a rule turn 1's sheet
+    #: made impossible to obey.
+    contested: bool = False
 
     @property
     def wire(self) -> str:
@@ -382,7 +391,11 @@ def render_region(region: Region) -> str:
     for m in region.members:
         # `m.wire`, never `m.nu`. For every corpus object these are the same string; for the
         # bias they are not, and the difference is OI-19.
-        lines.append(f"[{label(m.chart, m.index)}] {escape_nu(m.wire)}")
+        # THE CONTEST MARK, on the object line. `(!)` rather than `[!]` so it can never be
+        # mistaken for a citation of a label; `[!]` is what a SENTENCE writes, and the two must
+        # look different or the medium is being shown the answer's syntax in the field's.
+        mark = "(!) " if m.contested else ""
+        lines.append(f"[{label(m.chart, m.index)}] {mark}{escape_nu(m.wire)}")
 
     # THE LEGAL ARROW FORMS, enumerated. Cross-chart-only stops being an instruction the
     # medium may ignore and becomes the shape of the token itself: with the charts present
@@ -794,9 +807,10 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
     # information. The permutation is derived from the region's own content, so a region is
     # still reproducible: same members, same shuffle, and a walk anybody can replay.
     chosen = _shuffle(chosen)
+    hot = getattr(snapshot, "contested", None) or frozenset()
     members = [Member(index=i, slot=sid, chart=snapshot.slots[sid].chart,
                       type=snapshot.slots[sid].type, nu=snapshot.slots[sid].nu,
-                      attached=bool(neighbours.get(sid)))
+                      attached=bool(neighbours.get(sid)), contested=sid in hot)
                for i, sid in enumerate(chosen)]
     inside = {m.slot for m in members}
     declared = {(a.src_slot, a.dst_slot): a.kind for a in live
@@ -818,7 +832,8 @@ def build_region(snapshot: CorpusSnapshot, clamp: str = "", size: int = REGION_S
         members = ([Member(index=0, slot=b_slot, chart=BIAS_CHART, type="bias", nu=b_nu,
                            attached=False, surface=b_surface)]
                    + [Member(index=m.index + 1, slot=m.slot, chart=m.chart, type=m.type,
-                             nu=m.nu, attached=m.attached, surface=m.surface)
+                             nu=m.nu, attached=m.attached, surface=m.surface,
+                             contested=m.contested)
                       for m in members])
         # The bias carries no declared arrow — it is new, and Q2 is the whole point — so it
         # cannot appear in `declared` and therefore cannot compose. Nothing to exclude.

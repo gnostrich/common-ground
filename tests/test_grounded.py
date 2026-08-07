@@ -601,19 +601,18 @@ class EveryRuleTheRefereeEnforcesIsSTATEDWhereTheMediumCanReadIt(unittest.TestCa
     listing objects rather than relating them, from a medium whose prompt never said that a
     list was a claim. `[u2205rel]` was enforceable and unwritable.
 
-    A KNOWN GAP, named rather than skipped: turn 1 is checked for CONTEST but its sheet -
-    `region.render_region` - does not mark contested objects, so `[!]` is not asserted below
-    for the turn-1 prompt. That sheet is byte-shared with the unattended walk (see
-    tests/test_perturb.py), so marking it changes the daemon's wire.
+    THE GAP THIS CLASS WAS CARRYING IS CLOSED, and the sequence is worth recording because it
+    is what the standing auditor is for. The contest rule was checked against a turn-1 sheet
+    that did not mark contested objects, so `[!]` was enforceable and unwritable. It was named
+    as owed, with a note that it "cannot fire today (the loaded corpus holds no contested
+    slot)" — true when written, false within hours. The auditor measured the served build and
+    returned 18 convictions across 5 of 10 probes, every one `kind=uncontested` on
+    `calls_without_it=(1,)`: always turn 1, never any other call.
 
-    IT IS NO LONGER DORMANT, and this paragraph said it was. The first version read "it cannot
-    fire today (the loaded corpus holds no contested slot)" — true when it was written and
-    false within hours. The standing auditor measured the served build and found 18 convictions
-    across 5 of 10 probes, every one `kind=uncontested` on `calls_without_it=(1,)`: always turn
-    1, never any other call, on a corpus now carrying dozens of contested labels per probe. A
-    comment asserting a precondition it does not check is a claim with no control behind it,
-    which is the thing this project deletes on sight; the assertion below is the control, and
-    this is now a live debt rather than a latent one.
+    `region.render_region` now marks contested members `(!)` and both prompts say what the mark
+    means, so the licence below is asserted for the turn-1 prompt too. The mark is `(!)` on an
+    object line and `[!]` in a sentence, deliberately different, or the field would be showing
+    the medium the answer's syntax in the state's.
     """
 
     #: verdict kind -> the token a medium must be able to write to avoid it.
@@ -629,14 +628,44 @@ class EveryRuleTheRefereeEnforcesIsSTATEDWhereTheMediumCanReadIt(unittest.TestCa
                 self.assertIn(token, prompt,
                               f"{kind} is enforced against a prompt that never shows {token}")
 
-    def test_turn_one_states_every_rule_its_sheet_can_carry(self):
+    def test_turn_one_states_EVERY_rule_now(self):
         from engine.dialogue import turn_one_prompt
 
         prompt = turn_one_prompt()
-        for kind in ("uncited", "vacuous", "welded"):
+        for kind, token in self.LICENCE.items():
             with self.subTest(kind=kind):
-                token = self.LICENCE[kind].replace("[4]", "[e1]")
-                self.assertIn(token, prompt)
+                self.assertIn(token.replace("[4]", "[e1]"), prompt,
+                              f"{kind} is enforced against turn 1's sheet, which never shows "
+                              f"{token}")
+
+    def test_the_contest_mark_reaches_the_SHEET_and_not_only_the_prompt(self):
+        """A rule stated in the prompt over a sheet that never marks anything is the same trap
+        wearing a fix. The mark has to be on the object line the medium reads."""
+        from engine.corpus_state import CorpusSnapshot, SlotRecord
+        from engine.normalize import address
+        from engine.region import Member, render_region, Region
+
+        slot, nu = address("english", "the cone is positive", "assert")
+        region = Region(clamp=slot, members=[
+            Member(index=0, slot=slot, chart="english", type="assert", nu=nu, attached=False,
+                   contested=True),
+            Member(index=1, slot="s2", chart="lean", type="assert", nu="x", attached=False)])
+        wire = render_region(region)
+        self.assertIn("(!)", wire, "a contested object reached the wire unmarked")
+        self.assertEqual(wire.count("(!)"), 1, "an uncontested object was marked")
+
+    def test_the_contest_flag_is_read_from_the_SNAPSHOT_not_set_by_hand(self):
+        from engine.corpus_state import CorpusSnapshot, SlotRecord
+        from engine.normalize import address
+        from engine.region import build_region
+
+        slot, nu = address("english", "the cone is positive", "assert")
+        rec = SlotRecord(slot=slot, chart="english", type="assert", nu=nu, value="true",
+                         confidence=1.0, tier="EXTRACTION", docs=("r||d/f.md",))
+        snap = CorpusSnapshot(slots={slot: rec}, arrows=(), contested=frozenset({slot}))
+        region = build_region(snap, clamp=slot, size=4)
+        hot = [m for m in region.members if m.contested]
+        self.assertEqual([m.slot for m in hot], [slot])
 
     def test_the_licence_table_covers_every_verdict_the_checker_can_return(self):
         """PLANTED AGAINST DRIFT. A new violation kind added to the Verdict with no entry here

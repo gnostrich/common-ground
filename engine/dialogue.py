@@ -585,7 +585,10 @@ TURN_ONE_FORM = (
     "with [∅] for something these objects do not contain. Two or more labels on one sentence "
     "assert that those objects are related: only write that when you have also written the "
     "arrow saying so, otherwise give each object its own sentence, or write [∅rel]. "
-    "[b0] is the question itself and is not evidence: relate to it, never cite it.")
+    "[b0] is the question itself and is not evidence: relate to it, never cite it. "
+    "An object shown with (!) is one the field holds more than one value for: a sentence "
+    "resting on it must carry [!] as well, as in [e12][!], or say the state does not decide "
+    "it with [∅].")
 
 
 def turn_one_prompt() -> str:
