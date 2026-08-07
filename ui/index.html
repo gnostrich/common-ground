@@ -69,11 +69,12 @@ details.scope[open]>summary{margin-bottom:.6rem}
 
   <div id="answer"></div>
 
-  <details class="scope" id="wire" open><summary id="wiresum">raw LM traffic — every call, both directions</summary>
-  <p class="muted">The <b>bytes on the socket</b>, not a summary of them. An act makes more than
-  one call: the <b>propose</b> call completes the region diagram and decides what the answer can
-  possibly be about, and the <b>render</b> call voices the settled state. Showing only the second
-  would show the answer's input and hide its cause. Each block carries the sha256 the server
+  <details class="scope" id="wire" open><summary id="wiresum">the dialogue — every turn, both directions</summary>
+  <p class="muted">The <b>bytes on the socket</b>, not a summary of them. An act is ONE
+  conversation: each turn's cited prose yields arrows, the field settles between turns, and the
+  <b>last turn is the answer</b> — there is no separate render call. Questions marked
+  <b>ASKED BY THE ENGINE</b> are generated from the graph; they are not the medium's words and
+  not yours. Each block carries the sha256 the server
   computed when it sent or received those bytes; your browser re-hashes what is on your screen and
   compares, so <b>what you are shown is what was sent</b> is checkable rather than promised.</p>
   <div id="calls" class="muted">no call yet.</div>
@@ -511,11 +512,14 @@ function wireBlock(id, label, text, sha){
 
 async function renderWire(r){
   const T = r.transcript || [];
+  const D = r.dialogue || null;
   $('wiresum').textContent = T.length
-    ? `raw LM traffic — ${T.length} call(s), both directions, byte-exact`
-    : 'raw LM traffic — no call was made';
+    ? `the dialogue — ${T.length} turn(s), both directions, byte-exact`
+      + (D ? `; ${D.distinct_claims} distinct claim(s) from ${D.records} record(s)`
+             + `; stopped: ${D.stopped}` : '')
+    : 'the dialogue — no turn was taken';
   if(!T.length){
-    $('calls').innerHTML = '<div class="muted">no call reached the model on this act. '
+    $('calls').innerHTML = '<div class="muted">no turn reached the model on this act. '
       + 'That is a state, not an omission — an act with no model configured, or one that '
       + 'bounced before the region was built, makes no call and has nothing to quote.</div>';
     return;
@@ -523,15 +527,34 @@ async function renderWire(r){
   // Built as one string, then the raw text is set through textContent — never through
   // innerHTML. The bytes are the model's and the operator's, and interpolating them into
   // markup would let a reply rewrite the page that is quoting it.
-  $('calls').innerHTML = T.map((c,i) =>
-      `<div class="prop"><div><b class="promoted">${esc(c.port)}</b> `
-    + `<span class="tier">${esc(c.model||'no model named')}</span> `
-    + `<span class="muted">${Number(c.seconds||0).toFixed(2)}s`
-    + (c.error ? ` · <span class="err">${esc(c.error)}</span>` : '') + `</span></div>`
-    + wireBlock(`w${i}s`, 'SYSTEM — in', (c.system||''), c.system_sha)
-    + wireBlock(`w${i}u`, 'USER — in', (c.user||''), c.user_sha)
-    + wireBlock(`w${i}r`, 'REPLY — out', (c.reply||''), c.reply_sha)
-    + `</div>`).join('');
+  // WHO SAID WHAT. The medium's turns and the ENGINE's interrogations are both in this
+  // panel, and they must never look alike: the interrogation is machine-authored text
+  // generated from the graph, and attributing it to the medium would misattribute authorship
+  // in the one surface whose whole job is to prove authorship.
+  const turns = D ? (D.turns || []) : [];
+  $('calls').innerHTML = T.map((c,i) => {
+      const t = turns[i] || null;
+      const asked = t ? (t.ask || '') : '';
+      const machine = t && i > 0 && asked && asked !== (D && D.question);
+      const head = `<div class="prop"><div><b class="promoted">${esc(c.port)}</b> `
+        + `<span class="tier">${esc(c.model||'no model named')}</span> `
+        + `<span class="muted">${Number(c.seconds||0).toFixed(2)}s`
+        + (t ? ` · ${t.resolved} arrow(s) from ${t.arrows.length} record(s)`
+               + (t.moved ? ` · ${t.moved} moved` : '') : '')
+        + (c.error ? ` · <span class="err">${esc(c.error)}</span>` : '') + `</span></div>`;
+      const askedBy = asked
+        ? `<div class="rests" style="border-left-color:${machine ? 'var(--inst)' : 'var(--me)'}">`
+          + `<b>${machine ? 'ASKED BY THE ENGINE' : 'ASKED BY YOU'}</b>`
+          + `<span class="muted"> — ${machine ? 'generated from the graph, not written by the '
+            + 'medium and not written by you' : 'your question, put to the settled field'}`
+          + `</span><br><span class="nu">${esc(asked)}</span></div>`
+        : '';
+      return head + askedBy
+        + wireBlock(`w${i}s`, 'SYSTEM — in', (c.system||''), c.system_sha)
+        + wireBlock(`w${i}u`, 'USER — in', (c.user||''), c.user_sha)
+        + wireBlock(`w${i}r`, 'REPLY — out (the medium)', (c.reply||''), c.reply_sha)
+        + `</div>`;
+    }).join('');
   for(let i=0;i<T.length;i++){
     const c = T[i];
     for(const [suf, text, sha] of [['s', c.system, c.system_sha],

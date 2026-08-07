@@ -125,6 +125,24 @@ def _call(port, system, user, reply, model="google/gemini-2.5-flash", seconds=1.
 #: page that showed a summary instead of the bytes would fail on this string.
 PROPOSE_USER = ("OBJECTS\n[b0] Is The Cone POSITIVE?  Really\n"
                 "[e1] \\x01en\\x01the cone is positive under the metric\n\nARROWS (declared)\n(none)")
+#: THE DIALOGUE the panel renders. Turn 1 is the operator's question; turn 2 is the ENGINE's
+#: interrogation, which must be labelled as machine-authored and never as the medium's speech.
+ASK["dialogue"] = {
+    "question": "is the cone positive",
+    "turn_count": 2, "budget": 4, "stopped": "the graph had nothing left to ask",
+    "records": 2, "resolved_records": 1, "distinct_claims": 1,
+    "answer": "The cone is positive under the metric [1].",
+    "turns": [
+        {"turn": 1, "ask": "is the cone positive", "record_kind": "testimony", "warrant": None,
+         "prose": "b0 -bears_on-> e1", "arrows": [{}], "resolved": 1, "void": 0,
+         "moved": 3, "interrogation": "Composition implies a relation between [1] and [7]."},
+        {"turn": 2, "ask": "Composition implies a relation between [1] and [7].",
+         "record_kind": "testimony", "warrant": None,
+         "prose": "The cone is positive under the metric [1].", "arrows": [{}],
+         "resolved": 0, "void": 1, "moved": 0, "interrogation": ""},
+    ],
+}
+
 ASK["transcript"] = [
     _call("propose", "You are completing a partial DIAGRAM.", PROPOSE_USER, "b0 -bears_on-> e1",
           seconds=18.4),
@@ -423,6 +441,39 @@ class EveryLMCallIsVISIBLERaw(unittest.TestCase):
             self.assertIn(hostile, p.open_wire(), "the markup must be QUOTED")
             self.assertIsNone(p.page.evaluate("window.__pwned ?? null"))
             self.assertEqual(0, p.page.locator("#calls img").count())
+
+    def test_the_ENGINES_interrogation_is_labelled_machine_authored(self):
+        """FLAG 2's ruling, and the reason it matters more than a cosmetic label.
+
+        This panel's whole job is to prove authorship. It now carries text from THREE authors —
+        the operator's question, the medium's prose, and the engine's interrogations, which are
+        generated from the graph. Showing an interrogation as though the medium had said it
+        would misattribute authorship in the one surface that exists to prevent exactly that.
+        """
+        with _Server() as url, _Page(url) as p:
+            p.perturb()
+            txt = p.open_wire()
+            self.assertIn("ASKED BY THE ENGINE", txt)
+            self.assertIn("ASKED BY YOU", txt)
+            self.assertIn("generated from the graph", txt)
+            self.assertIn("Composition implies", txt)
+
+    def test_the_operators_question_is_NOT_labelled_machine_authored(self):
+        """Both directions. A panel that marked everything machine-authored would be as wrong
+        as one that marked nothing."""
+        with _Server() as url, _Page(url) as p:
+            p.perturb()
+            txt = p.open_wire()
+            i_you, i_engine = txt.index("ASKED BY YOU"), txt.index("ASKED BY THE ENGINE")
+            self.assertLess(i_you, i_engine, "turn 1 is the operator's and comes first")
+
+    def test_the_summary_counts_TURNS_and_names_claims_versus_records(self):
+        with _Server() as url, _Page(url) as p:
+            p.perturb()
+            summary = p.page.inner_text("#wiresum")
+            self.assertIn("turn(s)", summary)
+            self.assertNotIn("call(s)", summary, "there are no ports left to count")
+            self.assertIn("1 distinct claim(s) from 2 record(s)", summary)
 
     def test_no_calls_is_a_STATE_and_says_so(self):
         payload = json.loads(json.dumps(ASK))

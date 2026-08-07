@@ -375,5 +375,90 @@ class ThePromptGrewLEGALLY(unittest.TestCase):
         self.assertEqual(blocks()[:len(BLOCKS)], BLOCKS)
 
 
+class ThePipelineIsONEDialogue(unittest.TestCase):
+    """Piece 3, over HTTP. The render call is gone and the last turn is the answer.
+
+    Checked at the wire rather than by reading ui/server.py: a substring check over a handler
+    is the map-not-territory failure this project has shipped, and the property here is about
+    how many times the model is actually called.
+    """
+
+    def _serve(self):
+        import threading
+        from http.server import HTTPServer
+
+        from ui.server import Handler
+
+        srv = HTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        return srv, f"http://127.0.0.1:{srv.server_address[1]}"
+
+    def _ask(self, base, payload):
+        import json as _j
+        import urllib.request
+
+        req = urllib.request.Request(base + "/ask", data=_j.dumps(payload).encode(),
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=300) as r:
+            return _j.load(r)
+
+    def test_the_response_carries_the_DIALOGUE_not_a_render_reply(self):
+        srv, base = self._serve()
+        try:
+            out = self._ask(base, {"question": "is the cone positive", "chart": "english"})
+        finally:
+            srv.shutdown()
+        self.assertIn("dialogue", out, "the response must carry the conversation")
+        self.assertIn("answer", out)
+        self.assertIn("faithful", out, "the gate is unchanged by the collapse")
+
+    def test_the_transcript_is_labelled_by_TURN_not_by_port(self):
+        """FLAG 2's ruling. `propose`/`render` stop meaning anything once there is one
+        dialogue, and a panel that keeps them would name a split the engine no longer has."""
+        import ui.server as server
+
+        body = Path(server.__file__).read_text()
+        self.assertNotIn('TRANSCRIPT.record("render"', body)
+        self.assertIn('TRANSCRIPT.record(f"turn ', body)
+
+    def test_no_second_unconditional_call_survives_in_the_handler(self):
+        """The collapse is a cost fact. A `client.complete` outside the turn function would be
+        the render call by another name."""
+        import re as _re
+
+        import ui.server as server
+
+        body = Path(server.__file__).read_text()
+        calls = _re.findall(r"client\.complete\(", body)
+        self.assertEqual(len(calls), 1,
+                         f"{len(calls)} model calls in the handler; the dialogue makes them")
+
+    def test_the_INBOUND_render_prompt_is_no_longer_what_ask_sends(self):
+        """The dialogue's prompt inherits the render grammar and adds the arrow FORM. If /ask
+        still sent the bare render prompt, the medium would never be told how to write an
+        arrow and the extraction half of the dialogue would be silently dead."""
+        from engine.dialogue import ARROW_FORM, render_prompt as dprompt
+        from engine.inbound import INBOUND_SYSTEM
+
+        self.assertIn(ARROW_FORM, dprompt())
+        self.assertNotIn(ARROW_FORM, INBOUND_SYSTEM)
+        self.assertNotEqual(dprompt(), INBOUND_SYSTEM)
+
+
+class TheDaemonNeverConverses(unittest.TestCase):
+    """Spec control 6 again, at the pipeline. Two paths, and only one is conversational."""
+
+    def test_the_unattended_path_makes_no_dialogue_call(self):
+        for rel in ("engine/continuous.py", "engine/walk.py", "proposerd.py",
+                    "engine/propose_correspondence.py"):
+            f = REPO / rel
+            if not f.exists():
+                continue
+            with self.subTest(module=rel):
+                body = f.read_text()
+                self.assertNotIn("converse(", body)
+                self.assertNotIn("dialogue", body)
+
+
 if __name__ == "__main__":
     unittest.main()
