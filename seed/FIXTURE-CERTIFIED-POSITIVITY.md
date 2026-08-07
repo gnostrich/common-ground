@@ -1,4 +1,4 @@
-# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, three columns
+# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, four columns
 
 **FROZEN.** The question, the table's rows, and the pre-registration do not change. Columns are
 added as the pipeline changes; **no column is ever removed or rewritten**, including the ones
@@ -26,17 +26,17 @@ pre-registration buys.
 
 | | **A — pre-B2** | **B — HALF-COLLAPSED** | **C — collapsed** |
 |---|---|---|---|
-| build | pre-dialogue | `7e216540c563` | pending |
+| build | pre-dialogue | `7e216540c563` | `6bc9309592bd` |
 | pipeline | propose (coords) + render (prose) | propose (coords) + dialogue | one dialogue |
-| calls | 2 | **2** | 1 conversation |
-| region composition | 1 bias / 40 english / 19 lean | 1 bias / 40 english / 19 lean | pending |
-| attachments | — | **2 english, 0 lean** (2 of 59 shown) | pending |
-| lean attached | **0 of 19** | **0 of 19** | pending |
-| propagation | — | **2 moved**, 0 over declared arrows | pending |
-| dialogue turns | n/a | 1 | pending |
-| arrows from prose | n/a | **0 records, 0 resolved, 0 claims** | pending |
-| faithful | ✓ | ✓ — 3/3 receipted, 0 violations, 9 citable | pending |
-| latency | — | 6.6s | pending |
+| calls | 2 | **2** | **5** — 1 + 3 interrogations + the residual re-ask |
+| region composition | 1 bias / 40 english / 19 lean | 1 bias / 40 english / 19 lean | 1 bias / 40 english / 19 lean |
+| attachments | — | **2 english, 0 lean** (2 of 59 shown) | **22 english, 0 lean** (22 of 59 shown) |
+| lean attached | **0 of 19** | **0 of 19** | **0 of 19** |
+| propagation | — | **2 moved**, 0 over declared arrows | **24 moved**, 2 over declared arrows |
+| dialogue turns | n/a | 1 | 5 (budget, then [b0] re-asked) |
+| arrows from prose | n/a | **0 records, 0 resolved, 0 claims** | **52 records, 34 resolved, 34 claims** |
+| faithful | ✓ | ✓ — 3/3 receipted, 0 violations, 9 citable | ✗ — 4/4 receipted, 3 violations, **61 citable** |
+| latency | — | 6.6s | 24.4s |
 
 **Column A is the operator's recorded baseline** (lean 0 of 19 attached; the medium was shown
 `theorem coverage_prime_free` beside the English claim describing it, and connected nothing).
@@ -84,8 +84,128 @@ Whether lean attachment moves off zero is the measurement. It is not the pass co
 
 ---
 
+## WHAT COLUMN C SHOWED
+
+All four conditions hold. One conversation; the medium seated in front of all sixty region
+objects in region numbering; arrows extracted from prose and counted as records and as claims;
+the same checker on the same grammar.
+
+**The number under test did not move: lean 0 of 19.** Everything else did. Attachment went from
+2 to 22, arrows from prose from 0 records to 52, and propagation crossed a declared arrow for
+the first time on this fixture — 2 of 24 movers reached over one. The pipeline is doing more,
+across the same region, and still relating nothing to a Lean object.
+
+**COLUMN C COST FOUR DEFECTS TO MEASURE**, every one of them found by running the fixture rather
+than by reading code, and every one of them the same class: *a rule the medium cannot comply
+with is a rule that only ever convicts.*
+
+1. **The referee read a different sheet.** Turn 1 was shown sixty labelled objects; the checker
+   resolved against three. It ruled three real corpus claims fabricated. Fixed by printing and
+   registering every seated object in one act — `citable` in column C is **61**, which is what
+   the medium can actually see.
+2. **The residual could not fire.** `answers()` read the raw reply, so a turn of pure arrow
+   lines counted as answering because an arrow line contains a citation; and `attached_labels()`
+   looked for a label on records that do not carry one, so its degradation clause ran on every
+   request. The page displayed an EMPTY answer while the mechanism built for that exact case
+   stayed silent.
+3. **The weld rule was checked and never stated.** Four WELDED verdicts against one answer,
+   every convicted sentence true, from a medium whose prompt never said that co-citation asserts
+   a relation. `[∅rel]` was enforceable and unwritable. Stating it — one clause of codomain
+   syntax — took violations from 4 to 0 and sentences checked from 9 to 22 in the same act.
+4. **The residual and the answer disagreed about "answered".** `_close` scanned every turn;
+   `Dialogue.answer` displays only turns asked the operator's question. An interrogation turn
+   answered its own question, the residual saw it and declined to fire, and the served page
+   showed four turns, fifty resolved arrows and no answer.
+
+The general control now standing: for every verdict `check_answer` can return, the prompt must
+contain the TOKEN that makes compliance possible, and a new verdict kind with no entry in that
+table fails the test.
+
+---
+
+## COLUMN D — THE TWO-TIER MEASUREMENT
+
+**THE DEVIATION, STATED.** Both tiers ran LOCALLY, against `ui.server.Handler` on a loopback
+port, on one commit and one corpus snapshot. The re-run rule says served-only and it is the
+right rule; it cannot answer this question. The deploy carries one model pin, so measuring a
+second tier on it means repointing the thing the operator is about to test. Running both here
+also makes the comparison stronger than served-vs-local would have been: the model is the only
+variable rather than one of three. The harness is `tools/fixture_positivity.py`; it drives the
+shipped handler rather than re-implementing the path, takes the tier from `OPENROUTER_MODEL` —
+the build's own pin, no second selection mechanism — and reports cost from what the provider
+reported, never from a rate multiplied by a token count.
+
+**THE SECOND TIER, NAMED AND STAMPED:** `google/gemini-2.5-pro`. Same family as the pinned
+`google/gemini-2.5-flash`, so size is what changes and not the vendor's prompt conventions.
+
+**ONE DRAW PER TIER WAS THE ORDER; IT IS NOT ENOUGH, AND THAT IS ITSELF THE FINDING.** The first
+pro draw returned lean 0. The third returned lean 2. A single draw either way would have settled
+a question the data does not settle, so the run was extended to eight draws at flash and six at
+pro, and the range is reported rather than a representative number.
+
+| | **flash** (n=8) | **pro** (n=6) |
+|---|---|---|
+| build | `afcbf1362169` | `afcbf1362169` |
+| **lean attached** | **0 of 19, all 8 draws** | **0,0,0,0,2,3** — non-zero in **2 of 6** |
+| attachments (of 59 shown) | 0–23 | 0–6 |
+| arrows from prose | 0–89 records, 0–56 resolved | 0–22 records, 0–22 resolved |
+| propagation | 0–23 moved, 0–2 over arrows | 0–8 moved, 0–3 over arrows |
+| dialogue turns | 1–5 | 1–4 |
+| faithful | **clean in 7 of 8**; 2–22 checked, receipted = checked | **clean in 0 of 6**; 1–9 violations |
+| latency | 8–39s | 15–220s |
+| cost per run | $0.0010–$0.0067 | $0.0000–$0.1499 |
+| total spend | $0.0387 | $0.5878 |
+
+### THE FINDING, IN ONE SENTENCE
+
+**The chart boundary is crossable at the larger tier but not reliably — lean attachment moved
+off zero for the first time in this fixture's history, in 2 of 6 draws, at roughly 20x the cost
+and 8x the latency, while the larger tier was worse on every other row measured** — so the
+residual gap is not simply model capability, and the medium-labels and lexicon lanes remain the
+fix rather than a model swap.
+
+### WHAT THAT DOES TO THE PRE-REGISTRATION
+
+Both readings were pre-registered and **both partly fired**, which is the outcome the
+pre-registration did not anticipate and is why it is written down before the numbers rather
+than after. Read strictly:
+
+- *Lean attachment moves at the larger tier ⇒ the gap is capability, and interactive-tier model
+  choice becomes a priced decision.* It moved. The price is now measured: **~20x per answer for
+  a one-in-three chance at 2–3 lean objects out of 19**, bought at the cost of a faithfulness
+  verdict that never came back clean.
+- *Lean attachment stays 0 at both ⇒ the gap is vocabulary/bridging.* It did not stay 0 — but it
+  did not become reliable either, and the tier that crossed the boundary attached FEWER objects
+  overall and failed the checker in every draw. A capability that appears a third of the time
+  and degrades the rest of the answer is not the capability the reading was about.
+
+**No model spend is recommended.** The interactive pin stays `google/gemini-2.5-flash`.
+
+### WHAT ELSE THE DRAWS SAID
+
+- **The metric is bimodal at flash**, not noisy around a mean: attachment is either ~22 or ~0–2,
+  with nothing between. Six of eight draws landed high. Whatever selects between the two modes
+  is unmeasured and is a better lead than model size.
+- **Pro spends its tokens thinking.** Prompt tokens are comparable; completion tokens ran 5–8x
+  flash's, and two draws returned no usable arrows at all after 15s and 75s respectively.
+- **Cost was reported as $0.0000 on two calls** (one per tier). That is what OpenRouter returned,
+  not an inference: unreported and free are different facts and are not collapsed here.
+
+---
+
 ## HOW TO RE-RUN
 
 Against the SERVED url, never local code — a fixture that measures the working tree measures
 something nobody is using. `tools/acceptance.py` speaks to the deploy; the raw traffic for any
 row is on the page in the dialogue panel, digest-verified per block.
+
+`tools/fixture_positivity.py` is the harness for a question this rule cannot answer: comparing
+two model tiers, where the deploy's single pin makes served-only impossible. It drives the
+SHIPPED handler on a loopback port rather than re-implementing the request path, and any column
+it produces must say so, as column D does. It is not a substitute for a served run and no column
+measured with it may be recorded without the deviation stated beside the numbers.
+
+RAW ARTIFACTS STAY OFF THE REPOSITORY. Each run writes the answer verbatim and every convicted
+sentence, which is corpus text — the operator's private material — and this repository is
+public. `runs/fixture-*/` is gitignored for that reason. The numbers live here; the claims stay
+on the machine that measured them.

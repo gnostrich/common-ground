@@ -11,6 +11,36 @@ Repo: [gnostrich/common-ground](https://github.com/gnostrich/common-ground). Lin
 
 ---
 
+- **2026-08-07** — **The referee reads the same sheet as the medium** —
+  [`57586fa`](https://github.com/gnostrich/common-ground/commit/57586fa229f2d3b208fb994c0f7e15f554fb01ea),
+  [`afcbf13`](https://github.com/gnostrich/common-ground/commit/afcbf1362169f7327fc5c72ea64eeeb767e4ab7f).
+  Four defects, every one found by RUNNING the frozen certified-positivity fixture rather than
+  by reading code, and every one the same class: *a rule the medium cannot comply with is a rule
+  that only ever convicts.* (1) Turn 1 was shown sixty labelled objects while the checker
+  resolved against three, so three real corpus claims were ruled fabricated — seated objects are
+  now printed and registered in one act, and the equality between the two sheets is asserted in
+  both directions. (2) The unanswered-question residual could not fire: `answers()` read the raw
+  reply, so a turn of pure arrow lines counted as answering, and `attached_labels()` looked for a
+  label the attachment records do not carry, so its degradation clause ran on every request. (3)
+  The weld rule was checked and never stated — `[∅rel]` was enforceable and unwritable; stating
+  it as one clause of codomain syntax took violations 4 → 0 and sentences checked 9 → 22. (4) The
+  residual and `Dialogue.answer` disagreed about what "answered" means, and the served page
+  showed four turns, fifty resolved arrows and an EMPTY answer. The standing control that
+  outlives all four: for every verdict `check_answer` can return, the prompt must contain the
+  TOKEN that makes compliance possible.
+
+- **2026-08-07** — **Column D: the two-tier measurement** —
+  `seed/FIXTURE-CERTIFIED-POSITIVITY.md`, harness `tools/fixture_positivity.py`. The frozen
+  fixture at `google/gemini-2.5-flash` (pinned) against `google/gemini-2.5-pro`, one commit, one
+  corpus, 14 draws. Lean attachment: **0 of 19 in all 8 flash draws; 0,0,0,0,2,3 across 6 pro
+  draws** — the chart boundary is crossable at the larger tier but only a third of the time, at
+  ~20x cost and ~8x latency, while the larger tier attached fewer objects overall and failed the
+  faithfulness checker in every draw. Both pre-registered readings partly fired, which is the
+  outcome the pre-registration did not anticipate. No model spend recommended; the interactive
+  pin stays flash. Column C, served, recorded in the same pass: attachment 2 → 22, arrows from
+  prose 0 → 52 records / 34 resolved, propagation crossing a declared arrow for the first time on
+  this fixture, and lean still 0 of 19.
+
 - **2026-08-07** — **The amendment gate (B4, mechanized)** —
   [`ccaad48`](https://github.com/gnostrich/common-ground/commit/ccaad48f4c45cb65c1961b0d1f7652d5ef4cf31d), controls at [`7ac264b`](https://github.com/gnostrich/common-ground/commit/7ac264b28eca467df4249b70d417acc02b82a619).
   A commit touching `seed/` must carry a complete FEATURE-DIFF block (WHAT, SUPERSEDES,
