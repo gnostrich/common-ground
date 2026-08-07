@@ -237,15 +237,15 @@ class TheLoopAndTheCollapse(unittest.TestCase):
         return t, seen
 
     def test_a_question_with_nothing_to_interrogate_costs_ONE_call(self):
-        t, seen = self._transport(["The cone is positive [1]."])
+        t, seen = self._transport(["The cone is positive [e1]."])
         d = converse("is the cone positive", self._field(), t)
         self.assertEqual(len(seen), 1, "the two-port split spent two; this must spend one")
         self.assertEqual(len(d.turns), 1)
-        self.assertEqual(d.answer, "The cone is positive [1].")
+        self.assertEqual(d.answer, "The cone is positive [e1].")
         self.assertEqual(d.stopped, "the graph had nothing left to ask")
 
     def test_the_last_turn_IS_the_answer(self):
-        t, _ = self._transport(["first [1].", "second [1].", "third [1]."])
+        t, _ = self._transport(["first [e1].", "second [e1].", "third [e1]."])
         d = converse("q", self._field(), t)
         self.assertEqual(d.answer, d.turns[-1].prose)
 
@@ -299,7 +299,7 @@ class TheLoopAndTheCollapse(unittest.TestCase):
     def test_the_interrogation_is_the_ENGINE_speaking_and_is_recorded_as_the_ask(self):
         field = self._field([{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"},
                              {"n": "x9", "kind": "arrow", "joins": ["e1", "l7"]}])
-        t, _ = self._transport(["a [1].", "b [7].", "c [1]."])
+        t, _ = self._transport(["a [e1].", "b [l7].", "c [e1]."])
         d = converse("q", field, t)
         mid = [x for x in d.turns if x.ask != "q"]
         self.assertTrue(mid, "no interrogation turn ran")
@@ -311,17 +311,17 @@ class TheLoopAndTheCollapse(unittest.TestCase):
         cites = [{"n": f"e{i}", "slot": f"s{i}"} for i in range(1, 20)]
         cites += [{"n": f"x{100 + k}", "kind": "arrow", "joins": [f"e{k}", f"e{k+1}"]}
           for k in range(1, 15)]
-        t, seen = self._transport(["x [1]."])
+        t, seen = self._transport(["x [e1]."])
         d = converse("q", {"compiled": "F", "citations": cites}, t, budget=3)
         self.assertLessEqual(len(d.turns), 3 + 1, "budget + the one answer turn, never more")
         self.assertEqual(d.stopped, "budget")
         self.assertLessEqual(len(seen), 4)
 
     def test_a_budget_of_one_still_answers(self):
-        t, seen = self._transport(["only [1]."])
+        t, seen = self._transport(["only [e1]."])
         d = converse("q", self._field(), t, budget=1)
         self.assertEqual(len(seen), 1)
-        self.assertEqual(d.answer, "only [1].")
+        self.assertEqual(d.answer, "only [e1].")
 
     def test_the_FIELD_SETTLES_between_turns(self):
         """The settle callback receives every resolved proposal so far, and the freshly
@@ -335,7 +335,7 @@ class TheLoopAndTheCollapse(unittest.TestCase):
             return {"compiled": f"SETTLED-{len(props)}", "citations": field["citations"],
                     "relaxation": {"moved": 5}}
 
-        t, seen = self._transport(["[e1] -refines-> [l7] and so on [1].", "b [7].", "c [1]."])
+        t, seen = self._transport(["[e1] -refines-> [l7] and so on [e1].", "b [l7].", "c [e1]."])
         d = converse("q", field, t, settle=settle)
         self.assertTrue(got, "the field never settled between turns")
         self.assertEqual(d.turns[0].moved, 5, "the turn must record what moved")
@@ -599,6 +599,85 @@ class TheArrowLinesAreNotTheANSWER(unittest.TestCase):
         d = Dialogue(question="q")
         d.turns = [Turn(n=1, ask="q", prose="e1 -refines-> e7\nThe answer [e1].")]
         self.assertEqual(d.answer, "The answer [e1].")
+
+
+class TheUnansweredQuestionIsARESIDUAL(unittest.TestCase):
+    """The dialogue may not close while [b0] has no answering turn.
+
+    Same class as a contested claim or an unnamed cluster: structure the field can point at,
+    unresolved. NOT the render fossil returning — the fossil ran ALWAYS, answered or not, one
+    more call every time, from a degraded compile. This fires ONLY on a measured absence and
+    NEVER when an answering turn exists. Conditional-on-debt, not unconditional-stage, and
+    both directions are controlled below.
+    """
+
+    def _field(self, attached=("e7",)):
+        return {"compiled": "SETTLED STATE",
+                "citations": [{"n": "e7", "slot": "s7"}, {"n": "e1", "slot": "s1"},
+                              {"n": "l9", "slot": "s9"}],
+                "attachment": {"attachment": [{"n": a} for a in attached]}}
+
+    def _transport(self, replies):
+        seen = []
+
+        def t(system, user):
+            seen.append(user)
+            return (replies[len(seen) - 1] if len(seen) <= len(replies) else replies[-1]), {}
+
+        return t, seen
+
+    def test_c1_a_dialogue_CANNOT_close_with_zero_answering_turns(self):
+        """Turn 1 related and never answered — the served shape that prompted the ruling."""
+        t, seen = self._transport(["e1 -refines-> l9\ne1 -refines-> e7",
+                                   "The work establishes positivity [e7]."])
+        d = converse("q", self._field(), t)
+        self.assertEqual(len(seen), 2, "the re-ask did not fire on a measured absence")
+        self.assertIn("no answering turn", d.stopped)
+        self.assertEqual(d.answer, "The work establishes positivity [e7].")
+
+    def test_c2_the_re_ask_does_NOT_fire_when_a_turn_already_answered(self):
+        """The fossil's defining property was running unconditionally. This must not."""
+        t, seen = self._transport(["The work establishes positivity [e7]."])
+        d = converse("q", self._field(), t)
+        self.assertEqual(len(seen), 1, "an unconditional extra call is the fossil")
+        self.assertNotIn("no answering turn", d.stopped)
+
+    def test_c3_the_re_asks_input_is_the_SETTLED_state(self):
+        """Never a summary. The settled state is what the earlier turns moved."""
+        t, seen = self._transport(["e1 -refines-> l9", "answered [e7]."])
+        settled = {"compiled": "THE SETTLED MOVED REGION", "citations": self._field()["citations"],
+                   "attachment": self._field()["attachment"], "relaxation": {"moved": 3}}
+        converse("q", self._field(), t, settle=lambda props: settled)
+        self.assertIn("THE SETTLED MOVED REGION", seen[-1])
+
+    def test_an_absence_scoped_to_the_question_COUNTS_as_answering(self):
+        """The field saying it does not hold what was asked IS an answer."""
+        t, seen = self._transport(["The field does not contain that [∅]."])
+        d = converse("q", self._field(), t)
+        self.assertEqual(len(seen), 1)
+        self.assertNotIn("no answering turn", d.stopped)
+
+    def test_the_bar_is_EXISTENCE_not_adequacy(self):
+        """A thin but cited answer still answers. Whether it is any good is the faithfulness
+        gate's job — a quality judgement here would be the medium grading itself."""
+        t, seen = self._transport(["Yes [e7]."])
+        converse("q", self._field(), t)
+        self.assertEqual(len(seen), 1)
+
+    def test_citing_something_b0_did_NOT_attach_to_is_not_answering(self):
+        """Structural, and it has to actually discriminate: a sentence about an unrelated
+        corner of the field is not an answer to the question."""
+        from engine.dialogue import answers
+
+        self.assertFalse(answers(Turn(n=1, ask="q", prose="Something else [l9]."), {"e7"}))
+        self.assertTrue(answers(Turn(n=1, ask="q", prose="The thing [e7]."), {"e7"}))
+
+    def test_a_missing_attachment_record_degrades_to_cited_ANYTHING(self):
+        """A residual that fires because a RECORD was missing would re-ask forever."""
+        from engine.dialogue import attached_labels
+
+        got = attached_labels({"citations": [{"n": "e7", "slot": "s"}], "attachment": {}})
+        self.assertEqual(got, {"e7"})
 
 
 if __name__ == "__main__":

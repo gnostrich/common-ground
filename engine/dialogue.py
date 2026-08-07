@@ -130,6 +130,46 @@ def said(prose: str) -> str:
 _ARROW_ONLY = re.compile(r"^\[?[a-z]?\d+\]?\s*-\w+->\s*\[?[a-z]?\d+\]?[.;]?$")
 
 
+
+#: A CITATION IN A TURN'S PROSE. Same label grammar the checker reads, so "did this turn cite
+#: anything" and "did the referee see a citation" cannot disagree.
+_CITED = re.compile(r"\[([a-z]?\d+)\]")
+
+#: A LEGAL ABSENCE scoped to the question — answering [b0] by saying the field does not hold it.
+_ABSENT_ANY = re.compile(r"\[∅[^\]]*\]")
+
+
+def answers(turn, attached: set) -> bool:
+    """Does this turn ANSWER the boundary condition? Decided structurally, never by reading.
+
+    A turn answers when at least one of its sentences cites something [b0] attached to, or
+    carries a legal absence — the field saying it does not hold what was asked is an answer.
+    THE BAR IS EXISTENCE, NOT ADEQUACY: whether the answer is any good is the faithfulness
+    gate's job and has been all along. A quality judgement here would be the medium grading
+    itself, one level up from the interrogator.
+    """
+    prose = getattr(turn, "prose", "") or ""
+    if _ABSENT_ANY.search(prose):
+        return True
+    return bool(set(_CITED.findall(prose)) & set(attached or ()))
+
+
+def attached_labels(compiled: dict) -> set:
+    """What [b0] reached. The set an answering sentence has to touch."""
+    att = (compiled or {}).get("attachment") or {}
+    out = set()
+    for a in (att.get("attachment") or ()):
+        n = a.get("n") or a.get("label")
+        if n:
+            out.add(str(n))
+    if not out:
+        # No attachment record to read: every citable label counts, so the check degrades to
+        # "cited anything at all" rather than to "answers nothing" — a residual that fires
+        # because a record was missing would re-ask forever.
+        out = set(slot_of(compiled))
+    return out
+
+
 def arrows_from(prose: str, citable: set, turn: int = 0) -> list:
     """Every `[i] -kind-> [j]` in one turn, resolved against what the field actually showed.
 
@@ -359,11 +399,11 @@ def converse(question: str, compiled: dict, transport, settle=None,
                 state = fresh
         if len(d.turns) >= d.budget:
             d.stopped = "budget"
-            return d
+            return _close(d, state, transport, sys_prompt, question)
         q = interrogate(state, asked)
         if not q:
             d.stopped = "the graph had nothing left to ask"
-            return d
+            return _close(d, state, transport, sys_prompt, question)
         pair = implied_unaddressed(state, asked)
         if pair:
             asked.add(pair)
@@ -402,3 +442,28 @@ def turn_one_prompt() -> str:
     from .region import REGION_LEGEND
 
     return REGION_LEGEND + "\n\n" + TURN_ONE_FORM
+
+
+def _close(d, state: dict, transport, sys_prompt: str, question: str):
+    """THE UNANSWERED QUESTION IS A RESIDUAL, and the dialogue may not close on one.
+
+    Same class as a contested claim or an unnamed cluster: a piece of structure the field can
+    point at, unresolved. When no turn's cited prose addresses [b0], the interrogator's next
+    question IS the operator's question, re-asked against the live settled state.
+
+    THIS IS NOT THE RENDER FOSSIL RETURNING, and the difference is exactly the one that made
+    the fossil harmful. The fossil ran ALWAYS — answered or not, one more call every time, from
+    a degraded compile. This fires ONLY on a measured absence and NEVER when an answering turn
+    already exists. Conditional-on-debt, not unconditional-stage, and both directions are
+    controlled.
+    """
+    attached = attached_labels(state)
+    if any(answers(t, attached) for t in d.turns):
+        return d
+    n = len(d.turns) + 1
+    raw, _usage = transport(sys_prompt, _put(state, question))
+    prose = (raw or "").strip()
+    d.turns.append(Turn(n=n, ask=question, prose=prose,
+                        proposals=arrows_from(prose, set(slot_of(state)), turn=n)))
+    d.stopped = (d.stopped or "") + "; [b0] had no answering turn, so it was re-asked"
+    return d
