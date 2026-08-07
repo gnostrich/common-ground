@@ -28,12 +28,19 @@ class TheSurfaceDepictsOnlyLiveMechanisms(unittest.TestCase):
         self.assertNotIn("retrieved", self.body.lower().split("<script>")[0])
 
     def test_planted_there_is_ONE_entry_box_not_two(self):
-        """Propose and ask are one act with a persistence flag. Two boxes depict two
-        mechanisms, and one of them no longer exists."""
+        """One act, one box.
+
+        RESTATED at the null surface, and the restatement is itself an OI-26 instance: this
+        used to also require `id="retain"` to be VISIBLE, on the reasoning that a persistence
+        flag deciding what survives must not be hidden. Correct while the flag existed. The
+        flag is now gone — persistence collapsed into aging and K — so the old assertion
+        demanded the presence of the machinery its own ruling deleted. A caution outliving its
+        defect becomes its own defect; the surviving property is the one-box one.
+        """
         self.assertNotIn("propose &rarr; inlet", self.body)
-        self.assertEqual(self.body.count("<textarea"), 1,
-                         "one act, one box")
-        self.assertIn('id="retain"', self.body, "the flag must be visible as a flag")
+        self.assertEqual(self.body.count("<textarea"), 1, "one act, one box")
+        self.assertNotIn('id="retain"', self.body,
+                         "the persistence flag was deleted, not hidden")
 
     def test_the_candidate_list_prose_is_gone(self):
         """It described a budget-capped pairwise interrogation that was deleted."""

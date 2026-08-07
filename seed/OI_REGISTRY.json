@@ -481,37 +481,35 @@
   "OI-41": {
    "statement": "**NO WARRANT LIFT EXCEPT K-MEASUREMENT OR OPERATOR-AUTHORSHIP.** The tier poset has exactly two lift mechanisms: K promotes by measurement, authorship enters by assertion. An \"accept\" or \"approve\" control would be a THIRD arrow up the poset \u2014 warrant increasing by approval without authorship \u2014 and it does not exist in the diagram. **Its absence is constitutional, not an omission.** Any UI or API s",
    "enforcement_sites": [
-    "engine/claim.py",
     "engine/mz.py:consider_site"
    ],
    "controls": [
-    "tests/test_claim.py:ThereIsNoThirdLift",
-    "tests/test_claim.py:TheLaunderingLock"
+    "tests/test_null_surface.py:TheAUTHORSHIPDoorIsRemovedAndTheAlarmREMAINS"
    ],
    "process_only": false,
    "unresolved": []
   },
   "OI-42": {
-   "statement": "**THE INTERACTION SURFACE IS TWO BINARY COORDINATES PLUS ONE ARROW, and it is CLOSED.** Objecthood (AUTHORSHIP or nothing \u2014 assert/brainstorm) and persistence (discard or keep \u2014 retain) are independent and binary, so the 2\u00d72 is the product of two two-element sets: forced and complete, no fifth state constructible. The one constructible arrow is the authorship pullback (claim), which is a VERB and ",
+   "statement": "**THE INTERFACE IS CONVERSATION; SORTING IS THE MEASURE.** No surface control may pre-declare what the physics can discover. Every operator utterance enters the tape directly as an authored record \u2014 journaled, provenance-stamped, born aging, energy-visible \u2014 and what becomes of it is decided downstream by aging and by K, from measurement. *SUPERSEDES* the two-coordinate surface: objecthood and per",
    "enforcement_sites": [
-    "engine/mode.py",
-    "engine/claim.py"
+    "ui/index.html",
+    "engine/perturb.py"
    ],
    "controls": [
-    "tests/test_claim.py:TheTwoByTwoIsForcedAndComplete",
-    "tests/test_mode.py:AllFourCellsAreMeaningful"
+    "tests/test_null_surface.py:NoModeMachineryIsOnTheSURFACE",
+    "tests/test_null_surface.py:TheMachineryIsDELETEDNotDormant",
+    "tests/test_null_surface.py:TheRESPONSECarriesNoActAndNoMode"
    ],
    "process_only": false,
    "unresolved": []
   },
   "OI-43": {
-   "statement": "**WHEN THE MACHINE READS RATHER THAN IS TOLD, THE CONSERVATIVE DIRECTION INVERTS.** An unknown TOLD mode defaults to ASSERT, because defaulting the other way would strip warrant from something the operator meant to stand behind. An unread or ambiguous ACT defaults to EXPLORE/KEEP-NOTHING, because a misread that invents a claim confers authorship nobody asserted. **When unsure whether you claimed, ",
+   "statement": "**SUPERSEDED BY THE NULL SURFACE (2026-08-07). Kept as the record of a correct argument about a mechanism that no longer exists.** It ruled that a TOLD mode defaults to ASSERT while an unread ACT defaults to EXPLORE/KEEP-NOTHING \u2014 the two defaults pointing opposite ways, each safe for its own failure mode. Both are moot: nothing is told and nothing is read, because every utterance is an authored r",
    "enforcement_sites": [
-    "engine/posture.py"
+    "archive/design/2026-08-07-mode-claim-posture-modules.md"
    ],
    "controls": [
-    "tests/test_posture.py:TheConservativeDirectionINVERTS",
-    "tests/test_posture.py:ACorrectionRestampsWithAnERATRAIL"
+    "tests/test_null_surface.py:TheAUTHORSHIPDoorIsRemovedAndTheAlarmREMAINS"
    ],
    "process_only": false,
    "unresolved": []

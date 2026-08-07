@@ -222,25 +222,24 @@ pipeline) each = RED]`
 proposed. *VIOLATED:* exact-landing-required made novel input an isolated object — THE
 amendment. `[E: perturb path; C: battery no-silent-zero]`
 
-**OI-42** **THE INTERACTION SURFACE IS TWO BINARY COORDINATES PLUS ONE ARROW, and it is
-CLOSED.** Objecthood (AUTHORSHIP or nothing — assert/brainstorm) and persistence (discard or
-keep — retain) are independent and binary, so the 2×2 is the product of two two-element sets:
-forced and complete, no fifth state constructible. The one constructible arrow is the
-authorship pullback (claim), which is a VERB and not a state, always retains, and invokes the
-EXISTING perturb-retain write-point rather than adding one. *VIOLATED BY OMISSION:* the mode
-shipped in code, tests and UI with zero mentions in either normative document — built
-machinery, unwritten law, which is B5's definition of unconstitutional.
-`[E: engine/mode.py, engine/claim.py, SPEC.md Part I §10; C: tests/test_claim.py:TheTwoByTwoIsForcedAndComplete, tests/test_mode.py:AllFourCellsAreMeaningful]`
+**OI-42** **THE INTERFACE IS CONVERSATION; SORTING IS THE MEASURE.** No surface control may
+pre-declare what the physics can discover. Every operator utterance enters the tape directly as
+an authored record — journaled, provenance-stamped, born aging, energy-visible — and what
+becomes of it is decided downstream by aging and by K, from measurement. *SUPERSEDES* the
+two-coordinate surface: objecthood and persistence were correctly derived and neither needed a
+surface, because both collapse into the physics. Frequency is a provenance-stamped event
+stream, never copies, so compute scales with the DIVERSITY of propositions and measured arrows.
+B5 applies to any future proposal to ADD a control here: the burden is on the addition.
+`[E: ui/index.html, engine/perturb.py; C: tests/test_null_surface.py:NoModeMachineryIsOnTheSURFACE, tests/test_null_surface.py:TheMachineryIsDELETEDNotDormant, tests/test_null_surface.py:TheRESPONSECarriesNoActAndNoMode]`
 
-**OI-43** **WHEN THE MACHINE READS RATHER THAN IS TOLD, THE CONSERVATIVE DIRECTION INVERTS.**
-An unknown TOLD mode defaults to ASSERT, because defaulting the other way would strip warrant
-from something the operator meant to stand behind. An unread or ambiguous ACT defaults to
-EXPLORE/KEEP-NOTHING, because a misread that invents a claim confers authorship nobody
-asserted. **When unsure whether you claimed, assume you didn't.** The two defaults point
-opposite ways on purpose, and each is the safe direction for its own failure mode. Every
-reading is DISPLAYED and correctable; a correction re-stamps with an era trail rather than
-overwriting, so a misread can be seen after the fact.
-`[E: engine/posture.py; C: tests/test_posture.py:TheConservativeDirectionINVERTS, tests/test_posture.py:ACorrectionRestampsWithAnERATRAIL]`
+**OI-43** **SUPERSEDED BY THE NULL SURFACE (2026-08-07). Kept as the record of a correct
+argument about a mechanism that no longer exists.** It ruled that a TOLD mode defaults to
+ASSERT while an unread ACT defaults to EXPLORE/KEEP-NOTHING — the two defaults pointing
+opposite ways, each safe for its own failure mode. Both are moot: nothing is told and nothing
+is read, because every utterance is an authored record and K decides the rest. The surviving
+half is general and still binds: **when unsure whether the operator claimed, assume they
+didn't.** Full text in `archive/design/2026-08-07-mode-claim-posture-modules.md`.
+`[C: tests/test_null_surface.py:TheAUTHORSHIPDoorIsRemovedAndTheAlarmREMAINS]`
 
 **OI-21** The ETS feel is the acceptance bar: no silence without a consulted-and-declined
 trace; response graded with bias sharpness; stateful; no phrasing cliffs.
@@ -368,7 +367,8 @@ three fates of anything on the tape are each an existing arrow and nothing new: 
 aging endomorphism contracts it toward zero), EARNING (K measures its residual and reweights
 iff it qualifies), CLAIMED (the authorship pullback — a new object, same surface, operator
 warrant, `claimed_from` provenance).
-`[E: engine/claim.py, engine/mz.py; C: tests/test_claim.py:ThereIsNoThirdLift]`
+The CLAIMED arrow is itself REMOVED by the null surface — agreement is restating in your own words, which is a new record of your own, not a transfer. The alarm on the removed door remains: any path conferring operator authorship on medium-authored bytes = RED.
+`[E: engine/mz.py:consider_site; C: tests/test_null_surface.py:TheAUTHORSHIPDoorIsRemovedAndTheAlarmREMAINS]`
 
 **OI-40** Honest-thin beats fluent-fake, always: smaller true numbers over impressive
 fabrications; *"the corpus grows only by what survives the physics."* The whole project in one

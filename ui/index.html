@@ -51,23 +51,15 @@ details.scope[open]>summary{margin-bottom:.6rem}
   <div id="buildhdr" class="muted"></div>
   <p class="muted">One act, one box. What you type is a <b>boundary condition</b>: it enters
   a REGION of the corpus as one more object, the medium completes the diagram, and what moved
-  comes back. <b>RETAIN</b> decides only what survives that — nothing else differs.</p>
+  comes back. Everything you type enters the tape as your own record; aging and K decide
+  what survives, and no control here pre-declares what the physics can discover.</p>
 
-  <textarea id="text" placeholder="Type a claim, a question, or a bare topic — it becomes the boundary condition…"></textarea>
+  <textarea id="text" placeholder="Say anything. It enters the tape as your own record and perturbs the field…"></textarea>
   <div class="row">
     <label>chart <select id="chart">
       <option>english</option><option>lean</option><option>python</option><option>go</option><option>tabular</option><option>conversation</option>
     </select></label>
-    <label title="release: the input and its attachments evaporate. retain: the input enters the fast tape as a claim at EXTRACTION tier and its correspondence-kind attachments are kept as proposals, born subject to event-quantized aging.">
-      <input id="retain" type="checkbox"> retain
-    </label>
-    <label title="assert: what you type carries your AUTHORSHIP — you are standing behind it. brainstorm: what you type is bias only and never becomes a claim, in this session or any other; what the medium proposes enters at EXTRACTION like every other proposal, and agreeing with it here confers nothing — re-assert it through the normal act if you want it to count.">
-      <input id="brainstorm" type="checkbox"> brainstorm
-    </label>
-    <label title="by default the act is READ from what you type — 'keep that one' is a retain intent, 'that's mine' is a claim, 'what if' is exploration — and the reading is shown at the top of every response so a misread is visible and correctable by your next message. Tick this to override the reading with the toggles instead.">
-      <input id="override" type="checkbox"> override reading
-    </label>
-    <button class="go" onclick="act()">perturb</button>
+    <button class="go" onclick="act()">send</button>
     <button onclick="reset_()">reset current</button>
     <button id="exportbtn" onclick="exportSheet()" disabled
       title="the compiled sheet as a paste-ready preamble: the question, every moved claim verbatim with its index and arrows, the attachments, and the absences the field reports. Perturb once, carry it to any model.">export context</button>
@@ -84,12 +76,12 @@ details.scope[open]>summary{margin-bottom:.6rem}
     <div>
       <h2>The current settling</h2>
       <div id="settle" class="muted">nothing has entered the current. A <b>release</b>
-      perturbation changes nothing here by design — tick <b>retain</b> to deposit a claim.</div>
+      utterance enters it directly; aging contracts what nothing confirms.</div>
     </div>
     <div>
       <h2>The floor — what won't reconcile</h2>
       <div id="floor" class="muted">measured over the current, which is empty until something
-      is retained. The corpus-wide floor is in the header above.</div>
+      is said. The corpus-wide floor is in the header above.</div>
       <h2>The gate — what K deposited</h2>
       <div id="gate" class="muted">K has considered nothing yet: it reads the current, and
       the current is empty.</div>
@@ -170,8 +162,8 @@ function render(st){
   // A RESET restores the STATED empty text, not an empty box. Blank panels read as a broken
   // page; the whole point of these three is that empty is a fact about the current.
   if(!st){ $('proposals').innerHTML='nothing proposed yet.';
-    $('settle').innerHTML='<span class="muted">nothing has entered the current. A <b>release</b> perturbation changes nothing here by design \u2014 tick <b>retain</b> to deposit a claim.</span>';
-    $('floor').innerHTML='<span class="muted">measured over the current, which is empty until something is retained.</span>';
+    $('settle').innerHTML='<span class="muted">nothing has entered the current yet. Every utterance enters it directly; aging contracts what nothing confirms.</span>';
+    $('floor').innerHTML='<span class="muted">measured over the current, which is empty until something is said.</span>';
     $('gate').innerHTML='<span class="muted">K has considered nothing yet: it reads the current, and the current is empty.</span>';
     $('lmstate').textContent=''; return; }
   $('lmstate').innerHTML = st.lm_available
@@ -303,17 +295,12 @@ function renderCorpus(h){
 }
 
 async function act(){
-  // ONE ACT, one flag. RETAIN routes through /propose (perturb-and-retain); RELEASE through
-  // /ask (perturb-and-release). Same region call either way — the flag decides only what
-  // survives it, which is what "one box" means rather than two forms sharing a button.
-  const retain = $('retain').checked;
-  // READ FROM SPEECH BY DEFAULT. The toggles are overrides, and saying so on the
-  // wire means the server never has to guess whether the checkbox was deliberate.
-  const override = $('override').checked;
-  const mode = override ? ($('brainstorm').checked ? 'brainstorm' : 'assert') : null;
+  // THE NULL SURFACE. One box, one route, no toggles. There is nothing to select because
+  // every utterance is the same kind of thing — an authored record on the tape — and what
+  // becomes of it is decided by aging and by K, downstream, from measurement rather than
+  // from a checkbox ticked before anything was measured.
   const text = $('text').value, chart = $('chart').value;
-  $('answer').innerHTML = '<span class="muted">'
-    + (retain ? 'perturbing and retaining…' : 'perturbing the field…') + '</span>';
+  $('answer').innerHTML = '<span class="muted">perturbing the field…</span>';
   let r;
   // A TICKING ELAPSED COUNTER, not a claimed phase. The server records which stage it was
   // in and returns them with the result; the page cannot know the current stage without a
@@ -322,29 +309,18 @@ async function act(){
   const t0 = Date.now();
   const tick = setInterval(() => {
     const s = ((Date.now() - t0) / 1000).toFixed(0);
-    const what = retain ? 'perturbing and retaining' : 'perturbing the field';
-    $('answer').innerHTML = `<span class="muted">${what}… <b>${s}s</b> `
+    $('answer').innerHTML = `<span class="muted">perturbing the field… <b>${s}s</b> `
       + `<span class="muted">(the attachment call is 76-94% of it)</span></span>`;
   }, 1000);
   try {
-    r = retain ? await post('/propose', {text, chart, mode, override})
-               : await post('/ask', {question:text, chart, mode, override});
+    r = await post('/ask', {question: text, chart});
   } catch(e) {
     clearInterval(tick);
     $('answer').innerHTML = `<span class="err">the request failed: ${esc(String(e))}</span>`;
     return;
   }
   clearInterval(tick);
-  // BEFORE the retain branch, because retain returns early and its two calls are calls.
   await renderWire(r);
-  if(retain){
-    render(r);
-    const R2 = r.retention || {};
-    $('answer').innerHTML = `<div class="prop"><b>RETAINED</b> — claim on the fast tape at `
-      + `EXTRACTION, ${R2.retained_arrows||0} attachment arrow(s) kept as proposals.`
-      + `<div class="muted">${esc(R2.note||'')}</div></div>`;
-    return;
-  }
   if(r.error){ $('answer').innerHTML = `<span class="err">${esc(r.error)}</span>`; return; }
   if(r.corpus_header) renderCorpus(r.corpus_header);
   renderAnswer(r);
@@ -361,20 +337,6 @@ async function act(){
 // nothing is recomputed, so the sheet always describes the answer on screen.
 let LAST_SHEET = '';
 let LAST_RECORD = null;
-async function claimSentence(i){
-  if(!LAST_RECORD) return;
-  const sentences = (LAST_RECORD.answer || '').split(/(?<=[.!?])(?:\s*(?:\[[^\]]*\]\s*)*)\s+/)
-                                              .filter(x => x.trim().length > 20);
-  const surface = (sentences[i] || '').trim();
-  if(!surface) return;
-  const r = await post('/claim', {surface, chart: $('chart').value,
-                                  claimed_from: (LAST_RECORD.compiled||{}).order_salt || 'answer',
-                                  source_mode: ((LAST_RECORD.mode||{}).mode) || 'assert'});
-  if(r.error){ $('err').textContent = r.error; return; }
-  render(r);
-  $('err').textContent = '';
-}
-
 async function exportSheet(){
   if(!LAST_SHEET) return;
   const b = $('exportbtn'), was = b.textContent;
@@ -474,24 +436,10 @@ function renderAnswer(r){
   // "accept" beside it — warrant rises by K-measurement or by authorship, and a third
   // arrow up the tier poset is not in the diagram (OI-41).
   LAST_RECORD = r;
-  // THE READING, AT THE TOP. A misread must be visible to be correctable — the next utterance
-  // can say "no, I was claiming that" and the prior record is re-stamped with an era trail.
-  const rd = r.reading;
-  const readline = rd
-    ? `<div class="rests"><b>${esc(rd.display)}</b>`
-      + (rd.reason ? ` <span class="muted">— ${esc(rd.reason)}</span>` : '')
-      + `</div>`
-    : '';
-  const sentences = (r.answer || '').split(/(?<=[.!?])(?:\s*(?:\[[^\]]*\]\s*)*)\s+/)
-                                    .filter(x => x.trim().length > 20);
-  const body = sentences.length
-    ? sentences.map((sn, i) =>
-        `<span class="sent">${esc(sn)}</span>`
-        + `<button class="claimbtn" title="claim this sentence as your own: it enters at `
-        + `AUTHORSHIP with this record named as its source. Not an approval — a new object."`
-        + ` onclick="claimSentence(${i})">claim</button> `).join('')
-    : esc(r.answer);
-  $('answer').innerHTML = readline + rests + `<div class="answer">${body}</div>` + gate;
+  // THE ANSWER, WHOLE. No per-sentence affordance and no reading line above it: there is no
+  // act to report and no gesture to offer. Agreeing is saying so in the next message, which
+  // makes a record of the operator's own — the walk measures whether it is the same claim.
+  $('answer').innerHTML = rests + `<div class="answer">${esc(r.answer || '')}</div>` + gate;
 }
 
 // THE SCOPE. Inspection surface, one click below: what moved, how far, and by which declared

@@ -91,7 +91,6 @@ REFEREES = {
     # It reads the act off a DECLARED TOKEN in a closed vocabulary, resolve-or-void, and
     # never off prose — a reading inferred from the shape of a sentence would be a fluency
     # judgement steering warrant, which is the one thing that must never happen.
-    "posture.py": "reads the utterance's declared act token; infers nothing from prose",
     "control_sweep.py": "decides which controls check text where they claim behaviour",
     "inbound.py": "GROUPS the compiled sheet — groups must be fibers, never clusters. A "
                   "grouping that produced the same groups by similarity would be a different "

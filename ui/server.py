@@ -25,8 +25,6 @@ from engine.export_sheet import sheet
 from engine.corpus_state import SNAPSHOT_PATH
 from engine.grounded import check_answer
 from engine.transcript import CURRENT as TRANSCRIPT, start as start_transcript
-from engine.claim import claim as make_claim
-from engine.mode import cell as mode_cell, normalize as normalize_mode, stamp as mode_stamp
 from engine.inbound import INBOUND_SYSTEM
 
 from .current import Current, ask_the_corpus, corpus_header
@@ -202,27 +200,6 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, json.dumps({"error": "not found"}))
 
-    @staticmethod
-    def _reading_of(compiled, body):
-        """The act as read, or the override, as a record. Never absent.
-
-        A response with no reading is a response whose treatment of the utterance nobody can
-        see, which is the state this whole coordinate exists to leave behind.
-        """
-        from engine.posture import Reading, parse as parse_act
-
-        att = (compiled or {}).get("attachment") or {}
-        read = att.get("reading")
-        if body.get("override"):
-            told = normalize_mode(body.get("mode"))
-            r = Reading(act=("assert" if told == "assert" else "explore"),
-                        persistence="keep-nothing",
-                        reason="the operator overrode the reading with the toggles")
-            return r.as_record()
-        if isinstance(read, dict):
-            return read
-        return parse_act("").as_record()
-
     def _seed(self):
         """THE DATA CHANNEL. The corpus arrives here or not at all.
 
@@ -332,12 +309,10 @@ class Handler(BaseHTTPRequestHandler):
         start_transcript()
         try:
             if path == "/propose":
-                # THE LOCK, at the only place that could break it. In brainstorm the typed
-                # text is bias and never becomes a claim, so retain keeps the MEDIUM's cited
-                # proposals at EXTRACTION and not the prompt. Routing the prompt in anyway
-                # would make the mode a laundering channel — think out loud, agree with what
-                # comes back, and watch it become authored.
-                _mode = normalize_mode(b.get("mode"))
+                # NO MODE. The lock that lived here guarded a brainstorm/assert selector
+                # that no longer exists: every utterance enters the tape as an authored
+                # record, and K is the only door to slow weight. There is nothing left to
+                # launder through, because there is no second channel to launder from.
                 state = CURRENT.propose_text(
                     text=str(b.get("text", "")),
                     chart=str(b.get("chart", "english")),
@@ -367,24 +342,6 @@ class Handler(BaseHTTPRequestHandler):
                     ctl.max_cost = None if b["max_cost"] in (None, "") else float(b["max_cost"])
                 ctl.write(CONTROL_PATH)
                 self._send(200, json.dumps(_proposer_ledger()))
-            elif path == "/claim":
-                # THE AUTHORSHIP PULLBACK. The one arrow the operator can fire at something
-                # the medium said. Not an approval — a NEW object with the operator's warrant,
-                # the same surface verbatim, and the source on the record. There is no
-                # /accept beside it and there cannot be: warrant rises by K-measurement or by
-                # authorship, and a third arrow is not in the diagram (OI-41).
-                try:
-                    c = make_claim(surface=str(b.get("surface", "")),
-                                   chart=str(b.get("chart", "english")),
-                                   claimed_from=str(b.get("claimed_from", "")),
-                                   source_mode=str(b.get("source_mode", "")))
-                except ValueError as exc:
-                    return self._send(400, json.dumps({"error": str(exc)}))
-                state = CURRENT.propose_text(text=c.surface, chart=c.chart,
-                                             key=key or None, instance_id=None)
-                state["claim"] = c.as_record()
-                state["transcript"] = TRANSCRIPT.as_record()
-                self._send(200, json.dumps(state))
             elif path == "/ask":
                 question = str(b.get("question", ""))
                 # PHASES ARE RECORDED, NOT STREAMED — and that is a retreat, recorded as one.
@@ -401,7 +358,6 @@ class Handler(BaseHTTPRequestHandler):
                     phases.append({"stage": name, "at": round(time.time() - _t_req, 3)})
 
                 _t_req = time.time()
-                mode = normalize_mode(b.get("mode"))
                 compiled = ask_the_corpus(question, str(b.get("chart", "english")), key=key,
                                           on_stage=_phase)
                 # No branch on whether anything "landed". The compiled input already IS
@@ -436,13 +392,6 @@ class Handler(BaseHTTPRequestHandler):
                 verdict = check_answer(reply, compiled).as_record()
                 self._send(200, json.dumps({
                     "answer": reply, "grounded_on": grounded_on, "faithful": verdict,
-                    # THE MODE IS ON THE RECORD, always. A record that cannot say which act
-                    # produced it cannot be re-read later as what it was.
-                    "mode": mode_stamp(mode), "act": mode_cell(mode, False),
-                    # THE READING, at the top of the response. Read from the utterance unless
-                    # the operator ticked the override; either way it is DISPLAYED, so a
-                    # misread is correctable by the next message rather than silent.
-                    "reading": self._reading_of(compiled, b),
                     # EVERY CALL, BOTH CHANNELS, RAW — including the attachment call, which
                     # decides what the answer can be about. With digests, so the displayed
                     # bytes can be verified to be the sent bytes.

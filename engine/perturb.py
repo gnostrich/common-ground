@@ -51,7 +51,6 @@ import time as _time
 
 from .transcript import CURRENT as TRANSCRIPT
 
-from .posture import parse as parse_act
 from .region import (BEARS_ON, BIAS_CHART, REGION_SIZE, REGION_SYSTEM, Region, anchor_for,
                      arrows_from, build_region, parse_region, render_region, residuals)
 from .relax import Relaxation, relax
@@ -109,7 +108,6 @@ class Perturbation:
     error: str = ""
     #: HOW THE UTTERANCE'S ACT WAS READ — a gated proposal, displayed at the top of every
     #: response so a misread is visible and correctable rather than silent.
-    reading: object = None
     #: The region could not be aimed — no live arrow anywhere to aim it at. Stated, because
     #: unstated it looks exactly like a region that was aimed.
     unanchored: bool = False
@@ -186,7 +184,6 @@ class Perturbation:
             "unanchored": self.unanchored,
             "note": self.note,
             "error": self.error,
-            "reading": (self.reading.as_record() if self.reading is not None else None),
         }
 
     @property
@@ -215,13 +212,6 @@ class Perturbation:
             "extracted": len(self.extracted),
             "void": self.void, "calls": self.calls, "cost": round(self.cost, 6),
             "error": self.error,
-            # THE READING BELONGS ON THE RECORD, not only on the trace. It lived on `trace()`
-            # alone while the window read it off `as_record()`, so `_reading_of` fell through
-            # to "the medium emitted no ACT line" on EVERY request ever served — including the
-            # ones where the reply opened with `ACT: explore`. The parser was green the whole
-            # time. A parser that works and a record the consumer does not read is not a
-            # working mechanism; it is two halves that never met.
-            "reading": (self.reading.as_record() if self.reading is not None else None),
             "note": ("The typed input entered a REGION as one more object, over the pseudo-"
                      "chart `bias`, and one call completed the diagram. Arrows to the bias "
                      "object are attachment and are EPHEMERAL: conditioning-only, never "
@@ -300,9 +290,9 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
         _sys, _user = REGION_SYSTEM, render_region(region)
         _t = _time.time()
         raw, usage = transport(_sys, _user)
-        # THE ACT, READ. Parsed from the same reply the arrows come from — one call, one
-        # grammar. A missing or ambiguous ACT line reads conservatively and says so.
-        out.reading = parse_act(raw or "", era=str((usage or {}).get("model") or ""))
+        # NO ACT IS READ. The null surface removed the question: every utterance enters the
+        # tape as an authored record, so there is no mode to select and nothing for a speech-act
+        # reader to decide. The reply carries arrows and nothing else.
         TRANSCRIPT.record("propose", _sys, _user, raw or "",
                           model=str((usage or {}).get("model") or ""),
                           seconds=_time.time() - _t)

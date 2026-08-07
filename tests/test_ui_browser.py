@@ -432,20 +432,22 @@ class NoRenderFunctionIsDEAD(unittest.TestCase):
         """EVERY path, not just /ask — which is the point.
 
         `renderBuild` was dead because nothing drove the path that reaches it. Asserting only
-        against the release path would leave `render` (retain) and `renderLedger` (the
-        proposer refresh) permanently unexercised and would have to declare them expected
-        exceptions — an allowlist that grows until the control means nothing. So the test
-        drives all three live paths and then asserts the set is empty.
+        against the answer path would leave `render` and `renderLedger` permanently
+        unexercised and would have to declare them expected exceptions — an allowlist that
+        grows until the control means nothing. So the test drives every live path and then
+        asserts the set is empty.
+
+        UPDATED AT THE NULL SURFACE: the retain path is gone, so `render` is now reached by
+        the reset button instead of by a checkbox. The control did not weaken — the same
+        function is still required to run — only the route to it changed, which is exactly
+        what this control exists to keep true as routes move.
         """
         names = self._defined()
         with _Server() as url, _Page(url) as p:
             p.page.evaluate(self._INSTRUMENT, names)
-            p.perturb()                                    # RELEASE: /ask
-            p.page.check("#retain")
-            p.page.click("button.go")                      # RETAIN: /propose
-            p.page.wait_for_function(
-                "document.querySelector('#answer').innerHTML.includes('RETAINED')"
-                " || document.querySelector('#answer .err')", timeout=15000)
+            p.perturb()                                    # THE ACT: /ask
+            p.page.click("button:has-text('reset current')")   # CURRENT: /reset -> render()
+            p.page.wait_for_timeout(400)
             p.page.click("button:has-text('refresh')")     # LEDGER: /proposer
             p.page.wait_for_timeout(400)
             hits = p.page.evaluate("() => window.__hit")
