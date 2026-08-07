@@ -90,6 +90,29 @@ BLOCKS: tuple[tuple[str, str], ...] = (
      "ARROW line's own number cited alongside them — otherwise give each object its own "
      "sentence, or write [∅rel] for a relation the field does not declare. An object the "
      "state marks (!) is cited as [7][!]."),
+    # THE ROSTER SHAPE, NAMED — as a MEASUREMENT, never as a loosening of the referee.
+    #
+    # A live answer ended with nine near-identical sentences of the form "X [l56] is an
+    # instance of A [l39], B [l14], ... R [l59]" — nineteen labels under one verb, then a pure
+    # comma list. The weld rule reads that as asserting every pair in it, so nine sentences
+    # demanded 1,345 of the 1,376 pairwise joins the whole answer was convicted for: 97.8% of
+    # the severity from one serialization habit.
+    #
+    # THE REFEREE WAS NOT WIDENED, and the reason is on the record. A shape test keyed on
+    # list-conjunction grammar is airtight on the sentences observed and breaks on "A [1] and
+    # B [2] are related." — where the relational predicate follows the list. Telling that apart
+    # from "the file contains A and B" requires knowing whether the verb is distributive or
+    # symmetric, which is a hand-tuned verb list wearing a shape test's clothes, and that is
+    # the deleted move this project refuses on sight.
+    #
+    # SO THE MEDIUM IS TOLD INSTEAD. The rule was already compliable — both escapes stated,
+    # neither used — and this names the specific shape that fails it. If the habit survives
+    # explicit instruction, that is a measured limitation of the medium and the count stays red
+    # and true.
+    ("FORM",
+     "A run of three or more like [2][7][9] is a ROSTER, and it asserts every pair in it. "
+     "Split a roster into one sentence per object, each ending in its own [n], unless an "
+     "ARROW line's number is cited alongside them."),
 )
 
 
