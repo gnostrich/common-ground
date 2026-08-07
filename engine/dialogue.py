@@ -242,6 +242,55 @@ def _arrow_pairs(compiled: dict) -> tuple:
     return joins, joined
 
 
+#: THE OUTCOMES A RESIDUAL CAN HAVE. Closed, because an outcome resolved against a closed
+#: vocabulary is a finding and an outcome inferred from prose is a reading.
+RESOLVED, UNDECIDED, UNANSWERED = "resolved", "state-undecided", "unanswered"
+
+
+def next_residual(compiled: dict, asked: set) -> tuple:
+    """The next OPEN residual: its identity, and the question that puts it.
+
+    THE IDENTITY IS THE UNIT, not the question string. An implied pair is `(a, b)`; a contested
+    object is `(n,)`. One-tuples and two-tuples cannot collide, and `asked_numbers` unions both
+    shapes, so the two residual kinds share one discharged-set without a discriminator field.
+    """
+    pair = implied_unaddressed(compiled, asked)
+    if pair:
+        return pair, (f"Composition implies a relation between [{pair[0]}] and [{pair[1]}] that "
+                      f"nothing has measured. State it as an arrow, or say the field does not "
+                      f"have it with [{pair[0]}] -bears_on-> [{pair[1]}] omitted entirely.")
+    contested = sorted({str(c["n"]) for c in (compiled.get("citations") or [])
+                        if c.get("contested")} - asked_numbers(asked))
+    if contested:
+        n = contested[0]
+        return (n,), (f"The field holds more than one value for [{n}]. Say which the state "
+                      f"supports, citing it, or say the state does not decide it with [∅].")
+    return (), ""
+
+
+def discharge(residual: tuple, turn) -> str:
+    """What putting this residual PRODUCED. Structural; never a judgement of quality.
+
+    THE RULE: a residual is discharged when its question receives a LEGAL ANSWER — resolution,
+    or the `[∅]` terminal saying the state does not decide it. `state-undecided` is a FINDING,
+    not an open item: "contested, and the state does not decide it" is exactly as much of an
+    answer as a value would be, and the one thing it is not is a reason to ask again.
+
+    `unanswered` is also recorded, and is also not a reason to ask again. Asking a second time
+    cannot make the reply different — that is the records-versus-pairs law at the interrogation
+    level, the same law that says a medium restating one arrow in five turns contributed one
+    claim. The budget exists for OPEN questions, and a question already put is not one.
+    """
+    words = said(getattr(turn, "prose", "") or "")
+    if len(residual) == 2:
+        want = tuple(sorted(residual))
+        if any(tuple(sorted((p.src, p.dst))) == want for p in turn.proposals if p.ok):
+            return RESOLVED
+    elif len(residual) == 1 and residual[0] in set(_CITED.findall(words)):
+        return RESOLVED
+    return UNDECIDED if _ABSENT_ANY.search(words) else UNANSWERED
+
+
 def interrogate(compiled: dict, asked: set) -> str:
     """The next turn's question, generated MECHANICALLY FROM STRUCTURE.
 
@@ -250,18 +299,7 @@ def interrogate(compiled: dict, asked: set) -> str:
     it is the one thing this function must be incapable of. It reads the graph and never the
     prose, which is why `prose` is not a parameter.
     """
-    pair = implied_unaddressed(compiled, asked)
-    if pair:
-        return (f"Composition implies a relation between [{pair[0]}] and [{pair[1]}] that "
-                f"nothing has measured. State it as an arrow, or say the field does not have "
-                f"it with [{pair[0]}] -bears_on-> [{pair[1]}] omitted entirely.")
-    contested = sorted({str(c["n"]) for c in (compiled.get("citations") or [])
-                        if c.get("contested")} - asked_numbers(asked))
-    if contested:
-        n = contested[0]
-        return (f"The field holds more than one value for [{n}]. Say which the state supports, "
-                f"citing it, or say the state does not decide it with [∅].")
-    return ""
+    return next_residual(compiled, asked)[1]
 
 
 def asked_numbers(asked: set) -> set:
@@ -320,6 +358,10 @@ class Dialogue:
     turns: list = field(default_factory=list)
     budget: int = TURN_BUDGET
     stopped: str = ""
+    #: Every residual PUT to the medium, with what putting it produced. A residual leaves the
+    #: open set the moment it is asked and its outcome is recorded here — `state-undecided` is
+    #: a finding, not an open item.
+    residuals: list = field(default_factory=list)
 
     @property
     def answer(self) -> str:
@@ -362,6 +404,7 @@ class Dialogue:
             "records": sum(len(t.proposals) for t in self.turns),
             "resolved_records": len(self.resolved),
             "distinct_claims": len(self.claims),
+            "residuals": list(self.residuals),
             "answer": self.answer,
         }
 
@@ -409,19 +452,27 @@ def converse(question: str, compiled: dict, transport, settle=None,
         if len(d.turns) >= d.budget:
             d.stopped = "budget"
             return _close(d, state, transport, sys_prompt, question)
-        q = interrogate(state, asked)
+        residual, q = next_residual(state, asked)
         if not q:
             d.stopped = "the graph had nothing left to ask"
             return _close(d, state, transport, sys_prompt, question)
-        pair = implied_unaddressed(state, asked)
-        if pair:
-            asked.add(pair)
+        # PUT, THEREFORE ASKED. The contested branch never recorded anything here, so its
+        # residual stayed open forever: on a served run turns 2, 3 and 4 carried the SAME
+        # question and the medium returned the SAME reply — "[∅] the state does not decide"
+        # — three times, byte for byte, spending three quarters of the budget on a question
+        # that had been answered the first time and answered in the exact terms the question
+        # itself offered. A discharged residual leaves the set; so does an unanswered one,
+        # with its outcome recorded, because asking again cannot make the reply different.
+        asked.add(residual)
         turn.interrogation = q
         n = len(d.turns) + 1
         raw, _usage = transport(sys_prompt, _put(state, q))
         prose = (raw or "").strip()
-        d.turns.append(Turn(n=n, ask=q, prose=prose,
-                            proposals=arrows_from(prose, set(slot_of(state)), turn=n)))
+        answer_turn = Turn(n=n, ask=q, prose=prose,
+                           proposals=arrows_from(prose, set(slot_of(state)), turn=n))
+        d.turns.append(answer_turn)
+        d.residuals.append({"residual": list(residual), "question": q, "turn": n,
+                            "outcome": discharge(residual, answer_turn)})
 
 
 #: TURN 1's PROMPT. The region wire's legend, plus the citation grammar, plus the arrow form.

@@ -791,5 +791,112 @@ class ARESIDUALTHATNEVERFIRESISNOTARESIDUAL(unittest.TestCase):
         self.assertIn("positivity", d.answer)
 
 
+class ADISCHARGEDRESIDUALLEAVESTHESET(unittest.TestCase):
+    """THE RECORDS-VERSUS-PAIRS LAW AT THE INTERROGATION LEVEL.
+
+    Measured on the served build: turns 2, 3 and 4 carried the SAME question — "the field holds
+    more than one value for [n], say which the state supports or say the state does not decide
+    it with [∅]" — and the medium returned the SAME reply, byte for byte, three times. It took
+    the exit the question itself offered, on the first ask, and was asked twice more anyway.
+    Three quarters of the budget spent re-asking a question that had been answered.
+
+    The cause was narrow: only the implied-pair branch recorded what it had asked. The contested
+    branch computed its question, put it, and recorded nothing, so the residual stayed open for
+    every remaining turn.
+
+    THE RULE: a residual is discharged when its question receives a legal answer — resolution,
+    or the `[∅]`-does-not-decide terminal — and a discharged residual leaves the set with its
+    outcome recorded. "Contested, state-undecided" is a FINDING, not an open item. An unanswered
+    residual also leaves the set, also recorded: asking again cannot make the reply different,
+    and the budget exists for open questions, not for settled ones.
+    """
+
+    def _contested_field(self):
+        return {"compiled": "FIELD", "citations": [
+            {"n": "e3", "kind": "attached", "slot": "s1"},
+            {"n": "e9", "kind": "seated", "slot": "s2", "contested": True}]}
+
+    def test_a_DISCHARGED_residual_is_not_asked_again(self):
+        """(a) PLANTED. The identity in the asked-set, and the question must be gone."""
+        from engine.dialogue import interrogate, next_residual
+
+        field = self._contested_field()
+        residual, q = next_residual(field, set())
+        self.assertEqual(residual, ("e9",))
+        self.assertIn("more than one value", q)
+        self.assertEqual(interrogate(field, {residual}), "",
+                         "a residual already put to the medium was put again")
+
+    def test_no_two_turns_share_a_question_AND_a_reply(self):
+        """(b) STRUCTURALLY IMPOSSIBLE after the fix, asserted rather than assumed.
+
+        The transport below is the served build's medium exactly: it answers every question
+        with the same legal `[∅]`. Before the fix this produced three identical turns.
+        """
+        import hashlib
+
+        from engine.dialogue import converse
+
+        def transport(system, user):
+            return "The state does not decide it [\u2205].", {}
+
+        d = converse("what does it establish", self._contested_field(), transport, budget=4,
+                     first_turn=Turn(n=1, ask="what does it establish",
+                                     prose="The work establishes positivity [e3]."))
+        seen = [(t.ask, hashlib.sha256(t.prose.encode()).hexdigest()) for t in d.turns]
+        self.assertEqual(len(seen), len(set(seen)),
+                         f"a question was put twice and got the same answer twice: {seen}")
+
+    def test_the_undecided_outcome_is_RECORDED_as_a_finding(self):
+        from engine.dialogue import UNDECIDED, converse
+
+        def transport(system, user):
+            return "The state does not decide it [\u2205].", {}
+
+        d = converse("what does it establish", self._contested_field(), transport, budget=4,
+                     first_turn=Turn(n=1, ask="what does it establish",
+                                     prose="The work establishes positivity [e3]."))
+        rec = d.as_record()["residuals"]
+        self.assertEqual([r["outcome"] for r in rec], [UNDECIDED])
+        self.assertEqual(rec[0]["residual"], ["e9"])
+
+    def test_a_RESOLVED_contested_residual_records_resolution(self):
+        from engine.dialogue import RESOLVED, discharge
+
+        self.assertEqual(discharge(("e9",), Turn(n=2, ask="q", prose="The state supports [e9].")),
+                         RESOLVED)
+
+    def test_a_RESOLVED_implied_pair_records_resolution(self):
+        from engine.dialogue import RESOLVED, arrows_from, discharge
+
+        turn = Turn(n=2, ask="q", prose="[e1] -same_claim-> [l7]",
+                    proposals=arrows_from("[e1] -same_claim-> [l7]", {"e1", "l7"}, turn=2))
+        self.assertEqual(discharge(("e1", "l7"), turn), RESOLVED)
+
+    def test_an_illegal_answer_is_recorded_UNANSWERED_and_still_not_re_asked(self):
+        """The outcome is honest AND the question is spent. Both halves matter: recording it as
+        discharged would be a lie, and re-asking it would be the defect."""
+        from engine.dialogue import UNANSWERED, converse, discharge
+
+        self.assertEqual(discharge(("e9",), Turn(n=2, ask="q", prose="Nothing to say here.")),
+                         UNANSWERED)
+
+        def transport(system, user):
+            return "Nothing to say here.", {}
+
+        d = converse("q", self._contested_field(), transport, budget=4,
+                     first_turn=Turn(n=1, ask="q", prose="Positivity [e3]."))
+        asks = [t.ask for t in d.turns]
+        self.assertEqual(len(asks), len(set(asks)), f"a spent question was re-asked: {asks}")
+
+    def test_the_ARROW_lines_do_not_count_as_the_undecided_terminal(self):
+        """`discharge` reads what was SAID, not the extraction channel — the same cut row 526
+        forced on `answers()`. An arrow-only turn answers nothing."""
+        from engine.dialogue import UNANSWERED, discharge
+
+        self.assertEqual(discharge(("e9",), Turn(n=2, ask="q", prose="[b0] -bears_on-> [e9]")),
+                         UNANSWERED)
+
+
 if __name__ == "__main__":
     unittest.main()
