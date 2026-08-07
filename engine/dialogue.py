@@ -131,9 +131,16 @@ _ARROW_ONLY = re.compile(r"^\[?[a-z]?\d+\]?\s*-\w+->\s*\[?[a-z]?\d+\]?[.;]?$")
 
 
 
-#: A CITATION IN A TURN'S PROSE. Same label grammar the checker reads, so "did this turn cite
-#: anything" and "did the referee see a citation" cannot disagree.
-_CITED = re.compile(r"\[([a-z]?\d+)\]")
+def _cited(text: str) -> list:
+    """A CITATION IN A TURN'S PROSE — the checker's own parser, imported rather than restated.
+
+    Same label grammar the checker reads, so "did this turn cite anything" and "did the referee
+    see a citation" cannot disagree. It was a second copy of one regex for exactly as long as
+    the two stayed identical; the comma widening is the edit that would have separated them.
+    """
+    from .grounded import cited
+
+    return cited(text)
 
 #: A LEGAL ABSENCE scoped to the question — answering [b0] by saying the field does not hold it.
 _ABSENT_ANY = re.compile(r"\[∅[^\]]*\]")
@@ -157,7 +164,7 @@ def answers(turn, attached: set) -> bool:
     prose = said(getattr(turn, "prose", "") or "")
     if _ABSENT_ANY.search(prose):
         return True
-    return bool(set(_CITED.findall(prose)) & set(attached or ()))
+    return bool(set(_cited(prose)) & set(attached or ()))
 
 
 def attached_labels(compiled: dict) -> set:
@@ -265,6 +272,16 @@ def next_residual(compiled: dict, asked: set) -> tuple:
         n = contested[0]
         return (n,), (f"The field holds more than one value for [{n}]. Say which the state "
                       f"supports, citing it, or say the state does not decide it with [∅].")
+    # LEXICAL FRUSTRATION, the third structural source. A declared cluster — several claims the
+    # field says are ONE proposition — with no apex naming it. Derived from the citations and
+    # the gloss registry, which is why this function still takes exactly two parameters and
+    # still cannot read a reply. Its identity is ("lex", <group>): a two-element tuple whose
+    # first element is a literal, so it can never collide with an implied pair of labels.
+    from .synthesis import apexless, lexical_question
+
+    ident, members = apexless(compiled, asked)
+    if ident:
+        return ident, lexical_question(members)
     return (), ""
 
 
@@ -282,11 +299,18 @@ def discharge(residual: tuple, turn) -> str:
     claim. The budget exists for OPEN questions, and a question already put is not one.
     """
     words = said(getattr(turn, "prose", "") or "")
-    if len(residual) == 2:
+    if residual[:1] == ("lex",):
+        # A LEXICAL RESIDUAL RESOLVES BY A WELL-FORMED NOMINATION, and by nothing else. Prose
+        # about the cluster is testimony; only the declared form crosses.
+        from .synthesis import NAME_FORM
+
+        if NAME_FORM.search(getattr(turn, "prose", "") or ""):
+            return RESOLVED
+    elif len(residual) == 2:
         want = tuple(sorted(residual))
         if any(tuple(sorted((p.src, p.dst))) == want for p in turn.proposals if p.ok):
             return RESOLVED
-    elif len(residual) == 1 and residual[0] in set(_CITED.findall(words)):
+    elif len(residual) == 1 and residual[0] in set(_cited(words)):
         return RESOLVED
     return UNDECIDED if _ABSENT_ANY.search(words) else UNANSWERED
 
@@ -362,6 +386,10 @@ class Dialogue:
     #: open set the moment it is asked and its outcome is recorded here — `state-undecided` is
     #: a finding, not an open item.
     residuals: list = field(default_factory=list)
+    #: THE FOURTH DOOR'S LEDGER for this conversation: term nominations that survived the four
+    #: checks, ones that did not and why, and clusters asked about and still unnamed. Nothing
+    #: in it has entered anything.
+    lexicon: object = None
 
     @property
     def answer(self) -> str:
@@ -405,8 +433,39 @@ class Dialogue:
             "resolved_records": len(self.resolved),
             "distinct_claims": len(self.claims),
             "residuals": list(self.residuals),
+            "lexicon": self.lexicon.as_record() if self.lexicon is not None else None,
             "answer": self.answer,
         }
+
+
+def _harvest(d, residual: tuple, question: str, turn, state: dict) -> None:
+    """Read one lexical turn's nominations, stress them, and file the outcome.
+
+    NOTHING HERE ENTERS ANYTHING. A surviving nomination is a record with the operator's name
+    on the next line, not a slot — the two-mouth law is not weakened by a term being good.
+    """
+    from .synthesis import Lexicon, apexless, stress, terms_from
+
+    if d.lexicon is None:
+        d.lexicon = Lexicon()
+    # THE CLUSTER THE QUESTION WAS ABOUT, re-read from the field rather than parsed back out of
+    # the question string: a residue check against labels scraped from its own prompt would be
+    # measuring the prompt.
+    from .synthesis import _members
+
+    cluster = _members(state).get(residual[1], ())
+    found = terms_from(turn.prose, set(slot_of(state)), turn=turn.n)
+    if not found:
+        d.lexicon.open.append(cluster or residual)
+        return
+    for cand in found:
+        failures = stress(cand, state, cluster)
+        if failures:
+            d.lexicon.rejected.append((cand, failures))
+        else:
+            d.lexicon.nominated.append(cand)
+    if not d.lexicon.nominated:
+        d.lexicon.open.append(cluster or residual)
 
 
 def converse(question: str, compiled: dict, transport, settle=None,
@@ -473,6 +532,8 @@ def converse(question: str, compiled: dict, transport, settle=None,
         d.turns.append(answer_turn)
         d.residuals.append({"residual": list(residual), "question": q, "turn": n,
                             "outcome": discharge(residual, answer_turn)})
+        if residual[:1] == ("lex",):
+            _harvest(d, residual, q, answer_turn, state)
 
 
 #: TURN 1's PROMPT. The region wire's legend, plus the citation grammar, plus the arrow form.

@@ -144,7 +144,13 @@ class TheRefereeIsNotALEXICALMECHANISM(unittest.TestCase):
         # A CITATION IS A LABEL: an optional single chart letter and an index. The letter is
         # `[a-z]?` and never `[a-z]+` — one character is a chart tag, and a RUN of them is a
         # word, which is the thing this whole class exists to keep out of the referee.
-        self.assertIn(r"\[([a-z]?\d+)\]", patterns)                # a citation
+        # A CITATION, INCLUDING THE COMMA SERIALIZATION. `[e40, e21]` is `[e40][e21]` written
+        # with a different delimiter. The first token is label-shaped, which keeps `[∅:e3,e7]`
+        # and `[!]` out; the tokens after a comma are matched as "not a closing bracket" and
+        # split in `cited`, because writing them as a character class of letters would have put
+        # a word matcher in the referee — the first version did exactly that and this control
+        # refused it.
+        self.assertIn(r"\[([a-z]?\d+(?:\s*,[^\]]*)?)\]", patterns)     # a citation
         # THE SCOPE GROUP TAKES LABELS. It was `[\\d,\\s]+` and `[∅:e3,e7]` was invisible,
         # so an honest scoped negative naming two tagged lines came back UNCITED — convicting
         # the careful answer and passing the vague one.
@@ -166,14 +172,41 @@ class TheRefereeIsNotALEXICALMECHANISM(unittest.TestCase):
         an alphabetic run — must not parse as a citation at all, or the referee would start
         accepting names, and a name is a thing text can be matched against.
         """
-        from engine.grounded import _CITE
+        from engine.grounded import cited
 
         for good in ("[e1]", "[l45]", "[b0]", "[7]"):
             with self.subTest(good=good):
-                self.assertTrue(_CITE.findall(good), good)
+                self.assertTrue(cited(good), good)
         for bad in ("[same]", "[refines]", "[cone]", "[ee1]", "[e]", "[]"):
             with self.subTest(bad=bad):
-                self.assertEqual(_CITE.findall(bad), [], f"{bad} parsed as a citation")
+                self.assertEqual(cited(bad), [], f"{bad} parsed as a citation")
+
+    def test_the_comma_serialization_parses_and_still_VOIDS_a_non_member(self):
+        """THE WIDENING, and the control the operator attached to it.
+
+        `[a, b]` parses as `[a][b]` — a serialization variant of an unambiguous structure, not a
+        looser judgement. Each token still resolves by EXACT MEMBERSHIP or voids: the widening
+        buys punctuation and nothing else, which is what this asserts. The precedent is the
+        arrow parser accepting both `e1 -kind-> l45` and `[e1] -kind-> [l45]`.
+        """
+        from engine.grounded import check_answer, cited
+
+        self.assertEqual(cited("The work does both [e40, e21]."), ["e40", "e21"])
+        self.assertEqual(cited("Spaced or not [e40,e21,l7]."), ["e40", "e21", "l7"])
+        # PLANTED: a non-member inside the bracket. It must come back UNRESOLVED — visible and
+        # convicted — rather than silently dropped, or the widening would have bought leniency.
+        self.assertEqual(cited("A claim [e40, zzz]."), ["e40", "zzz"])
+        # ONE GROUP, so the weld rule is not the thing under test here: two faces of one
+        # declared fiber may be co-cited, and this test is about the delimiter alone.
+        compiled = {"citations": [{"n": "e40", "kind": "seated", "slot": "s1", "group": "s1"},
+                                  {"n": "e21", "kind": "seated", "slot": "s2", "group": "s1"}]}
+        ok = check_answer("The work establishes both of these things [e40, e21].", compiled)
+        self.assertEqual(ok.as_record()["violations"], [],
+                         "the comma serialization was convicted")
+        bad = check_answer("The work establishes something here [e40, zzz].", compiled)
+        kinds = [v["kind"] for v in bad.as_record()["violations"]]
+        self.assertIn("unresolved", kinds, "a non-member inside the bracket was let through")
+        self.assertIn("zzz", bad.as_record()["violations"][0]["numbers"])
 
     def test_no_set_difference_survives_anywhere_in_the_module(self):
         tree = ast.parse(self._src())

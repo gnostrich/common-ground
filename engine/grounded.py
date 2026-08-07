@@ -85,7 +85,48 @@ from dataclasses import dataclass, field
 #: across languages, and which makes a tag/chart disagreement a decidable second check.
 #:
 #: The bare-integer form is still read, so a field emitted before the collapse still resolves.
-_CITE = re.compile(r"\[([a-z]?\d+)\]")
+#: A CITATION BRACKET, INCLUDING THE COMMA-SEPARATED SERIALIZATION. `[e40, e21]` is the same
+#: structure as `[e40][e21]` written with a different delimiter, and the medium writes it
+#: unprompted.
+#:
+#: THE RULING, and the reason widening here is not a loosening. Each token inside the bracket
+#: still resolves by EXACT MEMBERSHIP in the declared label set or voids — resolve-or-void is
+#: untouched, no similarity is introduced, and nothing partial is matched. What is accepted is a
+#: serialization variant of an unambiguous structure. The grammar's job was never to test
+#: obedience to punctuation; it is to make lies unwritable and structure extractable, and a
+#: comma-separated list lies about nothing and extracts exactly. The precedent is the arrow
+#: parser, which accepts `e1 -kind-> l45` and `[e1] -kind-> [l45]` for the same reason.
+#:
+#: MEASURED: a live run returned five violations on a five-of-five receipted answer, every one
+#: of them this delimiter. Convicting a correct answer over a comma is row 523's cousin — a rule
+#: enforced at a strictness the task never needed.
+#:
+#: The first token must be label-shaped, so `[∅]`, `[∅rel]` and `[!]` are not swallowed. Later
+#: tokens are read whatever they look like, deliberately: a non-label inside the bracket must
+#: come back UNRESOLVED rather than be silently dropped, or the widening would have introduced
+#: leniency instead of punctuation.
+#: NO ALPHABETIC RUN, and that constraint shaped the pattern. The first version wrote the
+#: trailing tokens as `[A-Za-z0-9_]+`, which is a word matcher however it got there, and the
+#: standing anti-similarity control refused it — correctly. The tokens after the first comma are
+#: therefore matched STRUCTURALLY, as "not a closing bracket", the same device `_ABSENT` already
+#: uses, and are split apart in `cited` rather than by the regex. The first token must still be
+#: label-shaped, which is what keeps `[∅:e3,e7]` and `[!]` out of this pattern entirely.
+_CITE_LIST = re.compile(r"\[([a-z]?\d+(?:\s*,[^\]]*)?)\]")
+
+
+def cited(text: str) -> list[str]:
+    """Every label a sentence claims to rest on, in order, both serializations.
+
+    ONE PARSER, so "did this turn cite anything" and "did the referee see a citation" cannot
+    disagree — `engine.dialogue` reads through this function rather than keeping its own.
+    """
+    out: list[str] = []
+    for m in _CITE_LIST.finditer(text or ""):
+        for part in m.group(1).split(","):
+            part = part.strip()
+            if part:
+                out.append(part)
+    return out
 
 #: An absence marker: bare, index-scoped, or warrant-named. Same shape, same bracket, and the
 #: only thing read out of it is integers and a name from a CLOSED list.
@@ -102,7 +143,7 @@ _ABSENT = re.compile(r"\[\u2205(?::([a-z\d,\s]+))?([a-z_]+)?\]")
 #: sentence afterwards is reading its brackets.
 #: A run of citation tokens: [4], [∅gap], [!]. Used to decide where a sentence ENDS, never
 #: to compare anything.
-_CITE_RUN = re.compile(r"\s*(?:\[(?:[a-z]?\d+|∅[^\]]*|!)\])+")
+_CITE_RUN = re.compile(r"\s*(?:\[(?:[a-z]?\d+(?:\s*,[^\]]*)?|∅[^\]]*|!)\])+")
 
 #: A line too short to assert anything. Requiring a citation on "Yes." produces noise.
 MIN_SENTENCE_CHARS = 25
@@ -363,7 +404,7 @@ def check_answer(answer: str, compiled: dict) -> Verdict:
     v = Verdict(citable=len(valid))
     for sentence in sentences(answer):
         v.checked += 1
-        nums = list(_CITE.findall(sentence))
+        nums = cited(sentence)
         absences = _ABSENT.findall(sentence)
 
         if absences:
