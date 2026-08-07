@@ -469,7 +469,15 @@ def _close(d, state: dict, transport, sys_prompt: str, question: str):
     controlled.
     """
     attached = attached_labels(state)
-    if any(answers(t, attached) for t in d.turns):
+    # ONLY TURNS THAT WERE ASKED THE OPERATOR'S QUESTION COUNT, because only those are turns
+    # `Dialogue.answer` will ever display. This scanned every turn, and on the served build it
+    # produced the exact failure the residual exists to prevent: turn 1 came back as arrows and
+    # no words, three interrogation turns answered their interrogations citing attached labels,
+    # `answers()` saw one of those and declined to fire — and the page showed an EMPTY answer.
+    # The residual's condition and the answer's condition must be the same condition; two
+    # predicates for "did this get answered" is the same defect shape as two mechanisms for
+    # one job.
+    if any(t.ask == question and answers(t, attached) for t in d.turns):
         return d
     n = len(d.turns) + 1
     raw, _usage = transport(sys_prompt, _put(state, question))

@@ -733,6 +733,40 @@ class ARESIDUALTHATNEVERFIRESISNOTARESIDUAL(unittest.TestCase):
         self.assertEqual(attached_labels({"citations": [{"n": "e7", "kind": "seated",
                                                          "slot": "s"}]}), {"e7"})
 
+    def test_an_INTERROGATION_answer_does_not_count_as_answering_the_operator(self):
+        """MEASURED ON THE SERVED BUILD, and the exact failure the residual exists to prevent.
+
+        Turn 1 came back as arrows and no words. Three interrogation turns then ran and each
+        answered ITS OWN question, citing attached labels. `answers()` scanned every turn, saw
+        one of those, and declined to fire — while `Dialogue.answer` correctly refused to
+        display a reply to a question the operator never asked. Result: four turns, fifty
+        resolved arrows, and an EMPTY answer on the page.
+
+        The residual's condition and the answer's condition must be ONE condition.
+        """
+        from engine.dialogue import converse
+
+        compiled = {"compiled": "FIELD", "citations": [
+            {"n": "e3", "kind": "attached", "slot": "s1"},
+            {"n": "e4", "kind": "seated", "slot": "s2", "contested": True}]}
+        asks = []
+
+        def transport(system, user):
+            asks.append(user)
+            # Whatever it is asked, it replies citing an attached label — which is what an
+            # interrogation answer looks like, and is why scanning every turn was wrong.
+            return "The state supports this reading [e3].", {}
+
+        d = converse("what does it establish", compiled, transport, budget=3,
+                     first_turn=Turn(n=1, ask="what does it establish",
+                                     prose="[b0] -bears_on-> [e3]"))
+        asked = [t.ask for t in d.turns]
+        self.assertEqual(asked[0], "what does it establish")
+        self.assertEqual(asked[-1], "what does it establish",
+                         "the dialogue closed without ever re-asking the operator's question")
+        self.assertIn("[e3]", d.answer)
+        self.assertNotEqual(d.answer, "", "the page would have displayed an empty answer")
+
     def test_the_residual_FIRES_on_a_turn_that_only_drew_arrows(self):
         """End to end, through `converse`, which is where it failed on the fixture."""
         from engine.dialogue import converse
