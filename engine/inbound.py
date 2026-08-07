@@ -760,7 +760,11 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         # no arrows. seed/FIXTURE-CERTIFIED-POSITIVITY.md column B is the record of it.
         from .dialogue import turn_one_prompt
 
-        att = perturb(text, snapshot, transport, chart, system=turn_one_prompt())
+        # THE MARK IS ASKED FOR HERE, at the dialogue's own call, because the grammar rule it
+        # serves is the dialogue's. The walk's call passes nothing and gets the bytes it always
+        # got.
+        att = perturb(text, snapshot, transport, chart, system=turn_one_prompt(),
+                      contest_marks=True)
         labeller = Labeller(att.region) if att.region is not None else Labeller()
         stages["attach"] = round(_time.time() - _t, 3)
         if not att.seeds:

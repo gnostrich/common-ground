@@ -237,7 +237,7 @@ class Perturbation:
 
 def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "english",
             size: int = REGION_SIZE, quarantined: frozenset = frozenset(),
-            system: str = "") -> Perturbation:
+            system: str = "", contest_marks: bool = False) -> Perturbation:
     """Put the typed text in a diagram and let the medium complete it. Exactly one call.
 
     THE TYPED TEXT GOES TO THE MEDIUM RAW. It used to be segmented by the claim extractor
@@ -306,7 +306,7 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
         # forever. The interactive path passes the dialogue's prompt, which is the same wire
         # legend plus the citation grammar. Two paths, one call site, and the daemon cannot
         # acquire a dialogue by accident because acquiring one takes an argument.
-        _sys, _user = (system or REGION_SYSTEM), render_region(region)
+        _sys, _user = (system or REGION_SYSTEM), render_region(region, contest_marks)
         _t = _time.time()
         raw, usage = transport(_sys, _user)
         # NO ACT IS READ. The null surface removed the question: every utterance enters the

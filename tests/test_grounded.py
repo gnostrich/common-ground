@@ -650,9 +650,42 @@ class EveryRuleTheRefereeEnforcesIsSTATEDWhereTheMediumCanReadIt(unittest.TestCa
             Member(index=0, slot=slot, chart="english", type="assert", nu=nu, attached=False,
                    contested=True),
             Member(index=1, slot="s2", chart="lean", type="assert", nu="x", attached=False)])
-        wire = render_region(region)
+        wire = render_region(region, contest_marks=True)
         self.assertIn("(!)", wire, "a contested object reached the wire unmarked")
         self.assertEqual(wire.count("(!)"), 1, "an uncontested object was marked")
+
+        # THE WALK'S GUARANTEE, asserted in the same breath as the dialogue's mark so the two
+        # cannot be changed apart. The mark is a PRESENTATION choice of the dialogue's
+        # serialization; the daemon's wire is byte-identical with or without a contested member
+        # in the region. The first version applied it to every caller, which changed the
+        # unattended walk's bytes to serve a dialogue-only grammar rule.
+        plain = render_region(region)
+        self.assertNotIn("(!)", plain, "the walk's wire gained a dialogue-only mark")
+        uncontested = Region(clamp=region.clamp, members=[
+            Member(index=m.index, slot=m.slot, chart=m.chart, type=m.type, nu=m.nu,
+                   attached=m.attached, surface=m.surface, contested=False)
+            for m in region.members])
+        self.assertEqual(plain, render_region(uncontested),
+                         "the default render is not invariant to the contested flag — the "
+                         "walk's bytes depend on a fact only the dialogue uses")
+
+    def test_a_marked_object_cited_without_the_bracket_IS_convicted(self):
+        """The rule fires exactly where the sheet says (!) — the operator's first direction."""
+        compiled = {"citations": [{"n": "e1", "kind": "moved", "chart": "english",
+                                   "slot": "s1", "nu": "a claim", "contested": True}]}
+        v = check_answer("The field supports this reading of the claim [e1].", compiled)
+        self.assertEqual([x["kind"] for x in v.as_record()["violations"]], ["uncontested"])
+        ok = check_answer("The field supports this reading of the claim [e1][!].", compiled)
+        self.assertEqual(ok.as_record()["violations"], [], "a compliant sentence was convicted")
+
+    def test_an_UNMARKED_object_cited_without_the_bracket_is_NOT_convicted(self):
+        """The other direction, and the one that says the trap is dead: no invisible
+        precondition. An object the sheet did not mark carries no obligation."""
+        compiled = {"citations": [{"n": "e1", "kind": "moved", "chart": "english",
+                                   "slot": "s1", "nu": "a claim"}]}
+        v = check_answer("The field supports this reading of the claim [e1].", compiled)
+        self.assertEqual(v.as_record()["violations"], [],
+                         "a conviction fired on a precondition the medium was never shown")
 
     def test_the_contest_flag_is_read_from_the_SNAPSHOT_not_set_by_hand(self):
         from engine.corpus_state import CorpusSnapshot, SlotRecord

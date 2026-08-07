@@ -378,8 +378,16 @@ def unescape_nu(text: str) -> str:
     return "".join(out)
 
 
-def render_region(region: Region) -> str:
+def render_region(region: Region, contest_marks: bool = False) -> str:
     """The partial diagram on the wire: OBJECTS, declared ARROWS, implied ARROWS, task.
+
+    `contest_marks` IS OFF BY DEFAULT, AND THAT IS THE WALK'S GUARANTEE. This function is
+    byte-shared with the unattended walk, and the first version of the contest mark applied it
+    to every caller — so the daemon's wire changed to serve a dialogue-only grammar rule. The
+    mark is a PRESENTATION choice of the dialogue's serialization, not a property of the
+    region, and the region object is identical either way. `tests/test_region.py` asserts the
+    default render is INVARIANT to the contested flag, which is byte-identity stated as a
+    property rather than frozen as a golden string that would rot on the next legend edit.
 
     All three sections go in. "Complete a partial diagram" is only well-posed if the partial
     diagram is given — withholding the declared arrows would force the medium to re-derive
@@ -394,7 +402,7 @@ def render_region(region: Region) -> str:
         # THE CONTEST MARK, on the object line. `(!)` rather than `[!]` so it can never be
         # mistaken for a citation of a label; `[!]` is what a SENTENCE writes, and the two must
         # look different or the medium is being shown the answer's syntax in the field's.
-        mark = "(!) " if m.contested else ""
+        mark = "(!) " if (contest_marks and m.contested) else ""
         lines.append(f"[{label(m.chart, m.index)}] {mark}{escape_nu(m.wire)}")
 
     # THE LEGAL ARROW FORMS, enumerated. Cross-chart-only stops being an instruction the

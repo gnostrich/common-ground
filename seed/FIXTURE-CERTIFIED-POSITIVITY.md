@@ -1,4 +1,4 @@
-# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, four columns
+# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, five columns
 
 **FROZEN.** The question, the table's rows, and the pre-registration do not change. Columns are
 added as the pipeline changes; **no column is ever removed or rewritten**, including the ones
@@ -193,6 +193,57 @@ than after. Read strictly:
 
 ---
 
+## COLUMN E — THE REPAIRED SAMPLER, AND WHAT A RISING COUNT MEANS
+
+**Awakened by order**, not by a bridge lane: two ruled sampler-layer defects landed and the
+fixture is the acceptance for both. Recorded as a column rather than a note because the
+mechanism under test changed.
+
+| | **D-flash** (reference) | **E — after the two fixes** |
+|---|---|---|
+| build | `afcbf1362169` | `65d190eba233` |
+| turns | 1–5 | **4** |
+| turn 2 | contest on `[e16]` | contest on **`[e1]`** — attached |
+| turn 3 | contest on `[e16]` *(same question)* | contest on **`[e31]`** — attached |
+| turn 4 | contest on `[e16]` *(same question)* | contest on **`[e43]`** — attached |
+| turn 5 | re-ask: `[b0]` had no answering turn | — not needed; turn 1 answered |
+| residual outcomes | — | all three **resolved** |
+| attachment | 22, all bears_on | **34, all bears_on** |
+| answer | 462 chars | 8,871 chars |
+| faithful | 3 violations | **60 violations** |
+| composition | 3 uncontested | **31 welded / 28 uncontested / 1 unresolved** over 58 sentences |
+
+Three consecutive runs returned identical figures.
+
+**WHAT THE TWO FIXES WERE.** Residual scoping: the interrogator read corpus-wide ambient
+contests — `[e16]` every turn, regardless of what the perturbation touched — and now reads only
+contests among objects this perturbation ATTACHED, BORE ON or MOVED. The narrow boundary was
+implemented; there is no 1-hop neighbourhood expansion. And the bias admits only `bears_on`: the
+parser voided `bears_on` between two corpus claims while waving `same_claim` TO THE BIAS
+through, so a typed question was being given assertion-grade coupling to the corpus on the
+strength of having been typed.
+
+---
+
+### THE LESSON THIS COLUMN EXISTS TO HOLD
+
+**A RISING VIOLATION COUNT UNDER A REPAIRED REFEREE AND DOUBLED REACH IS PROGRESS WEARING RED.**
+Three violations became sixty, and every part of that increase is the machine working:
+attachment doubled because the bias fix stopped mis-kinded arrows from consuming the medium's
+attention, more attached objects means more contests among reached objects are visible, and the
+referee now resolves against the whole shown sheet instead of three labels.
+
+**ONLY THE COMPOSITION SAYS WHICH.** 28 of the 60 are `uncontested` — a rule the medium cannot
+comply with, because turn 1's sheet does not mark contested objects, so `[!]` is enforceable and
+unwritable. That is row 523's class, and it is a debt this build owes rather than an answer this
+build got wrong. A bare count of 60 cannot distinguish it from an answer that fabricated sixty
+times.
+
+**THE STANDING RULE, FROM HERE:** a violation count is never recorded anywhere in this project
+without its composition beside it.
+
+---
+
 ## COLUMNS A–D: CLOSED
 
 - **A — pre-B2 baseline.** Two mouths, coordinates then prose. Lean 0 of 19; the medium was
@@ -215,7 +266,13 @@ what it was built to answer — whether the machine relates across the chart bou
 model size is the reason it does not — and re-running it against the same mechanism would only
 resample a number already measured fourteen times.
 
-**ITS NEXT LEGITIMATE AWAKENING IS A BRIDGE LANE LANDING.** Medium-labels, or the lexicon lane,
+**COLUMN E WAS AN AWAKENING BY ORDER**, which the rule below did not anticipate and which is
+now recorded as the second legitimate kind: the operator ruled two sampler-layer defects and
+made this fixture their acceptance. That is a change to the mechanism under test, which is
+exactly what the rule is about — it simply arrived from a ruling rather than from a lane.
+
+**ITS NEXT LEGITIMATE AWAKENING IS A BRIDGE LANE LANDING**, or another ruled change to the
+mechanism. Medium-labels, or the lexicon lane,
 or anything else that gives the English and Lean charts a shared handle. That is a change to the
 mechanism under test, which is exactly what a new column is for. A re-run for any other reason —
 a model change, a prompt tweak, a slow week — is resampling noise and calling it evidence.
