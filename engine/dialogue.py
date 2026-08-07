@@ -42,7 +42,11 @@ from .correspondence import KINDS
 #: The ONE form an arrow may take in prose. Bracketed numbers the field itself emitted, a kind
 #: token from the closed set, and nothing else — no names, no surfaces, no quoted claims. A
 #: model that writes an arrow any other way has written prose, and prose yields no arrow.
-ARROW = re.compile(r"\[(\d+)\]\s*-(\w+)->\s*\[(\d+)\]")
+#: A LABEL, not an integer: `[e1] -refines-> [l45]`. The bracket is punctuation; the
+#: label is the chart letter and the index, and it is the same label space the region
+#: emitted, the checker verifies and the answer cites. Brackets optional so the one
+#: parser serves the coordinates wire too.
+ARROW = re.compile(r"\[?([a-z]?\d+)\]?\s*-(\w+)->\s*\[?([a-z]?\d+)\]?")
 
 #: The kinds legal in a dialogue. The base's three, plus `bears_on` for the boundary condition
 #: — the same set the region wire allows, because this is the same extraction reaching the same
@@ -65,8 +69,8 @@ TURN_BUDGET = 4
 class Proposal:
     """One arrow read off one turn's prose. Resolves to a corpus address or is VOID."""
 
-    src: int
-    dst: int
+    src: str
+    dst: str
     kind: str
     turn: int
     evidence: str
@@ -112,7 +116,7 @@ def arrows_from(prose: str, citable: set, turn: int = 0) -> list:
     """
     out, seen = [], set()
     for m in ARROW.finditer(prose or ""):
-        i, kind, j = int(m.group(1)), m.group(2), int(m.group(3))
+        i, kind, j = m.group(1), m.group(2), m.group(3)
         ev = m.group(0)
         if kind not in DIALOGUE_KINDS:
             out.append(Proposal(i, j, kind, turn, ev,
@@ -127,7 +131,7 @@ def arrows_from(prose: str, citable: set, turn: int = 0) -> list:
             out.append(Proposal(i, j, kind, turn, ev,
                                 void="one object is not a correspondence"))
             continue
-        pair = (min(i, j), max(i, j), kind)
+        pair = (min(i, j), max(i, j), kind)   # labels sort as strings; order-free identity
         if pair in seen:
             # NOT AN ERROR AND NOT A SECOND ARROW. Restating a relation in the same turn is
             # one claim and two records — the records-vs-pairs law at dialogue level.
@@ -157,9 +161,9 @@ def _arrow_pairs(compiled: dict) -> tuple:
     for c in (compiled.get("citations") or []):
         if c.get("kind") != "arrow":
             continue
-        pair = tuple(sorted(int(x) for x in (c.get("joins") or ())))
+        pair = tuple(sorted(str(x) for x in (c.get("joins") or ())))
         if len(pair) == 2:
-            joins[int(c["n"])] = pair
+            joins[str(c["n"])] = pair
             joined.add(pair)
     return joins, joined
 
@@ -177,7 +181,7 @@ def interrogate(compiled: dict, asked: set) -> str:
         return (f"Composition implies a relation between [{pair[0]}] and [{pair[1]}] that "
                 f"nothing has measured. State it as an arrow, or say the field does not have "
                 f"it with [{pair[0]}] -bears_on-> [{pair[1]}] omitted entirely.")
-    contested = sorted({int(c["n"]) for c in (compiled.get("citations") or [])
+    contested = sorted({str(c["n"]) for c in (compiled.get("citations") or [])
                         if c.get("contested")} - asked_numbers(asked))
     if contested:
         n = contested[0]
@@ -217,7 +221,7 @@ def render_prompt() -> str:
 
 def slot_of(compiled: dict) -> dict:
     """citation number -> corpus slot. The whole resolution: an array lookup, nothing else."""
-    return {int(c["n"]): c["slot"] for c in (compiled.get("citations") or [])
+    return {str(c["n"]): c["slot"] for c in (compiled.get("citations") or [])
             if c.get("n") is not None and c.get("slot")}
 
 
@@ -273,7 +277,7 @@ class Dialogue:
 
 
 def converse(question: str, compiled: dict, transport, settle=None,
-             budget: int = TURN_BUDGET, system: str = "") -> Dialogue:
+             budget: int = TURN_BUDGET, system: str = "", first_turn=None) -> Dialogue:
     """Run the dialogue. Turns 1..n-1 measure; the last turn answers.
 
     `settle` is INJECTED rather than imported, so this module never reaches the corpus: it
@@ -286,7 +290,24 @@ def converse(question: str, compiled: dict, transport, settle=None,
     ask = question
     state = compiled
 
-    for n in range(1, d.budget + 1):
+    # TURN 1 ALREADY HAPPENED. The attachment call IS the dialogue's first turn — the medium
+    # was seated in front of the whole region and answered in cited prose, and its arrows are
+    # already in the settled state this dialogue is now reading. Re-asking would spend a call
+    # to obtain what the caller is holding, and would ask it of a SMALLER field: the exact
+    # shape that made the half-collapse feed the dialogue two objects.
+    start = 1
+    if first_turn is not None:
+        d.turns.append(first_turn)
+        start = 2
+        q = interrogate(state, asked)
+        if q:
+            pair = implied_unaddressed(state, asked)
+            if pair:
+                asked.add(pair)
+            first_turn.interrogation = q
+            ask = q
+
+    for n in range(start, d.budget + 1):
         raw, _usage = transport(sys_prompt, _put(state, ask))
         prose = (raw or "").strip()
         proposals = arrows_from(prose, set(slot_of(state)), turn=n)
@@ -316,7 +337,12 @@ def converse(question: str, compiled: dict, transport, settle=None,
     # words answer the INTERROGATION, and the operator asked something else. One more turn puts
     # the question to the field the interrogations settled. A dialogue that never interrogated
     # is already answered by turn 1 and makes no extra call.
-    if d.turns and d.turns[-1].ask != question:
+    # THE FINAL TURN IS THE ANSWER. Turn 1's prose came back with arrow lines in it and was
+    # produced against the UNSETTLED region, so it is attachment, not an answer — the answer is
+    # put to the field its own arrows moved. A dialogue seeded with turn 1 therefore always
+    # takes at least one more turn, which is the one that answers.
+    if d.turns and (first_turn is not None or d.turns[-1].ask != question) \
+            and (len(d.turns) < 2 or d.turns[-1].ask != question):
         raw, _usage = transport(sys_prompt, _put(state, question))
         prose = (raw or "").strip()
         n = len(d.turns) + 1

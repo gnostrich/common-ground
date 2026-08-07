@@ -24,7 +24,8 @@ from pathlib import Path
 from engine.export_sheet import sheet
 from engine.corpus_state import SNAPSHOT_PATH
 from engine.grounded import check_answer
-from engine.dialogue import TURN_BUDGET, converse, render_prompt as dialogue_prompt
+from engine.dialogue import (TURN_BUDGET, Turn, arrows_from, converse,
+                             render_prompt as dialogue_prompt, slot_of)
 from engine.transcript import CURRENT as TRANSCRIPT, start as start_transcript
 from engine.inbound import INBOUND_SYSTEM
 
@@ -396,8 +397,23 @@ class Handler(BaseHTTPRequestHandler):
                                           seconds=time.time() - _t)
                         return out, {}
 
+                    # TURN 1 IS ALREADY DONE — it is the attachment call, made inside
+                    # ask_the_corpus with the dialogue's own prompt. Seeding it here is what
+                    # makes this ONE conversation: its prose and its arrows enter the record
+                    # as turn 1, and the loop continues from turn 2 against the field those
+                    # arrows moved. Re-asking would spend a call to obtain what we already
+                    # hold, and would ask it of a smaller field.
+                    att = (compiled.get("attachment") or {})
+                    first = None
+                    if att.get("prose"):
+                        first = Turn(n=1, ask=question, prose=att["prose"],
+                                     proposals=arrows_from(att["prose"],
+                                                           set(slot_of(compiled)), turn=1),
+                                     moved=int(((compiled.get("relaxation") or {})
+                                                .get("moved")) or 0))
                     dlg = converse(question, compiled, _turn,
-                                   budget=int(b.get("turns", TURN_BUDGET)), system=system)
+                                   budget=int(b.get("turns", TURN_BUDGET)), system=system,
+                                   first_turn=first)
                     reply = dlg.answer
                     dialogue_record = dlg.as_record()
                 else:

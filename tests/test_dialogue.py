@@ -25,7 +25,9 @@ from engine.dialogue import (ARROW, DIALOGUE_KINDS, TESTIMONY, TURN_BUDGET, Dial
 REPO = Path(__file__).resolve().parent.parent
 MODULE = REPO / "engine" / "dialogue.py"
 
-CITABLE = {1, 2, 3, 7, 12}
+#: LABELS, not integers — the label space is the region's and it runs end to end. A fixture
+#: change, not a property change: what the extractor resolves against is still an exact set.
+CITABLE = {"e1", "e2", "e3", "l7", "l12"}
 
 
 def _compiled(citations):
@@ -49,7 +51,7 @@ class C1_NoArrowFromWords(unittest.TestCase):
         self.assertEqual(arrows_from("[1] and [7] are related.", CITABLE), [])
         self.assertEqual(arrows_from("[1] refines [7]", CITABLE), [],
                          "without the arrow syntax this is prose about a relation")
-        self.assertTrue([p for p in arrows_from("[1] -refines-> [7]", CITABLE) if p.ok])
+        self.assertTrue([p for p in arrows_from("[e1] -refines-> [l7]", CITABLE) if p.ok])
 
     def test_the_extractor_contains_NO_similarity_machinery(self):
         """AST sweep, as the spec ordered. No tokenizer, no scoring, no fluency judgement —
@@ -120,28 +122,28 @@ class C3_TurnsComeFromStructure(unittest.TestCase):
             self.assertNotIn(forbidden, params)
 
     def test_it_asks_about_an_implied_pair_nobody_has_measured(self):
-        c = _compiled([{"n": 1}, {"n": 7},
-                       {"n": 9, "kind": "arrow", "joins": [1, 7]}])
+        c = _compiled([{"n": "e1"}, {"n": "l7"},
+                       {"n": "x9", "kind": "arrow", "joins": ["e1", "l7"]}])
         q = interrogate(c, asked=set())
-        self.assertIn("[1]", q)
-        self.assertIn("[7]", q)
+        self.assertIn("[e1]", q)
+        self.assertIn("[l7]", q)
         self.assertIn("Composition implies", q)
 
     def test_it_does_not_re_ask_a_pair_already_put(self):
-        c = _compiled([{"n": 1}, {"n": 7},
-                       {"n": 9, "kind": "arrow", "joins": [1, 7]}])
-        self.assertEqual(interrogate(c, asked={(1, 7)}), "",
+        c = _compiled([{"n": "e1"}, {"n": "l7"},
+                       {"n": "x9", "kind": "arrow", "joins": ["e1", "l7"]}])
+        self.assertEqual(interrogate(c, asked={("e1", "l7")}), "",
                          "asking the same pair twice is an interrogation loop, not a measure")
 
     def test_it_falls_through_to_a_CONTESTED_object(self):
-        c = _compiled([{"n": 3, "contested": True}])
-        self.assertIn("[3]", interrogate(c, asked=set()))
+        c = _compiled([{"n": "e3", "contested": True}])
+        self.assertIn("[e3]", interrogate(c, asked=set()))
         self.assertIn("more than one value", interrogate(c, asked=set()))
 
     def test_it_returns_EMPTY_rather_than_inventing_a_question(self):
         """No structure left to ask about ends the dialogue. Manufacturing one more turn
         because the budget allows it is the candidate list with better manners."""
-        self.assertEqual(interrogate(_compiled([{"n": 1}]), asked=set()), "")
+        self.assertEqual(interrogate(_compiled([{"n": "e1"}]), asked=set()), "")
 
 
 class C4_TheBudgetBinds(unittest.TestCase):
@@ -165,14 +167,14 @@ class C5_TrajectoryKeptCountedCorrectly(unittest.TestCase):
     """Spec control 5. The unit is the distinct claim, not the utterance."""
 
     def test_five_restatements_are_ONE_claim_and_FIVE_records(self):
-        prose = " ".join(["[1] -same_claim-> [7]."] * 5)
+        prose = " ".join(["[e1] -same_claim-> [l7]."] * 5)
         ps = arrows_from(prose, CITABLE, turn=2)
         self.assertEqual(len(ps), 5, "every utterance is recorded")
         self.assertEqual(sum(1 for p in ps if p.ok), 1, "they are one claim")
         self.assertEqual([p.void for p in ps[1:]], ["restated in this turn"] * 4)
 
     def test_the_record_says_WHICH_it_is_counting(self):
-        t = Turn(n=2, ask="q", proposals=arrows_from("[1] -same_claim-> [7]. " * 3, CITABLE))
+        t = Turn(n=2, ask="q", proposals=arrows_from("[e1] -same_claim-> [l7]. " * 3, CITABLE))
         rec = t.as_record()
         self.assertEqual(len(rec["arrows"]), 3)
         self.assertEqual(rec["resolved"], 1)
@@ -180,14 +182,14 @@ class C5_TrajectoryKeptCountedCorrectly(unittest.TestCase):
 
     def test_every_proposal_carries_its_TURN(self):
         """Both survive with their turn recorded — a revision at turn 6 does not erase turn 2."""
-        for p in arrows_from("[1] -refines-> [7]", CITABLE, turn=6):
+        for p in arrows_from("[e1] -refines-> [l7]", CITABLE, turn=6):
             self.assertEqual(p.turn, 6)
 
     def test_a_direction_flip_is_a_DIFFERENT_record_but_the_same_pair(self):
         """`refines` is directed, so [1]->[7] and [7]->[1] are different assertions. The
         dedupe is on the unordered pair AND the kind, so the second is a restatement of the
         pair — recorded, not silently dropped — and the operator can see both."""
-        ps = arrows_from("[1] -refines-> [7]. [7] -refines-> [1].", CITABLE)
+        ps = arrows_from("[e1] -refines-> [l7]. [l7] -refines-> [e1].", CITABLE)
         self.assertEqual(len(ps), 2)
         self.assertEqual(sum(1 for p in ps if p.ok), 1)
 
@@ -223,7 +225,7 @@ class TheLoopAndTheCollapse(unittest.TestCase):
 
     def _field(self, citations=None, compiled="FIELD"):
         return {"compiled": compiled,
-                "citations": citations or [{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"}]}
+                "citations": citations or [{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"}]}
 
     def _transport(self, replies):
         seen = []
@@ -250,8 +252,8 @@ class TheLoopAndTheCollapse(unittest.TestCase):
     def test_an_interrogation_turn_is_FOLLOWED_by_an_answer_turn(self):
         """An interrogation turn answers the interrogation. The operator asked something else,
         so the dialogue must not hand back the reply to its own follow-up as the answer."""
-        field = self._field([{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"},
-                             {"n": 9, "kind": "arrow", "joins": [1, 7]}])
+        field = self._field([{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"},
+                             {"n": "x9", "kind": "arrow", "joins": ["e1", "l7"]}])
         t, seen = self._transport(["turn one [1].", "turn two [7].", "THE ANSWER [1]."])
         d = converse("the operator's question", field, t)
         self.assertGreaterEqual(len(d.turns), 2)
@@ -260,8 +262,8 @@ class TheLoopAndTheCollapse(unittest.TestCase):
         self.assertEqual(d.answer, d.turns[-1].prose)
 
     def test_the_interrogation_is_the_ENGINE_speaking_and_is_recorded_as_the_ask(self):
-        field = self._field([{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"},
-                             {"n": 9, "kind": "arrow", "joins": [1, 7]}])
+        field = self._field([{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"},
+                             {"n": "x9", "kind": "arrow", "joins": ["e1", "l7"]}])
         t, _ = self._transport(["a [1].", "b [7].", "c [1]."])
         d = converse("q", field, t)
         mid = [x for x in d.turns if x.ask != "q"]
@@ -271,8 +273,9 @@ class TheLoopAndTheCollapse(unittest.TestCase):
     def test_the_budget_BINDS_even_when_the_graph_keeps_asking(self):
         """Spec control 4, at the loop. A graph with an endless supply of unasked pairs must
         still stop — the budget is the ceiling, not a suggestion."""
-        cites = [{"n": i, "slot": f"s{i}"} for i in range(1, 20)]
-        cites += [{"n": 100 + k, "kind": "arrow", "joins": [k, k + 1]} for k in range(1, 15)]
+        cites = [{"n": f"e{i}", "slot": f"s{i}"} for i in range(1, 20)]
+        cites += [{"n": f"x{100 + k}", "kind": "arrow", "joins": [f"e{k}", f"e{k+1}"]}
+          for k in range(1, 15)]
         t, seen = self._transport(["x [1]."])
         d = converse("q", {"compiled": "F", "citations": cites}, t, budget=3)
         self.assertLessEqual(len(d.turns), 3 + 1, "budget + the one answer turn, never more")
@@ -288,8 +291,8 @@ class TheLoopAndTheCollapse(unittest.TestCase):
     def test_the_FIELD_SETTLES_between_turns(self):
         """The settle callback receives every resolved proposal so far, and the freshly
         compiled field is what the next turn is put against."""
-        field = self._field([{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"},
-                             {"n": 9, "kind": "arrow", "joins": [1, 7]}])
+        field = self._field([{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"},
+                             {"n": "x9", "kind": "arrow", "joins": ["e1", "l7"]}])
         got = []
 
         def settle(props):
@@ -297,7 +300,7 @@ class TheLoopAndTheCollapse(unittest.TestCase):
             return {"compiled": f"SETTLED-{len(props)}", "citations": field["citations"],
                     "relaxation": {"moved": 5}}
 
-        t, seen = self._transport(["[1] -refines-> [7] and so on [1].", "b [7].", "c [1]."])
+        t, seen = self._transport(["[e1] -refines-> [l7] and so on [1].", "b [7].", "c [1]."])
         d = converse("q", field, t, settle=settle)
         self.assertTrue(got, "the field never settled between turns")
         self.assertEqual(d.turns[0].moved, 5, "the turn must record what moved")
@@ -312,7 +315,7 @@ class TheLoopAndTheCollapse(unittest.TestCase):
         self.assertEqual(got, [])
 
     def test_the_record_names_RECORDS_and_CLAIMS_separately(self):
-        t, _ = self._transport(["[1] -refines-> [7]. [1] -refines-> [7]. [1] -refines-> [7]."])
+        t, _ = self._transport(["[e1] -refines-> [l7]. [e1] -refines-> [l7]. [e1] -refines-> [l7]."])
         r = converse("q", self._field(), t).as_record()
         self.assertEqual(r["records"], 3)
         self.assertEqual(r["resolved_records"], 1)
@@ -321,9 +324,9 @@ class TheLoopAndTheCollapse(unittest.TestCase):
     def test_distinct_claims_spans_the_WHOLE_dialogue_not_one_turn(self):
         """A medium restating one arrow across five TURNS contributed one claim. The per-turn
         dedupe cannot see across turns, so the dialogue-level count is the one that must."""
-        field = self._field([{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"},
-                             {"n": 9, "kind": "arrow", "joins": [1, 7]}])
-        t, _ = self._transport(["[1] -refines-> [7] a."] * 5)
+        field = self._field([{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"},
+                             {"n": "x9", "kind": "arrow", "joins": ["e1", "l7"]}])
+        t, _ = self._transport(["[e1] -refines-> [l7] a."] * 5)
         d = converse("q", field, t)
         self.assertGreater(len(d.resolved), 1, "several turns each resolved it")
         self.assertEqual(len(d.claims), 1, "and it is one claim")
@@ -354,8 +357,8 @@ class ThePromptGrewLEGALLY(unittest.TestCase):
         finds — and this project has shipped that defect once, in the ACT grammar."""
         from engine.dialogue import ARROW_FORM
 
-        shown = ARROW_FORM.replace("[i] -kind-> [j]", "[1] -refines-> [7]")
-        self.assertTrue([p for p in arrows_from(shown, {1, 7}) if p.ok],
+        shown = ARROW_FORM.replace("[i] -kind-> [j]", "[e1] -refines-> [l7]")
+        self.assertTrue([p for p in arrows_from(shown, {"e1", "l7"}) if p.ok],
                         "the prompt shows a shape the extractor does not accept")
 
     def test_every_kind_the_prompt_NAMES_is_one_the_extractor_accepts(self):
@@ -365,7 +368,7 @@ class ThePromptGrewLEGALLY(unittest.TestCase):
         self.assertEqual(len(named), 3)
         for k in named:
             with self.subTest(kind=k):
-                self.assertTrue([p for p in arrows_from(f"[1] -{k}-> [7]", {1, 7}) if p.ok])
+                self.assertTrue([p for p in arrows_from(f"[e1] -{k}-> [l7]", {"e1", "l7"}) if p.ok])
 
     def test_the_render_grammar_is_INHERITED_not_reimplemented(self):
         """Same grammar, same checker. A second copy of the citation rules would drift."""

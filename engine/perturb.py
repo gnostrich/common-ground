@@ -106,6 +106,8 @@ class Perturbation:
     calls: int = 0
     cost: float = 0.0
     error: str = ""
+    #: What the medium SAID on turn 1, verbatim. Testimony, not extraction.
+    prose: str = ""
     #: HOW THE UTTERANCE'S ACT WAS READ — a gated proposal, displayed at the top of every
     #: response so a misread is visible and correctable rather than silent.
     #: The region could not be aimed — no live arrow anywhere to aim it at. Stated, because
@@ -210,6 +212,9 @@ class Perturbation:
             "attached": len(self.attachment),
             "discrimination": self.discrimination,
             "extracted": len(self.extracted),
+            # TURN 1'S WORDS, on the record the window reads. Without this the dialogue
+            # cannot seed its first turn and spends a call re-asking a smaller field.
+            "prose": self.prose,
             "void": self.void, "calls": self.calls, "cost": round(self.cost, 6),
             "error": self.error,
             "note": ("The typed input entered a REGION as one more object, over the pseudo-"
@@ -308,6 +313,10 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
     out.calls = 1
     out.cost = float((usage or {}).get("cost") or 0.0)
 
+    # TURN 1'S PROSE, kept. The dialogue needs the medium's own words — the arrows are
+    # parsed out here, but the sentences are testimony and the answer turn is put to the
+    # field they moved. Dropping the words was how the half-collapse lost them.
+    out.prose = raw or ""
     proposals = parse_region(raw, region)
     res = residuals(proposals, region)
     out.residual = res
