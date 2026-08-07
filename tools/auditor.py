@@ -54,6 +54,17 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 
+def _relpath(p: Path, root: Path | None = None) -> str:
+    """`p.relative_to(root)`, falling back to the absolute path when `p` is not under `root`
+    — true whenever a twin points discovery or fingerprinting at a scratch directory outside
+    the repo, which several planted twins in tests/test_auditor.py do on purpose."""
+    root = root or REPO
+    try:
+        return str(p.relative_to(root))
+    except ValueError:
+        return str(p)
+
+
 def _run(args, timeout=900, cwd=None):
     try:
         p = subprocess.run(args, cwd=cwd or REPO, capture_output=True, text=True,
@@ -247,7 +258,7 @@ def discover_planted_defects(tests_dir: Path | None = None) -> dict[str, dict]:
             tree = ast.parse(f.read_text(encoding="utf-8"), filename=str(f))
         except SyntaxError as exc:
             found[f"tests.{f.stem}.<UNPARSEABLE>"] = {
-                "file": str(f.relative_to(REPO)), "lineno": 0, "class_name_matches": False,
+                "file": _relpath(f), "lineno": 0, "class_name_matches": False,
                 "matched_methods": [], "parse_error": str(exc)}
             continue
         for node in ast.walk(tree):
@@ -263,7 +274,7 @@ def discover_planted_defects(tests_dir: Path | None = None) -> dict[str, dict]:
                       and _is_planted_name(n.name)]
             if cls_hit or methods:
                 qual = f"tests.{f.stem}.{node.name}"
-                found[qual] = {"file": str(f.relative_to(REPO)), "lineno": node.lineno,
+                found[qual] = {"file": _relpath(f), "lineno": node.lineno,
                                "class_name_matches": cls_hit, "matched_methods": methods}
     return found
 
@@ -381,7 +392,12 @@ def prompt_razor() -> dict:
         return {"ok": False, "detail": f"engine.grammar did not import: {exc}",
                 "not_implemented": ["prompt razor: engine.grammar unavailable"]}
 
-    illegal = illegal_blocks()
+    # PASS `BLOCKS` EXPLICITLY. `illegal_blocks()`'s own default argument is bound to the
+    # BLOCKS object that existed at import time, once — calling it with no arguments after a
+    # twin (or a future engine.grammar edit that reassigns the name) replaces `BLOCKS` would
+    # silently keep checking the OLD tuple. Passing the just-imported, live value is what
+    # makes this a real check of what's live right now rather than a frozen one.
+    illegal = illegal_blocks(BLOCKS)
     render_path = {"blocks": [], "rendered_chars": len(render_prompt())}
     form_ok, task_ok = True, True
     for kind, text in BLOCKS:
@@ -483,14 +499,21 @@ def changelog(window: int = 20) -> dict:
 
     rows = []
     for sha, subject in commits:
-        _, files_log = _run(["git", "show", "--no-patch", "--format=", "--name-only", sha])
+        # NOT `--no-patch` + `--name-only` together — git refuses that combination outright
+        # (`-s`/`--no-patch` conflicts with `--name-only`), which silently produced an empty
+        # file list here on every commit until a planted twin caught it.
+        _, files_log = _run(["git", "show", "--format=", "--name-only", sha])
         files = [f for f in files_log.strip().splitlines() if f.strip()]
         if not _touches_design(files):
             continue
         _, msg = _run(["git", "log", "-1", "--format=%B", sha])
         labels = _feature_diff_labels()
         missing_labels = [l for l in labels if l not in msg]
-        in_changelog = changelog_exists and sha[:8] in changelog_text
+        # 7 hex chars is git's own conventional abbreviation (`git log --oneline`, %h) — a
+        # CHANGELOG entry linking a commit is expected to carry at least that much, and a
+        # longer form (8 chars, or the full sha in a commit URL) still contains it as a
+        # leading substring, so this does not miss a longer citation either.
+        in_changelog = changelog_exists and sha[:7] in changelog_text
         ok = not missing_labels and in_changelog
         rows.append({
             "sha": sha[:12], "subject": subject,
@@ -541,7 +564,7 @@ def _fingerprint(roots: list[Path]) -> str:
         for p in sorted(root.rglob("*")):
             if not p.is_file() or "__pycache__" in p.parts:
                 continue
-            h.update(str(p.relative_to(REPO)).encode())
+            h.update(_relpath(p).encode())
             try:
                 h.update(p.read_bytes())
             except OSError as exc:
