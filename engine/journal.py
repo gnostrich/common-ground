@@ -167,10 +167,21 @@ class Journal:
         # the operator reads to decide whether the daemon is working.
         _answered = sum(by_kind.values())
         _errors = self.counts.get("call_errors", 0)
+        # THE CLAMPS WERE THE DEFECT OI-30 EXISTS FOR, and I wrote them into OI-30's own
+        # first application. `min(_answered, n_calls)` gave "produced an answer" the WHOLE
+        # call count, because `_answered` counts ARROWS and one region call yields dozens of
+        # them — 22,238 answers from 5,582 calls. The remainder clamp then handed "errored"
+        # `min(4810, 0)` = 0, and 4,810 real call errors vanished into a named cause. A known
+        # cause absorbing an unknown one, inside the module built to make that impossible.
+        #
+        # ANSWERS AND CALLS ARE DIFFERENT UNITS and are no longer mixed. A call either errored
+        # or it did not; those two are exhaustive by construction, so the remainder is
+        # genuinely zero rather than clamped to zero. `answers_per_call` is reported beside it
+        # as its own ratio instead of being forced into this decomposition.
         calls_decomposed = _decompose(
             "lm_calls", n_calls,
-            {"produced an answer": min(_answered, n_calls),
-             "errored": min(_errors, max(0, n_calls - min(_answered, n_calls)))},
+            {"errored": min(_errors, n_calls),
+             "returned without error": max(0, n_calls - min(_errors, n_calls))},
             unit="call")
         return {
             "asked": _answered,
@@ -179,6 +190,9 @@ class Journal:
             # raw counters rather than replacing them: the counters are what other code
             # reads, and this is what a reader needs to know they are not the whole story.
             "calls_by_outcome": calls_decomposed,
+            # A DIFFERENT UNIT, kept apart. One region call returns many arrows, so this is a
+            # yield, not a success rate, and calling it either would be the same conflation.
+            "answers_per_call": (round(_answered / n_calls, 2) if n_calls else None),
             "arrows": sum(v for k, v in by_kind.items() if k != _NONE),
             "none": by_kind.get(_NONE, 0),
             "none_rate": (by_kind.get(_NONE, 0) / sum(by_kind.values())

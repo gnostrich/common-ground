@@ -114,16 +114,105 @@ class TheJournalNAMESWhatItsCallsDid(unittest.TestCase):
             self.assertIn(k, t)
 
     def test_the_decomposition_SUMS_on_a_journal_with_real_calls(self):
+        """RESTATED. This asserted that four calls with two answers left TWO unattributed —
+        which encoded the very category error the decomposition was fixing. Answers are not
+        calls: one region call returns many arrows, so 'four calls, two answers' says nothing
+        about how many calls succeeded. Split by the question a call can actually answer —
+        did it error? — four calls with no errors are four calls that returned, and the
+        remainder is zero because the two causes are exhaustive, not because it was clamped.
+        """
         j = self._journal()
         j.calls.extend([1.0, 2.0, 3.0, 4.0])
         j.counts["answer:same_claim"] = 2
+        j.counts["call_errors"] = 1
         t = j.totals()
         d = t["calls_by_outcome"]
         self.assertEqual(d["total"], 4)
         self.assertTrue(sums(d), d)
-        self.assertEqual(d[UNATTRIBUTED], 2,
-                         "four calls, two answers, no errors: two calls did something nothing "
-                         "here accounts for, and that must be visible")
+        self.assertEqual(d["by_cause"]["errored"], 1)
+        self.assertEqual(d["by_cause"]["returned without error"], 3)
+        self.assertEqual(d[UNATTRIBUTED], 0)
+        self.assertEqual(t["answers_per_call"], 0.5,
+                         "the answer/call ratio is its own number, in its own unit")
+
+
+class TheCLAMPSWereTheDefectItself(unittest.TestCase):
+    """Found on the live deploy, in OI-30's own first application, written by the person who
+    had just built OI-30.
+
+    The journal's decomposition read `min(_answered, n_calls)` for "produced an answer". But
+    `_answered` counts ARROWS and one region call yields dozens — 22,238 answers from 5,582
+    calls on the deploy. So that clamp handed the whole call count to a named cause, the
+    remainder clamp then gave "errored" `min(4810, 0)` = 0, and 4,810 real call errors
+    disappeared into a success bucket. A known cause absorbing an unknown one, inside the
+    module built to make that impossible.
+
+    The lesson generalises past this bug: a decomposition whose parts come from DIFFERENT
+    UNITS cannot sum, and clamping it until it does is arithmetic covering a category error.
+    """
+
+    #: The deploy's real numbers on 2026-08-07, which is how this was caught at all.
+    LIVE = {"calls": 5582, "answers": 22238, "errors": 4810}
+
+    def _totals(self):
+        import pathlib as _p
+        import tempfile
+
+        from engine.journal import Journal
+
+        self._d = tempfile.TemporaryDirectory()
+        j = Journal(_p.Path(self._d.name) / "j.jsonl")
+        j.calls.extend([1.0] * self.LIVE["calls"])
+        j.counts["answer:same_claim"] = self.LIVE["answers"]
+        j.counts["call_errors"] = self.LIVE["errors"]
+        return j.totals()
+
+    def tearDown(self):
+        d = getattr(self, "_d", None)
+        if d is not None:
+            d.cleanup()
+
+    def test_the_errors_do_not_VANISH(self):
+        d = self._totals()["calls_by_outcome"]
+        self.assertEqual(d["by_cause"]["errored"], self.LIVE["errors"],
+                         "4,810 real call errors were absorbed into a success bucket")
+
+    def test_the_decomposition_still_sums(self):
+        d = self._totals()["calls_by_outcome"]
+        self.assertTrue(sums(d), d)
+        self.assertEqual(d["total"], self.LIVE["calls"])
+
+    def test_the_remainder_is_zero_because_EXHAUSTIVE_not_because_clamped(self):
+        """A call either errored or it did not. Those two are exhaustive by construction, so
+        a zero remainder here is a fact rather than a clamp — and `attributed` can say so."""
+        d = self._totals()["calls_by_outcome"]
+        self.assertEqual(d[UNATTRIBUTED], 0)
+        self.assertTrue(attributed(d))
+
+    def test_answers_are_reported_in_their_OWN_unit(self):
+        """Mixing them was the category error. One region call returns many arrows, so this
+        is a yield and not a success rate — and forcing it into the call decomposition is
+        exactly what produced the absorption."""
+        t = self._totals()
+        self.assertAlmostEqual(t["answers_per_call"], 3.98, places=2)
+        self.assertNotIn("produced an answer", t["calls_by_outcome"]["by_cause"])
+
+    def test_more_errors_than_calls_cannot_go_NEGATIVE(self):
+        """A counter can outrun its denominator across a restart. That must not produce a
+        negative bucket, and must not silently discard the excess either."""
+        import pathlib as _p
+        import tempfile
+
+        from engine.journal import Journal
+
+        with tempfile.TemporaryDirectory() as d:
+            j = Journal(_p.Path(d) / "j.jsonl")
+            j.calls.extend([1.0] * 10)
+            j.counts["call_errors"] = 40
+            rec = j.totals()["calls_by_outcome"]
+            self.assertEqual(rec["by_cause"]["errored"], 10)
+            self.assertEqual(rec["by_cause"]["returned without error"], 0)
+            self.assertTrue(sums(rec))
 
 
 class PlantedAbsorption(unittest.TestCase):

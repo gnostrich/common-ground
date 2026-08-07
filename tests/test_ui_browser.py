@@ -303,6 +303,40 @@ class TheAnswerIsFIRST(unittest.TestCase):
             self.assertIn("faithful: []", v)
             self.assertIn("cite a claim that was shown", v)
 
+    def test_a_fully_receipted_answer_NEVER_reads_as_a_fraction_under_one(self):
+        """A citation and a legal absence are both RECEIPTS.
+
+        The line read `${cited}/${checked} sentence(s) cite a claim`, which showed 1/3 for an
+        answer whose three sentences were all properly receipted — one by a citation, two by
+        `[∅]`. The gate treats the two as equally valid; a summary that counts only one of
+        them makes a green verdict display as a partial failure, which is the worst possible
+        direction for a faithfulness readout to be wrong in.
+        """
+        payload = json.loads(json.dumps(ASK))
+        payload["faithful"] = {"ok": True, "checked": 3, "cited": 1, "asserted_absent": 2,
+                               "citable": 36, "resolved": [1], "method": "citation-resolution",
+                               "violations": []}
+        with _Server(payload=payload) as url, _Page(url) as p:
+            p.perturb()
+            v = p.page.inner_text("#answer .verdict")
+            self.assertIn("3/3 sentence(s) receipted", v, v)
+            self.assertNotIn("1/3", v, "a fully receipted answer must not read as 1/3")
+            # The split is still reported — receipted-out-of-total is the headline, not a
+            # replacement for saying which sentences cited and which asserted an absence.
+            self.assertIn("1 cite a claim that was shown", v)
+            self.assertIn("2 assert an absence", v)
+
+    def test_a_PARTIALLY_receipted_answer_still_shows_the_shortfall(self):
+        """Not vacuous in the other direction: if some sentence is neither cited nor a legal
+        absence, the fraction must be under 1 and say so."""
+        payload = json.loads(json.dumps(ASK))
+        payload["faithful"] = {"ok": True, "checked": 4, "cited": 1, "asserted_absent": 1,
+                               "citable": 36, "resolved": [1], "method": "citation-resolution",
+                               "violations": []}
+        with _Server(payload=payload) as url, _Page(url) as p:
+            p.perturb()
+            self.assertIn("2/4 sentence(s) receipted", p.page.inner_text("#answer .verdict"))
+
     def test_a_red_verdict_is_shown_ON_the_answer_with_its_failing_sentences(self):
         with _Server(RED_ASK) as url, _Page(url) as p:
             p.perturb()

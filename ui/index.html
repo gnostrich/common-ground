@@ -414,11 +414,17 @@ function renderAnswer(r){
   let gate = '';
   if(f){
     const neg = f.asserted_absent || 0;
+    // RECEIPTED OUT OF TOTAL. This read `${f.cited}/${f.checked} sentence(s) cite a claim`,
+    // which showed 1/3 for an answer where all three sentences were properly receipted — one
+    // by a citation and two by LEGAL ABSENCES. A citation and a `[∅]` are both receipts; the
+    // gate treats them as equally valid and the summary must too, or a green verdict displays
+    // a fraction under 1 and reads as a partial failure. A fully receipted answer is n/n.
+    const receipted = (f.cited || 0) + neg;
     gate = f.ok
-      ? `<div class="verdict ok">faithful: [] — ${f.cited}/${f.checked} sentence(s) cite a `
-        + `claim that was shown`
+      ? `<div class="verdict ok">faithful: [] — ${receipted}/${f.checked} sentence(s) receipted`
+        + ` (${f.cited || 0} cite a claim that was shown`
         + (neg ? `, ${neg} assert an absence the field reports` : '')
-        + ` (${(f.resolved||[]).length} distinct citation(s) against ${f.citable} citable `
+        + `; ${(f.resolved||[]).length} distinct citation(s) against ${f.citable} citable `
         + `line(s)${(f.warrants||[]).length ? '; warrants ' + f.warrants.map(esc).join(', ') : ''}).</div>`
       : `<div class="verdict bad">FAITHFULNESS RED — `
         + Object.keys(LABEL).map(k => {
