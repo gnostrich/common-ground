@@ -51,7 +51,7 @@ import time as _time
 
 from .transcript import CURRENT as TRANSCRIPT
 
-from .region import (BEARS_ON, BIAS_CHART, REGION_SIZE, REGION_SYSTEM, Region, anchor_for,
+from .region import (BEARS_ON, label as _label, BIAS_CHART, REGION_SIZE, REGION_SYSTEM, Region, anchor_for,
                      arrows_from, build_region, parse_region, render_region, residuals)
 from .relax import Relaxation, relax
 from .types import WarrantTier
@@ -215,6 +215,14 @@ class Perturbation:
             # TURN 1'S WORDS, on the record the window reads. Without this the dialogue
             # cannot seed its first turn and spends a call re-asking a smaller field.
             "prose": self.prose,
+            # AND THE LABELS TURN 1 COULD SEE. Turn 1 was shown the WHOLE region, so its
+            # arrows may name any of its sixty objects — while the compiled citations hold
+            # only the handful that attached or moved. Resolving turn 1 against the compiled
+            # set voids every arrow to an object that did not itself move, which is most of
+            # them: the first run of column C reported 10 records and 0 resolved for exactly
+            # this reason. The citable set for a turn is what THAT turn was shown.
+            "labels": ([_label(m.chart, m.index) for m in self.region.members]
+                       if self.region is not None else []),
             "void": self.void, "calls": self.calls, "cost": round(self.cost, 6),
             "error": self.error,
             "note": ("The typed input entered a REGION as one more object, over the pseudo-"

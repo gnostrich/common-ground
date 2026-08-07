@@ -406,9 +406,16 @@ class Handler(BaseHTTPRequestHandler):
                     att = (compiled.get("attachment") or {})
                     first = None
                     if att.get("prose"):
+                        # THE CITABLE SET FOR A TURN IS WHAT THAT TURN WAS SHOWN. Turn 1 saw
+                        # the whole region; the compiled citations are only what attached or
+                        # moved. Resolving turn 1 against the compiled set voided every arrow
+                        # to an object that did not itself move — 10 records, 0 resolved on
+                        # column C's first run.
                         first = Turn(n=1, ask=question, prose=att["prose"],
-                                     proposals=arrows_from(att["prose"],
-                                                           set(slot_of(compiled)), turn=1),
+                                     proposals=arrows_from(
+                                         att["prose"],
+                                         set(att.get("labels") or ()) | set(slot_of(compiled)),
+                                         turn=1),
                                      moved=int(((compiled.get("relaxation") or {})
                                                 .get("moved")) or 0))
                     dlg = converse(question, compiled, _turn,
