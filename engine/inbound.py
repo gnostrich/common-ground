@@ -656,7 +656,15 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     if transport is not None:
         _phase("attaching")
         _t = _time.time()
-        att = perturb(text, snapshot, transport, chart)
+        # TURN 1 OF THE DIALOGUE. Passing a prompt is what makes this a conversational turn
+        # rather than the daemon's coordinate call — the medium is seated in front of the WHOLE
+        # region and answers in cited prose, so the arrows and the words come from one reply.
+        # Half-collapsing this is what shipped green this morning: the propose call kept doing
+        # the attachment and handed the dialogue a field of two objects, which is why it drew
+        # no arrows. seed/FIXTURE-CERTIFIED-POSITIVITY.md column B is the record of it.
+        from .dialogue import turn_one_prompt
+
+        att = perturb(text, snapshot, transport, chart, system=turn_one_prompt())
         labeller = Labeller(att.region) if att.region is not None else Labeller()
         stages["attach"] = round(_time.time() - _t, 3)
         if not att.seeds:

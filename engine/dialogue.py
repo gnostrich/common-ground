@@ -323,3 +323,32 @@ def converse(question: str, compiled: dict, transport, settle=None,
         d.turns.append(Turn(n=n, ask=question, prose=prose,
                             proposals=arrows_from(prose, set(slot_of(state)), turn=n)))
     return d
+
+
+#: TURN 1's PROMPT. The region wire's legend, plus the citation grammar, plus the arrow form.
+#:
+#: THE DAEMON'S PROMPT FORBIDS PROSE — "Nothing else: no prose, no JSON, no claim text" — which
+#: is correct for an unattended coordinate walk and is exactly what made the collapse
+#: impossible until now. Turn 1 of a DIALOGUE is a conversational turn, so it gets a
+#: conversational prompt: relate the objects AND say what the field establishes, in one reply,
+#: in one grammar. The daemon's prompt is untouched and remains the default at the call site.
+TURN_ONE_FORM = (
+    "Objects are labelled with a chart letter and a number, like e1 or l45. Cite a label by "
+    "writing it in brackets — [e1]. Relate two objects by writing [i] -kind-> [j] on its own, "
+    "kind one of same_claim, refines, instance_of; an arrow to the boundary condition [b0] "
+    "takes the kind bears_on. Relate what is genuinely related and nothing else. Then answer "
+    "the question from these objects, ending each sentence with the labels it rests on, or "
+    "with [∅] for something these objects do not contain.")
+
+
+def turn_one_prompt() -> str:
+    """The region's own legend, then the dialogue's grammar. One prompt, both jobs.
+
+    COMPOSED FROM THE SHARED LEGEND, never sliced out of the daemon's prompt. The first version
+    did `REGION_SYSTEM.split("Emit only lines")`, which the no-similarity sweep caught — rightly,
+    since a referee module that starts splitting strings is one edit from matching them, and a
+    slice keyed on a phrase breaks silently the day that phrase is reworded.
+    """
+    from .region import REGION_LEGEND
+
+    return REGION_LEGEND + "\n\n" + TURN_ONE_FORM

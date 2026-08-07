@@ -223,7 +223,8 @@ class Perturbation:
 
 
 def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "english",
-            size: int = REGION_SIZE, quarantined: frozenset = frozenset()) -> Perturbation:
+            size: int = REGION_SIZE, quarantined: frozenset = frozenset(),
+            system: str = "") -> Perturbation:
     """Put the typed text in a diagram and let the medium complete it. Exactly one call.
 
     THE TYPED TEXT GOES TO THE MEDIUM RAW. It used to be segmented by the claim extractor
@@ -287,13 +288,18 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
         # THE ATTACHMENT CALL IS RECORDED, and it is the one that matters most: it decides
         # what the answer can possibly be about. Recording only the render call would show
         # the answer's input and hide its cause.
-        _sys, _user = REGION_SYSTEM, render_region(region)
+        # THE DAEMON'S PROMPT IS THE DEFAULT, and that is the whole separation. The
+        # unattended walk passes nothing and gets REGION_SYSTEM — coordinates only, no prose,
+        # forever. The interactive path passes the dialogue's prompt, which is the same wire
+        # legend plus the citation grammar. Two paths, one call site, and the daemon cannot
+        # acquire a dialogue by accident because acquiring one takes an argument.
+        _sys, _user = (system or REGION_SYSTEM), render_region(region)
         _t = _time.time()
         raw, usage = transport(_sys, _user)
         # NO ACT IS READ. The null surface removed the question: every utterance enters the
         # tape as an authored record, so there is no mode to select and nothing for a speech-act
         # reader to decide. The reply carries arrows and nothing else.
-        TRANSCRIPT.record("propose", _sys, _user, raw or "",
+        TRANSCRIPT.record("turn 1" if system else "propose", _sys, _user, raw or "",
                           model=str((usage or {}).get("model") or ""),
                           seconds=_time.time() - _t)
     except Exception as exc:                      # a dead call is reported, never silent

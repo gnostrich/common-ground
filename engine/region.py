@@ -97,12 +97,19 @@ BIAS_CHART = "bias"
 #: the bias object, and discarded between two corpus objects.
 BEARS_ON = "bears_on"
 
-REGION_SYSTEM = (
+#: THE LEGEND — what an object, a chart and an arrow ARE. Shared, because both prompts need it
+#: and neither may drift from the other: the daemon's coordinates prompt and the dialogue's
+#: turn-one prompt describe the SAME diagram, and a second copy of this paragraph would be two
+#: descriptions of one wire waiting to disagree.
+REGION_LEGEND = (
     "You are completing a partial DIAGRAM: a finite subcategory of a reconciliation engine's "
     "base. OBJECTS are claims, each living over a chart (english, lean, python, go, tabular, "
     "conversation). ARROWS are typed translations between claims in DIFFERENT charts.\n\n"
     "You are given the objects, the arrows already DECLARED among them, and the arrows those "
-    "declared arrows IMPLY by composition. Complete the diagram.\n\n"
+    "declared arrows IMPLY by composition. Complete the diagram.")
+
+REGION_SYSTEM = (
+    REGION_LEGEND + "\n\n"
     "Emit only lines of the form  i -kind-> j  where i and j are OBJECT LABELS exactly as "
     "shown — a chart letter followed by a number, like `e12` or `p7` — and kind is in "
     "{same_claim, refines, instance_of}. Nothing else: no prose, no JSON, no claim text, "
@@ -214,8 +221,12 @@ def label(chart: str, index: int) -> str:
 #: to a real address, which is the exact shape resolve-or-void exists to prevent.
 #: A tagged index is `<letter><digits>`; the bare-integer form is still read so that a
 #: response in the old vocabulary parses rather than silently scoring zero.
+#: BRACKETS OPTIONAL, and that is what makes ONE parser serve both channels. The coordinates
+#: wire writes `e1 -refines-> l45`; prose writes `[e1] -refines-> [l45]`, because in prose the
+#: brackets are what a citation looks like everywhere else. Two parsers for one grammar is the
+#: forbidden shape, so the grammar admits both spellings and the parser stays single.
 _ARROW_RE = re.compile(
-    r"(?<![\w.])([a-z]?)(-?\d+)\s*-\s*([a-z_]+)\s*->\s*([a-z]?)(-?\d+)(?![\w.])")
+    r"(?<![\w.])\[?([a-z]?)(-?\d+)\]?\s*-\s*([a-z_]+)\s*->\s*\[?([a-z]?)(-?\d+)\]?(?![\w.])")
 
 
 @dataclass(frozen=True, slots=True)

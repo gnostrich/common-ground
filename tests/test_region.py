@@ -93,11 +93,33 @@ class ResolveOrVoid(unittest.TestCase):
             self.assertFalse(got[0].ok, f"index {bad} resolved and must not have")
 
     def test_planted_non_integer_indices_have_no_representation_at_all(self):
-        """The format admits integers. A float, a name or a quoted claim is not an index and
-        is not an arrow line, so it cannot even be uttered."""
-        for bad in ("1.0 -same_claim-> 2", "foo -same_claim-> 2", "[1] -same_claim-> 2"):
+        """The format admits LABELS. A float, a name or a quoted claim is not one, so it cannot
+        even be uttered.
+
+        RESTATED at the collapse, and this is an assertion change rather than a fixture one:
+        `[1] -same_claim-> 2` used to be listed here as illegal. Brackets are now LEGAL, because
+        in prose a bracket is what a citation looks like, and one dialogue cannot have two
+        spellings for one relation — two parsers for one grammar is the forbidden shape. The
+        bracket is punctuation around the label; the label is still the whole index, and what
+        stays illegal is anything that is not one.
+        """
+        for bad in ("1.0 -same_claim-> 2", "foo -same_claim-> 2",
+                    "'claim one' -same_claim-> 2", "e -same_claim-> 2"):
             self.assertEqual([p for p in parse_region(bad, self.region) if p.ok], [],
                              f"{bad!r} produced an arrow")
+
+    def test_brackets_are_punctuation_and_both_spellings_resolve_the_SAME(self):
+        """The coordinates wire writes `1 -kind-> 2`; prose writes `[1] -kind-> [2]`. One
+        grammar, one parser, and the two must resolve to the identical proposal — otherwise
+        the spelling would carry meaning, which is the thing labels exist to prevent."""
+        bare = [p for p in parse_region("1 -same_claim-> 2", self.region) if p.ok]
+        brac = [p for p in parse_region("[1] -same_claim-> [2]", self.region) if p.ok]
+        half = [p for p in parse_region("[1] -same_claim-> 2", self.region) if p.ok]
+        self.assertTrue(bare, "the bare form must still parse — the daemon writes it")
+        self.assertEqual(len(bare), len(brac))
+        self.assertEqual(len(bare), len(half))
+        self.assertEqual((bare[0].src.slot, bare[0].dst.slot, bare[0].kind),
+                         (brac[0].src.slot, brac[0].dst.slot, brac[0].kind))
 
     def test_planted_a_self_pair_is_void(self):
         got = parse_region(_reply([{"i": 2, "j": 2, "kind": "same_claim"}]), self.region)
