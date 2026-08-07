@@ -193,6 +193,35 @@ than after. Read strictly:
 
 ---
 
+## COLUMNS A–D: CLOSED
+
+- **A — pre-B2 baseline.** Two mouths, coordinates then prose. Lean 0 of 19; the medium was
+  shown the Lean theorem beside the English claim describing it and connected nothing.
+- **B — the half-collapse.** The render call deleted, the propose call left standing, the split
+  surviving under new names. Lean 0 of 19, and `arrows from prose: 0` — a conversation cannot
+  draw arrows across a corpus it was never shown. Kept as the cleanest evidence this project has
+  that the two-mouth pipeline cannot be half-collapsed.
+- **C — the collapse, served.** One conversation over the whole region in region numbering.
+  Attachment 2 → 22, arrows from prose 0 → 52 records / 34 resolved, propagation crossing a
+  declared arrow for the first time, citable 9 → 61. Lean 0 of 19. Cost four referee defects to
+  measure, all of the named class, all now controlled.
+- **D — the two tiers.** flash 0 of 19 in all 8 draws; pro 0,0,0,0,2,3 in 6. The boundary is
+  crossable by capability and not reliably — ~20x cost, ~8x latency, worse faithfulness in every
+  draw. No model spend; flash stays the pinned interactive medium.
+
+**THE FIXTURE IS NOW DORMANT-STANDING.** It is not retired and nothing in it may be edited: the
+question, the rows, the pre-registration and all four columns stand as written. It has answered
+what it was built to answer — whether the machine relates across the chart boundary, and whether
+model size is the reason it does not — and re-running it against the same mechanism would only
+resample a number already measured fourteen times.
+
+**ITS NEXT LEGITIMATE AWAKENING IS A BRIDGE LANE LANDING.** Medium-labels, or the lexicon lane,
+or anything else that gives the English and Lean charts a shared handle. That is a change to the
+mechanism under test, which is exactly what a new column is for. A re-run for any other reason —
+a model change, a prompt tweak, a slow week — is resampling noise and calling it evidence.
+
+---
+
 ## HOW TO RE-RUN
 
 Against the SERVED url, never local code — a fixture that measures the working tree measures

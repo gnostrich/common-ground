@@ -41,6 +41,17 @@ Repo: [gnostrich/common-ground](https://github.com/gnostrich/common-ground). Lin
   prose 0 → 52 records / 34 resolved, propagation crossing a declared arrow for the first time on
   this fixture, and lean still 0 of 19.
 
+- **2026-08-07** — **The certified-positivity fixture closes and goes dormant-standing** —
+  columns A–D recorded closed with one line each. The finding stands: the English↔Lean boundary
+  is crossable BY CAPABILITY and not reliably, so the medium-labels and lexicon lanes are the
+  fix by measurement rather than by assumption, and flash stays the pinned interactive medium.
+  Nothing in the file may be edited and no column removed; the only legitimate awakening is a
+  BRIDGE LANE LANDING — a change to the mechanism under test. A re-run for a model change, a
+  prompt tweak or a slow week is resampling noise and calling it evidence. The four referee
+  defects join row 523's class in `seed/INVENTORY.md` as rows 525–528, with row 525 named the
+  keystone: **the checker's resolvable set IS the shown set, byte-derived from the same compile,
+  never rebuilt** — not kept in sync, which is two constructions and a promise.
+
 - **2026-08-07** — **The amendment gate (B4, mechanized)** —
   [`ccaad48`](https://github.com/gnostrich/common-ground/commit/ccaad48f4c45cb65c1961b0d1f7652d5ef4cf31d), controls at [`7ac264b`](https://github.com/gnostrich/common-ground/commit/7ac264b28eca467df4249b70d417acc02b82a619).
   A commit touching `seed/` must carry a complete FEATURE-DIFF block (WHAT, SUPERSEDES,

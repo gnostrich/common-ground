@@ -388,7 +388,13 @@ def _region_block(pert, cites: list | None = None, *, labeller=None, snapshot=No
                      f"the same call. Those are ordinary extraction at the same tier the "
                      f"sampler produces — asking a question does the sampler's work — and "
                      f"they are offered to the inlet, not written by this read path.)")
-    # THE REFEREE MUST READ THE SAME SHEET AS THE MEDIUM.
+    # THE CHECKER'S RESOLVABLE SET IS THE SHOWN SET, BYTE-DERIVED FROM THE SAME COMPILE,
+    # NEVER REBUILT.
+    #
+    # Not "kept in sync", which is two constructions and a promise, and not "a superset", which
+    # is two constructions and a direction. The act that PRINTS a label to the medium is the act
+    # that REGISTERS it as citable, so there is no second construction to drift. Every defect in
+    # the row-523 class is a second construction of a thing that already existed.
     #
     # Turn 1 is seated in front of the WHOLE region — sixty labelled objects with their claim
     # text, printed by `region.render_region` — and answers by citing those labels. The
