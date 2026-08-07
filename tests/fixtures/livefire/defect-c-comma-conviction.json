@@ -1,0 +1,861 @@
+{
+ "answer": "<w><w><w>[e40]<w><w>[e40, e21]<w><w><w><w>[c41, c11]<w><w>[c41, c11]<w>\n\n<w><w><w><w>[c42]<w><w>[c29, c46]<w><w><w><w>[c25, c52]<w><w>[c27]<w>\n\n<w><w><w><w>[e13, c17]<w><w>[e13, c17]<w>[p4, e54]<w>[p44, e39]<w><w>[p15, e5]<w>[p36, e26]<w><w><w>[c59, e9]<w><w><w>[e14]<w><w>[c33]<w><w><w><w>[e21, c19]<w><w>[e48]<w><w>[e51]<w>",
+ "dialogue": {
+  "question": "does this corpus contain anything about holonomy",
+  "turn_count": 4,
+  "stopped": "budget",
+  "records": 184,
+  "resolved_records": 171,
+  "turns": [
+   {
+    "turn": 1,
+    "ask": "does this corpus contain anything about holonomy",
+    "prose": "<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n\n<w><w><w>[e40]<w><w>[e40, e21]<w><w><w><w>[c41, c11]<w><w>[c41, c11]<w>\n\n<w><w><w><w>[c42]<w><w>[c29, c46]<w><w><w><w>[c25, c52]<w><w>[c27]<w>\n\n<w><w><w><w>[e13, c17]<w><w>[e13, c17]<w>[p4, e54]<w>[p44, e39]<w><w>[p15, e5]<w>[p36, e26]<w><w><w>[c59, e9]<w><w><w>[e14]<w><w>[c33]<w><w><w><w>[e21, c19]<w><w>[e48]<w><w>[e51]<w>",
+    "resolved": 171,
+    "interrogation": "The field holds more than one value for [c11]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
+   },
+   {
+    "turn": 2,
+    "ask": "The field holds more than one value for [c11]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
+    "prose": "<w><w><w>[c11]<w><w><w><w>[c11]<w>",
+    "resolved": 0,
+    "interrogation": "The field holds more than one value for [c11]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
+   },
+   {
+    "turn": 3,
+    "ask": "The field holds more than one value for [c11]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
+    "prose": "<w><w><w>[c11][!]",
+    "resolved": 0,
+    "interrogation": "The field holds more than one value for [c11]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
+   },
+   {
+    "turn": 4,
+    "ask": "The field holds more than one value for [c11]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
+    "prose": "<w>[c11]<w><w><w>[c11][!]<w>",
+    "resolved": 0,
+    "interrogation": ""
+   }
+  ],
+  "residuals": []
+ },
+ "faithful": {
+  "ok": false,
+  "checked": 17,
+  "cited": 7,
+  "asserted_absent": 0,
+  "citable": 64,
+  "violations": [
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "<w><w>[e40, e21]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "<w><w><w><w>[c41, c11]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "<w><w>[c41, c11]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "<w><w>[c29, c46]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "<w><w><w><w>[c25, c52]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "\n\n<w><w><w><w>[e13, c17]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "<w><w>[e13, c17]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "<w>[p4, e54]<w>[p44, e39]<w><w>[p15, e5]<w>[p36, e26]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "<w><w><w>[c59, e9]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncited",
+    "numbers": [],
+    "sentence": "<w><w><w><w>[e21, c19]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncontested",
+    "numbers": [
+     "c42"
+    ],
+    "sentence": "\n\n<w><w><w><w>[c42]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncontested",
+    "numbers": [
+     "e14"
+    ],
+    "sentence": "<w><w><w>[e14]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncontested",
+    "numbers": [
+     "e48"
+    ],
+    "sentence": "<w><w>[e48]<w>",
+    "warrant": ""
+   }
+  ]
+ },
+ "compiled": {
+  "scope": "",
+  "citations": [
+   {
+    "n": "c1",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c6",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c8",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c11",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c17",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c19",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c23",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c25",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c27",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c29",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c32",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c33",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c41",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c42",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c45",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c46",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c49",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c52",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c57",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "c59",
+    "kind": "bears_on",
+    "chart": "conversation",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e3",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e5",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e9",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e10",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e13",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e14",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e18",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e20",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e21",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e24",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e34",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e40",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e43",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e47",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e48",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e51",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e53",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p2",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p7",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p12",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p15",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p16",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p22",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p28",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p30",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p31",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p35",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p37",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p38",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p50",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p55",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p56",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p58",
+    "kind": "bears_on",
+    "chart": "python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "p4",
+    "kind": "seated",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e26",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p36",
+    "kind": "seated",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e39",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p44",
+    "kind": "seated",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e54",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "c52",
+    "kind": "moved",
+    "chart": "conversation",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p15",
+    "kind": "moved",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p58",
+    "kind": "moved",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p30",
+    "kind": "moved",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "c41",
+    "kind": "moved",
+    "chart": "conversation",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e3",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p37",
+    "kind": "moved",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p31",
+    "kind": "moved",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "c42",
+    "kind": "moved",
+    "chart": "conversation",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "c32",
+    "kind": "moved",
+    "chart": "conversation",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e9",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e43",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "c46",
+    "kind": "moved",
+    "chart": "conversation",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "c11",
+    "kind": "moved",
+    "chart": "conversation",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e48",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p12",
+    "kind": "moved",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e5",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "c59",
+    "kind": "moved",
+    "chart": "conversation",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p16",
+    "kind": "moved",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e47",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p50",
+    "kind": "moved",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "p7",
+    "kind": "moved",
+    "chart": "python",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e53",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e14",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e55",
+    "kind": "fiber",
+    "chart": "english+python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e56",
+    "kind": "fiber",
+    "chart": "english+python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e57",
+    "kind": "cluster",
+    "chart": "english+python",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e58",
+    "kind": "cluster",
+    "chart": "english+go",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e59",
+    "kind": "cluster",
+    "chart": "english+lean",
+    "group": "",
+    "contested": false
+   }
+  ],
+  "attachment": {
+   "labels": [
+    "b0",
+    "c1",
+    "p2",
+    "e3",
+    "p4",
+    "e5",
+    "c6",
+    "p7",
+    "c8",
+    "e9",
+    "e10",
+    "c11",
+    "p12",
+    "e13",
+    "e14",
+    "p15",
+    "p16",
+    "c17",
+    "e18",
+    "c19",
+    "e20",
+    "e21",
+    "p22",
+    "c23",
+    "e24",
+    "c25",
+    "e26",
+    "c27",
+    "p28",
+    "c29",
+    "p30",
+    "p31",
+    "c32",
+    "c33",
+    "e34",
+    "p35",
+    "p36",
+    "p37",
+    "p38",
+    "e39",
+    "e40",
+    "c41",
+    "c42",
+    "e43",
+    "p44",
+    "c45",
+    "c46",
+    "e47",
+    "e48",
+    "c49",
+    "p50",
+    "e51",
+    "c52",
+    "e53",
+    "e54",
+    "p55",
+    "p56",
+    "c57",
+    "p58",
+    "c59"
+   ]
+  }
+ },
+ "transcript": [
+  {
+   "port": "turn 1",
+   "model": "google/gemini-2.5-flash",
+   "system": "You are completing a partial DIAGRAM: a finite subcategory of a reconciliation engine's base. OBJECTS are claims, each living over a chart (english, lean, python, go, tabular, conversation). ARROWS are typed translations between claims in DIFFERENT charts.\n\nYou are given the objects, the arrows already DECLARED among them, and the arrows those declared arrows IMPLY by composition. Complete the diagram.\n\nObjects are labelled with a chart letter and a number, like e1 or l45. Cite a label by writing it in brackets \u2014 [e1]. Relate two objects by writing [i] -kind-> [j] on its own, kind one of same_claim, refines, instance_of; an arrow to the boundary condition [b0] takes the kind bears_on. Relate what is genuinely related and nothing else. Then answer the question from these objects, ending each sentence with the labels it rests on, or with [\u2205] for something these objects do not contain. Two or more labels on one sentence assert that those objects are related: only write that when you have also written the arrow saying so, otherwise give each object its own sentence, or write [\u2205rel].",
+   "user": "<region>",
+   "reply": "<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n\n<w><w><w>[e40]<w><w>[e40, e21]<w><w><w><w>[c41, c11]<w><w>[c41, c11]<w>\n\n<w><w><w><w>[c42]<w><w>[c29, c46]<w><w><w><w>[c25, c52]<w><w>[c27]<w>\n\n<w><w><w><w>[e13, c17]<w><w>[e13, c17]<w>[p4, e54]<w>[p44, e39]<w><w>[p15, e5]<w>[p36, e26]<w><w><w>[c59, e9]<w><w><w>[e14]<w><w>[c33]<w><w><w><w>[e21, c19]<w><w>[e48]<w><w>[e51]<w>",
+   "system_sha": "d7e5eacb6ce47563",
+   "user_sha": "352fe73b2d2de531",
+   "reply_sha": "48719273aff7b688"
+  },
+  {
+   "port": "turn 2",
+   "model": "google/gemini-2.5-flash",
+   "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
+   "user": "<region>",
+   "reply": "<w><w><w>[c11]<w><w><w><w>[c11]<w>",
+   "system_sha": "853dfa069778f76a",
+   "user_sha": "352fe73b2d2de531",
+   "reply_sha": "9fa4dd1b80b36204"
+  },
+  {
+   "port": "turn 3",
+   "model": "google/gemini-2.5-flash",
+   "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
+   "user": "<region>",
+   "reply": "<w><w><w>[c11][!]",
+   "system_sha": "853dfa069778f76a",
+   "user_sha": "352fe73b2d2de531",
+   "reply_sha": "9e90dfe9ebdee1b4"
+  },
+  {
+   "port": "turn 4",
+   "model": "google/gemini-2.5-flash",
+   "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
+   "user": "<region>",
+   "reply": "<w>[c11]<w><w><w>[c11][!]<w>",
+   "system_sha": "853dfa069778f76a",
+   "user_sha": "352fe73b2d2de531",
+   "reply_sha": "46cae51d22531a49"
+  }
+ ]
+}

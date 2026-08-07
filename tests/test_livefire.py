@@ -1,0 +1,223 @@
+"""THE BATTERY'S ACCEPTANCE, and it is not "the checks pass".
+
+A battery is accepted when it TRIPS on the defects that were already caught by hand. Each of
+the three below was found by the operator reading a live transcript, after a green suite of
+sixteen hundred tests. Each is replayed here from the recorded run — bracket skeleton, corpus
+prose redacted by `tools/redact_run.py`, because this repository is public — and each must
+produce a finding naming its class.
+
+THE STANDING RULE THIS FILE ENCODES: a defect the operator catches that the battery did not is
+a MISSING CHECK, and the fix is two commits — the defect, and the check that would have caught
+it. This file is where the second commit lands.
+"""
+
+from __future__ import annotations
+
+import json
+import unittest
+from pathlib import Path
+
+from tools.livefire import (CHECKS, audit, check_a_red_verdict_names_a_compliable_rule,
+                            check_no_mechanism_prose_on_the_wire, check_panel_hashes_verify,
+                            probes, shown_labels)
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "livefire"
+
+
+def load(name: str) -> dict:
+    return json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
+
+
+def kinds(name: str) -> set:
+    return {f.check for f in audit(name, load(name))}
+
+
+class TheBatteryTripsOnEveryDefectTheOperatorCaught(unittest.TestCase):
+    """THE ACCEPTANCE. All three, or the battery is incomplete and the battery is fixed first."""
+
+    def test_defect_A_the_empty_answer(self):
+        """Four turns, fifty resolved arrows, and nothing on the page. The residual whose only
+        job is that case did not fire, because it and `Dialogue.answer` disagreed about what
+        "answered" means. Planted from ledger row 528: that run's capture was truncated."""
+        self.assertIn("no-degenerate-turn-left-unretried", kinds("defect-a-empty-answer"))
+
+    def test_defect_B_the_residual_asked_three_times(self):
+        """The interrogator re-asked a discharged residual and got the same reply byte for
+        byte. Replayed from the served run on build 6bc9309592bd."""
+        self.assertIn("no-question-asked-twice-with-the-same-reply",
+                      kinds("defect-b-repeated-residual"))
+
+    def test_defect_C_the_delimiter_conviction(self):
+        """Ten sentences ruled UNCITED while every one carried `[e40, e21]` — citations the
+        referee could not read because of a comma. Replayed from the served run on build
+        6bc9309592bd."""
+        self.assertIn("citations-resolve-against-the-shown-sheet",
+                      kinds("defect-c-comma-conviction"))
+
+    def test_all_three_at_once_because_that_is_the_acceptance(self):
+        got = {"A": kinds("defect-a-empty-answer"),
+               "B": kinds("defect-b-repeated-residual"),
+               "C": kinds("defect-c-comma-conviction")}
+        self.assertTrue(all(got.values()), f"a defect passed the battery clean: {got}")
+
+
+class TheBatteryDoesNotFireOnAHEALTHYRun(unittest.TestCase):
+    """The other direction, or the battery is a machine that always says yes."""
+
+    HEALTHY = {
+        "answer": "The work establishes positivity [e3].",
+        "dialogue": {"question": "q", "turn_count": 1, "stopped": "nothing to ask",
+                     "records": 1, "resolved_records": 1,
+                     "turns": [{"turn": 1, "ask": "q",
+                                "prose": "The work establishes positivity [e3].",
+                                "resolved": 1, "interrogation": ""}],
+                     "residuals": []},
+        "faithful": {"ok": True, "checked": 1, "cited": 1, "asserted_absent": 0,
+                     "citable": 2, "violations": []},
+        "compiled": {"scope": "", "attachment": {"labels": ["b0", "e3", "l7"]},
+                     "citations": [{"n": "e3", "kind": "attached", "chart": "english"},
+                                   {"n": "l7", "kind": "seated", "chart": "lean"}]},
+        "transcript": [],
+    }
+
+    def test_a_clean_run_produces_no_findings(self):
+        self.assertEqual(audit("healthy", self.HEALTHY), [])
+
+    def test_a_run_with_a_legal_absence_answer_is_clean(self):
+        run = json.loads(json.dumps(self.HEALTHY))
+        run["answer"] = "The field does not hold anything about this [∅]."
+        run["dialogue"]["turns"][0]["prose"] = run["answer"]
+        run["faithful"] = {"ok": True, "checked": 1, "cited": 0, "asserted_absent": 1,
+                           "citable": 2, "violations": []}
+        self.assertEqual(audit("thin", run), [])
+
+
+class EachCheckDiscriminates(unittest.TestCase):
+    """One planted failure per check, so none of them is decoration."""
+
+    def _base(self):
+        return json.loads(json.dumps(TheBatteryDoesNotFireOnAHEALTHYRun.HEALTHY))
+
+    def test_an_unasked_turn_is_caught(self):
+        run = self._base()
+        run["dialogue"]["turns"].append({"turn": 2, "ask": "a question nobody raised",
+                                         "prose": "x [e3].", "resolved": 0,
+                                         "interrogation": ""})
+        self.assertIn("no-turn-without-a-preceding-question",
+                      {f.check for f in audit("planted", run)})
+
+    def test_an_interrogation_a_prior_turn_DID_raise_is_legal(self):
+        run = self._base()
+        run["dialogue"]["turns"][0]["interrogation"] = "the raised question"
+        run["dialogue"]["turns"].append({"turn": 2, "ask": "the raised question",
+                                         "prose": "x [e3].", "resolved": 0,
+                                         "interrogation": ""})
+        self.assertNotIn("no-turn-without-a-preceding-question",
+                         {f.check for f in audit("planted", run)})
+
+    def test_a_residual_naming_an_unshown_object_is_caught(self):
+        run = self._base()
+        # LABEL-SHAPED but not shown. `zz9` would not have worked and that is the chart-tag
+        # doorstop doing its job one layer up: a two-letter run is a word, not a label, so it
+        # is not scoped against the citable set at all.
+        run["dialogue"]["residuals"] = [{"residual": ["e99"], "question": "?", "turn": 2,
+                                         "outcome": "unanswered"}]
+        self.assertIn("residuals-are-scoped-to-the-perturbation",
+                      {f.check for f in audit("planted", run)})
+
+    def test_a_lexical_residual_naming_a_GROUP_is_not_a_stray_label(self):
+        run = self._base()
+        run["dialogue"]["residuals"] = [{"residual": ["lex", "s1abc"], "question": "?",
+                                         "turn": 2, "outcome": "resolved"}]
+        self.assertNotIn("residuals-are-scoped-to-the-perturbation",
+                         {f.check for f in audit("planted", run)})
+
+    def test_scope_prose_reaching_a_prompt_is_caught(self):
+        run = self._base()
+        leak = ("WHICH REGION: sampled by declared structure, an arrow-rich neighbourhood "
+                "chosen by a hash of the input's address.")
+        run["compiled"]["scope"] = leak
+        run["transcript"] = [{"system": "S", "user": f"FIELD\n{leak}\n", "reply": "r",
+                              "system_sha": "", "user_sha": "", "reply_sha": ""}]
+        self.assertIn("no-mechanism-prose-on-the-wire",
+                      {f.check for f in check_no_mechanism_prose_on_the_wire("planted", run)})
+
+    def test_a_broken_panel_digest_is_caught(self):
+        run = self._base()
+        run["transcript"] = [{"system": "S", "user": "U", "reply": "R",
+                              "system_sha": "deadbeefdeadbeef", "user_sha": "x",
+                              "reply_sha": "y"}]
+        found = check_panel_hashes_verify("planted", run)
+        self.assertEqual(len(found), 3, "every side of the call must be verified")
+
+    def test_a_verdict_whose_licence_is_absent_from_a_prompt_is_caught(self):
+        run = self._base()
+        run["faithful"]["violations"] = [{"kind": "welded", "numbers": ["e3", "l7"],
+                                          "sentence": "x [e3][l7].", "warrant": ""}]
+        run["transcript"] = [{"system": "a prompt that never mentions the escape",
+                              "user": "U", "reply": "R", "system_sha": "", "user_sha": "",
+                              "reply_sha": ""}]
+        found = check_a_red_verdict_names_a_compliable_rule("planted", run)
+        self.assertEqual(len(found), 1)
+        self.assertIn("rel", found[0].detail)
+
+    def test_a_verdict_whose_licence_IS_present_is_not_caught(self):
+        run = self._base()
+        run["faithful"]["violations"] = [{"kind": "welded", "numbers": ["e3", "l7"],
+                                          "sentence": "x [e3][l7].", "warrant": ""}]
+        run["transcript"] = [{"system": 'write [∅rel] when the field declares no relation',
+                              "user": "U", "reply": "R", "system_sha": "", "user_sha": "",
+                              "reply_sha": ""}]
+        self.assertEqual(check_a_red_verdict_names_a_compliable_rule("planted", run), [])
+
+    def test_a_broken_check_is_REPORTED_not_swallowed(self):
+        """A battery that silently drops a raising check is a battery that goes quiet the day
+        a response shape changes."""
+        found = audit("planted", {"dialogue": {"turns": [{"turn": 1}]}, "faithful": None})
+        self.assertTrue(found, "a malformed run produced no finding at all")
+
+
+class TheProbeSetIsTheONeTheOrderNamed(unittest.TestCase):
+    def test_the_six_frozen_prompts_the_fixture_and_the_dialogue_era_probes(self):
+        names = [n for n, _t, _w in probes()]
+        self.assertEqual(len([n for n in names if n.startswith("battery-")]), 3)
+        self.assertEqual(len([n for n in names if n.startswith("operator-")]), 3)
+        self.assertIn("fixture-certified-positivity", names)
+        for probe in ("residual-rich", "residual-free", "thin-material"):
+            self.assertIn(probe, names)
+        self.assertEqual(len(names), len(set(names)), "two probes share a name")
+
+    def test_every_probe_states_WHY_it_is_in_the_battery(self):
+        for name, text, why in probes():
+            with self.subTest(probe=name):
+                self.assertTrue(text.strip(), f"{name} has no question")
+                self.assertTrue(why.strip(), f"{name} does not say why it is here")
+
+    def test_every_check_is_reachable_from_the_registry(self):
+        """A check defined and not registered runs on nothing."""
+        self.assertEqual(len(CHECKS), 8)
+        self.assertEqual(len(CHECKS), len({c.__name__ for c in CHECKS}))
+
+    def test_shown_labels_unions_both_sheets_and_EXCLUDES_the_question(self):
+        """[b0] is shown and is deliberately not citable: an answer resting on the question
+        rests on nothing, so a conviction for citing it is the referee working."""
+        run = TheBatteryDoesNotFireOnAHEALTHYRun.HEALTHY
+        self.assertEqual(shown_labels(run), {"e3", "l7"})
+
+    def test_identical_findings_fold_and_keep_their_count(self):
+        """One finding seen N times is one finding. A report that lists twenty-seven copies of
+        the same licence gap buries the other four classes."""
+        run = json.loads(json.dumps(TheBatteryDoesNotFireOnAHEALTHYRun.HEALTHY))
+        run["faithful"]["violations"] = [
+            {"kind": "welded", "numbers": ["e3", "l7"], "sentence": f"x{i} [e3][l7].",
+             "warrant": ""} for i in range(4)]
+        run["transcript"] = [{"system": "no escape here", "user": "U", "reply": "R",
+                              "system_sha": "", "user_sha": "", "reply_sha": ""}]
+        found = [f for f in audit("planted", run)
+                 if f.check == "a-red-verdict-names-a-compliable-rule"]
+        self.assertEqual(len(found), 1, "identical findings were not folded")
+        self.assertEqual(found[0].seen, 4, "the fold lost the count")
+
+
+if __name__ == "__main__":
+    unittest.main()

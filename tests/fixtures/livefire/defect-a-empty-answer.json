@@ -1,0 +1,73 @@
+{
+ "_planted": "Built from seed/INVENTORY.md row 528, not replayed from the wire: that run's capture was truncated in transit. Four turns, fifty resolved arrows, an EMPTY answer, and the residual silent.",
+ "answer": "",
+ "dialogue": {
+  "question": "what does the certified positivity work establish",
+  "turn_count": 4,
+  "stopped": "budget",
+  "records": 55,
+  "resolved_records": 50,
+  "turns": [
+   {
+    "turn": 1,
+    "ask": "what does the certified positivity work establish",
+    "prose": "[b0] -bears_on-> [e3]\n[e3] -same_claim-> [l7]",
+    "resolved": 50,
+    "interrogation": "Composition implies a relation between [e3] and [l7] that nothing has measured. State it as an arrow, or say the field does not have it with [e3] -bears_on-> [l7] omitted entirely."
+   },
+   {
+    "turn": 2,
+    "ask": "Composition implies a relation between [e3] and [l7] that nothing has measured. State it as an arrow, or say the field does not have it with [e3] -bears_on-> [l7] omitted entirely.",
+    "prose": "<w>[e2]<w>",
+    "resolved": 0,
+    "interrogation": ""
+   },
+   {
+    "turn": 3,
+    "ask": "Composition implies a relation between [e3] and [l7] that nothing has measured. State it as an arrow, or say the field does not have it with [e3] -bears_on-> [l7] omitted entirely.",
+    "prose": "<w>[e3]<w>",
+    "resolved": 0,
+    "interrogation": ""
+   },
+   {
+    "turn": 4,
+    "ask": "Composition implies a relation between [e3] and [l7] that nothing has measured. State it as an arrow, or say the field does not have it with [e3] -bears_on-> [l7] omitted entirely.",
+    "prose": "<w>[e4]<w>",
+    "resolved": 0,
+    "interrogation": ""
+   }
+  ],
+  "residuals": []
+ },
+ "faithful": {
+  "ok": true,
+  "checked": 0,
+  "cited": 0,
+  "asserted_absent": 0,
+  "citable": 64,
+  "violations": []
+ },
+ "compiled": {
+  "scope": "",
+  "attachment": {
+   "labels": [
+    "b0",
+    "e3",
+    "l7"
+   ]
+  },
+  "citations": [
+   {
+    "n": "e3",
+    "kind": "attached",
+    "chart": "english"
+   },
+   {
+    "n": "l7",
+    "kind": "seated",
+    "chart": "lean"
+   }
+  ]
+ },
+ "transcript": []
+}

@@ -1,0 +1,783 @@
+{
+ "answer": "<w><w><w><w><w><w>[e7]<w><w>[e31]<w><w><w>[e16]<w><w>[0,0.4][e38]<w>",
+ "dialogue": {
+  "question": "what does the certified positivity work establish",
+  "turn_count": 5,
+  "stopped": "budget; [b0] had no answering turn, so it was re-asked",
+  "records": 52,
+  "resolved_records": 34,
+  "turns": [
+   {
+    "turn": 1,
+    "ask": "what does the certified positivity work establish",
+    "prose": "<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>",
+    "resolved": 34,
+    "interrogation": "The field holds more than one value for [e16]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
+   },
+   {
+    "turn": 2,
+    "ask": "The field holds more than one value for [e16]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
+    "prose": "<w><w>[e16]<w>[e16][l61]<w>[e16][l61]<w>",
+    "resolved": 0,
+    "interrogation": "The field holds more than one value for [e16]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
+   },
+   {
+    "turn": 3,
+    "ask": "The field holds more than one value for [e16]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
+    "prose": "<w><w>[e16][!]<w>[e16]<w>[l61][e16][l61]<w>[\u2205]<w>",
+    "resolved": 0,
+    "interrogation": "The field holds more than one value for [e16]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
+   },
+   {
+    "turn": 4,
+    "ask": "The field holds more than one value for [e16]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
+    "prose": "<w><w>[e16][!]<w>[e16]<w>[l61][e16][l61]<w>[\u2205]<w>",
+    "resolved": 0,
+    "interrogation": ""
+   },
+   {
+    "turn": 5,
+    "ask": "what does the certified positivity work establish",
+    "prose": "<w><w><w><w><w><w>[e7]<w><w>[e31]<w><w><w>[e16]<w><w>[0,0.4][e38]<w>",
+    "resolved": 0,
+    "interrogation": ""
+   }
+  ],
+  "residuals": []
+ },
+ "faithful": {
+  "ok": false,
+  "checked": 4,
+  "cited": 4,
+  "asserted_absent": 0,
+  "citable": 61,
+  "violations": [
+   {
+    "kind": "uncontested",
+    "numbers": [
+     "e31"
+    ],
+    "sentence": "<w><w>[e31]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncontested",
+    "numbers": [
+     "e16"
+    ],
+    "sentence": "<w><w><w>[e16]<w>",
+    "warrant": ""
+   },
+   {
+    "kind": "uncontested",
+    "numbers": [
+     "e38"
+    ],
+    "sentence": "<w><w>[0,0.4][e38]<w>",
+    "warrant": ""
+   }
+  ]
+ },
+ "compiled": {
+  "scope": "",
+  "citations": [
+   {
+    "n": "e3",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e7",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e2",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e10",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e11",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e16",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e23",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e26",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e27",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e29",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e31",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e33",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e37",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e38",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e40",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e47",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e48",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e49",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e50",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e55",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e57",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e58",
+    "kind": "bears_on",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e1",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e4",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l5",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l6",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e8",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e9",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e12",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l13",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l14",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e15",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e17",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e18",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l19",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e20",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e21",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e22",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l24",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l25",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l28",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l30",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l32",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l34",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e35",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l36",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l39",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e41",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l42",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e43",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e44",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l45",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e46",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e51",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e52",
+    "kind": "seated",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l53",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l54",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l56",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l59",
+    "kind": "seated",
+    "chart": "lean",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e58",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e47",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e11",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e29",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e37",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e50",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e57",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e55",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e38",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "l60",
+    "kind": "moved",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e48",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e33",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e40",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e2",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e3",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e31",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e10",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e23",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e27",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e26",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "l61",
+    "kind": "moved",
+    "chart": "lean",
+    "group": "",
+    "contested": true
+   },
+   {
+    "n": "e49",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e7",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": false
+   },
+   {
+    "n": "e16",
+    "kind": "moved",
+    "chart": "english",
+    "group": "",
+    "contested": true
+   }
+  ],
+  "attachment": {
+   "labels": [
+    "b0",
+    "e1",
+    "e2",
+    "e3",
+    "e4",
+    "l5",
+    "l6",
+    "e7",
+    "e8",
+    "e9",
+    "e10",
+    "e11",
+    "e12",
+    "l13",
+    "l14",
+    "e15",
+    "e16",
+    "e17",
+    "e18",
+    "l19",
+    "e20",
+    "e21",
+    "e22",
+    "e23",
+    "l24",
+    "l25",
+    "e26",
+    "e27",
+    "l28",
+    "e29",
+    "l30",
+    "e31",
+    "l32",
+    "e33",
+    "l34",
+    "e35",
+    "l36",
+    "e37",
+    "e38",
+    "l39",
+    "e40",
+    "e41",
+    "l42",
+    "e43",
+    "e44",
+    "l45",
+    "e46",
+    "e47",
+    "e48",
+    "e49",
+    "e50",
+    "e51",
+    "e52",
+    "l53",
+    "l54",
+    "e55",
+    "l56",
+    "e57",
+    "e58",
+    "l59"
+   ]
+  }
+ },
+ "transcript": [
+  {
+   "port": "turn 1",
+   "model": "google/gemini-2.5-flash",
+   "system": "You are completing a partial DIAGRAM: a finite subcategory of a reconciliation engine's base. OBJECTS are claims, each living over a chart (english, lean, python, go, tabular, conversation). ARROWS are typed translations between claims in DIFFERENT charts.\n\nYou are given the objects, the arrows already DECLARED among them, and the arrows those declared arrows IMPLY by composition. Complete the diagram.\n\nObjects are labelled with a chart letter and a number, like e1 or l45. Cite a label by writing it in brackets \u2014 [e1]. Relate two objects by writing [i] -kind-> [j] on its own, kind one of same_claim, refines, instance_of; an arrow to the boundary condition [b0] takes the kind bears_on. Relate what is genuinely related and nothing else. Then answer the question from these objects, ending each sentence with the labels it rests on, or with [\u2205] for something these objects do not contain. Two or more labels on one sentence assert that those objects are related: only write that when you have also written the arrow saying so, otherwise give each object its own sentence, or write [\u2205rel].",
+   "user": "<region>",
+   "reply": "<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>\n<w>",
+   "system_sha": "d7e5eacb6ce47563",
+   "user_sha": "352fe73b2d2de531",
+   "reply_sha": "a7c7cee0c2adc3d2"
+  },
+  {
+   "port": "turn 2",
+   "model": "google/gemini-2.5-flash",
+   "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
+   "user": "<region>",
+   "reply": "<w><w>[e16]<w>[e16][l61]<w>[e16][l61]<w>",
+   "system_sha": "853dfa069778f76a",
+   "user_sha": "352fe73b2d2de531",
+   "reply_sha": "ef5a135aaed70cf9"
+  },
+  {
+   "port": "turn 3",
+   "model": "google/gemini-2.5-flash",
+   "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
+   "user": "<region>",
+   "reply": "<w><w>[e16][!]<w>[e16]<w>[l61][e16][l61]<w>[\u2205]<w>",
+   "system_sha": "853dfa069778f76a",
+   "user_sha": "352fe73b2d2de531",
+   "reply_sha": "3342a29dec447f50"
+  },
+  {
+   "port": "turn 4",
+   "model": "google/gemini-2.5-flash",
+   "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
+   "user": "<region>",
+   "reply": "<w><w>[e16][!]<w>[e16]<w>[l61][e16][l61]<w>[\u2205]<w>",
+   "system_sha": "853dfa069778f76a",
+   "user_sha": "352fe73b2d2de531",
+   "reply_sha": "3342a29dec447f50"
+  },
+  {
+   "port": "turn 5",
+   "model": "google/gemini-2.5-flash",
+   "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
+   "user": "<region>",
+   "reply": "<w><w><w><w><w><w>[e7]<w><w>[e31]<w><w><w>[e16]<w><w>[0,0.4][e38]<w>",
+   "system_sha": "853dfa069778f76a",
+   "user_sha": "352fe73b2d2de531",
+   "reply_sha": "671bd69e490aa095"
+  }
+ ]
+}

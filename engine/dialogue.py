@@ -551,7 +551,8 @@ TURN_ONE_FORM = (
     "the question from these objects, ending each sentence with the labels it rests on, or "
     "with [∅] for something these objects do not contain. Two or more labels on one sentence "
     "assert that those objects are related: only write that when you have also written the "
-    "arrow saying so, otherwise give each object its own sentence, or write [∅rel].")
+    "arrow saying so, otherwise give each object its own sentence, or write [∅rel]. "
+    "[b0] is the question itself and is not evidence: relate to it, never cite it.")
 
 
 def turn_one_prompt() -> str:
