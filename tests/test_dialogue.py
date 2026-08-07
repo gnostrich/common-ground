@@ -18,8 +18,9 @@ import ast
 import unittest
 from pathlib import Path
 
-from engine.dialogue import (ARROW, DIALOGUE_KINDS, TESTIMONY, TURN_BUDGET, Proposal, Turn,
-                             arrows_from, implied_unaddressed, interrogate)
+from engine.dialogue import (ARROW, DIALOGUE_KINDS, TESTIMONY, TURN_BUDGET, Dialogue,
+                             Proposal, Turn, arrows_from, converse, implied_unaddressed,
+                             interrogate)
 
 REPO = Path(__file__).resolve().parent.parent
 MODULE = REPO / "engine" / "dialogue.py"
@@ -209,6 +210,169 @@ class C6_TheDaemonIsUntouched(unittest.TestCase):
 
         self.assertNotIn("-refines-> [", REGION_SYSTEM,
                          "the coordinate wire must not learn the prose form")
+
+
+class TheLoopAndTheCollapse(unittest.TestCase):
+    """Piece 2. The last turn IS the answer; there is no render call.
+
+    THE COLLAPSE IS A COST FACT, not only a design one: the two-port split spent two calls on
+    every question. A question the graph has nothing to interrogate about now spends ONE, and
+    that one call's prose is the answer. Anything that reintroduces a second unconditional
+    call has undone the ruling, so the call COUNT is asserted, not just the shape.
+    """
+
+    def _field(self, citations=None, compiled="FIELD"):
+        return {"compiled": compiled,
+                "citations": citations or [{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"}]}
+
+    def _transport(self, replies):
+        seen = []
+
+        def t(system, user):
+            seen.append({"system": system, "user": user})
+            return (replies[len(seen) - 1] if len(seen) <= len(replies) else replies[-1]), {}
+
+        return t, seen
+
+    def test_a_question_with_nothing_to_interrogate_costs_ONE_call(self):
+        t, seen = self._transport(["The cone is positive [1]."])
+        d = converse("is the cone positive", self._field(), t)
+        self.assertEqual(len(seen), 1, "the two-port split spent two; this must spend one")
+        self.assertEqual(len(d.turns), 1)
+        self.assertEqual(d.answer, "The cone is positive [1].")
+        self.assertEqual(d.stopped, "the graph had nothing left to ask")
+
+    def test_the_last_turn_IS_the_answer(self):
+        t, _ = self._transport(["first [1].", "second [1].", "third [1]."])
+        d = converse("q", self._field(), t)
+        self.assertEqual(d.answer, d.turns[-1].prose)
+
+    def test_an_interrogation_turn_is_FOLLOWED_by_an_answer_turn(self):
+        """An interrogation turn answers the interrogation. The operator asked something else,
+        so the dialogue must not hand back the reply to its own follow-up as the answer."""
+        field = self._field([{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"},
+                             {"n": 9, "kind": "arrow", "joins": [1, 7]}])
+        t, seen = self._transport(["turn one [1].", "turn two [7].", "THE ANSWER [1]."])
+        d = converse("the operator's question", field, t)
+        self.assertGreaterEqual(len(d.turns), 2)
+        self.assertEqual(d.turns[-1].ask, "the operator's question")
+        self.assertNotIn("Composition implies", d.turns[-1].ask)
+        self.assertEqual(d.answer, d.turns[-1].prose)
+
+    def test_the_interrogation_is_the_ENGINE_speaking_and_is_recorded_as_the_ask(self):
+        field = self._field([{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"},
+                             {"n": 9, "kind": "arrow", "joins": [1, 7]}])
+        t, _ = self._transport(["a [1].", "b [7].", "c [1]."])
+        d = converse("q", field, t)
+        mid = [x for x in d.turns if x.ask != "q"]
+        self.assertTrue(mid, "no interrogation turn ran")
+        self.assertIn("Composition implies", mid[0].ask)
+
+    def test_the_budget_BINDS_even_when_the_graph_keeps_asking(self):
+        """Spec control 4, at the loop. A graph with an endless supply of unasked pairs must
+        still stop — the budget is the ceiling, not a suggestion."""
+        cites = [{"n": i, "slot": f"s{i}"} for i in range(1, 20)]
+        cites += [{"n": 100 + k, "kind": "arrow", "joins": [k, k + 1]} for k in range(1, 15)]
+        t, seen = self._transport(["x [1]."])
+        d = converse("q", {"compiled": "F", "citations": cites}, t, budget=3)
+        self.assertLessEqual(len(d.turns), 3 + 1, "budget + the one answer turn, never more")
+        self.assertEqual(d.stopped, "budget")
+        self.assertLessEqual(len(seen), 4)
+
+    def test_a_budget_of_one_still_answers(self):
+        t, seen = self._transport(["only [1]."])
+        d = converse("q", self._field(), t, budget=1)
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(d.answer, "only [1].")
+
+    def test_the_FIELD_SETTLES_between_turns(self):
+        """The settle callback receives every resolved proposal so far, and the freshly
+        compiled field is what the next turn is put against."""
+        field = self._field([{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"},
+                             {"n": 9, "kind": "arrow", "joins": [1, 7]}])
+        got = []
+
+        def settle(props):
+            got.append(len(props))
+            return {"compiled": f"SETTLED-{len(props)}", "citations": field["citations"],
+                    "relaxation": {"moved": 5}}
+
+        t, seen = self._transport(["[1] -refines-> [7] and so on [1].", "b [7].", "c [1]."])
+        d = converse("q", field, t, settle=settle)
+        self.assertTrue(got, "the field never settled between turns")
+        self.assertEqual(d.turns[0].moved, 5, "the turn must record what moved")
+        self.assertIn("SETTLED-", seen[1]["user"],
+                      "the next turn must be put against the SETTLED field, not the old one")
+
+    def test_no_settlement_runs_when_no_arrow_RESOLVED(self):
+        """Settling on nothing is a wasted relaxation and a census over an empty population."""
+        got = []
+        t, _ = self._transport(["prose with no coordinates at all."])
+        converse("q", self._field(), t, settle=lambda p: got.append(1))
+        self.assertEqual(got, [])
+
+    def test_the_record_names_RECORDS_and_CLAIMS_separately(self):
+        t, _ = self._transport(["[1] -refines-> [7]. [1] -refines-> [7]. [1] -refines-> [7]."])
+        r = converse("q", self._field(), t).as_record()
+        self.assertEqual(r["records"], 3)
+        self.assertEqual(r["resolved_records"], 1)
+        self.assertEqual(r["distinct_claims"], 1)
+
+    def test_distinct_claims_spans_the_WHOLE_dialogue_not_one_turn(self):
+        """A medium restating one arrow across five TURNS contributed one claim. The per-turn
+        dedupe cannot see across turns, so the dialogue-level count is the one that must."""
+        field = self._field([{"n": 1, "slot": "s1"}, {"n": 7, "slot": "s7"},
+                             {"n": 9, "kind": "arrow", "joins": [1, 7]}])
+        t, _ = self._transport(["[1] -refines-> [7] a."] * 5)
+        d = converse("q", field, t)
+        self.assertGreater(len(d.resolved), 1, "several turns each resolved it")
+        self.assertEqual(len(d.claims), 1, "and it is one claim")
+
+
+class ThePromptGrewLEGALLY(unittest.TestCase):
+    """FLAG 1's ruling: the arrow form is codomain syntax, so it is FORM and it is allowed.
+
+    The razor's constraint is sentence-TYPE membership, never character count. These check the
+    type, and deliberately do not check the length — a length assertion would re-impose the
+    constraint the ruling removed.
+    """
+
+    def test_every_block_carries_a_legal_kind(self):
+        from engine.dialogue import blocks
+        from engine.grammar import illegal_blocks
+
+        self.assertEqual(illegal_blocks(blocks()), [])
+
+    def test_the_arrow_form_is_tagged_FORM(self):
+        from engine.dialogue import ARROW_FORM, blocks
+
+        tagged = {text: kind for kind, text in blocks()}
+        self.assertEqual(tagged[ARROW_FORM], "FORM")
+
+    def test_the_prompt_TEACHES_exactly_the_form_the_extractor_parses(self):
+        """A prompt that shows a form its own parser refuses is a defect only this comparison
+        finds — and this project has shipped that defect once, in the ACT grammar."""
+        from engine.dialogue import ARROW_FORM
+
+        shown = ARROW_FORM.replace("[i] -kind-> [j]", "[1] -refines-> [7]")
+        self.assertTrue([p for p in arrows_from(shown, {1, 7}) if p.ok],
+                        "the prompt shows a shape the extractor does not accept")
+
+    def test_every_kind_the_prompt_NAMES_is_one_the_extractor_accepts(self):
+        from engine.dialogue import ARROW_FORM
+
+        named = [k for k in ("same_claim", "refines", "instance_of") if k in ARROW_FORM]
+        self.assertEqual(len(named), 3)
+        for k in named:
+            with self.subTest(kind=k):
+                self.assertTrue([p for p in arrows_from(f"[1] -{k}-> [7]", {1, 7}) if p.ok])
+
+    def test_the_render_grammar_is_INHERITED_not_reimplemented(self):
+        """Same grammar, same checker. A second copy of the citation rules would drift."""
+        from engine.dialogue import blocks
+        from engine.grammar import BLOCKS
+
+        self.assertEqual(blocks()[:len(BLOCKS)], BLOCKS)
 
 
 if __name__ == "__main__":
