@@ -476,6 +476,21 @@ def _feature_diff_labels() -> tuple[str, ...]:
     return ("FEATURE-DIFF", "WHAT", "SUPERSEDES", "CONTROLS", "FIXTURES")
 
 
+def _feature_diff_landed() -> str:
+    """The commit that first put FEATURE-DIFF into the pre-push hook, or "" if it never did.
+
+    Derived rather than hardcoded: a pinned sha rots the moment the branch is rebased, and a
+    boundary nobody can re-derive is a magic number in a control that exists to refuse magic
+    numbers. `git log --diff-filter=A -S` walks for the addition of the literal string.
+    """
+    code, out = _run(["git", "log", "--reverse", "--format=%H", "-S", "FEATURE-DIFF",
+                      "--", "hooks/pre-push"])
+    if code != 0:
+        return ""
+    lines = [l.strip() for l in out.splitlines() if l.strip()]
+    return lines[0] if lines else ""
+
+
 def changelog(window: int = 20) -> dict:
     """B3 item 7, NEW: a commit landing a design change needs a FEATURE-DIFF block in its
     message AND an entry in seed/CHANGELOG.md. Both, not either — a commit-message gate (if
@@ -491,13 +506,36 @@ def changelog(window: int = 20) -> dict:
     code, log = _run(["git", "log", f"-{window}", "--format=%H%x1f%s"])
     if code != 0:
         return {"ok": False, "detail": f"git log failed: {log}"}
-    commits = [line.split("\x1f", 1) for line in log.strip().splitlines() if line.strip()]
+    # A COMMIT WITH AN EMPTY SUBJECT still has a sha and can still touch design files, so it
+    # must be checked rather than crash the audit. `split(sep, 1)` returns ONE element when the
+    # subject is empty, and unpacking that into (sha, subject) raised — found by widening the
+    # window past a commit that had one. Padding is the fix; skipping would silently exempt it.
+    commits = []
+    for line in log.strip().splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\x1f", 1)
+        commits.append((parts[0], parts[1] if len(parts) > 1 else "(no subject)"))
+
+    # THE RULE STARTS WHERE THE RULE STARTED. The first run reported nine findings against
+    # commits written before FEATURE-DIFF existed — findings that can never be closed, because
+    # closing them would mean rewriting published history. A control that can only ever be red
+    # is not a control; it is noise, and noise trains the reader to skip the table that also
+    # carries the real findings. So the boundary is DERIVED, not hardcoded: the commit that
+    # first put FEATURE-DIFF into the pre-push hook. Everything at or after it must comply;
+    # everything before it is out of scope and SAID to be, so the exemption is visible rather
+    # than silent.
+    since = _feature_diff_landed()
+    in_scope = set()
+    if since:
+        _, reach = _run(["git", "rev-list", f"{since}~1..HEAD"])
+        in_scope = {l.strip() for l in reach.splitlines() if l.strip()}
 
     changelog_path = REPO / "seed" / "CHANGELOG.md"
     changelog_exists = changelog_path.exists()
     changelog_text = changelog_path.read_text(encoding="utf-8") if changelog_exists else ""
 
-    rows = []
+    rows, pre_rule = [], []
     for sha, subject in commits:
         # NOT `--no-patch` + `--name-only` together — git refuses that combination outright
         # (`-s`/`--no-patch` conflicts with `--name-only`), which silently produced an empty
@@ -505,6 +543,9 @@ def changelog(window: int = 20) -> dict:
         _, files_log = _run(["git", "show", "--format=", "--name-only", sha])
         files = [f for f in files_log.strip().splitlines() if f.strip()]
         if not _touches_design(files):
+            continue
+        if since and sha not in in_scope:
+            pre_rule.append(f"{sha[:12]} {subject!r}")
             continue
         _, msg = _run(["git", "log", "-1", "--format=%B", sha])
         labels = _feature_diff_labels()
@@ -541,6 +582,11 @@ def changelog(window: int = 20) -> dict:
         "ok": changelog_exists and all(r["ok"] for r in rows),
         "changelog_exists": changelog_exists,
         "window": window,
+        # THE EXEMPTION IS REPORTED, not silent. A reader must be able to see how many commits
+        # the boundary excused and which, or "0 findings" would be indistinguishable from a
+        # boundary set too late.
+        "rule_landed_at": (since or "")[:12],
+        "exempt_pre_rule": pre_rule,
         "design_change_commits_checked": len(rows),
         "rows": rows,
         "findings": findings,

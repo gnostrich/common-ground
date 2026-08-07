@@ -591,3 +591,53 @@ class AuditAssemblyReachesFindingsFromEverySection(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheChangelogCheckStartsWhereTheRULEStarted(unittest.TestCase):
+    """The first live run reported nine findings against commits written before FEATURE-DIFF
+    existed — findings that can never be closed, because closing them would mean rewriting
+    published history. A control that can only ever be red is not a control; it is noise, and
+    noise trains the reader to skip the table that also carries the real findings.
+
+    The boundary is DERIVED, never pinned: the commit that first put FEATURE-DIFF into the
+    pre-push hook. A hardcoded sha rots on the first rebase, and a boundary nobody can
+    re-derive is a magic number inside a control built to refuse magic numbers.
+    """
+
+    def test_the_boundary_is_found_in_the_repository(self):
+        from tools.auditor import _feature_diff_landed
+
+        sha = _feature_diff_landed()
+        self.assertTrue(sha, "the rule's landing commit must be discoverable from git")
+        self.assertEqual(len(sha), 40, sha)
+
+    def test_pre_rule_commits_are_EXEMPT_and_the_exemption_is_REPORTED(self):
+        """Silent exemption would make '0 findings' indistinguishable from a boundary set too
+        late. The count and the commits both travel on the record."""
+        from tools.auditor import changelog
+
+        c = changelog(window=40)
+        self.assertIn("exempt_pre_rule", c)
+        self.assertIn("rule_landed_at", c)
+        self.assertTrue(c["rule_landed_at"], "the boundary must be named on the record")
+
+    def test_a_post_rule_design_commit_IS_still_checked(self):
+        """Not vacuous: the boundary must not exempt everything. At least one commit at or
+        after the rule landed has to be inside the checked set, or the check does nothing."""
+        from tools.auditor import changelog
+
+        c = changelog(window=40)
+        self.assertGreaterEqual(c["design_change_commits_checked"], 1,
+                                "the boundary excused every commit — it is set too late")
+
+    def test_the_boundary_helper_returns_empty_rather_than_guessing(self):
+        """If the string is nowhere in the hook's history there is no boundary, and the honest
+        answer is nothing — not today's date, not HEAD, not a guess."""
+        import tools.auditor as A
+
+        real = A._run
+        try:
+            A._run = lambda *a, **k: (0, "")
+            self.assertEqual(A._feature_diff_landed(), "")
+        finally:
+            A._run = real

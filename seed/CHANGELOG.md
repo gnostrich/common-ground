@@ -11,6 +11,17 @@ Repo: [gnostrich/common-ground](https://github.com/gnostrich/common-ground). Lin
 
 ---
 
+- **2026-08-07** — **The amendment gate (B4, mechanized)** —
+  [`ccaad48`](https://github.com/gnostrich/common-ground/commit/ccaad48f4c45cb65c1961b0d1f7652d5ef4cf31d), controls at [`7ac264b`](https://github.com/gnostrich/common-ground/commit/7ac264b28eca467df4249b70d417acc02b82a619).
+  A commit touching `seed/` must carry a complete FEATURE-DIFF block (WHAT, SUPERSEDES,
+  CONTROLS, FIXTURES) or the push is refused, naming the missing labels; nothing may ever be
+  DELETED from `archive/`. Every commit in the pushed range is checked, not just the tip. The
+  precedent is this project's own: a mode shipped in code, tests and UI with zero mentions in
+  either normative document, which B5 calls unconstitutional — prose asking for discipline did
+  not prevent it. Two limits stated: the block's content is not validated (that would be
+  reading prose), and on a branch with no upstream only the tip is checked, announced when it
+  happens. Controls push for real against throwaway repositories, in both directions.
+
 - **2026-08-07** — **The null surface** — IN FLIGHT when this changelog was first drafted;
   landed mid-task as [`0175806`](https://github.com/gnostrich/common-ground/commit/01758065fb3029664052b747e71bdfe048244ce1).
   Deletes the entire two-coordinate interaction surface (mode selector, retain checkbox, claim
