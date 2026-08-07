@@ -74,3 +74,10 @@ runs/audit.json
 # `runs/corpus.snapshot.pre-demotion` reached the index by exactly that route, one commit
 # after the control against it was written. tests/test_key_exposure.py asserts this line.
 *.env
+
+# runs/fixture-D/ — the two-tier fixture's RAW artifacts. Ignored not because they are noise
+# but because they carry CORPUS TEXT: every artifact holds the answer verbatim and the
+# convicted sentences, which are the operator's private material quoted back. This repository
+# is public. The fixture RECORD in seed/ carries the numbers, which is what a fixture is for;
+# the claim text stays on the machine that measured it.
+runs/fixture-*/
