@@ -406,11 +406,19 @@ function renderAnswer(r){
   // a first-class legal form, not a permanent RED: a sentence about what the trace LACKS
   // cannot cite a line, and three of eleven sentences in a live answer were exactly that.
   const f = r.faithful;
+  // SIX RULES, SIX LABELS. This listed four, and the checker has returned `welded` and
+  // `uncontested` since the weld and contest rules landed — so an answer whose only failures
+  // were those two rendered as `FAITHFULNESS RED — , of 10`: an empty list, because the
+  // summary enumerated a hard-coded four rather than the violations in front of it. A display
+  // that names four of six rules is the same defect class as a checker that resolves three of
+  // sixty labels, one layer out.
   const LABEL = {
     uncited:     'rests on nothing shown',
     unresolved:  'cites a line that was never shown',
     vacuous:     'says something is absent, but nothing was shown to be absent from',
     unwarranted: 'names a silence the field does not report',
+    welded:      'asserts a relation between claims the field never joined',
+    uncontested: 'resolves a contested claim in prose, without [!]',
   };
   let gate = '';
   if(f){
@@ -428,11 +436,9 @@ function renderAnswer(r){
         + `; ${(f.resolved||[]).length} distinct citation(s) against ${f.citable} citable `
         + `line(s)${(f.warrants||[]).length ? '; warrants ' + f.warrants.map(esc).join(', ') : ''}).</div>`
       : `<div class="verdict bad">FAITHFULNESS RED — `
-        + Object.keys(LABEL).map(k => {
-            const n = f.violations.filter(v => v.kind === k).length;
-            return n ? `${n} ${k}` : '';
-          }).filter(Boolean).join(', ')
-        + `, of ${f.checked} sentence(s).</div>`
+        + [...new Set(f.violations.map(v => v.kind))].map(k =>
+            `${f.violations.filter(v => v.kind === k).length} ${k}`).join(', ')
+        + ` — of ${f.checked} sentence(s).</div>`
         + f.violations.map(v => `<div class="viol"><b>${esc(LABEL[v.kind] || v.kind)}`
             + ((v.numbers||[]).length ? ` (${v.numbers.join(', ')})` : '')
             + (v.warrant ? ` [${esc(v.warrant)}]` : '')

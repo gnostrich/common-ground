@@ -241,18 +241,25 @@ def check_no_turn_without_a_preceding_question(name: str, run: dict) -> list:
 
 def check_residuals_are_scoped_to_the_perturbation(name: str, run: dict) -> list:
     """A residual names objects THIS perturbation showed, or it is about something else."""
-    citable = citable_labels(run)
+    # SCOPED TO WHAT THE PERTURBATION REACHED, not merely to what is citable. After the seating
+    # fix every object in the region is citable, so "citable" stopped discriminating and the
+    # check went quiet while three of four turns were spent on contested claims the question
+    # never touched. The set that matters is attached / bears_on / moved.
+    compiled = run.get("compiled") or {}
+    reached = {str(c.get("n")) for c in (compiled.get("citations") or ())
+               if c.get("kind") in ("attached", "bears_on", "moved") and c.get("n")}
     out = []
     for r in ((run.get("dialogue") or {}).get("residuals") or ()):
         ident = [str(x) for x in (r.get("residual") or ())]
         # ("lex", <group>) names a declared group, not a label; only label-shaped elements are
-        # scoped against the citable set.
+        # scoped against the reached set.
         stray = sorted(x for x in ident
-                       if re.fullmatch(r"[a-z]?\d+", x) and x not in citable)
+                       if re.fullmatch(r"[a-z]?\d+", x) and x not in reached)
         if stray:
             out.append(Finding(
                 "residuals-are-scoped-to-the-perturbation", name,
-                f"a residual named {stray}, which this perturbation never showed",
+                f"a residual named {stray}, which this perturbation never REACHED — "
+                f"the budget went on the sample rather than on what was asked",
                 {"residual": ident, "turn": r.get("turn")}))
     return out
 
@@ -347,6 +354,44 @@ def check_no_question_asked_twice_with_the_same_reply(name: str, run: dict) -> l
     return out
 
 
+def check_uncited_sentences_are_not_escaped_arrow_lines(name: str, run: dict) -> list:
+    """THE AUDITOR'S OWN FINDING, encoded. Named by it, verified by it, then written here.
+
+    `said()` strips a line that is ONLY an arrow. The auditor found the escape shapes by
+    execution — `- [e1] -relates-> [l45]`, `* …`, `1. …`, and `[e1] --relates--> [l45]` — every
+    one of which survived into the DISPLAYED ANSWER and was then convicted as an uncited
+    sentence. A wiring diagram shown to the operator as prose, marked RED for not citing
+    anything.
+
+    The gap it also named: when such a line survives in its UNBRACKETED form, the citation
+    parser finds no brackets, `check_citations_resolve_against_the_shown_sheet` finds none
+    either, and the battery reports a clean `uncited` verdict over a defect one function
+    upstream. So this check asks the opposite question of an uncited sentence: is it prose that
+    rests on nothing, or is it an arrow that escaped by a hair?
+    """
+    from engine.dialogue import ARROW
+
+    out = []
+    for v in ((run.get("faithful") or {}).get("violations") or ()):
+        if v.get("kind") != "uncited":
+            continue
+        sentence = str(v.get("sentence") or "").strip()
+        if not sentence or not ARROW.search(sentence):
+            continue
+        # An arrow inside a real sentence is legitimate — "this refines that, [e1] -refines->
+        # [e7]" is prose. What is not is a sentence that is NOTHING BUT an arrow once its
+        # decoration is removed.
+        bare = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", sentence).strip()
+        if ARROW.fullmatch(bare.rstrip(".;")):
+            out.append(Finding(
+                "uncited-sentences-are-not-escaped-arrow-lines", name,
+                "a sentence convicted UNCITED is an arrow line that escaped `said()` and "
+                "reached the answer — the extraction channel displayed as prose, then marked "
+                "RED for resting on nothing",
+                {"sentence": sentence[:200]}))
+    return out
+
+
 #: EVERY CHECK, in order. Each one is a defect the operator caught by reading a transcript.
 CHECKS = (
     check_citations_resolve_against_the_shown_sheet,
@@ -357,6 +402,7 @@ CHECKS = (
     check_no_degenerate_turn_left_unretried,
     check_panel_hashes_verify,
     check_no_question_asked_twice_with_the_same_reply,
+    check_uncited_sentences_are_not_escaped_arrow_lines,
 )
 
 
@@ -385,13 +431,30 @@ def audit(name: str, run: dict) -> list:
     return list(seen.values())
 
 
-def ask(url: str, token: str, question: str, timeout: int = 600) -> dict:
+def ask(url: str, token: str, question: str, timeout: int = 600, tries: int = 2) -> dict:
+    """ONE RETRY, because a bare 502 from the platform is not a defect in the build.
+
+    The auditor hit exactly that: a probe returned `502 Bad Gateway` from the deploy's
+    infrastructure and succeeded immediately on retry. Reported unretried, it becomes a
+    `probe-did-not-respond` finding about a build that answered fine — and a battery that cries
+    wolf on infra flake is a battery whose findings get skimmed.
+
+    Deliberately ONE retry, not a backoff loop: a deploy that needs three attempts to answer is
+    a finding, and this must not paper over it.
+    """
     body = json.dumps({"question": question, "chart": "english"}).encode("utf-8")
-    req = urllib.request.Request(f"{url}/ask?t={token}", data=body,
-                                 headers={"Content-Type": "application/json"}, method="POST")
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with opener.open(req, timeout=timeout) as resp:
-        return json.load(resp)
+    last: Exception | None = None
+    for attempt in range(max(1, tries)):
+        req = urllib.request.Request(f"{url}/ask?t={token}", data=body,
+                                     headers={"Content-Type": "application/json"},
+                                     method="POST")
+        try:
+            with opener.open(req, timeout=timeout) as resp:
+                return json.load(resp)
+        except Exception as exc:
+            last = exc
+    raise last if last else RuntimeError("ask made no attempt")
 
 
 def run_battery(url: str, token: str, only: str = "") -> dict:

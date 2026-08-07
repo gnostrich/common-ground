@@ -95,13 +95,13 @@ class C2FluencyBlindnessHolds(unittest.TestCase):
 
     def test_a_declared_cluster_with_no_name_IS_one(self):
         ident, members = apexless(_compiled([
-            {"n": "e3", "kind": "seated", "slot": "s1", "group": "s1"},
+            {"n": "e3", "kind": "moved", "slot": "s1", "group": "s1"},
             {"n": "e7", "kind": "seated", "slot": "s2", "group": "s1"}]), set())
         self.assertEqual(ident, ("lex", "s1"))
         self.assertEqual(members, ("e3", "e7"))
 
     def test_an_ASKED_cluster_is_not_asked_again(self):
-        field = _compiled([{"n": "e3", "kind": "seated", "slot": "s1", "group": "s1"},
+        field = _compiled([{"n": "e3", "kind": "moved", "slot": "s1", "group": "s1"},
                            {"n": "e7", "kind": "seated", "slot": "s2", "group": "s1"}])
         self.assertEqual(apexless(field, {("lex", "s1")})[0], ())
 

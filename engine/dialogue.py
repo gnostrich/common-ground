@@ -46,7 +46,18 @@ from .correspondence import KINDS
 #: label is the chart letter and the index, and it is the same label space the region
 #: emitted, the checker verifies and the answer cites. Brackets optional so the one
 #: parser serves the coordinates wire too.
-ARROW = re.compile(r"\[?([a-z]?\d+)\]?\s*-(\w+)->\s*\[?([a-z]?\d+)\]?")
+#: THE DASHES ARE PUNCTUATION, LIKE THE BRACKETS. `-+` rather than `-`, so `--relates-->` is
+#: the same arrow as `-relates->`. Same ruling as the comma serialization: each end still
+#: resolves by exact membership in the declared label set or voids, the kind token is still
+#: read from a closed set, and what is accepted is a way of drawing the arrow rather than a
+#: looser judgement about what an arrow is.
+ARROW = re.compile(r"\[?([a-z]?\d+)\]?\s*-+(\w+)-+>\s*\[?([a-z]?\d+)\]?")
+
+#: WHAT THE PERTURBATION REACHED, as citation kinds. An object the bias attached to, bore on,
+#: or moved. Everything else in the field was SEATED — sampled by declared structure and a hash
+#: of the input's address — and a residual over a seated object is a question about the corpus
+#: rather than about what was asked.
+REACHED = frozenset({"attached", "bears_on", "moved"})
 
 #: The kinds legal in a dialogue. The base's three, plus `bears_on` for the boundary condition
 #: — the same set the region wire allows, because this is the same extraction reaching the same
@@ -127,7 +138,15 @@ def said(prose: str) -> str:
 #: A LINE THAT IS ONLY AN ARROW. Anchored at both ends, so a sentence that happens to contain
 #: an arrow keeps its words — the medium may legitimately write "this refines that, [e1]
 #: -refines-> [e7]" and the sentence is not the arrow.
-_ARROW_ONLY = re.compile(r"^\[?[a-z]?\d+\]?\s*-\w+->\s*\[?[a-z]?\d+\]?[.;]?$")
+#:
+#: DECORATION IS NOT CONTENT, and the first version had zero tolerance for it. The auditor
+#: found the escape shapes by execution: `- [e1] -relates-> [l45]`, `* …`, `1. …` and
+#: `[e1] --relates--> [l45]` all failed to match, survived into the DISPLAYED ANSWER, and were
+#: then convicted as uncited sentences — a wiring diagram shown to the operator as prose and
+#: marked RED for not citing anything. A list marker is how a model writes a list; it is not a
+#: claim, and it must not turn an arrow into one.
+_ARROW_ONLY = re.compile(
+    r"^\s*(?:[-*•]\s+|\d+[.)]\s+)?\[?[a-z]?\d+\]?\s*-+\w+-+>\s*\[?[a-z]?\d+\]?[.;]?$")
 
 
 
@@ -266,8 +285,21 @@ def next_residual(compiled: dict, asked: set) -> tuple:
         return pair, (f"Composition implies a relation between [{pair[0]}] and [{pair[1]}] that "
                       f"nothing has measured. State it as an arrow, or say the field does not "
                       f"have it with [{pair[0]}] -bears_on-> [{pair[1]}] omitted entirely.")
+    # SCOPED TO THE PERTURBATION. This read every contested object in the field, and after the
+    # seating fix "the field" is sixty objects rather than three — so the budget went on
+    # contested claims the question never touched. Measured across three consecutive served
+    # transcripts: [e16], [e18], [e21], three of four turns burned on objects the boundary
+    # condition had no relation to, while the operator's own question waited for the residual
+    # re-ask to answer it.
+    #
+    # A SEATED OBJECT IS A SAMPLE, NOT A FINDING. The region is chosen by declared structure
+    # and a hash — it is explicitly NOT the part of the corpus that matches the question — so a
+    # contest inside it is a fact about the corpus, true whether or not anything was asked. The
+    # residuals worth a turn are the ones THIS perturbation raised: what the bias attached to,
+    # and what moved when it was applied.
     contested = sorted({str(c["n"]) for c in (compiled.get("citations") or [])
-                        if c.get("contested")} - asked_numbers(asked))
+                        if c.get("contested") and c.get("kind") in REACHED}
+                       - asked_numbers(asked))
     if contested:
         n = contested[0]
         return (n,), (f"The field holds more than one value for [{n}]. Say which the state "
@@ -547,7 +579,8 @@ TURN_ONE_FORM = (
     "Objects are labelled with a chart letter and a number, like e1 or l45. Cite a label by "
     "writing it in brackets — [e1]. Relate two objects by writing [i] -kind-> [j] on its own, "
     "kind one of same_claim, refines, instance_of; an arrow to the boundary condition [b0] "
-    "takes the kind bears_on. Relate what is genuinely related and nothing else. Then answer "
+    "takes the kind bears_on, which is the only kind legal there because a question asserts "
+    "nothing. Relate what is genuinely related and nothing else. Then answer "
     "the question from these objects, ending each sentence with the labels it rests on, or "
     "with [∅] for something these objects do not contain. Two or more labels on one sentence "
     "assert that those objects are related: only write that when you have also written the "

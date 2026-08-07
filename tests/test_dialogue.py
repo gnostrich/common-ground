@@ -136,7 +136,7 @@ class C3_TurnsComeFromStructure(unittest.TestCase):
                          "asking the same pair twice is an interrogation loop, not a measure")
 
     def test_it_falls_through_to_a_CONTESTED_object(self):
-        c = _compiled([{"n": "e3", "contested": True}])
+        c = _compiled([{"n": "e3", "kind": "moved", "contested": True}])
         self.assertIn("[e3]", interrogate(c, asked=set()))
         self.assertIn("more than one value", interrogate(c, asked=set()))
 
@@ -514,9 +514,9 @@ class TheANSWERIsWhatWasSaidToTheOPERATOR(unittest.TestCase):
     def _field(self):
         return {"compiled": "F",
                 "citations": [{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"},
-                              {"n": "e3", "contested": True},
-                              {"n": "e4", "contested": True},
-                              {"n": "e5", "contested": True}]}
+                              {"n": "e3", "kind": "moved", "contested": True},
+                              {"n": "e4", "kind": "moved", "contested": True},
+                              {"n": "e5", "kind": "moved", "contested": True}]}
 
     def _transport(self, replies):
         seen = []
@@ -748,7 +748,7 @@ class ARESIDUALTHATNEVERFIRESISNOTARESIDUAL(unittest.TestCase):
 
         compiled = {"compiled": "FIELD", "citations": [
             {"n": "e3", "kind": "attached", "slot": "s1"},
-            {"n": "e4", "kind": "seated", "slot": "s2", "contested": True}]}
+            {"n": "e4", "kind": "moved", "slot": "s2", "contested": True}]}
         asks = []
 
         def transport(system, user):
@@ -814,7 +814,7 @@ class ADISCHARGEDRESIDUALLEAVESTHESET(unittest.TestCase):
     def _contested_field(self):
         return {"compiled": "FIELD", "citations": [
             {"n": "e3", "kind": "attached", "slot": "s1"},
-            {"n": "e9", "kind": "seated", "slot": "s2", "contested": True}]}
+            {"n": "e9", "kind": "moved", "slot": "s2", "contested": True}]}
 
     def test_a_DISCHARGED_residual_is_not_asked_again(self):
         """(a) PLANTED. The identity in the asked-set, and the question must be gone."""
@@ -896,6 +896,110 @@ class ADISCHARGEDRESIDUALLEAVESTHESET(unittest.TestCase):
 
         self.assertEqual(discharge(("e9",), Turn(n=2, ask="q", prose="[b0] -bears_on-> [e9]")),
                          UNANSWERED)
+
+
+class AResidualIsScopedToWhatThePerturbationREACHED(unittest.TestCase):
+    """EXHIBIT #3, and by the operator's count the oldest open defect by three transcripts.
+
+    Before the seating fix the citable set WAS the reached set — two or three objects — so the
+    contested residual was naturally scoped and nobody had to say so. Seating widened citable
+    to the whole region, and the scoping fell out with it: [e16], [e18] and [e21] across three
+    consecutive served runs, three of four turns spent on contested claims the question never
+    touched, while the operator's own question waited for the residual re-ask.
+
+    A SEATED OBJECT IS A SAMPLE, NOT A FINDING. The region is chosen by declared structure and
+    a hash of the input's address — it is explicitly not the part of the corpus that matches
+    the question — so a contest inside it is a fact about the corpus, true whether or not
+    anything was asked. The residuals worth a turn are the ones this perturbation raised.
+    """
+
+    def test_a_contested_object_the_bias_REACHED_is_a_residual(self):
+        from engine.dialogue import next_residual
+
+        for kind in ("attached", "bears_on", "moved"):
+            with self.subTest(kind=kind):
+                field = _compiled([{"n": "e9", "kind": kind, "contested": True}])
+                self.assertEqual(next_residual(field, set())[0], ("e9",))
+
+    def test_a_contested_object_merely_SEATED_is_not(self):
+        """PLANTED at the shape that burned the budget."""
+        from engine.dialogue import next_residual
+
+        field = _compiled([{"n": "e16", "kind": "seated", "contested": True},
+                           {"n": "e18", "kind": "seated", "contested": True},
+                           {"n": "e21", "kind": "seated", "contested": True}])
+        self.assertEqual(next_residual(field, set()), ((), ""),
+                         "the budget went on the sample rather than on what was asked")
+
+    def test_the_reached_set_is_named_once_and_shared(self):
+        """`engine.synthesis.apexless` scopes by the same law and must read the same set — two
+        definitions of "reached" is two mechanisms waiting to disagree."""
+        import inspect
+
+        from engine.dialogue import REACHED
+        from engine import synthesis
+
+        self.assertEqual(REACHED, frozenset({"attached", "bears_on", "moved"}))
+        self.assertIn("REACHED", inspect.getsource(synthesis.apexless))
+
+
+class TheBiasAdmitsOnlyBEARSON(unittest.TestCase):
+    """A QUESTION ASSERTS NOTHING — the prompt's own law, which the parser did not enforce.
+
+    Measured on a served transcript: turn 1 wrote `e3 -same_claim-> b0` and `e7 -refines-> b0`
+    and the window reported TWO CORRESPONDENCE attachments. The rule ran in one direction only
+    — `bears_on` between two corpus claims was refused, while identity and refinement TO the
+    bias were waved through — so an utterance acquired assertion-grade coupling to the corpus
+    on the strength of having been typed.
+    """
+
+    def _region(self):
+        from engine.region import BIAS_CHART, Member, Region
+
+        # `by_index` is POSITIONAL — the label's number is the member's place in the list, not
+        # a field on it — so the labels here are b0, e1, l2.
+        return Region(clamp="s1", members=[
+            Member(index=0, slot="b", chart=BIAS_CHART, type="assert", nu="q", attached=False,
+                   surface="q"),
+            Member(index=1, slot="s1", chart="english", type="assert", nu="a", attached=False),
+            Member(index=2, slot="s2", chart="lean", type="assert", nu="b", attached=False)])
+
+    def test_same_claim_to_the_bias_is_VOID(self):
+        from engine.region import parse_region
+
+        for kind in ("same_claim", "refines", "instance_of"):
+            with self.subTest(kind=kind):
+                got = parse_region(f"e1 -{kind}-> b0", self._region())
+                self.assertEqual(len(got), 1)
+                self.assertTrue(got[0].void, f"{kind} to the bias was accepted")
+                self.assertIn("asserts nothing", got[0].void)
+
+    def test_bears_on_to_the_bias_still_RESOLVES(self):
+        """The other direction, or the fix is a parser that refuses everything."""
+        from engine.region import parse_region
+
+        got = parse_region("b0 -bears_on-> e1", self._region())
+        self.assertEqual(len(got), 1)
+        self.assertFalse(got[0].void, got[0].void)
+
+    def test_the_three_kinds_between_CORPUS_objects_are_untouched(self):
+        from engine.region import parse_region
+
+        got = parse_region("e1 -same_claim-> l2", self._region())
+        self.assertEqual(len(got), 1)
+        self.assertFalse(got[0].void, got[0].void)
+
+    def test_BOTH_prompts_state_the_rule_the_parser_enforces(self):
+        """Row 523: a rule the medium cannot comply with is a rule that only ever convicts.
+        The prompt used to say the opposite — "if the bias really is a claim, the three kinds
+        above apply to it too" — which is an instruction to write what the parser voids."""
+        from engine.dialogue import turn_one_prompt
+        from engine.region import REGION_SYSTEM
+
+        for prompt in (REGION_SYSTEM, turn_one_prompt()):
+            with self.subTest(prompt=prompt[:30]):
+                self.assertIn("only", prompt.lower())
+                self.assertNotIn("the three kinds above apply to it too", prompt)
 
 
 if __name__ == "__main__":

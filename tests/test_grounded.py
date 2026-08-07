@@ -604,9 +604,16 @@ class EveryRuleTheRefereeEnforcesIsSTATEDWhereTheMediumCanReadIt(unittest.TestCa
     A KNOWN GAP, named rather than skipped: turn 1 is checked for CONTEST but its sheet -
     `region.render_region` - does not mark contested objects, so `[!]` is not asserted below
     for the turn-1 prompt. That sheet is byte-shared with the unattended walk (see
-    tests/test_perturb.py), so marking it changes the daemon's wire and is not a change to make
-    inside a measurement. It cannot fire today (the loaded corpus holds no contested slot) and
-    it is owed.
+    tests/test_perturb.py), so marking it changes the daemon's wire.
+
+    IT IS NO LONGER DORMANT, and this paragraph said it was. The first version read "it cannot
+    fire today (the loaded corpus holds no contested slot)" — true when it was written and
+    false within hours. The standing auditor measured the served build and found 18 convictions
+    across 5 of 10 probes, every one `kind=uncontested` on `calls_without_it=(1,)`: always turn
+    1, never any other call, on a corpus now carrying dozens of contested labels per probe. A
+    comment asserting a precondition it does not check is a claim with no control behind it,
+    which is the thing this project deletes on sight; the assertion below is the control, and
+    this is now a live debt rather than a latent one.
     """
 
     #: verdict kind -> the token a medium must be able to write to avoid it.

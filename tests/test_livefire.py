@@ -216,6 +216,37 @@ class NoArtifactCarriesCorpusProse(unittest.TestCase):
                          "a finding record was built without going through Finding()")
 
 
+class AnEscapedArrowLineIsNotAnUncitedSentence(unittest.TestCase):
+    """The check the auditor's first report earned, at the shapes it found by execution."""
+
+    def _uncited(self, sentence):
+        run = json.loads(json.dumps(TheBatteryDoesNotFireOnAHEALTHYRun.HEALTHY))
+        run["faithful"] = {"ok": False, "checked": 1, "cited": 0, "asserted_absent": 0,
+                           "citable": 2,
+                           "violations": [{"kind": "uncited", "numbers": [],
+                                           "sentence": sentence, "warrant": ""}]}
+        return {f.check for f in audit("planted", run)}
+
+    def test_every_decoration_the_auditor_found_is_caught(self):
+        for shape in ("- [e3] -relates-> [l7]", "* [e3] -relates-> [l7]",
+                      "1. [e3] -relates-> [l7]", "[e3] --relates--> [l7]",
+                      "e3 -relates-> l7"):
+            with self.subTest(shape=shape):
+                self.assertIn("uncited-sentences-are-not-escaped-arrow-lines",
+                              self._uncited(shape))
+
+    def test_real_unsupported_prose_is_NOT_reported_as_an_arrow(self):
+        """The other direction. An uncited sentence that is genuinely a claim resting on
+        nothing is the checker working, and must not be excused as a stray arrow."""
+        self.assertNotIn("uncited-sentences-are-not-escaped-arrow-lines",
+                         self._uncited("The work establishes positivity everywhere."))
+
+    def test_an_arrow_INSIDE_a_sentence_leaves_the_sentence_alone(self):
+        self.assertNotIn(
+            "uncited-sentences-are-not-escaped-arrow-lines",
+            self._uncited("This refines that, [e3] -refines-> [l7], as the field records."))
+
+
 class TheProbeSetIsTheONeTheOrderNamed(unittest.TestCase):
     def test_the_six_frozen_prompts_the_fixture_and_the_dialogue_era_probes(self):
         names = [n for n, _t, _w in probes()]
@@ -234,7 +265,7 @@ class TheProbeSetIsTheONeTheOrderNamed(unittest.TestCase):
 
     def test_every_check_is_reachable_from_the_registry(self):
         """A check defined and not registered runs on nothing."""
-        self.assertEqual(len(CHECKS), 8)
+        self.assertEqual(len(CHECKS), 9)
         self.assertEqual(len(CHECKS), len({c.__name__ for c in CHECKS}))
 
     def test_shown_labels_unions_both_sheets_and_EXCLUDES_the_question(self):

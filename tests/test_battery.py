@@ -70,9 +70,15 @@ def _spec() -> dict:
 def _grader(flatten: str = ""):
     """A fixed medium. It grades by the boundary condition's SHAPE and nothing else.
 
-    `flatten` plants a regression: 'kind' makes it answer `bears_on` for everything (the
+    `flatten` plants a regression: 'kind' makes it attach the SAME BREADTH to everything (the
     mechanism must then report a flattened grade rather than inventing one), 'silent' makes it
     name nothing at all.
+
+    THE PLANT MOVED WITH THE LAW. It used to flatten the KIND — `bears_on` for every input
+    where a claim would otherwise get `same_claim` — and that plant died the moment the bias
+    began admitting only `bears_on`: the degenerate medium became indistinguishable from the
+    healthy one, and the control would have passed forever without testing anything. What the
+    grade is measured by is TIGHTNESS, so that is what the plant now flattens.
     """
     def t(system: str, user: str):
         lines = user.splitlines()
@@ -87,9 +93,17 @@ def _grader(flatten: str = ""):
         labels = [l[1:l.index("]")] for l in lines if l.startswith("[") and "]" in l]
         b = labels[0] if labels else "b0"
         rest = labels[1:]
+        if flatten == "kind":
+            return "\n".join(f"{b} -bears_on-> {x}" for x in rest[:8]), {"cost": 0.0}
         if "claim 0 concerning" in bias:
-            kind = "same_claim" if flatten != "kind" else "bears_on"
-            return f"{b} -{kind}-> {rest[0]}", {"cost": 0.0}     # a claim: tight, one point
+            # BEARS_ON, NOT SAME_CLAIM, and that is the ruling rather than a fixture tweak: the
+            # bias admits only `bears_on`, unconditionally. The alternative — the three kinds
+            # apply "if the bias really is a claim" — requires deciding whether an utterance
+            # asserts, which is a reading of prose and is the one judgement resolve-or-void
+            # forbids. The property under test here is attachment TIGHTNESS, one point against
+            # eight, and the kind was never what carried it.
+            #
+            return f"{b} -bears_on-> {rest[0]}", {"cost": 0.0}   # a claim: tight, one point
         if "how do" in bias or "how does" in bias:
             return "\n".join(f"{b} -bears_on-> {x}" for x in rest[:3]), {"cost": 0.0}
         return "\n".join(f"{b} -bears_on-> {x}" for x in rest[:8]), {"cost": 0.0}
@@ -157,11 +171,30 @@ class NoSilentZero(unittest.TestCase):
 
 class GradedResponse(unittest.TestCase):
     def test_the_mechanism_carries_the_grade_it_is_given(self):
+        """SUPERSEDED PROPERTY, recorded rather than deleted.
+
+        This asserted `by["sharp"].corresponds > 0` — "a claim must be able to correspond" —
+        and that property is GONE by ruling: the bias admits only `bears_on`, unconditionally.
+        The old law required deciding whether an utterance really asserts before choosing which
+        kinds may touch it, and that decision is a reading of prose, which is the one judgement
+        resolve-or-void exists to refuse. Measured on a served transcript before the ruling:
+        turn 1 wrote `e3 -same_claim-> b0` and `e7 -refines-> b0`, and the window reported two
+        CORRESPONDENCE attachments for a question.
+
+        WHAT THE GRADE IS NOW MEASURED BY is unchanged and was never the kind: TIGHTNESS. A
+        sharp claim attaches to one point, a bare topic attaches diffusely, and the distance
+        between them is the graded property. `corresponds` is now zero for every input, which
+        is the law rather than a flattened medium — so the flattening control below tests the
+        distinction that still exists.
+        """
         snap, _ = _corpus()
         r = battery.run(snap, _grader(), battery=_spec())
         by = {x.id: x for x in r.readings}
-        self.assertGreater(by["sharp"].corresponds, 0, "a claim must be able to correspond")
+        self.assertEqual(by["sharp"].corresponds, 0,
+                         "the bias admits only bears_on; nothing may correspond to it")
         self.assertEqual(by["vague"].corresponds, 0, "a topic asserts nothing")
+        self.assertGreater(by["vague"].bears_on, by["sharp"].bears_on,
+                           "a bare topic must attach more diffusely than a sharp claim")
         self.assertGreater(by["vague"].bears_on, by["question"].bears_on,
                            "a bare topic must attach more diffusely than a targeted question")
         self.assertEqual(r.properties["graded"], GREEN, r.reasons["graded"])
@@ -174,6 +207,15 @@ class GradedResponse(unittest.TestCase):
         by = {x.id: x for x in r.readings}
         self.assertEqual(by["sharp"].corresponds, 0,
                          "the mechanism invented a correspondence the medium did not name")
+        # THE FLATTENING ITSELF, which is what this test is for. A medium that reaches for the
+        # same breadth on a sharp claim and on a bare topic has drawn no distinction, and the
+        # battery must report that rather than manufacture one. The counts differ by at most
+        # one because two regions are not the same sixty objects — what must not survive is the
+        # ORDERING the healthy fixture produces, where vague attaches to eight and sharp to one.
+        self.assertLessEqual(abs(by["sharp"].bears_on - by["vague"].bears_on), 1,
+                             "the fixture must actually be flattened for this to test anything")
+        self.assertGreater(by["sharp"].bears_on, 1,
+                           "the sharp reading kept its tight attachment; nothing was flattened")
 
     def test_planted_identical_shapes_across_all_three_is_red(self):
         rs = [battery.Reading(id=i, text=i, consulted=True, attached=3, bears_on=3)

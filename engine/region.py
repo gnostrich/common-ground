@@ -131,7 +131,8 @@ REGION_SYSTEM = (
     "correspond to anything; it can still be about something.\n"
     "Emit those as  b -bears_on-> j  with b the bias object's index. `bears_on` is legal ONLY "
     "on an arrow touching the bias object; between two corpus objects it is not a relation and "
-    "is discarded. If the bias really is a claim, the three kinds above apply to it too. "
+    "is discarded. It is also the ONLY kind legal there: a boundary condition asserts nothing, "
+    "so same_claim, refines and instance_of cannot touch it and are discarded if written. "
     "Relate the corpus objects to EACH OTHER in the same answer — that is the diagram, and the "
     "bias is one object in it, not the question being asked about it."
     # THE ACT LINE. Codomain syntax, one sentence — the razor. What the operator's
@@ -452,6 +453,24 @@ def parse_region(raw: str, region: Region) -> list[Proposal]:
             out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
                                 void="bears_on is legal only on an arrow touching the bias "
                                      "object; it is not a corpus morphism"))
+        elif bias_arrow and kind != BEARS_ON:
+            # AND THE CONVERSE, which was missing — the rule ran in one direction only, so
+            # `bears_on` between two claims was refused while `same_claim` TO THE BIAS was
+            # waved through. Measured on a served transcript: turn 1 wrote
+            # `e3 -same_claim-> b0` and `e7 -refines-> b0`, and the window reported them as
+            # two CORRESPONDENCE attachments.
+            #
+            # That is the prompt's own law broken by the parser meant to enforce it. A boundary
+            # condition may be a question or a bare topic, and A QUESTION ASSERTS NOTHING: it
+            # cannot assert the same proposition as a claim, cannot be a strictly more specific
+            # form of one, and cannot be an instance of one. What it can be is ABOUT something,
+            # which is the entire reason `bears_on` exists. Letting identity and refinement
+            # touch the bias gives an utterance assertion-grade coupling to the corpus on the
+            # strength of having been typed.
+            out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
+                                void=f"{kind!r} is not legal on an arrow touching the bias "
+                                     f"object: a boundary condition asserts nothing, so only "
+                                     f"bears_on can relate it to a claim"))
         elif kind not in KINDS and kind != BEARS_ON:
             out.append(Proposal(kind=kind, src=src, dst=dst, evidence=line,
                                 void=f"unknown correspondence kind {kind!r}"))

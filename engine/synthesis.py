@@ -219,10 +219,17 @@ def apexless(compiled: dict, asked: set) -> tuple:
     The gap is a MEASURED one — several claims the field says are one proposition, with no word
     for the proposition.
     """
+    # SCOPED TO THE PERTURBATION, by the same law the contested residual now obeys: a cluster
+    # nothing in this perturbation reached is a fact about the corpus, not a residual this
+    # question raised, and spending a turn on it spends the operator's budget on the sample.
+    from .dialogue import REACHED
+
+    reached = {str(c.get("n")) for c in (compiled.get("citations") or ())
+               if c.get("kind") in REACHED and c.get("n")}
     for group, members in sorted(_members(compiled).items()):
         if len(members) < 2 or group.startswith("~"):
             continue
-        if named(group):
+        if named(group) or not (set(members) & reached):
             continue
         ident = ("lex", group)
         if ident in asked:
