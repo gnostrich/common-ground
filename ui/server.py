@@ -24,6 +24,7 @@ from pathlib import Path
 from engine.export_sheet import sheet
 from engine.corpus_state import SNAPSHOT_PATH
 from engine.grounded import check_answer
+from engine.dialogue import TURN_BUDGET, converse, render_prompt as dialogue_prompt
 from engine.transcript import CURRENT as TRANSCRIPT, start as start_transcript
 from engine.inbound import INBOUND_SYSTEM
 
@@ -366,28 +367,47 @@ class Handler(BaseHTTPRequestHandler):
                 # nothing to fall back TO: the empty typed current that used to be stapled
                 # on here reported `charts: {}` and `corpus size 0`, which read as a fact
                 # about the corpus and was a fact about an unrelated object.
-                system, grounded_on = INBOUND_SYSTEM, compiled["compiled"]
+                # ─── THE DIALOGUE ─────────────────────────────────────────────────────
+                # ONE CONVERSATION, and its last turn is the answer. The render call that
+                # used to live here is DELETED: the two-port split was an artifact of the
+                # mute-coordinates era, when the medium was not allowed to write words on the
+                # extraction port and a second port had to exist for the words. Once it
+                # answers in cited prose the two are one act, and a render call standing
+                # beside a dialogue that already produced prose is a second mechanism for
+                # one job.
                 _phase("answering")
+                grounded_on = compiled["compiled"]
+                system = dialogue_prompt()
                 if lm_available(key):
                     client = LMClient(key)
-                    _t_lm = time.time()
-                    reply = client.complete(system, grounded_on,
-                                            float(b.get("temperature", 0.2)), 1200).strip()
-                    # READ THROUGH THE MODULE. `from .lm import LAST_SERVED` binds the
-                    # empty string at import time and never sees `lm.py`'s rebinding, so the
-                    # render call reported "no model named" on every deploy while the propose
-                    # call — which reads its model off the response — named it correctly. A
-                    # from-import of a mutable module global is a snapshot, not a reference.
-                    TRANSCRIPT.record("render", system, grounded_on, reply,
-                                      model=str(_lm.LAST_SERVED or ""),
-                                      seconds=time.time() - _t_lm)
+
+                    def _turn(sys_text: str, user_text: str):
+                        # EVERY TURN IS RECORDED, both directions, by turn number rather than
+                        # by port — there are no ports any more. The engine's interrogations
+                        # are recorded separately, because attributing machine-authored text
+                        # to the medium would misattribute authorship in the one panel whose
+                        # whole job is to prove it.
+                        _t = time.time()
+                        out = client.complete(sys_text, user_text,
+                                              float(b.get("temperature", 0.2)), 1200).strip()
+                        TRANSCRIPT.record(f"turn {len(TRANSCRIPT.calls) + 1}",
+                                          sys_text, user_text, out,
+                                          model=str(_lm.LAST_SERVED or ""),
+                                          seconds=time.time() - _t)
+                        return out, {}
+
+                    dlg = converse(question, compiled, _turn,
+                                   budget=int(b.get("turns", TURN_BUDGET)), system=system)
+                    reply = dlg.answer
+                    dialogue_record = dlg.as_record()
                 else:
                     reply = ("(no key — the LM is not answering. What it would have received "
                              "is below, compiled from the field.)")
-                # THE GATE THAT PUTS THE ANSWER FIRST. Checked here, on the way out, so the
-                # verdict travels with the prose it judges and the page cannot show one
-                # without the other. Green licenses the answer-first hierarchy; a violation
-                # is displayed ON the answer, not filed in the scope.
+                    dialogue_record = None
+                # THE GATE THAT PUTS THE ANSWER FIRST. Unchanged by the collapse: the last
+                # turn is prose in the same grammar the render call produced, so the same
+                # checker judges it. Checked here, on the way out, so the verdict travels
+                # with the prose it judges and the page cannot show one without the other.
                 _phase("checking")
                 verdict = check_answer(reply, compiled).as_record()
                 self._send(200, json.dumps({
@@ -400,6 +420,9 @@ class Handler(BaseHTTPRequestHandler):
                     # it is returned WITH the answer rather than behind a second endpoint, so
                     # exporting cannot re-run a perturbation or produce a sheet describing a
                     # different one than the operator is looking at.
+                    # THE DIALOGUE ITSELF, turn by turn: what was asked, who asked it, what
+                    # arrows each turn yielded, and what moved between them.
+                    "dialogue": dialogue_record,
                     "sheet": sheet(compiled),
                     "lm_available": lm_available(key), "compiled": compiled,
                     "phases": phases, "corpus_header": corpus_header()}))
