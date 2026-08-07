@@ -89,3 +89,7 @@ runs/fixture-*/
 # evidence a deploy LANDED, git is the only durable store this container has, and evidence
 # that does not survive a reclaim is not evidence.
 !runs/livefire/
+
+# Agent scratch. The standing auditor writes its own retry runs while it works; the artifact
+# that counts is the one `runs/livefire/` holds, written by the battery itself.
+runs/livefire_retry/
