@@ -19,6 +19,55 @@ cd "$(git rev-parse --show-toplevel)"
 # swallows its stdout in some transports, so a gate that reported success on stdout
 # would be a gate nobody could see had run — indistinguishable from one that was
 # never installed, which is the state this whole file exists to leave behind.
+# ─── THE AMENDMENT GATE (B4, mechanized) ────────────────────────────────────────────────
+# /seed IS THE LAW. Changing law silently is how a project acquires rules nobody agreed to —
+# it has happened here: a mode shipped in code, tests and UI with zero mentions in either
+# normative document, which B5 calls unconstitutional. So a commit touching /seed must SAY
+# what it changed at the design level, and superseded text moves to /archive rather than
+# being edited away.
+#
+# LIMITS, STATED. The FEATURE-DIFF block's CONTENT is not validated — that would be reading
+# prose — only its presence and its four labels. On a branch with no upstream only the tip is
+# checked, because walking the whole history would refuse every commit made before this gate
+# existed; the hook announces that when it happens.
+RANGE_BASE=$(git rev-parse --verify --quiet '@{upstream}' 2>/dev/null || echo "")
+if [ -n "$RANGE_BASE" ]; then
+  COMMITS=$(git rev-list "$RANGE_BASE"..HEAD 2>/dev/null || true)
+else
+  echo "[pre-push] no upstream — amendment gate checks HEAD only" >&2
+  COMMITS=$(git rev-parse HEAD)
+fi
+
+AMEND_FAIL=0
+for C in $COMMITS; do
+  FILES=$(git show --pretty="" --name-status "$C")
+  if echo "$FILES" | grep -qE '^D[[:space:]]+archive/'; then
+    echo "[pre-push] REFUSED — $C deletes from archive/:" >&2
+    echo "$FILES" | grep -E '^D[[:space:]]+archive/' | sed 's/^/    /' >&2
+    echo "    the archive is the record. Supersede by ADDING; never by removing." >&2
+    AMEND_FAIL=1
+  fi
+  if echo "$FILES" | grep -qE '^[AMD][[:space:]]+seed/'; then
+    MSG=$(git log -1 --format=%B "$C")
+    MISSING=""
+    for LABEL in "FEATURE-DIFF" "WHAT" "SUPERSEDES" "CONTROLS" "FIXTURES"; do
+      echo "$MSG" | grep -q "$LABEL" || MISSING="$MISSING $LABEL"
+    done
+    if [ -n "$MISSING" ]; then
+      echo "[pre-push] REFUSED — $C changes seed/ (the law) without a complete FEATURE-DIFF" >&2
+      echo "    missing:$MISSING" >&2
+      echo "    $(git log -1 --format=%s "$C")" >&2
+      AMEND_FAIL=1
+    fi
+  fi
+done
+if [ "$AMEND_FAIL" -ne 0 ]; then
+  echo >&2
+  echo "[pre-push] amend the message with git commit --amend / git rebase -i, or push" >&2
+  echo "[pre-push] with --no-verify if you mean to." >&2
+  exit 1
+fi
+
 echo "[pre-push] running the suite — a red suite may not reach the remote" >&2
 START=$(date +%s)
 # A UNIQUE LOG PER RUN. The gate's own controls push inside a throwaway repository,
