@@ -287,68 +287,51 @@ def converse(question: str, compiled: dict, transport, settle=None,
     d = Dialogue(question=question, budget=max(1, int(budget)))
     sys_prompt = system or render_prompt()
     asked: set = set()
-    ask = question
     state = compiled
 
-    # TURN 1 ALREADY HAPPENED. The attachment call IS the dialogue's first turn — the medium
-    # was seated in front of the whole region and answered in cited prose, and its arrows are
-    # already in the settled state this dialogue is now reading. Re-asking would spend a call
-    # to obtain what the caller is holding, and would ask it of a SMALLER field: the exact
-    # shape that made the half-collapse feed the dialogue two objects.
-    start = 1
+    # A TURN IS LEGITIMATE ONLY AS A RESPONSE TO AN INTERROGATION.
+    #
+    # This loop used to run one more turn unconditionally after the seeded first turn, and that
+    # turn was the render port surviving as a render TURN. On the served fixture it did real
+    # damage: turn 1 answered from ten cited claims, the interrogator honestly found nothing
+    # left to ask, and a turn 2 ran anyway — re-fed the original question against a degraded
+    # summary of turn 1's own work — and its two sentences from two claims are what displayed.
+    # The machine answered well, re-answered badly from a bad summary of itself, and showed the
+    # bad one. So: no question, no turn. When the interrogator has nothing, the dialogue ENDS
+    # and the previous turn's answer stands — it already passed the same grammar and it is
+    # gated by the same checker.
     if first_turn is not None:
         d.turns.append(first_turn)
-        start = 2
-        q = interrogate(state, asked)
-        if q:
-            pair = implied_unaddressed(state, asked)
-            if pair:
-                asked.add(pair)
-            first_turn.interrogation = q
-            ask = q
-
-    for n in range(start, d.budget + 1):
-        raw, _usage = transport(sys_prompt, _put(state, ask))
+    else:
+        raw, _usage = transport(sys_prompt, _put(state, question))
         prose = (raw or "").strip()
-        proposals = arrows_from(prose, set(slot_of(state)), turn=n)
-        turn = Turn(n=n, ask=ask, prose=prose, proposals=proposals)
-        d.turns.append(turn)
+        d.turns.append(Turn(n=1, ask=question, prose=prose,
+                            proposals=arrows_from(prose, set(slot_of(state)), turn=1)))
 
-        if [p for p in proposals if p.ok] and settle is not None:
+    while True:
+        turn = d.turns[-1]
+        good = [p for p in turn.proposals if p.ok]
+        if good and settle is not None:
             fresh = settle(list(d.resolved))
             if isinstance(fresh, dict) and fresh:
                 turn.moved = int(((fresh.get("relaxation") or {}).get("moved")) or 0)
                 state = fresh
-
-        if n == d.budget:
+        if len(d.turns) >= d.budget:
             d.stopped = "budget"
-            break
+            return d
         q = interrogate(state, asked)
         if not q:
             d.stopped = "the graph had nothing left to ask"
-            break
+            return d
         pair = implied_unaddressed(state, asked)
         if pair:
             asked.add(pair)
         turn.interrogation = q
-        ask = q
-
-    # THE FINAL TURN IS THE ANSWER. If the dialogue ended on an interrogation the medium's last
-    # words answer the INTERROGATION, and the operator asked something else. One more turn puts
-    # the question to the field the interrogations settled. A dialogue that never interrogated
-    # is already answered by turn 1 and makes no extra call.
-    # THE FINAL TURN IS THE ANSWER. Turn 1's prose came back with arrow lines in it and was
-    # produced against the UNSETTLED region, so it is attachment, not an answer — the answer is
-    # put to the field its own arrows moved. A dialogue seeded with turn 1 therefore always
-    # takes at least one more turn, which is the one that answers.
-    if d.turns and (first_turn is not None or d.turns[-1].ask != question) \
-            and (len(d.turns) < 2 or d.turns[-1].ask != question):
-        raw, _usage = transport(sys_prompt, _put(state, question))
-        prose = (raw or "").strip()
         n = len(d.turns) + 1
-        d.turns.append(Turn(n=n, ask=question, prose=prose,
+        raw, _usage = transport(sys_prompt, _put(state, q))
+        prose = (raw or "").strip()
+        d.turns.append(Turn(n=n, ask=q, prose=prose,
                             proposals=arrows_from(prose, set(slot_of(state)), turn=n)))
-    return d
 
 
 #: TURN 1's PROMPT. The region wire's legend, plus the citation grammar, plus the arrow form.

@@ -480,6 +480,22 @@ def _sheet_order(keys: list, salt: str) -> list:
     return sorted(keys, key=lambda k: sha256_text(salt + str(k)))
 
 
+def mover_text(n, m) -> str:
+    """The claim a moved object carries — and a DIAGNOSTIC when it carries none.
+
+    A numbered object with no sentence is something an answer can CITE and cannot rest on.
+    Twenty-four of them once made an entire input uncitable and the answer cited one line
+    twice because it was among the few that said anything. The earlier control caught that on
+    the state-line pipe and does not cover this one, so the guard lives here, at the line's
+    own construction, where nothing can route around it.
+    """
+    text = display(getattr(m, "nu", "") or "")
+    if not (text or "").strip():
+        DIAGNOSTICS.append(f"TEXTLESS MOVER [{n}] over {getattr(m, 'chart', '?')}: slot "
+                           f"{str(getattr(m, 'slot', ''))[:12]} moved and carries no claim text")
+    return text
+
+
 def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
                    cites: list | None = None, salt: str = "", *,
                    labeller=None) -> tuple[list[str], list[dict]]:
@@ -536,10 +552,14 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
                     f"{len(members)} claim(s) [{'+'.join(charts)}], {len(moved)} of which "
                     f"moved")
         else:
-            head = (f"== A CLAIM in no declared fiber — its own group of one; "
-                    f"{len(members)} claim(s) [{'+'.join(charts)}], {len(moved)} of which "
-                    f"moved")
-        lines.append(head + (f" — the medium reads this as: {label}" if label else "") + " ==")
+            # A SINGLETON IS THE DEFAULT, NOT A REPORT. Fifteen copies of "a claim in no
+            # declared fiber — its own group of one; 1 claim(s), 1 of which moved" carry no
+            # information at all: every claim not in a fiber is one, and saying so once per
+            # claim is boilerplate crowding out the claims. Grouping is worth a header only
+            # when there is a group.
+            head = ""
+        if head:
+            lines.append(head + (f" — the medium reads this as: {label}" if label else "") + " ==")
         for m in moved:
             # A MOVED CLAIM CAN BE OUTSIDE THE REGION — reached over a declared arrow — so it
             # has no region label and the labeller mints one in its own chart. One label space,
@@ -558,8 +578,15 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
             # input was the attachment block — and the answer cited [4] twice because [4] was
             # one of the few lines that said anything. A state line whose state is metadata
             # about the state is not a state line.
-            lines.append(f"  [{n}] [{m.chart}] {display(m.nu)}")
-            lines.append(f"      {display(m.nu)}")
+            # A TEXTLESS MOVER IS A DEFECT, not a claim with an empty surface. The earlier
+            # control caught it on the state-line pipe and does not cover this one, so it is
+            # caught HERE, where the line is built: a numbered object carrying no sentence is
+            # something the answer can cite and cannot rest on, and twenty-four of them once
+            # made the whole input uncitable. Reported, never silently printed.
+            _text = mover_text(n, m)
+            # ONCE, not twice. The claim was printed on the label line and again on the line
+            # below it — the same sentence, doubled, in every mover of every answer's input.
+            lines.append(f"  [{n}] [{m.chart}] {_text}")
             for step in m.path:
                 lines.append(f"      VIA {step.render()}")
             facts.append({"kind": "moved", **m.as_record()})
@@ -749,9 +776,10 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     scope_text = "\n".join(lines)
     state = [ln for ln in lines if _is_state(ln)]
     state = _dedupe_claims(state)
-    state.append("")
-    state.append("QUESTION:")
-    state.append(text)
+    # THE QUESTION IS NOT APPENDED HERE. `engine.dialogue._put` puts the question to the state
+    # for each turn, so a copy baked into the compile appeared twice in every turn's body —
+    # and on an interrogation turn the baked one is the WRONG question, since that turn is
+    # answering the interrogator rather than the operator. One asker, one question.
     _phase("rendering")
     stages["render"] = round(_time.time() - _t0 - sum(stages.values()), 3)
     stages["total"] = round(_time.time() - _t0, 3)

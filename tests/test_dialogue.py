@@ -249,17 +249,52 @@ class TheLoopAndTheCollapse(unittest.TestCase):
         d = converse("q", self._field(), t)
         self.assertEqual(d.answer, d.turns[-1].prose)
 
-    def test_an_interrogation_turn_is_FOLLOWED_by_an_answer_turn(self):
-        """An interrogation turn answers the interrogation. The operator asked something else,
-        so the dialogue must not hand back the reply to its own follow-up as the answer."""
+    def test_NO_QUESTION_NO_TURN(self):
+        """RESTATED, and it is the rule the design always had.
+
+        This required an interrogation turn to be FOLLOWED by an answer turn. That extra turn
+        was the render port surviving as a render TURN, and on the served fixture it did real
+        damage: turn 1 answered from ten cited claims, the interrogator honestly found nothing
+        left to ask, and a turn ran anyway against a degraded summary of turn 1's own work —
+        its two sentences from two claims are what displayed. The machine answered well,
+        re-answered badly from a summary of itself, and showed the bad one.
+
+        A turn is legitimate ONLY as a response to an interrogation. When the interrogator has
+        nothing, the dialogue ends and the previous turn's answer STANDS — it already passed
+        the same grammar and it is gated by the same checker.
+        """
+        t, seen = self._transport(["turn one, answered [e1]."])
+        d = converse("q", self._field(), t)
+        self.assertEqual(len(d.turns), 1)
+        self.assertEqual(len(seen), 1, "a second call with nothing asked is an unasked turn")
+        self.assertEqual(d.answer, "turn one, answered [e1].")
+
+    def test_every_turn_after_the_first_HAS_a_preceding_engine_question(self):
+        """The planted control the rule needs: a turn record with no interrogation before it
+        is RED. Checked over the whole dialogue, so an unasked turn anywhere is caught, not
+        only one appended at the end."""
         field = self._field([{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"},
                              {"n": "x9", "kind": "arrow", "joins": ["e1", "l7"]}])
-        t, seen = self._transport(["turn one [1].", "turn two [7].", "THE ANSWER [1]."])
-        d = converse("the operator's question", field, t)
-        self.assertGreaterEqual(len(d.turns), 2)
-        self.assertEqual(d.turns[-1].ask, "the operator's question")
-        self.assertNotIn("Composition implies", d.turns[-1].ask)
-        self.assertEqual(d.answer, d.turns[-1].prose)
+        t, _ = self._transport(["a [e1].", "b [l7].", "c [e1].", "d [e1]."])
+        d = converse("q", field, t)
+        for i, turn in enumerate(d.turns):
+            with self.subTest(turn=turn.n):
+                if i == 0:
+                    self.assertEqual(turn.ask, "q", "turn 1 answers the operator")
+                else:
+                    prior = d.turns[i - 1].interrogation
+                    self.assertTrue(prior, f"turn {turn.n} ran with nothing asked before it")
+                    self.assertEqual(turn.ask, prior,
+                                     "a turn must answer the question that summoned it")
+
+    def test_a_seeded_dialogue_with_nothing_to_ask_makes_NO_further_call(self):
+        """The exact served shape: turn 1 already happened, the graph is quiet."""
+        t, seen = self._transport(["should not be called"])
+        t1 = Turn(n=1, ask="q", prose="turn one's comprehensive answer [e1].",
+                  proposals=arrows_from("[e1] -refines-> [l7]", {"e1", "l7"}, 1))
+        d = converse("q", self._field(), t, first_turn=t1)
+        self.assertEqual(len(seen), 0, "an unasked render turn")
+        self.assertEqual(d.answer, "turn one's comprehensive answer [e1].")
 
     def test_the_interrogation_is_the_ENGINE_speaking_and_is_recorded_as_the_ask(self):
         field = self._field([{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"},

@@ -257,11 +257,16 @@ class TheDECOMPOSITIONIsThePRESENTATION(unittest.TestCase):
         # It is what makes the fiber the fiber; following one leads back inside the apex.
         self.assertNotIn("-same_claim->", self._block())
 
-    def test_a_claim_in_no_fiber_is_its_own_group_and_says_so(self):
-        from engine.inbound import _relaxed_block
-        rel = self._Rel([self._Moved("z", "english", "an unfibered claim")])
-        body = "\n".join(_relaxed_block(rel, self._Snap(), [])[0])
-        self.assertIn("A CLAIM in no declared fiber", body)
+    def test_a_claim_in_no_fiber_gets_NO_header_because_that_is_the_default(self):
+        """RESTATED. This required a singleton to announce itself as its own group of one.
+
+        It is the default. Every claim not in a fiber is one, and a header per claim saying so
+        was fifteen contentless copies in one served transcript — boilerplate crowding out the
+        claims it was introducing. Grouping earns a header only when there is a group.
+        """
+        block = self._block()
+        self.assertNotIn("in no declared fiber", block)
+        self.assertNotIn("its own group of one", block)
 
     def test_the_block_states_that_a_group_is_the_unit_to_relate_to(self):
         # The presentation has to SAY what the grouping means, or a medium reads it as
@@ -535,3 +540,50 @@ class EveryGroupProducesItsArrows(unittest.TestCase):
         prov = group_provenance(cls._Rel([cls._Moved("z", "english", "x")]), cls._Snap())
         self.assertTrue(prov[0]["singleton"])
         self.assertEqual([], prov[0]["arrows"])
+
+
+class TextlessMoversAreCAUGHTOnThisPipeToo(unittest.TestCase):
+    """The state-line control did not cover the moved-region pipe. This one does.
+
+    A numbered object carrying no sentence is something an answer can CITE and cannot rest on.
+    Twenty-four of them once made an entire input uncitable, and the answer cited the same
+    line twice because it was one of the few that said anything.
+    """
+
+    def test_a_planted_textless_mover_is_REPORTED(self):
+        from engine.inbound import DIAGNOSTICS, mover_text
+
+        class _M:
+            slot, chart, nu = "s" * 40, "english", ""
+
+        before = len(DIAGNOSTICS)
+        self.assertEqual(mover_text("e3", _M()), "")
+        planted = [d for d in DIAGNOSTICS[before:] if "TEXTLESS MOVER" in d]
+        self.assertTrue(planted, "a mover with no claim text was not reported")
+        self.assertIn("e3", planted[0])
+        self.assertIn("english", planted[0])
+
+    def test_a_mover_WITH_text_is_not_reported(self):
+        """Not vacuous in the other direction: a guard that fires on everything is off."""
+        from engine.inbound import DIAGNOSTICS, mover_text
+
+        class _M:
+            slot, chart, nu = "s" * 40, "english", "\x01en\x01the cone is positive"
+
+        before = len(DIAGNOSTICS)
+        self.assertTrue(mover_text("e4", _M()).strip())
+        self.assertEqual([d for d in DIAGNOSTICS[before:] if "TEXTLESS MOVER" in d], [])
+
+    def test_the_emitter_ROUTES_through_the_guard(self):
+        """The guard is worthless if the line is built beside it."""
+        import ast
+        import inspect
+
+        import engine.inbound as ib
+
+        src = inspect.getsource(ib._relaxed_block)
+        tree = ast.parse(src.lstrip())
+        called = {n.func.id for n in ast.walk(tree)
+                  if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+        self.assertIn("mover_text", called,
+                      "the mover line must be built through the guard, not beside it")
