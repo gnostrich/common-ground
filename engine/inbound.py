@@ -304,7 +304,7 @@ def _is_state(line: str) -> bool:
     return stripped.startswith("WHAT THIS PROPOSITION IS LINKED TO")
 
 
-def _region_block(pert, cites: list | None = None) -> str:
+def _region_block(pert, cites: list | None = None, *, labeller=None) -> str:
     """The diagram the boundary condition entered, and what the medium drew in it.
 
     A bias that reaches the field through a proposed arrow is standing on a claim somebody's
@@ -355,10 +355,12 @@ def _region_block(pert, cites: list | None = None) -> str:
         "never compose, and never become arrows. An arrow to a boundary condition is not "
         "structure.",
     ]
-    def _cite(kind: str, a) -> int:
-        """One number, assigned here and printed here. The prompt and the record cannot
-        disagree about it because there is no second place that assigns one."""
-        n = len(cites) + 1 if cites is not None else 0
+    def _cite(kind: str, a) -> str:
+        """One LABEL, assigned here and printed here. The prompt and the record cannot disagree
+        about it because there is no second place that assigns one — and now there is no second
+        NUMBERING either: the label is the region's own, so the medium, the extractor and the
+        checker all resolve against the same string."""
+        n = labeller.label_for(a.dst_slot, a.dst_chart) if labeller else str(len(cites) + 1)
         if cites is not None:
             cites.append(Citable(n=n, kind=kind, chart=a.dst_chart, slot=a.dst_slot,
                                  nu=display(a.dst_nu)))
@@ -479,7 +481,8 @@ def _sheet_order(keys: list, salt: str) -> list:
 
 
 def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
-                   cites: list | None = None, salt: str = "") -> tuple[list[str], list[dict]]:
+                   cites: list | None = None, salt: str = "", *,
+                   labeller=None) -> tuple[list[str], list[dict]]:
     """The moved region, GROUPED BY FIBER, each row carrying the path the bias reached it by.
 
     THE FLAT LIST WAS THE DEFECT. A numbered list of claims presents a corpus as an
@@ -538,7 +541,10 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
                     f"moved")
         lines.append(head + (f" — the medium reads this as: {label}" if label else "") + " ==")
         for m in moved:
-            n = len(cites) + 1 if cites is not None else 0
+            # A MOVED CLAIM CAN BE OUTSIDE THE REGION — reached over a declared arrow — so it
+            # has no region label and the labeller mints one in its own chart. One label space,
+            # not two: the letter means the chart everywhere or it means nothing anywhere.
+            n = labeller.label_for(m.slot, m.chart) if labeller else str(len(cites) + 1)
             if cites is not None:
                 cites.append(Citable(n=n, kind="moved", chart=m.chart, slot=m.slot,
                                      nu=display(m.nu)))
@@ -626,6 +632,8 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
 
     import secrets
 
+    from .region import Labeller
+
     stages: dict[str, float] = {}
     cites: list[Citable] = []
     # THE ORDER SALT, recorded. Groups are permuted per sheet so position ranks nothing, and
@@ -641,18 +649,22 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     # seeds. Without one, the bias can only attach at its own address — which is right only
     # when the typed text already exists verbatim, and is the inherited defect the region
     # path exists to fix.
+    # ONE LABEL SPACE PER ACT, seeded by the region. Built before anything is cited so
+    # every citation in this compile — attachments and movers alike — draws from it.
+    labeller = None
     att = None
     if transport is not None:
         _phase("attaching")
         _t = _time.time()
         att = perturb(text, snapshot, transport, chart)
+        labeller = Labeller(att.region) if att.region is not None else Labeller()
         stages["attach"] = round(_time.time() - _t, 3)
         if not att.seeds:
             status = ("THE FIELD DID NOT RESPOND — " + _no_attachment(att))
             stages["total"] = round(_time.time() - _t0, 3)
             return CompiledInput(
                 stages=stages,
-                typed=text, compiled=f"{status}\n\n{_region_block(att, cites)}\n\n"
+                typed=text, compiled=f"{status}\n\n{_region_block(att, cites, labeller=labeller)}\n\n"
                                      f"BOUNDARY CONDITION:\n{text}",
                 landings=landings, field_status=status, conditioned=False,
                 relaxation=None, attachment=att, citations=cites)
@@ -680,10 +692,10 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         "",
     ]
     if att is not None:
-        lines.extend(_region_block(att, cites).splitlines())
+        lines.extend(_region_block(att, cites, labeller=labeller).splitlines())
         lines.append("")
 
-    moved_lines, facts = _relaxed_block(rel, snapshot, cites, salt)
+    moved_lines, facts = _relaxed_block(rel, snapshot, cites, salt, labeller=labeller)
     lines.extend(moved_lines)
     lines.append("")
 

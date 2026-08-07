@@ -71,7 +71,21 @@ from dataclasses import dataclass, field
 
 #: A citation is a bracketed integer. This regex matches numbers, not words — there is
 #: deliberately no tokenizer in this module to reach for.
-_CITE = re.compile(r"\[(\d+)\]")
+#: A CITATION IS A LABEL, not an integer. The label space is the region's own — a chart letter
+#: and an index, `[e1]`, `[l45]` — and it survives end-to-end: the medium sees it, the extractor
+#: reads it, and this checker verifies against it, with no renumbering step in between.
+#:
+#: THE ANTI-SIMILARITY ARGUMENT SURVIVES, RESTATED. It used to read "resolution is integer
+#: membership, no text is compared". It now reads: RESOLUTION IS EXACT MEMBERSHIP IN A DECLARED
+#: LABEL SET. That is the same property — a label is in the set or it is not, there is no
+#: partial match, no nearest neighbour and no distance — and integers were never the safer
+#: case: `engine/region._ARROW_RE` records a real defect where `1.0 -same_claim-> 2` matched the
+#: `1` out of `1.0`, so a bare-number grammar had the substring hazard and it fired. The label
+#: form carries one thing the integer did not: the chart, which the medium needs when relating
+#: across languages, and which makes a tag/chart disagreement a decidable second check.
+#:
+#: The bare-integer form is still read, so a field emitted before the collapse still resolves.
+_CITE = re.compile(r"\[([a-z]?\d+)\]")
 
 #: An absence marker: bare, index-scoped, or warrant-named. Same shape, same bracket, and the
 #: only thing read out of it is integers and a name from a CLOSED list.
@@ -81,7 +95,7 @@ _ABSENT = re.compile(r"\[\u2205(?::([\d,\s]+))?([a-z_]+)?\]")
 #: sentence afterwards is reading its brackets.
 #: A run of citation tokens: [4], [∅gap], [!]. Used to decide where a sentence ENDS, never
 #: to compare anything.
-_CITE_RUN = re.compile(r"\s*(?:\[(?:\d+|∅[^\]]*|!)\])+")
+_CITE_RUN = re.compile(r"\s*(?:\[(?:[a-z]?\d+|∅[^\]]*|!)\])+")
 
 #: A line too short to assert anything. Requiring a citation on "Yes." produces noise.
 MIN_SENTENCE_CHARS = 25
@@ -270,9 +284,9 @@ def arrow_index(compiled: dict) -> tuple[dict, set]:
     for c in (compiled.get("citations") or []):
         if c.get("kind") != "arrow":
             continue
-        pair = tuple(sorted(int(x) for x in (c.get("joins") or ())))
+        pair = tuple(sorted(str(x) for x in (c.get("joins") or ())))
         if len(pair) == 2:
-            joins[int(c["n"])] = pair
+            joins[str(c["n"])] = pair
             joined.add(pair)
     return joins, joined
 
@@ -283,19 +297,19 @@ def group_of(compiled: dict) -> dict:
     for c in (compiled.get("citations") or []):
         if c.get("kind") == "arrow":
             continue
-        n = int(c["n"])
+        n = str(c["n"])
         out[n] = str(c.get("group") or f"~{n}")
     return out
 
 
 def contested_numbers(compiled: dict) -> set:
     """Objects the field holds more than one value for."""
-    return {int(c["n"]) for c in (compiled.get("citations") or []) if c.get("contested")}
+    return {str(c["n"]) for c in (compiled.get("citations") or []) if c.get("contested")}
 
 
 def citable_numbers(compiled: dict) -> set[int]:
     """The integers `engine.inbound` actually emitted. The whole trace-set, nothing implied."""
-    return {int(c["n"]) for c in (compiled.get("citations") or []) if c.get("n")}
+    return {str(c["n"]) for c in (compiled.get("citations") or []) if c.get("n")}
 
 
 def sentences(answer: str) -> list[str]:
@@ -342,7 +356,7 @@ def check_answer(answer: str, compiled: dict) -> Verdict:
     v = Verdict(citable=len(valid))
     for sentence in sentences(answer):
         v.checked += 1
-        nums = [int(m) for m in _CITE.findall(sentence)]
+        nums = list(_CITE.findall(sentence))
         absences = _ABSENT.findall(sentence)
 
         if absences:
@@ -354,7 +368,7 @@ def check_answer(answer: str, compiled: dict) -> Verdict:
                         v.unwarranted.append(Unwarranted(sentence, warrant))
                     continue
                 if scoped:
-                    scope = [int(x) for x in scoped.replace(" ", "").split(",") if x]
+                    scope = [x for x in scoped.replace(" ", "").split(",") if x]
                     bad = [n for n in scope if n not in valid]
                     if bad:
                         v.unresolved.append(Unresolved(sentence, bad))

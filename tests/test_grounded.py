@@ -21,6 +21,20 @@ def _compiled(ns):
                            "slot": f"s{n}", "nu": f"claim {n}"} for n in ns]}
 
 
+#: THE CITATION IS A LABEL, NOT AN INTEGER — since the region-numbering collapse.
+#:
+#: These assertions moved deliberately, and the distinction matters: a FIXTURE change is cheap
+#: bookkeeping, while an ASSERTION change means the property itself moved. It did. `resolved`
+#: and `unresolved[].numbers` now carry the label strings the medium actually wrote, because
+#: the label space is the region's — `[e1]`, `[l45]` — and it survives end-to-end with no
+#: renumbering step between what the medium said and what this checker verifies.
+#:
+#: THE ANTI-SIMILARITY PROPERTY IS UNCHANGED. It read "resolution is integer membership, no
+#: text is compared"; it now reads "resolution is EXACT MEMBERSHIP IN A DECLARED LABEL SET".
+#: Same property — in the set or not, no partial match, no nearest neighbour, no distance — and
+#: integers were never the safer case: `engine/region._ARROW_RE` records a real defect where
+#: `1.0 -same_claim-> 2` matched the `1` out of `1.0`.
+
 class CitationsResolveOrTheyDoNot(unittest.TestCase):
 
     def test_a_fully_cited_answer_is_green(self):
@@ -29,7 +43,7 @@ class CitationsResolveOrTheyDoNot(unittest.TestCase):
                          _compiled([1, 2, 3]))
         self.assertTrue(v.ok, [x.render() for x in v.uncited + v.unresolved])
         self.assertEqual(2, v.cited)
-        self.assertEqual([1, 2], v.as_record()["resolved"])
+        self.assertEqual(["1", "2"], v.as_record()["resolved"])
 
     def test_one_sentence_may_cite_several_lines_of_ONE_group(self):
         """Co-citing faces of one quotient asserts no relation the field lacks.
@@ -45,7 +59,7 @@ class CitationsResolveOrTheyDoNot(unittest.TestCase):
             cite["group"] = "fiber-A"
         v = check_answer("Both of these state the same proposition in different charts [1][2].", c)
         self.assertTrue(v.ok, v.violations)
-        self.assertEqual([1, 2], v.as_record()["resolved"])
+        self.assertEqual(["1", "2"], v.as_record()["resolved"])
 
     def test_an_uncited_sentence_is_red_and_named(self):
         v = check_answer("Perelman settled the Poincare conjecture some years ago.",
@@ -58,7 +72,7 @@ class CitationsResolveOrTheyDoNot(unittest.TestCase):
         v = check_answer("The cone is positive under the ambient metric here [99].",
                          _compiled([1, 2]))
         self.assertFalse(v.ok)
-        self.assertEqual([99], v.unresolved[0].numbers)
+        self.assertEqual(["99"], v.unresolved[0].numbers)
 
     def test_one_bad_sentence_among_good_ones_is_still_red(self):
         v = check_answer("The boundary term moved when the bias was applied [1]. "
@@ -84,7 +98,7 @@ class CitationsResolveOrTheyDoNot(unittest.TestCase):
 class TheTraceSetIsExactlyWhatWasEmitted(unittest.TestCase):
 
     def test_citable_numbers_come_from_the_record_not_from_a_range(self):
-        self.assertEqual({1, 4, 9}, citable_numbers(_compiled([1, 4, 9])))
+        self.assertEqual({"1", "4", "9"}, citable_numbers(_compiled([1, 4, 9])))
 
     def test_an_attachment_is_citable_so_it_cannot_convict_a_correct_answer_twice(self):
         compiled = {"citations": [{"n": 1, "kind": "bears_on", "chart": "english",
@@ -127,12 +141,36 @@ class TheRefereeIsNotALEXICALMECHANISM(unittest.TestCase):
         # THREE, and every one of them is named. A count with no enumeration would let a
         # tokenizer in as long as something else was removed.
         self.assertEqual(3, len(patterns), f"unexpected regexes: {patterns}")
-        self.assertIn(r"\[(\d+)\]", patterns)                      # a citation
+        # A CITATION IS A LABEL: an optional single chart letter and an index. The letter is
+        # `[a-z]?` and never `[a-z]+` — one character is a chart tag, and a RUN of them is a
+        # word, which is the thing this whole class exists to keep out of the referee.
+        self.assertIn(r"\[([a-z]?\d+)\]", patterns)                # a citation
         self.assertIn("\\[\\u2205(?::([\\d,\\s]+))?([a-z_]+)?\\]", patterns)   # an absence
         # The third is the sentence splitter; none of the three matches a word.
         for pat in patterns:
             self.assertNotIn("a-z0-9", pat)
             self.assertNotIn("\\w+", pat)
+            # NO ALPHABETIC RUN, anywhere. `[a-z]+` or `[a-z]{2,}` in a referee's regex is a
+            # word matcher however it got there, and the chart tag is the one place a letter
+            # is now legal at all — so the boundary is asserted rather than trusted.
+            self.assertNotIn("[a-z]+", pat)
+            self.assertNotIn("[a-z]*", pat)
+
+    def test_a_chart_TAG_is_one_letter_and_a_word_does_not_resolve(self):
+        """The tag opened the door to letters. This is the doorstop.
+
+        A citation may carry one chart letter. `[same]`, `[refines]`, `[cone]` — anything with
+        an alphabetic run — must not parse as a citation at all, or the referee would start
+        accepting names, and a name is a thing text can be matched against.
+        """
+        from engine.grounded import _CITE
+
+        for good in ("[e1]", "[l45]", "[b0]", "[7]"):
+            with self.subTest(good=good):
+                self.assertTrue(_CITE.findall(good), good)
+        for bad in ("[same]", "[refines]", "[cone]", "[ee1]", "[e]", "[]"):
+            with self.subTest(bad=bad):
+                self.assertEqual(_CITE.findall(bad), [], f"{bad} parsed as a citation")
 
     def test_no_set_difference_survives_anywhere_in_the_module(self):
         tree = ast.parse(self._src())
@@ -225,12 +263,12 @@ class HonestNegativesHaveALegalForm(unittest.TestCase):
     def test_a_scoped_absence_resolves_like_a_citation(self):
         v = check_answer("Neither moved claim relates them directly [\u2205:1,2].", self._c())
         self.assertTrue(v.ok)
-        self.assertEqual([1, 2], v.as_record()["resolved"])
+        self.assertEqual(["1", "2"], v.as_record()["resolved"])
 
     def test_a_scoped_absence_over_a_line_never_shown_is_unresolved(self):
         v = check_answer("Neither moved claim relates them directly [\u2205:1,99].", self._c())
         self.assertFalse(v.ok)
-        self.assertEqual([99], v.unresolved[0].numbers)
+        self.assertEqual(["99"], v.unresolved[0].numbers)
 
     def test_an_absence_over_an_empty_trace_is_VACUOUS(self):
         # Nothing was shown, so there is nothing for the claim to be absent FROM. The honest

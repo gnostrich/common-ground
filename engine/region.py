@@ -158,6 +158,52 @@ def tag_of(chart: str) -> str:
     return CHART_TAG.get(chart) or (chart[:1] or "x")
 
 
+def labels(region) -> dict:
+    """slot -> the region's own label for it. The seed of the ONE label space.
+
+    THE COLLAPSE RESTS ON THIS. The dialogue, the extraction and the answer's citations all
+    resolve against region labels, so there is no renumbering step between what the medium
+    said and what the checker verifies — and a renumbering step is one more place a bug can
+    hide, which is not hypothetical: a half-collapsed pipeline shipped green this morning.
+    """
+    return {m.slot: label(m.chart, m.index) for m in getattr(region, "members", ()) or ()}
+
+
+class Labeller:
+    """One tagged label space, seeded by the region and extended for anything outside it.
+
+    A moved claim can be OUTSIDE the region — reached over a declared arrow — so it has no
+    region label and needs one. It gets the next free index IN ITS OWN CHART, so the label
+    keeps meaning what it means everywhere else: the letter is the chart, and two objects with
+    the same letter are over the same chart. A separate scheme for the strays would be a second
+    numbering, which is the thing being deleted.
+    """
+
+    __slots__ = ("_by_slot", "_next")
+
+    def __init__(self, region=None):
+        self._by_slot = labels(region) if region is not None else {}
+        self._next = {}
+        for lab in self._by_slot.values():
+            tag, digits = lab[:1], lab[1:]
+            if digits.isdigit():
+                self._next[tag] = max(self._next.get(tag, -1), int(digits))
+
+    def label_for(self, slot: str, chart: str) -> str:
+        """The region's label if this slot was seated, otherwise a fresh one in its chart."""
+        got = self._by_slot.get(slot)
+        if got:
+            return got
+        tag = tag_of(chart)
+        self._next[tag] = self._next.get(tag, -1) + 1
+        got = f"{tag}{self._next[tag]}"
+        self._by_slot[slot] = got
+        return got
+
+    def known(self) -> dict:
+        return dict(self._by_slot)
+
+
 def label(chart: str, index: int) -> str:
     return f"{tag_of(chart)}{index}"
 
