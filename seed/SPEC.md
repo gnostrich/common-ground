@@ -49,6 +49,33 @@ the ACT speech-reader — is in `archive/design/2026-08-07-two-coordinate-surfac
 `archive/design/2026-08-07-mode-claim-posture-modules.md`, with its reasoning intact. It was
 superseded, not refuted: the derivation was sound and the premise was wrong.
 
+
+### §10b — THE FOURTH DOOR (normative)
+
+**Objects are born through exactly three doors, and the fourth is not one.** The operator's
+mouth; the measure's own quotients; ruled ingestion. **The medium never mints.**
+
+What it may do is NOMINATE. A synthesis it proposes — a proposition resting on cited claims
+that none of them states — is testimony with a citation footprint, and testimony is off the
+warrant poset by type. It enters no slot, draws no arrow, holds no warrant. It is offered to
+the operator, who claims it by RESTATING it in their own words — their own record, through the
+normal inlet, carrying their authorship — or ignores it, and it fades with the testimony.
+
+The same for vocabulary. Where a nomination's footprint touches structure an existing apex
+already names, the offer is PHRASED THROUGH THAT APEX — by fiber membership, never by word
+matching — which is what stops the machine renaming what the operator already named. Where the
+footprint touches structure no apex names, the TERM ITSELF is nominated, and enters the
+idiolect only by signature.
+
+**The dialogue anneals the language it uses.** Unnamed measured structure is a residual the
+interrogator can raise, and a proposed term is a trial coordinate stressed by decidable checks
+— coverage, apex-collision, split, residue. The loop may not close short of budget with
+measured structure unnamed and un-decomposed; exhausting the budget with open lexical residue
+is a legal ending, recorded as one.
+
+Full protocol and controls: `seed/DIALOGIC.md`. Invariant: OI-44.
+
+
 ## PART II — THE CARRIER
 
 ### §6b — THE LM BOUNDARY, TYPED (normative)

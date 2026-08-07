@@ -108,6 +108,17 @@ MAP: dict[str, dict] = {
     "OI-40": {"P": True},
     "OI-43": {"C": ["tests/test_null_surface.py:TheAUTHORSHIPDoorIsRemovedAndTheAlarmREMAINS"],
               "E": ["archive/design/2026-08-07-mode-claim-posture-modules.md"]},
+    "OI-44": {"C": ["tests/test_dialogue.py:C2_TestimonyNeverGrounds",
+                    "tests/test_dialogue.py:C1_NoArrowFromWords"],
+              "E": ["engine/dialogue.py:TESTIMONY", "engine/dialogue.py:arrows_from"]},
+    # WATCH, NOT WEAK, and the registry has to be able to say so. A WEAK entry names a
+    # missing control; this one names an unenforced ADJECTIVE inside a principle whose other
+    # clauses are enforced. Filing it as WEAK would claim a control is owed, and the ruling is
+    # explicitly that none is owed until over-completion is OBSERVED.
+    "OI-45": {"C": ["tests/test_dialogue.py:C4_TheBudgetBinds"],
+              "E": ["seed/DIALOGIC.md"], "W": "minimality has no explicit check; the "
+                                              "derivation seed is a real observed instance of "
+                                              "over-completion surviving the four checks"},
     "OI-42": {"C": ["tests/test_null_surface.py:NoModeMachineryIsOnTheSURFACE",
                     "tests/test_null_surface.py:TheMachineryIsDELETEDNotDormant",
                     "tests/test_null_surface.py:TheRESPONSECarriesNoActAndNoMode"],
@@ -156,7 +167,7 @@ def resolves(ref: str) -> bool:
 
 def build() -> dict:
     stmts = statements()
-    entries, weak, unresolved = {}, [], []
+    entries, weak, unresolved, watch = {}, [], [], {}
     for oi in sorted(stmts, key=lambda k: int(k.split("-")[1])):
         spec = MAP.get(oi, {})
         e = [r for r in spec.get("E", [])]
@@ -166,14 +177,22 @@ def build() -> dict:
         is_weak = not c
         if is_weak:
             weak.append(oi)
+        if spec.get("W"):
+            watch[oi] = spec["W"]
         entries[oi] = {"statement": stmts[oi], "enforcement_sites": e, "controls": c,
-                       "process_only": is_weak, "unresolved": bad}
+                       "process_only": is_weak, "unresolved": bad,
+                       "watch": spec.get("W", "")}
     return {"schema": "common-ground/oi-registry/v0",
             "note": ("Machine-readable per CONSTITUTION.md B1. An OI with no [C:] control is "
                      "WEAK and listed for mechanization; the auditor FAILS if any entry is "
                      "unresolvable, because a registry naming controls that do not exist is "
                      "the map-not-territory failure applied to the constitution itself."),
-            "count": len(entries), "weak": weak, "unresolved": unresolved,
+            # WATCH IS NOT WEAK, and the distinction is load-bearing. WEAK names an
+            # invariant with NO control — a debt. WATCH names an unenforced clause inside an
+            # invariant whose other clauses ARE enforced, where the ruling is that no control
+            # is owed until the failure is OBSERVED. Filing one as the other would either
+            # manufacture a debt nobody owes, or hide one somebody does.
+            "count": len(entries), "weak": weak, "watch": watch, "unresolved": unresolved,
             "entries": entries}
 
 
@@ -181,6 +200,8 @@ if __name__ == "__main__":
     reg = build()
     OUT.write_text(json.dumps(reg, indent=1) + "\n", encoding="utf-8")
     print(f"{reg['count']} OI entries")
+    for oi, why in sorted(reg.get("watch", {}).items()):
+        print(f"WATCH {oi}: {why}")
     print(f"WEAK (process-only, need mechanizing): {len(reg['weak'])} -> {', '.join(reg['weak'])}")
     print(f"UNRESOLVED references: {len(reg['unresolved'])}")
     for u in reg["unresolved"]:

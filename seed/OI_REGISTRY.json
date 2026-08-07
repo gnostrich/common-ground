@@ -1,7 +1,7 @@
 {
  "schema": "common-ground/oi-registry/v0",
  "note": "Machine-readable per CONSTITUTION.md B1. An OI with no [C:] control is WEAK and listed for mechanization; the auditor FAILS if any entry is unresolvable, because a registry naming controls that do not exist is the map-not-territory failure applied to the constitution itself.",
- "count": 43,
+ "count": 45,
  "weak": [
   "OI-2",
   "OI-26",
@@ -9,6 +9,9 @@
   "OI-38",
   "OI-40"
  ],
+ "watch": {
+  "OI-45": "minimality has no explicit check; the derivation seed is a real observed instance of over-completion surviving the four checks"
+ },
  "unresolved": [],
  "entries": {
   "OI-1": {
@@ -20,14 +23,16 @@
     "tests/test_amendment.py:EveryMechanismModuleCitesItsMove"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-2": {
    "statement": "The diagnostic protocol precedes debugging: object-or-morphism? has morphisms? subgraph shape? which move? second mechanism? (Q1\u2013Q5). *VIOLATED:* the picker, the retrieval layer \u2014 built instead of asked. `[P + ledger]`",
    "enforcement_sites": [],
    "controls": [],
    "process_only": true,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-3": {
    "statement": "No second mechanism for a job that has one (Q5). *VIOLATED:* candidate-list loop beside the sampler; two-tier lexical checker beside citations. Both deleted. `[C: one-code-path AST controls]`",
@@ -38,7 +43,8 @@
     "tests/test_battery.py:OneCodePath"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-4": {
    "statement": "Constants are derived, swept, or confessed \u2014 never picked. Precedents: aging-halving (scale-free), k/(k\u22121) (anchor-forced), coverage-by-unwalked-mass (self-extinguishing). **OPEN:** \u03b2 (confessed, audit ordered). `[C: constants sweep]`",
@@ -54,7 +60,8 @@
     "tests/test_walk.py:ExplorationPressureIsDERIVEDAndSelfExtinguishing"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-5": {
    "statement": "Conditional language in rulings is a tell \u2014 \"as long as X\" either references a gate (redundant) or nothing (hope). Constraints are controls, not clauses. `engine/conditionals` scans normative text for a closed set of tells and forgives a clause only when it cites something that REFUSES: a gate, an OI, a decision id, or a control file. Use versus mention is load-bearing \u2014 this statement quotes the ",
@@ -69,7 +76,8 @@
     "tests/test_conditionals.py:TheExemptionIsANamedLineNotACategory"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-6": {
    "statement": "No similarity mechanism anywhere: no embeddings, no distance, no token overlap, no fuzzy matching \u2014 in extraction, grouping, bridging, nomination, grading, or referees. *VIOLATED 3\u00d7 IN REFEREES:* acceptance guard measured verbosity; faithfulness checker was bag-of-words; conversation verdicts by keyword intersection. `[C: referee_sweep over ALL grading+compile+bridge modules; exemptions carry argu",
@@ -80,7 +88,8 @@
     "tests/test_referee_sweep.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-7": {
    "statement": "No vocabulary judgments by modules: no stopword lists, no curated word sets. Specificity is derived (character length of literal containment). *VIOLATED:* nominator v1 (bag) \u2014 refused by sweep AND independently wrong. `[C]`",
@@ -91,7 +100,8 @@
     "tests/test_nominate.py:ItDECIDESNothing"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-8": {
    "statement": "Words are keys; senses are claims. Word-nodes would hard-code indiscriminate equivalence. Lexical strata = senses + DECLARED relations only. `[SPEC I\u00a79, C4]`",
@@ -102,7 +112,8 @@
     "tests/test_lexicon.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-9": {
    "statement": "Metric invariance: model-fed metrics invariant to verbosity/repetition (dedupe to distinct things named); solver-fed metrics invariant to schedule (measured across settlements, never within a trace). *VIOLATED:* acceptance 97/2/6 swings tracked repetition; Hankel read the solver's decay. `[C: per-metric invariance assertions; a metric ships with its invariance or is not a guard]`",
@@ -113,7 +124,8 @@
     "tests/test_battery.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-10": {
    "statement": "Never pairs where a quotient was declared; never closure where a chain was declared; never records where pairs are the unit. **THE GREAT REPAIR:** 96.7% of same_claim was containment mis-kinded as identity; all-pairs fabricated 7,140 edges from 434 declarations; one fiber held 73% of coupling energy; regions were 95% one proposition; K's support was 61/64 one thing. FIVE instances, one cause. `[E:",
@@ -126,7 +138,8 @@
     "tests/test_apex.py:TheFactorizationIsAStar"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-11": {
    "statement": "Mis-kinding is made INEXPRESSIBLE where possible, not forbidden: `Scaffold` is a separate class (cannot be stored as same_claim \u2014 no such field); `APEX_CHART` equals nothing. **Impossibility-by-construction > prohibition-by-control.** `[E]`",
@@ -137,7 +150,8 @@
     "tests/test_scaffold.py:ItIsNotACorrespondenceAndCannotBeMisKinded"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-12": {
    "statement": "Under-report over invent: unresolved references VOID, never guessed; a missing edge is a gap, an invented edge is fabrication. Ambiguity is not resolved by proximity (that's similarity in parser's clothes). `[E: resolve-or-void everywhere; C: planted unresolved-but-kept = RED]`",
@@ -149,7 +163,8 @@
     "tests/test_scaffold.py:NoInferenceOnlyParse"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-13": {
    "statement": "Absence is data: declines recorded; unmeasured \u2260 no; unmentioned never dies by arithmetic; `[\u2205]` forms are citable and checked. `[E: aging halving, absence grammar; C: absence-claim verification]`",
@@ -161,7 +176,8 @@
     "tests/test_grounded.py:HonestNegativesHaveALegalForm"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-14": {
    "statement": "The medium is queried, never trusted: extraction tier, resolve-or-void, gated, aging, disposable, swappable. `[E: inlet; warrant tiers]`",
@@ -172,7 +188,8 @@
     "tests/test_inlet.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-15": {
    "statement": "Model identity stamped on every call and every arrow; never route blind. *VIOLATED:* `openrouter/auto` served lite 448/465 calls \u2014 repetition 35\u00d7, the forest-topology false conclusion, 10-minute latencies. `[E: pin + usage stamping + header; C: env-override announces itself]`",
@@ -184,7 +201,8 @@
     "tests/test_ui_surface.py:TheBuildNamesItsMATERIALNotOnlyItsCode"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-16": {
    "statement": "Output grammar is the trusted kernel: triples-only in extraction; citations + weld-rule + absence-forms in rendering; everything else silently unparsed. No self-reported confidence. **Grammar over instruction** \u2014 every prose rule that mattered was ignored by every model until compiled into the format. `[E: parsers; C: prose+one-triple yields one arrow; AST two-regex assertion]`",
@@ -196,7 +214,8 @@
     "tests/test_grounded.py:TheContestRule"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-17": {
    "statement": "Region granularity = the medium's measured co-relaxation range (acceptance guard band), not a knob; the lineup bounds ATTACHMENT ONLY, never the answer's universe. `[C: battery; clean-state item 4]`",
@@ -207,7 +226,8 @@
     "tests/test_fixtures.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-18": {
    "statement": "Prompts contain wire format + grammar + state + NOTHING. No personas, no style, no editorial instructions. *VIOLATED:* the accreted style codex (voice preference, scope phrasing, \"I read your question as\") \u2014 stripped. `[C: enumerable-prompt control, planted style instruction = RED]`",
@@ -218,7 +238,8 @@
     "tests/test_grounded.py:ThePromptIsWIREGrammarAndNothing"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-19": {
    "statement": "Operator input is an external field term: never normalized, never addressed as a stage, never objectified into the category. \u03bd/hash consulted ONLY to detect incidental declared coincidences (whole-input, contiguous-term) that strengthen coupling. *WAS VIOLATED, NOW MECHANIZED:* the bias object went out as its \u03bd \u2014 case folded, whitespace collapsed, terminal punctuation stripped, wearing the `englis",
@@ -234,7 +255,8 @@
     "tests/test_bias_bytes.py:TheCorpusObjectsAreUNCHANGED"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-20": {
    "statement": "Identity \u2260 attachment; they never share a rule. Identity exact (gate 1); attachment proposed. *VIOLATED:* exact-landing-required made novel input an isolated object \u2014 THE amendment. `[E: perturb path; C: battery no-silent-zero]`",
@@ -246,7 +268,8 @@
     "tests/test_perturb.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-21": {
    "statement": "The ETS feel is the acceptance bar: no silence without a consulted-and-declined trace; response graded with bias sharpness; stateful; no phrasing cliffs. `[C: the battery \u2014 no_silent_zero/graded/no_cliff/stateful/one_path]`",
@@ -258,7 +281,8 @@
     "tests/test_battery.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-22": {
    "statement": "Nothing is landed until verified on the SERVED artifact. *VIOLATED 7 DISTINCT WAYS:* stale HTML skin; missing commit stamp; env var beating the code pin; curl-tolerant stream hanging browsers; gitignore blocking the seed path (correct code never executed); snapshot drift behind local; sim-reported-as-landed. `[E: header self-identifies commit+model+corpus provenance+material age+\u03b2s; C: deploy self",
@@ -271,7 +295,8 @@
     "tests/test_ui_surface.py:TheBuildNamesItsMATERIALNotOnlyItsCode"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-23": {
    "statement": "Controls execute the runtime, never inspect source as proxy. *\"A control simpler than the thing it stands for\"* \u2014 3 instances (substring checks over `getsource` passed while `SNAPSHOT_PATH` was never imported). `[C: control-liveness sweep]`",
@@ -283,7 +308,8 @@
     "tests/test_access_gate.py:TheSeedEndpointMustACTUALLYRUN"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-24": {
    "statement": "\"Success on the empty set\" is a defect class: operations assert non-empty inputs; an all-zero census from an empty adjudication = RED. *WAS VIOLATED, NOW MECHANIZED:* demotion applied at snapshot-build (zero arrows) reported clean success. `engine/nonempty` is the shared vocabulary \u2014 `require()` where an empty population is a caller bug, `census()` where it is a real state, and `clean()`, the only",
@@ -300,7 +326,8 @@
     "tests/test_nonempty.py:PlantedSuccessOnTheEmptySet"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-25": {
    "statement": "Silence never means unknown: long-running processes announce phases; a progress channel that can hang its subject is worse than none. `[E: phase announcements; elapsed counters]`",
@@ -311,14 +338,16 @@
     "tests/test_ui_surface.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-26": {
    "statement": "A caution must be re-examined when the defect it guarded against is fixed, or the caution becomes its own defect. *VIOLATED:* \"least trusted\" label outlived the faithfulness gate; answer-first regressed. `[P + ledger law]`",
    "enforcement_sites": [],
    "controls": [],
    "process_only": true,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-27": {
    "statement": "Minimum-n: no rate stated as a finding below declared n (stability to ~10n). *VIOLATED TWICE IN ONE SESSION* (n=24 then n=2,872 \u2014 both flipped at 10\u00d7); the withdrawal was as premature as the claim. `[C: minimum-n rule; readings labeled readings]`",
@@ -329,14 +358,16 @@
     "tests/test_battery.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-28": {
    "statement": "Reasoning designs; measurement tripwires. No test-after-test iteration: one properly-powered A/B per design generation; planted-nonsense and known-good controls prove the harness can fail and pass. `[P; validation harness shape]`",
    "enforcement_sites": [],
    "controls": [],
    "process_only": true,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-29": {
    "statement": "Pre-register before running: fixture outcomes written down BOTH WAYS before the re-run so numbers can't be read to suit. `[E: RETEST fixtures; P]`",
@@ -347,7 +378,8 @@
     "tests/test_fixtures.py:TheSubstrateRepairRetest"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-30": {
    "statement": "A known cause must not absorb an unknown one: deltas decomposed by cause. `engine/decompose` is the vocabulary. A remainder has three places to go and two are lies \u2014 folded into the largest named cause, or silently dropped \u2014 so only the third is offered: `unattributed`, always present, including at zero, because a missing key and a zero read identically to somebody skimming. Over-attribution RAISE",
@@ -363,7 +395,8 @@
     "tests/test_decompose.py:PlantedAbsorption"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-31": {
    "statement": "Every empirical claim carries provenance (era, model, region, prompt hash); quarantine over deletion \u2014 SIX applications (lite arrows, keyword verdicts, containment leads, closure-only pairs, per-medium glosses, bad-run arrows); withdrawn findings ledgered BESIDE their originals. `[E: tags; C: era rules]`",
@@ -376,7 +409,8 @@
     "tests/test_medium.py:GlossesArePerMedium"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-32": {
    "statement": "One inlet; all proposers equal; warrant conferred only at the gate; priors are energy, never oracles. `[E: inlet; C: planted second pipe = RED]`",
@@ -387,7 +421,8 @@
     "tests/test_inlet.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-33": {
    "statement": "Retention is born aging; promotion is reweighting through K only; the closed write-point set (retain, walk-arrow, aging-decay, promote) admits nothing else. `[E: mz.py, aging.py; C: any other write-point raises]`",
@@ -399,7 +434,8 @@
     "tests/test_mz.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-34": {
    "statement": "K refuses rubber stamps: no default floors, no solver signatures, no mode measurements \u2014 three honest refusals are its record and its character. Armed-and-silent is an acceptable terminal state. `[E: zero-floor refusal pinned; C: settled-refuses/contested-passes/solver-FAILS]`",
@@ -410,7 +446,8 @@
     "tests/test_mz.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-35": {
    "statement": "The operator's corpus never enters any git tree, any image, any public object. Data moves by data channels that appear and disappear (token-gated, 404-not-403, fixed writable names, digest-verified). *VIOLATED-AND-CAUGHT:* the 25MB backup pickle swept by `git add -A` \u2014 the pre-push gate refused it. `[E: pre-push gate; C: no tracked file >4KB begins with a pickle header]`",
@@ -423,7 +460,8 @@
     "tests/test_push_gate.py:TheGateActuallyREFUSES"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-36": {
    "statement": "Reflexivity firewall: common-ground's own material stays out of the corpus. `engine/reflexivity` audits on two DECLARED arms and never on resemblance \u2014 provenance (this repo's bucket, or a path this repo tracks) and exact \u03bd (byte-identical to a line of this repo's seed documents, which is gate 1's identity rule, not a similarity). The blind spot travels on the record: material re-labelled, re-path",
@@ -437,7 +475,8 @@
     "tests/test_reflexivity.py:TheREALCorpusIsClean"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-37": {
    "statement": "Keys: exposure is tracked as BLOCKED-on-operator, never forgotten, never committed. The first two clauses are ledger discipline; the third is a fact about bytes, and is checked. Two arms: SHAPE (generic key patterns \u2014 has false negatives by construction, and says so) and LITERAL (the actual values in the operator's env files \u2014 no pattern guessing, so it cannot false-positive). Both the tree AND th",
@@ -451,14 +490,16 @@
     "tests/test_key_exposure.py:TheScratchpadIsOutsideTheTree"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-38": {
    "statement": "The operator's \"fucked\" preempts everything until wire-verified fixed. All lanes concurrent; his findings jump every queue. `[P: concurrency order]`",
    "enforcement_sites": [],
    "controls": [],
    "process_only": true,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-39": {
    "statement": "Anything the operator re-explains twice becomes a named fixture the same day; the goal metric is operator-caught regressions/week \u2192 ZERO via the auditor. **His nose built this registry; the registry retires his nose.** `[P+C]`",
@@ -469,14 +510,16 @@
     "tests/test_fixtures.py"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-40": {
    "statement": "Honest-thin beats fluent-fake, always: smaller true numbers over impressive fabrications; *\"the corpus grows only by what survives the physics.\"* The whole project in one line. `[everything above]`",
    "enforcement_sites": [],
    "controls": [],
    "process_only": true,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-41": {
    "statement": "**NO WARRANT LIFT EXCEPT K-MEASUREMENT OR OPERATOR-AUTHORSHIP.** The tier poset has exactly two lift mechanisms: K promotes by measurement, authorship enters by assertion. An \"accept\" or \"approve\" control would be a THIRD arrow up the poset \u2014 warrant increasing by approval without authorship \u2014 and it does not exist in the diagram. **Its absence is constitutional, not an omission.** Any UI or API s",
@@ -487,7 +530,8 @@
     "tests/test_null_surface.py:TheAUTHORSHIPDoorIsRemovedAndTheAlarmREMAINS"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-42": {
    "statement": "**THE INTERFACE IS CONVERSATION; SORTING IS THE MEASURE.** No surface control may pre-declare what the physics can discover. Every operator utterance enters the tape directly as an authored record \u2014 journaled, provenance-stamped, born aging, energy-visible \u2014 and what becomes of it is decided downstream by aging and by K, from measurement. *SUPERSEDES* the two-coordinate surface: objecthood and per",
@@ -501,7 +545,8 @@
     "tests/test_null_surface.py:TheRESPONSECarriesNoActAndNoMode"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
   },
   "OI-43": {
    "statement": "**SUPERSEDED BY THE NULL SURFACE (2026-08-07). Kept as the record of a correct argument about a mechanism that no longer exists.** It ruled that a TOLD mode defaults to ASSERT while an unread ACT defaults to EXPLORE/KEEP-NOTHING \u2014 the two defaults pointing opposite ways, each safe for its own failure mode. Both are moot: nothing is told and nothing is read, because every utterance is an authored r",
@@ -512,7 +557,34 @@
     "tests/test_null_surface.py:TheAUTHORSHIPDoorIsRemovedAndTheAlarmREMAINS"
    ],
    "process_only": false,
-   "unresolved": []
+   "unresolved": [],
+   "watch": ""
+  },
+  "OI-44": {
+   "statement": "**NEW OBJECTS ARISE ONLY FROM THE OPERATOR'S MOUTH, THE MEASURE'S OWN QUOTIENTS, OR RULED INGESTION. THE MEDIUM NOMINATES; A NOMINATION REACHES THE FIELD ONLY THROUGH OPERATOR SIGNATURE OR IT DECAYS.** The two-mouth law. A synthesis the medium proposes \u2014 a proposition resting on cited claims that none of them states \u2014 is TESTIMONY carrying a citation footprint, and testimony is off the warrant pos",
+   "enforcement_sites": [
+    "engine/dialogue.py:TESTIMONY",
+    "engine/dialogue.py:arrows_from"
+   ],
+   "controls": [
+    "tests/test_dialogue.py:C2_TestimonyNeverGrounds",
+    "tests/test_dialogue.py:C1_NoArrowFromWords"
+   ],
+   "process_only": false,
+   "unresolved": [],
+   "watch": ""
+  },
+  "OI-45": {
+   "statement": "**THE MINIMAL CONSISTENT EXTENSION.** The dialogue settles toward the minimal consistent extension of the corpus \u2014 not toward the corpus as it stands (that is description), and not toward unbounded growth (that is bulk). **Expansion is licensed ONLY by measured frustration**: residuals the field can point at \u2014 unnamed clusters, implied-unaddressed pairs, uncovered footprints, contested claims. Eve",
+   "enforcement_sites": [
+    "seed/DIALOGIC.md"
+   ],
+   "controls": [
+    "tests/test_dialogue.py:C4_TheBudgetBinds"
+   ],
+   "process_only": false,
+   "unresolved": [],
+   "watch": "minimality has no explicit check; the derivation seed is a real observed instance of over-completion surviving the four checks"
   }
  }
 }

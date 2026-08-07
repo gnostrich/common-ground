@@ -241,6 +241,44 @@ half is general and still binds: **when unsure whether the operator claimed, ass
 didn't.** Full text in `archive/design/2026-08-07-mode-claim-posture-modules.md`.
 `[C: tests/test_null_surface.py:TheAUTHORSHIPDoorIsRemovedAndTheAlarmREMAINS]`
 
+**OI-44** **NEW OBJECTS ARISE ONLY FROM THE OPERATOR'S MOUTH, THE MEASURE'S OWN QUOTIENTS, OR
+RULED INGESTION. THE MEDIUM NOMINATES; A NOMINATION REACHES THE FIELD ONLY THROUGH OPERATOR
+SIGNATURE OR IT DECAYS.** The two-mouth law. A synthesis the medium proposes — a proposition
+resting on cited claims that none of them states — is TESTIMONY carrying a citation footprint,
+and testimony is off the warrant poset by type. It enters no slot, draws no arrow, holds no
+warrant. It is OFFERED; the operator claims it by restating it in their own words, which is
+their own record through the normal inlet, or ignores it and it fades. The same holds for
+VOCABULARY: where a footprint touches structure no apex names, the TERM is nominated and enters
+the idiolect only by signature. *This is OI-41's rule at the level of birth rather than of
+warrant: there is no third arrow up the poset, and there is no second mouth into the base.*
+**Numbered 44 and not 43 as ordered, because OI-43 is the null surface's tombstone and the
+archive rule forbids overwriting a supersession record. The whole fourth-door block therefore
+shifts up one: the minimal-consistent-extension principle, ordered as 44, is OI-45. The order
+between them is preserved, which is what the numbering was carrying.**
+`[E: engine/dialogue.py; C: tests/test_dialogue.py — the mint-attempt and signature-only
+controls, c1 and c4 of seed/DIALOGIC.md]`
+
+**OI-45** **THE MINIMAL CONSISTENT EXTENSION.** The dialogue settles toward the minimal
+consistent extension of the corpus — not toward the corpus as it stands (that is description),
+and not toward unbounded growth (that is bulk). **Expansion is licensed ONLY by measured
+frustration**: residuals the field can point at — unnamed clusters, implied-unaddressed pairs,
+uncovered footprints, contested claims. Every admitted step must resolve more frustration than
+it introduces. The four decidable checks — coverage, apex-collision, split, residue — are this
+principle's ENFORCEMENT and not its definition. Should a future check be needed, it is DERIVED
+from this principle against a real observed instance, never invented against a hypothetical.
+*This is why the mechanics can be replaced without the rationale being lost, which is OI-26
+applied in advance rather than after a caution has outlived its defect.*
+**WATCH, not WEAK:** "minimal" has no explicit check today. Nothing prevents a valid but
+larger-than-needed completion — two terms where one would cover. In practice apex-collision,
+residue and the aging economy squeeze it. There is no dead control here, only an unenforced
+adjective, so it is registered as a WATCH item: **if over-completion is ever observed surviving
+the checks, that instance is the derivation seed for a minimality check.** Until then nothing
+is built, and building it against a hypothetical would be the invented-check this entry
+forbids.
+`[E: seed/DIALOGIC.md; C: tests/test_dialogue.py:C4_TheBudgetBinds — the budget is the only
+bound on growth that exists today, and the WATCH row records that this is not the same thing
+as a minimality check]`
+
 **OI-21** The ETS feel is the acceptance bar: no silence without a consulted-and-declined
 trace; response graded with bias sharpness; stateful; no phrasing cliffs.
 `[C: the battery — no_silent_zero/graded/no_cliff/stateful/one_path]`

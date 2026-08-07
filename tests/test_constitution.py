@@ -121,3 +121,48 @@ class B4TheAmendmentRule(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WatchIsNotWeak(unittest.TestCase):
+    """The registry must be able to say "unenforced clause" without saying "missing control".
+
+    WEAK names an invariant with NO control — a debt somebody owes. WATCH names an unenforced
+    CLAUSE inside an invariant whose other clauses are enforced, where the ruling is explicitly
+    that no control is owed until the failure is OBSERVED. Filing one as the other either
+    manufactures a debt nobody owes, or hides one somebody does.
+
+    OI-45 is the first: "minimal" has no explicit check, nothing today prevents a valid but
+    larger-than-needed completion, and the derivation seed for a check is a real observed
+    instance rather than a hypothetical.
+    """
+
+    def setUp(self):
+        import json
+
+        self.reg = json.loads((REPO / "seed" / "OI_REGISTRY.json").read_text())
+
+    def test_the_registry_carries_a_watch_list(self):
+        self.assertIn("watch", self.reg)
+
+    def test_a_watch_entry_is_NOT_in_the_weak_list(self):
+        for oi in self.reg["watch"]:
+            with self.subTest(oi=oi):
+                self.assertNotIn(oi, self.reg["weak"],
+                                 f"{oi} is watched, not owed — it has a control")
+
+    def test_a_watched_entry_still_HAS_controls(self):
+        """That is exactly what separates it from WEAK. If it had none it would be a debt."""
+        for oi in self.reg["watch"]:
+            with self.subTest(oi=oi):
+                self.assertTrue(self.reg["entries"][oi]["controls"])
+
+    def test_the_watch_reason_is_SPECIFIC_about_what_would_derive_the_check(self):
+        """A watch that says only "todo" is a WEAK entry wearing a softer word."""
+        for oi, why in self.reg["watch"].items():
+            with self.subTest(oi=oi):
+                self.assertGreater(len(why), 60, why)
+                self.assertNotIn("todo", why.lower())
+
+    def test_OI45_is_watched_and_says_why(self):
+        self.assertIn("OI-45", self.reg["watch"])
+        self.assertIn("minimal", self.reg["watch"]["OI-45"].lower())
