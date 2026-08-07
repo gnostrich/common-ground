@@ -191,3 +191,135 @@ def asked_numbers(asked: set) -> set:
     for pair in asked:
         out.update(pair)
     return out
+
+
+#: THE ARROW FORM, as a prompt block. FLAG 1 ruled this CODOMAIN SYNTAX — the same razor
+#: category as "[n] per sentence" — so it is type information about the output, not editorial,
+#: and it belongs in the prompt as FORM. Stated as tersely as the legend allows: one sentence,
+#: the shape, the closed kind list. The prompt grows because it grew LEGALLY.
+ARROW_FORM = ("When two numbered objects are related and no ARROW line already says so, write "
+              "the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, "
+              "instance_of.")
+
+
+def blocks(base=None) -> tuple:
+    """The dialogue's prompt: the render grammar plus the arrow form, in the same tagging."""
+    from .grammar import BLOCKS
+
+    return tuple(base or BLOCKS) + (("FORM", ARROW_FORM),)
+
+
+def render_prompt() -> str:
+    from .grammar import render_prompt as _r
+
+    return _r(blocks())
+
+
+def slot_of(compiled: dict) -> dict:
+    """citation number -> corpus slot. The whole resolution: an array lookup, nothing else."""
+    return {int(c["n"]): c["slot"] for c in (compiled.get("citations") or [])
+            if c.get("n") is not None and c.get("slot")}
+
+
+def _put(state: dict, ask: str) -> str:
+    """The user body for one turn: the settled field, then the thing being asked."""
+    return str(state.get("compiled", "")) + "\n\nQUESTION:\n" + str(ask)
+
+
+@dataclass
+class Dialogue:
+    """One conversation. The last turn's prose IS the answer.
+
+    THE COLLAPSE. There is no separate render call, and no separate render TURN when the graph
+    has nothing to ask: a question with no interrogation costs ONE call, and that call's prose
+    is the answer — strictly fewer calls than the two-port split it replaces. When
+    interrogations do run, a final turn re-puts the operator's question to the settled field,
+    because an interrogation turn answers the interrogation and the operator asked something
+    else.
+    """
+
+    question: str
+    turns: list = field(default_factory=list)
+    budget: int = TURN_BUDGET
+    stopped: str = ""
+
+    @property
+    def answer(self) -> str:
+        return self.turns[-1].prose if self.turns else ""
+
+    @property
+    def resolved(self) -> list:
+        return [p for t in self.turns for p in t.proposals if p.ok]
+
+    @property
+    def claims(self) -> set:
+        """DISTINCT relations across the whole dialogue. The unit is the claim, not the
+        utterance — a medium restating one arrow in five turns contributed one claim."""
+        return {(min(p.src, p.dst), max(p.src, p.dst), p.kind) for p in self.resolved}
+
+    def as_record(self) -> dict:
+        return {
+            "question": self.question,
+            "turns": [t.as_record() for t in self.turns],
+            "turn_count": len(self.turns),
+            "budget": self.budget,
+            "stopped": self.stopped,
+            # RECORDS AND CLAIMS, BOTH NAMED, because every count must say which it counts.
+            "records": sum(len(t.proposals) for t in self.turns),
+            "resolved_records": len(self.resolved),
+            "distinct_claims": len(self.claims),
+            "answer": self.answer,
+        }
+
+
+def converse(question: str, compiled: dict, transport, settle=None,
+             budget: int = TURN_BUDGET, system: str = "") -> Dialogue:
+    """Run the dialogue. Turns 1..n-1 measure; the last turn answers.
+
+    `settle` is INJECTED rather than imported, so this module never reaches the corpus: it
+    takes the resolved proposals so far and returns a freshly compiled field. Passing None runs
+    the degenerate single-turn case, which is also the common one.
+    """
+    d = Dialogue(question=question, budget=max(1, int(budget)))
+    sys_prompt = system or render_prompt()
+    asked: set = set()
+    ask = question
+    state = compiled
+
+    for n in range(1, d.budget + 1):
+        raw, _usage = transport(sys_prompt, _put(state, ask))
+        prose = (raw or "").strip()
+        proposals = arrows_from(prose, set(slot_of(state)), turn=n)
+        turn = Turn(n=n, ask=ask, prose=prose, proposals=proposals)
+        d.turns.append(turn)
+
+        if [p for p in proposals if p.ok] and settle is not None:
+            fresh = settle(list(d.resolved))
+            if isinstance(fresh, dict) and fresh:
+                turn.moved = int(((fresh.get("relaxation") or {}).get("moved")) or 0)
+                state = fresh
+
+        if n == d.budget:
+            d.stopped = "budget"
+            break
+        q = interrogate(state, asked)
+        if not q:
+            d.stopped = "the graph had nothing left to ask"
+            break
+        pair = implied_unaddressed(state, asked)
+        if pair:
+            asked.add(pair)
+        turn.interrogation = q
+        ask = q
+
+    # THE FINAL TURN IS THE ANSWER. If the dialogue ended on an interrogation the medium's last
+    # words answer the INTERROGATION, and the operator asked something else. One more turn puts
+    # the question to the field the interrogations settled. A dialogue that never interrogated
+    # is already answered by turn 1 and makes no extra call.
+    if d.turns and d.turns[-1].ask != question:
+        raw, _usage = transport(sys_prompt, _put(state, question))
+        prose = (raw or "").strip()
+        n = len(d.turns) + 1
+        d.turns.append(Turn(n=n, ask=question, prose=prose,
+                            proposals=arrows_from(prose, set(slot_of(state)), turn=n)))
+    return d
