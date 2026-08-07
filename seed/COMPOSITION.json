@@ -1,6 +1,6 @@
 {
  "schema": "common-ground/composition/v0",
- "note": "THE COMPOSITION TABLE for correspondence kinds. Declared in seed, not in code. The implied-arrows section of a region's wire format is composition closure, and closure is meaningless without a declared table \u2014 inventing one in code would be the attachment-law failure class exactly: a rule inherited where none was specified. Operator-declared 2026-08-05.",
+ "note": "THE COMPOSITION TABLE for correspondence kinds. Declared in seed, not in code. The implied-arrows section of a region's wire format is composition closure, and closure is meaningless without a declared table — inventing one in code would be the attachment-law failure class exactly: a rule inherited where none was specified. Operator-declared 2026-08-05.",
  "reading": "compose[k1][k2] is the kind of the arrow implied by (a -k1-> b) followed by (b -k2-> c). A pair absent from this table does NOT compose: the composite is UNDEFINED and is not implied, not weakly implied, and not defaulted to anything.",
  "compose": {
   "same_claim": {
@@ -19,19 +19,32 @@
   },
   "depends_on": {
    "depends_on": "depends_on"
+  },
+  "forked_from": {
+   "forked_from": "forked_from"
   }
  },
  "undefined": [
-  "instance_of o refines \u2014 a particular instance followed by a refinement is not determined; the composite is left UNDEFINED and implies nothing",
+  "instance_of o refines — a particular instance followed by a refinement is not determined; the composite is left UNDEFINED and implies nothing",
   "depends_on o same_claim",
   "same_claim o depends_on",
   "depends_on o refines",
   "refines o depends_on",
   "depends_on o instance_of",
   "instance_of o depends_on",
-  "Composing a DEPENDENCY with an EQUIVALENCE implies nothing. That a theorem depends on a definition, and that definition states the same proposition as an English claim, does not make the theorem depend on the English claim in any sense the sources declared. Undefined, not weakly implied, not defaulted."
+  "Composing a DEPENDENCY with an EQUIVALENCE implies nothing. That a theorem depends on a definition, and that definition states the same proposition as an English claim, does not make the theorem depend on the English claim in any sense the sources declared. Undefined, not weakly implied, not defaulted.",
+  "forked_from o same_claim",
+  "same_claim o forked_from",
+  "forked_from o refines",
+  "refines o forked_from",
+  "forked_from o instance_of",
+  "instance_of o forked_from",
+  "forked_from o depends_on",
+  "depends_on o forked_from",
+  "Composing LINEAGE with anything but lineage implies nothing. That an artifact was forked from a claim, and that claim states the same proposition as another, does not make the artifact a descendant of the other: the builder declared one parent and not the other, and descent is a fact about what was built from what, not about what is equivalent to what. Undefined, not weakly implied, not defaulted."
  ],
  "why_undefined_matters": "An undefined composite must produce NO implied arrow. Filling it with a weakest-kind default would manufacture structure the operator never declared, and every residual measured against it would be measuring an invention.",
  "operator_rule_verbatim": "same_claim o same_claim = same_claim; same_claim o refines = refines (either order); refines o refines = refines; anything o instance_of = instance_of; undefined compositions are NOT implied",
- "depends_on_note": "A dependency chain is a real dependency: if a theorem uses a definition and that definition uses another, the theorem depends on the third. Transitive, and the only composition this kind has."
+ "depends_on_note": "A dependency chain is a real dependency: if a theorem uses a definition and that definition uses another, the theorem depends on the third. Transitive, and the only composition this kind has.",
+ "forked_from_note": "An ancestry chain is real ancestry: if B was forked from A and C from B, C descends from A. Transitive, and the only composition this kind has. LINEAGE IS INFORMATION, NEVER AUTHORITY — no composite of it confers a value, a tier, or a contest."
 }

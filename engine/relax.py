@@ -228,7 +228,8 @@ def _blocks_touching(snapshot: CorpusSnapshot, seeds: set[str]) -> list[Block]:
                  for m in members if (r := snapshot.slots.get(m)) is not None]
         if not slots:
             continue
-        edges = tuple(structural_edges(slots, snapshot.arrows))
+        edges = tuple(structural_edges(slots, snapshot.arrows,
+                                       getattr(snapshot, "scaffolds", ()) or ()))
         out.append(Block(id=members[0][:16], slots=tuple(s.id for s in slots), edges=edges))
     return out
 
@@ -247,6 +248,14 @@ def _paths_from(block: Block, seeds: set[str], snapshot: CorpusSnapshot
     for a in snapshot.arrows:
         by_pair.setdefault((a.src_slot, a.dst_slot), a)
         by_pair.setdefault((a.dst_slot, a.src_slot), a)
+    # A HOP MAY BE A SCAFFOLD, and the path must say which. `forked_from` carries a child to a
+    # parent; reporting that reach without naming the edge would present descent as though it
+    # were a correspondence, which is precisely the mis-kinding the separate class prevents
+    # everywhere else. `Scaffold` carries `kind` and `tier` like a Correspondence, so the hop
+    # renders with no special case — it renders as REFERENCE tier, which is what it is.
+    for e in (getattr(snapshot, "scaffolds", ()) or ()):
+        by_pair.setdefault((e.src_slot, e.dst_slot), e)
+        by_pair.setdefault((e.dst_slot, e.src_slot), e)
 
     adj: dict[str, list[str]] = {}
     for e in block.edges:
@@ -265,9 +274,15 @@ def _paths_from(block: Block, seeds: set[str], snapshot: CorpusSnapshot
                 continue
             arrow = by_pair.get((cur, nxt))
             rec = snapshot.slots.get(nxt)
+            # THE TIER IS READ FROM THE EDGE, WHATEVER SHAPE IT IS. A Correspondence carries a
+            # WarrantTier enum and a Scaffold carries a plain string, and reading `.name` with
+            # a default of EXTRACTION reported every REFERENCE-tier lineage hop as EXTRACTION —
+            # an OVERSTATEMENT of warrant, which is the one direction a warrant report must
+            # never be wrong in. Found by the forked_from demo, not by a test.
+            _t = getattr(arrow, "tier", None)
             step = Hop(
                 kind=getattr(arrow, "kind", "?"),
-                tier=getattr(getattr(arrow, "tier", None), "name", "EXTRACTION"),
+                tier=getattr(_t, "name", None) or (str(_t) if _t else "EXTRACTION"),
                 provisional=bool(getattr(arrow, "provisional", True)),
                 to_slot=nxt, to_chart=rec.chart if rec else "?",
                 to_nu=_display(rec.nu) if rec else nxt[:16])

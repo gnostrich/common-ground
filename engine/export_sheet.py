@@ -28,6 +28,7 @@ be verified line by line against the window that produced it.
 
 from __future__ import annotations
 
+from .lineage import Export
 from .grounded import WARRANTS, warrants_held
 
 #: Longest claim printed in the sheet. DISPLAY ONLY and applied ONLY here, on the way to a
@@ -138,5 +139,31 @@ def sheet(record: dict) -> str:
         "instead, or one of the [∅name] markers above when the field states the reason.",
         "Do not supply a fact this material does not carry. Where it reports an absence, say "
         "the relation is unmeasured rather than supplying one.",
+    ]
+
+    # THE LINEAGE STUB — the half that makes DECLARED descent possible.
+    #
+    # A builder can only name a parent it was told about. Without this block, anything built
+    # out of this context comes home as stranger-statements and the daemon pays LM calls to
+    # rediscover kinship the build already knew. With it, the artifact can DECLARE its parents
+    # and the edges are free.
+    #
+    # It is an offer and never an obligation: an artifact with no manifest ingests exactly as
+    # it does today. And it is the builder's act — the engine writes the ID and the addresses
+    # it actually used, and never writes a manifest on anybody's behalf.
+    stub = Export.of(record)
+    out += [
+        "",
+        "## LINEAGE — if you build something out of this",
+        f"context_id: {stub.context_id}",
+        f"built from {len(stub.built_from)} address(es), listed in the record accompanying "
+        f"this sheet.",
+        "If what you build comes back to this corpus, ship a lineage manifest beside it:",
+        '  {"schema": "common-ground/lineage/v0", "context_id": "' + stub.context_id + '"}',
+        "and every slot your artifact contributes is declared a child of those addresses — "
+        "`forked_from`, reference tier, holonomy-excluded, information and never authority. "
+        "Per-file parents go in a `parents` map when you know precisely which claim a file "
+        "descends from. Writing the manifest is YOUR act: lineage is DECLARED, never inferred, "
+        "and nothing here is guessed from what your artifact resembles.",
     ]
     return "\n".join(out)

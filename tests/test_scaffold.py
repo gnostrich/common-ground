@@ -51,7 +51,12 @@ class ItIsNotACorrespondenceAndCannotBeMisKinded(unittest.TestCase):
                                                   dst_slot="b").tier)
 
     def test_the_kind_family_is_closed(self):
-        self.assertEqual({DEPENDS_ON}, set(SCAFFOLD_KINDS))
+        # TWO MEMBERS NOW, and the family is still CLOSED — which is what this asserts. A new
+        # member needs its own ruling in seed/SCAFFOLD.md before it appears here; what the
+        # control refuses is a kind arriving in code with no declaration behind it.
+        from engine.scaffold import FORKED_FROM
+
+        self.assertEqual({DEPENDS_ON, FORKED_FROM}, set(SCAFFOLD_KINDS))
 
 
 class ItIsHolonomyEXCLUDEDByConstruction(unittest.TestCase):

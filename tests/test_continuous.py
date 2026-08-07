@@ -251,6 +251,13 @@ class CompositionIsPrioritized(unittest.TestCase):
             # that states the same proposition as an English claim does not thereby depend on
             # the English claim in any sense the sources declared.
             ("depends_on", "depends_on"): "depends_on",
+            # LINEAGE COMPOSES ONLY WITH LINEAGE. An ancestry chain is real ancestry: if B was
+            # forked from A and C from B, C descends from A. Every cross-composition is
+            # UNDEFINED — that an artifact descends from a claim, and that claim states the
+            # same proposition as another, does not make the artifact a descendant of the
+            # other. The builder declared one parent and not the other, and descent is a fact
+            # about what was built from what, not about what is equivalent to what.
+            ("forked_from", "forked_from"): "forked_from",
         }
         self.assertEqual(dict(COMPOSITION), declared)
 

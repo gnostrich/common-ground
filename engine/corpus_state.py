@@ -47,6 +47,13 @@ class CorpusSnapshot:
     fibers: list[tuple[str, ...]] = field(default_factory=list)
     blocks: dict[str, tuple[str, ...]] = field(default_factory=dict)   # slot -> block members
     contested: set[str] = field(default_factory=set)                   # contested slot ids
+    #: SCAFFOLD-CLASS EDGES, kept in their OWN field and never merged into `arrows`. That
+    #: separation is what makes the class containments hold by construction: the loop-eligible
+    #: edge builder and K's candidate set both read `arrows`, and a Scaffold has no
+    #: `loop_eligible` attribute to be read wrongly. They reach the physics at exactly one
+    #: place — the coupling graph in `blocks.structural_edges` — which is what "energy-visible"
+    #: means and is all it means.
+    scaffolds: list = field(default_factory=list)
     floor_status: str = FLOOR_GAP
     loops: int = 0
     sources: dict[str, int] = field(default_factory=dict)              # corpus -> slot count
@@ -247,7 +254,8 @@ def _demote_containment(arrow_list, slots, docs) -> tuple[list, dict]:
 
 
 def build_snapshot_direct(deltas, arrows: Sequence[Correspondence] | None = None,
-                          sources: dict[str, int] | None = None) -> CorpusSnapshot:
+                          sources: dict[str, int] | None = None,
+                          scaffolds: Sequence[object] = ()) -> CorpusSnapshot:
     """The read view, built from deltas WITHOUT going through `ledger_from_deltas`.
 
     The window needs slots, fibers, blocks, contest status and the floor's status. It does
@@ -289,12 +297,21 @@ def build_snapshot_direct(deltas, arrows: Sequence[Correspondence] | None = None
         e for e in structural_edges(slots, arrow_list)
         if e.origin != "correspondence:same_claim"
     ]
-    blocks = build_blocks(slots, edges, deltas)
+    # SCAFFOLDS JOIN BLOCKS, AND NOTHING ELSE. A block is the unit of coupling, so a child and
+    # its parent in two different blocks are two independent neighbourhoods and neither can
+    # reach the other — joining them is what "energy-visible" cashes out to. They are added to the BLOCK graph and deliberately
+    # NOT to the graph `loops_from_fibers` reads: fibers are built from `loop_pairs`, which is
+    # Correspondences only, so a scaffold can never be part of a cycle. Two variables rather
+    # than one, because a single `edges` used for both would make holonomy-exclusion depend on
+    # nobody later passing the wrong one.
+    scaffold_list = list(scaffolds or ())
+    scaffold_edges = structural_edges(slots, (), scaffold_list)
+    blocks = build_blocks(slots, edges + scaffold_edges, deltas)
     chart_of = ChartMap({s.id: s.chart for s in slots})
     loops = loops_from_fibers(fibers, chart_of, restrict_to=set(chart_of), edges=edges)
 
     snap = CorpusSnapshot(arrows=arrow_list, sources=dict(sources or {}),
-                          demotion=demotion)
+                          demotion=demotion, scaffolds=list(scaffold_list))
     for s in slots:
         counter = votes.get(s.id)
         top = counter.most_common(1) if counter else []
@@ -407,7 +424,8 @@ class _Presence:
 
 
 def build_snapshot(ledger, arrows: Sequence[Correspondence] = (),
-                   sources: dict[str, int] | None = None) -> CorpusSnapshot:
+                   sources: dict[str, int] | None = None,
+                   scaffolds: Sequence[object] = ()) -> CorpusSnapshot:
     """Flatten a built ledger into the window's load-time form."""
     from collections import Counter
 
@@ -438,4 +456,52 @@ def build_snapshot(ledger, arrows: Sequence[Correspondence] = (),
         snap.contested.update(b.slots)
     snap.loops = len(ledger.loops)
     snap.floor_status = FLOOR_GAP if not ledger.loops else "measurable (cycles present)"
+    snap.scaffolds = list(scaffolds or ())
+    _join_blocks_over(snap)
     return snap
+
+
+def _join_blocks_over(snap: CorpusSnapshot) -> None:
+    """Merge the blocks a SCAFFOLD edge joins. This is the whole of "energy-visible".
+
+    A block is the unit of coupling. A child in one block and its parent in another are two
+    independent neighbourhoods, and a perturbation near either reaches neither. Joining them
+    is what makes descent a coupling rather than a note in a record.
+
+    THE LEDGER'S BLOCKS ARE NOT RECOMPUTED. This unions the membership it already produced,
+    which keeps the correspondence-derived block structure exactly as it was and adds to it —
+    a scaffold can grow a block and can never split one. Holonomy is untouched: it is computed
+    over fibers, fibers come from `loop_pairs`, and `loop_pairs` reads Correspondences.
+    """
+    if not snap.scaffolds:
+        return
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: str, b: str) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    for sid, members in snap.blocks.items():
+        for m in members:
+            union(sid, m)
+    for e in snap.scaffolds:
+        u, v = e.pair
+        if u in snap.slots and v in snap.slots:
+            union(u, v)
+    groups: dict[str, list[str]] = {}
+    for sid in snap.slots:
+        groups.setdefault(find(sid), []).append(sid)
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        block = tuple(sorted(members))
+        for sid in members:
+            snap.blocks[sid] = block

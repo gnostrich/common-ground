@@ -64,7 +64,7 @@ def loop_edges(slots: Sequence[Slot], arrows) -> list[QEdge]:
     return [out[k] for k in sorted(out)]
 
 
-def structural_edges(slots: Sequence[Slot], arrows) -> list[QEdge]:
+def structural_edges(slots: Sequence[Slot], arrows, scaffolds=()) -> list[QEdge]:
     """Q edges for EVERY arrow kind — the coupling structure, loop-eligible or not.
 
     A `refines` arrow is real structure and enters F as energy (gate 2), so it ties the graph
@@ -78,6 +78,17 @@ def structural_edges(slots: Sequence[Slot], arrows) -> list[QEdge]:
         if u in present and v in present:
             out[(u, v)] = QEdge(u=u, v=v, weight=DECLARED_WEIGHT,
                                 origin=f"correspondence:{a.kind}")
+    # SCAFFOLDS COUPLE, AND THAT IS THE WHOLE OF THEIR REACH INTO THE PHYSICS. A `forked_from`
+    # edge ties a child to its parent so a perturbation near either reaches the other; it is
+    # tagged `scaffold:` rather than `correspondence:` so nothing downstream can read it as an
+    # equivalence, and it is deliberately absent from the LOOP-ELIGIBLE builder above — which
+    # filters on `Correspondence.loop_eligible`, an attribute a Scaffold does not have. That is
+    # holonomy-exclusion by construction rather than by a filter somebody maintains.
+    for e in scaffolds or ():
+        u, v = e.pair
+        if u in present and v in present and (u, v) not in out:
+            out[(u, v)] = QEdge(u=u, v=v, weight=DECLARED_WEIGHT,
+                                origin=f"scaffold:{e.kind}")
     return [out[k] for k in sorted(out)]
 
 

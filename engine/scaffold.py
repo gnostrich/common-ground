@@ -45,9 +45,21 @@ from dataclasses import dataclass, field
 
 from .nonempty import census
 
-#: The relation. One kind at v0; the family is open but each member needs its own ruling.
+#: The relations. The family is open but each member needs its own ruling; see seed/SCAFFOLD.md.
 DEPENDS_ON = "depends_on"
-SCAFFOLD_KINDS = frozenset({DEPENDS_ON})
+
+#: LINEAGE. An artifact built out of this corpus, returning as a child beside its parents.
+#: Everything the class contains — holonomy-exclusion, reference tier, the firewall from K,
+#: mis-kinding being inexpressible — is inherited by membership rather than restated here.
+FORKED_FROM = "forked_from"
+
+SCAFFOLD_KINDS = frozenset({DEPENDS_ON, FORKED_FROM})
+
+#: WHERE A LINEAGE EDGE MAY COME FROM. A closed set, and the whole of control c1: the fork
+#: DECLARES its parent or the edge does not exist. There is no third source, and in particular
+#: there is no source that looks at what an artifact resembles.
+MANIFEST, COMMIT_ANCESTRY = "manifest", "commit-ancestry"
+LINEAGE_SOURCES = frozenset({MANIFEST, COMMIT_ANCESTRY})
 
 #: Reference tier. It conditions and scaffolds; it never promotes as knowledge and never
 #: contests a claim's value. The same containment shape `bears_on` and the medium chart have.
@@ -62,6 +74,11 @@ class Scaffold:
     src_slot: str
     dst_slot: str
     kind: str = DEPENDS_ON
+    #: THE PARENT'S CHART, when it differs. `depends_on` is intra-chart by nature and leaves
+    #: this empty; a fork may descend from material in another chart — an English claim
+    #: exported, built into Lean, returned — and the edge must be able to say so. Empty means
+    #: "the same chart", which is the depends_on case and the majority one.
+    dst_chart: str = ""
     #: The identifier as WRITTEN in the source, kept so a void can be reported by name.
     symbol: str = ""
     #: Which parse produced it, and from what. Era-tagged like every other declaration, so a
@@ -75,6 +92,18 @@ class Scaffold:
             raise ValueError(f"unknown scaffold kind {self.kind!r}")
         if self.src_slot == self.dst_slot:
             raise ValueError("a dependency needs two distinct slots; this is one claim")
+        # C1, AS A CONSTRUCTOR AND NOT AS A CHECK SOMEWHERE ELSE. A lineage edge names a
+        # DECLARED parent — a manifest the builder wrote, or commit ancestry — and there is no
+        # third source. Enforced here so that "never inferred" is a property of the type: a
+        # future parser that decided two artifacts looked related could not express the result,
+        # rather than being asked not to.
+        if self.kind == FORKED_FROM:
+            head = str(self.provenance or "").split(":", 1)[0]
+            if head not in LINEAGE_SOURCES:
+                raise ValueError(
+                    f"a {FORKED_FROM} edge must declare its source as one of "
+                    f"{sorted(LINEAGE_SOURCES)}; got provenance {self.provenance!r}. Lineage "
+                    f"is DECLARED, never inferred — there is no similarity path to this edge.")
 
     @property
     def pair(self) -> tuple[str, str]:
@@ -82,6 +111,7 @@ class Scaffold:
 
     def as_record(self) -> dict[str, object]:
         return {"chart": self.chart, "src": self.src_slot[:16], "dst": self.dst_slot[:16],
+                "dst_chart": self.dst_chart or self.chart,
                 "kind": self.kind, "symbol": self.symbol, "era": self.era,
                 "provenance": self.provenance, "tier": self.tier}
 
@@ -118,6 +148,30 @@ def holonomy_excluded(edge) -> bool:
     Stated as a function so the property is assertable rather than merely true today.
     """
     return isinstance(edge, Scaffold) or getattr(edge, "kind", "") in SCAFFOLD_KINDS
+
+
+def k_eligible(edge) -> bool:
+    """FALSE for every scaffold, and that is control c3 made assertable.
+
+    K's candidate set and the contest machinery read Correspondences. A Scaffold is not one, so
+    it cannot reach either — but "holds by construction" is a claim about code, and code is
+    edited. This is the claim, callable.
+    """
+    return not holonomy_excluded(edge)
+
+
+def confers_authority(edge) -> bool:
+    """FALSE for every scaffold. Control c4: LINEAGE IS INFORMATION, NEVER AUTHORITY.
+
+    A fork does not replace, demote, or contest its parent by descending from it. Obsolescence
+    is already handled honestly by the physics — a parent nothing confirms decays, one still
+    load-bearing does not — and a lineage edge that could demote would be a second, quieter
+    mechanism for the same job, deciding it by ancestry instead of by evidence.
+
+    There is no code path from a Scaffold to a value, a tier or a contest. This function is how
+    that is stated in a form a test can plant against.
+    """
+    return False
 
 
 def void_ledger(parse, top: int = 40) -> list[tuple[str, int]]:
