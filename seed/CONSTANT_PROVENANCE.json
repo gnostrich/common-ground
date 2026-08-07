@@ -121,6 +121,10 @@
   "MIN_SECRET": {
    "provenance": "confessed",
    "why": "The shortest value in an env file treated as key material by OI-37's literal arm. 16 characters is a judgement, not a derivation. Below it sit flags, ports, model names and short paths ('english', 'true', '1'), whose bytes occur everywhere in ordinary source — searching for those would make the control fire constantly on correct code, and a security control that cries wolf is switched off by the person it protects. Above it sit real credentials, none of which is shorter. Nothing was swept and no anchor forces the value; it could move to 12 or 24 without an argument this repo can make today. The narrowing that actually does the work is SECRET_NAMES, which selects on the variable's name."
+  },
+  "TURN_BUDGET": {
+   "provenance": "confessed",
+   "why": "The maximum turns one interactive dialogue may take. 4 is a judgement and the argument for bounding it is stronger than the argument for the number: an unbounded interrogation is the deleted candidate-list loop with better manners, and a budget-capped interrogation standing beside the sampler is exactly the shape Q5 removed once already. 4 was chosen so a dialogue can ask, be answered, follow up once, and answer — the shortest sequence in which an interrogation turn can actually change the final answer. Nothing was swept. It could move to 3 or 6 without an argument this repo can make today, and the dialogue ends early whenever the graph has nothing left to ask, so the budget binds a ceiling rather than setting a length."
   }
  }
 }
