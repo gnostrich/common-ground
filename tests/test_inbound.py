@@ -168,5 +168,128 @@ class TheChartTagIsStrippedForReadingOnly(unittest.TestCase):
                          "stripped forms DO collide — which is why stripping is display-only")
 
 
+class TheRefereeReadsTheSameSheetAsTheMedium(unittest.TestCase):
+    """THE NAMED DEFECT CLASS, mechanized: a rule the medium cannot comply with is a rule that
+    only ever convicts.
+
+    Fourth instance, and the sharpest. The medium is seated in front of the whole region — every
+    object labelled and printed with its claim text — and answers by citing those labels. The
+    compiled record registered only the objects that ATTACHED or MOVED, so `engine.grounded`
+    resolved against three labels while the medium had been shown sixty. On the frozen fixture
+    it ruled [e20], [e49] and [e50] UNRESOLVED: three real corpus claims, printed to the medium
+    by `_region_block` itself, called fabrications by the checker downstream of it.
+
+    The general form of the fix is the assertion in the first test below, and it is the one that
+    generalizes past this bug: FOR EVERY LABEL THE CHECKER WILL ACCEPT, THE PROMPT MUST CONTAIN
+    THAT LABEL, AND CONVERSELY. Stated as an equality between two sets, so any future divergence
+    fails here rather than in an operator's verdict line.
+    """
+
+    def _region_corpus(self, n: int = 12):
+        """A corpus with declared arrows, so a perturbation has an arrow-rich place to land."""
+        from engine.correspondence import Correspondence
+        from engine.corpus_state import SlotRecord
+        from engine.normalize import address
+        from engine.types import WarrantTier
+
+        slots, arrows, docs = {}, [], {}
+        for i in range(n):
+            chart = "english" if i % 2 == 0 else "python"
+            sid, nu = address(chart, f"claim number {i} about the cone", "assert")
+            slots[sid] = SlotRecord(slot=sid, chart=chart, type="assert", nu=nu,
+                                    value="true", confidence=1.0, tier="EXTRACTION",
+                                    docs=(f"repo||dir/file{i // 4}.md",))
+            docs[i] = sid
+        for i in range(0, n - 1, 2):
+            arrows.append(Correspondence(
+                src_chart="english", src_slot=docs[i], dst_chart="python", dst_slot=docs[i + 1],
+                kind="same_claim", tier=WarrantTier.EXTRACTION, proposer="lm",
+                prompt_hash="t", evidence=("seed",)))
+        return CorpusSnapshot(slots=slots, arrows=tuple(arrows))
+
+    def _compiled(self):
+        def transport(system: str, user: str):
+            return "0 -bears_on-> 1", {"cost": 0.0}
+
+        return compile_input("what is the common thread", self._region_corpus(),
+                             transport=transport)
+
+    def test_every_citable_label_appears_in_the_prompt_the_medium_reads(self):
+        """THE EQUALITY. Not a subset in either direction — the two sheets are one sheet."""
+        import re
+
+        from engine.grounded import citable_numbers
+
+        out = self._compiled()
+        accepted = citable_numbers(out.as_record())
+        printed = set(re.findall(r"\[([a-z]?\d+)\]", out.compiled))
+        self.assertTrue(accepted, "fixture must produce citable objects")
+        self.assertEqual(accepted - printed, set(),
+                         "the checker would accept a label the medium was never shown")
+        # THE DIRECTION THAT WAS BROKEN. Every label printed to the medium is one the checker
+        # resolves. Without it a prompt may show sixty objects while the referee holds three,
+        # which is not a subtle divergence — it is a verdict of RED on a correct answer.
+        self.assertEqual(printed - accepted, set(),
+                         "the medium was shown a label the checker convicts it for citing")
+
+    def test_every_label_TURN_ONE_was_shown_is_a_label_the_checker_resolves(self):
+        """THE DIRECTION THAT WAS ACTUALLY BROKEN, against the sheet turn 1 actually reads.
+
+        Turn 1's prompt is not the compiled block — it is `region.render_region`, the sixty
+        labelled objects. Asserting against the compiled block alone would have stayed green
+        through the whole defect, because the compiled block was exactly the three-label sheet
+        the referee held. The set under test is therefore the REGION's labels, read off the
+        attachment record, which is what the medium was handed.
+        """
+        from engine.grounded import citable_numbers
+        from engine.region import BIAS_CHART, label
+
+        out = self._compiled()
+        shown = set(out.attachment.as_record()["labels"]) - {label(BIAS_CHART, 0)}
+        self.assertTrue(shown, "fixture must seat corpus objects")
+        self.assertEqual(shown - citable_numbers(out.as_record()), set(),
+                         "turn 1 was shown labels the checker would convict it for citing")
+
+    def test_a_seated_object_is_citable_even_though_it_did_not_attach(self):
+        """THE REGRESSION, planted at the shape the fixture found it in."""
+        from engine.grounded import check_answer, citable_numbers
+
+        out = self._compiled()
+        rec = out.as_record()
+        kinds = {c["kind"] for c in rec["citations"]}
+        self.assertIn("seated", kinds, "no object was registered as shown-but-not-attached")
+        seated = next(c["n"] for c in rec["citations"] if c["kind"] == "seated")
+        self.assertIn(seated, citable_numbers(rec))
+        v = check_answer(f"The corpus holds a claim about the cone [{seated}].", rec)
+        self.assertEqual([x["kind"] for x in v.as_record()["violations"]], [],
+                         "a citation to an object the medium was SHOWN was convicted")
+
+    def test_a_label_the_region_never_held_is_STILL_unresolved(self):
+        """The other direction, or the fix is just a checker that accepts everything."""
+        from engine.grounded import check_answer, citable_numbers
+
+        out = self._compiled()
+        rec = out.as_record()
+        absent = next(f"e{i}" for i in range(900, 999)
+                      if f"e{i}" not in citable_numbers(rec))
+        v = check_answer(f"The corpus holds something else entirely [{absent}].", rec)
+        self.assertEqual([x["kind"] for x in v.as_record()["violations"]], ["unresolved"])
+
+    def test_the_boundary_condition_itself_is_not_citable(self):
+        """[b0] is the question. An answer resting on the question rests on nothing."""
+        from engine.grounded import citable_numbers
+        from engine.region import BIAS_CHART, label
+
+        rec = self._compiled().as_record()
+        self.assertNotIn(label(BIAS_CHART, 0), citable_numbers(rec))
+
+    def test_a_seated_line_says_it_is_not_an_attachment(self):
+        """Seating is a sample, not a relation. If the line read like an attachment the medium
+        would have been handed sixty relations to the boundary condition and no way to tell."""
+        out = self._compiled()
+        self.assertIn("SEATED", out.compiled)
+        self.assertIn("shown, not attached to", out.compiled)
+
+
 if __name__ == "__main__":
     unittest.main()

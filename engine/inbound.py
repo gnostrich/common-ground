@@ -311,7 +311,7 @@ def _is_state(line: str) -> bool:
     return stripped.startswith("WHAT THIS PROPOSITION IS LINKED TO")
 
 
-def _region_block(pert, cites: list | None = None, *, labeller=None) -> str:
+def _region_block(pert, cites: list | None = None, *, labeller=None, snapshot=None) -> str:
     """The diagram the boundary condition entered, and what the medium drew in it.
 
     A bias that reaches the field through a proposed arrow is standing on a claim somebody's
@@ -388,6 +388,51 @@ def _region_block(pert, cites: list | None = None, *, labeller=None) -> str:
                      f"the same call. Those are ordinary extraction at the same tier the "
                      f"sampler produces — asking a question does the sampler's work — and "
                      f"they are offered to the inlet, not written by this read path.)")
+    # THE REFEREE MUST READ THE SAME SHEET AS THE MEDIUM.
+    #
+    # Turn 1 is seated in front of the WHOLE region — sixty labelled objects with their claim
+    # text, printed by `region.render_region` — and answers by citing those labels. The
+    # compiled record used to register only the handful that ATTACHED or MOVED, so
+    # `engine.grounded` resolved against three labels while the medium had been shown sixty.
+    # On the frozen fixture that convicted [e20], [e49] and [e50] as UNRESOLVED: three real
+    # corpus claims, shown to the medium by this very act, ruled fabricated by the checker
+    # downstream of it. The answer was correct and the verdict was RED.
+    #
+    # Fourth instance of one class — A RULE THE MEDIUM CANNOT COMPLY WITH IS A RULE THAT ONLY
+    # EVER CONVICTS — and the sharpest of them, because here the medium DID comply with what it
+    # was shown. The fix is not a wider checker. It is that the two sheets must not differ:
+    # every object the medium is shown is PRINTED here and REGISTERED here, in one act, so the
+    # set the referee accepts is by construction the set the prompt contains. The equality is
+    # asserted directly rather than left to reading — see tests/test_inbound.py.
+    #
+    # SEATED IS NOT ATTACHED, and the line says so. A seated object is a real corpus claim the
+    # region sampled; an answer may rest on it and must cite it when it does. What seating is
+    # NOT is a relation to the boundary condition — `bears_on` is that, and the attachment
+    # lines above are the only place in this block where it is asserted.
+    groups = _fiber_index(snapshot) if snapshot is not None else {}
+    contested = getattr(snapshot, "contested", None) or frozenset()
+    already = {c.n for c in (cites or ())}
+    seated: list = []
+    for m in pert.region.members:
+        if m.chart == BIAS_CHART:
+            continue                  # [b0] is the question, not evidence for its own answer
+        n = labeller.label_for(m.slot, m.chart) if labeller else label(m.chart, m.index)
+        if n in already:
+            continue                  # already printed above as an attachment
+        already.add(n)
+        seated.append((n, m))
+        if cites is not None:
+            fiber = groups.get(m.slot)
+            cites.append(Citable(n=n, kind="seated", chart=m.chart, slot=m.slot,
+                                 nu=display(m.nu), contested=m.slot in contested,
+                                 group=(str(fiber[0]) if fiber and len(fiber) > 1 else "")))
+    if seated:
+        lines.append(f"-- {len(seated)} SEATED object(s) — shown, not attached to. Citable: an "
+                     f"answer may rest on one and must cite it. Seating asserts NO relation to "
+                     f"the boundary condition; only the attachment lines above do that. --")
+        for n, m in seated:
+            lines.append(f"[{n}] SEATED -> [{m.chart}] {display(m.nu)}")
+
     d = pert.discrimination
     if d["shown"]:
         line = (f"ATTACHMENT DISCRIMINATION: {d['attached']} of {d['shown']} corpus object(s) "
@@ -717,7 +762,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
             stages["total"] = round(_time.time() - _t0, 3)
             return CompiledInput(
                 stages=stages,
-                typed=text, compiled=f"{status}\n\n{_region_block(att, cites, labeller=labeller)}\n\n"
+                typed=text, compiled=f"{status}\n\n{_region_block(att, cites, labeller=labeller, snapshot=snapshot)}\n\n"
                                      f"BOUNDARY CONDITION:\n{text}",
                 landings=landings, field_status=status, conditioned=False,
                 relaxation=None, attachment=att, citations=cites)
@@ -745,7 +790,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         "",
     ]
     if att is not None:
-        lines.extend(_region_block(att, cites, labeller=labeller).splitlines())
+        lines.extend(_region_block(att, cites, labeller=labeller, snapshot=snapshot).splitlines())
         lines.append("")
 
     moved_lines, facts = _relaxed_block(rel, snapshot, cites, salt, labeller=labeller)

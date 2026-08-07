@@ -148,7 +148,13 @@ def answers(turn, attached: set) -> bool:
     gate's job and has been all along. A quality judgement here would be the medium grading
     itself, one level up from the interrogator.
     """
-    prose = getattr(turn, "prose", "") or ""
+    # THE ARROW CHANNEL IS NOT THE ANSWER CHANNEL, and this read the raw reply — so a turn
+    # that emitted nothing but `[b0] -bears_on-> [e3]` lines counted as answering, because the
+    # arrow line contains `[e3]`. Measured on the frozen fixture: turn 1 came back as seven
+    # arrows and no words, the residual saw a citation inside an arrow, declined to fire, and
+    # the page displayed an EMPTY answer. `said()` is the same strip the display uses; asking
+    # "did it answer" of the words it did not say is asking about a different reply.
+    prose = said(getattr(turn, "prose", "") or "")
     if _ABSENT_ANY.search(prose):
         return True
     return bool(set(_CITED.findall(prose)) & set(attached or ()))
@@ -156,12 +162,15 @@ def answers(turn, attached: set) -> bool:
 
 def attached_labels(compiled: dict) -> set:
     """What [b0] reached. The set an answering sentence has to touch."""
-    att = (compiled or {}).get("attachment") or {}
-    out = set()
-    for a in (att.get("attachment") or ()):
-        n = a.get("n") or a.get("label")
-        if n:
-            out.add(str(n))
+    # READ OFF THE CITATIONS, which is where the labels are. This used to read the attachment
+    # records — which carry kind, tier, chart and nu, and NO label, because the label is
+    # assigned downstream by the labeller. So the loop found nothing every single time and the
+    # function fell through to its degradation clause on every request: "what [b0] reached"
+    # silently meant "every citable object", the residual's condition became "cited anything
+    # at all", and after the seating fix that was fifty-nine labels wide. A fallback that runs
+    # always is not a fallback; it is the implementation.
+    out = {str(c["n"]) for c in ((compiled or {}).get("citations") or ())
+           if c.get("n") and c.get("kind") in ("attached", "bears_on")}
     if not out:
         # No attachment record to read: every citable label counts, so the check degrades to
         # "cited anything at all" rather than to "answers nothing" — a residual that fires
@@ -428,7 +437,9 @@ TURN_ONE_FORM = (
     "kind one of same_claim, refines, instance_of; an arrow to the boundary condition [b0] "
     "takes the kind bears_on. Relate what is genuinely related and nothing else. Then answer "
     "the question from these objects, ending each sentence with the labels it rests on, or "
-    "with [∅] for something these objects do not contain.")
+    "with [∅] for something these objects do not contain. Two or more labels on one sentence "
+    "assert that those objects are related: only write that when you have also written the "
+    "arrow saying so, otherwise give each object its own sentence, or write [∅rel].")
 
 
 def turn_one_prompt() -> str:

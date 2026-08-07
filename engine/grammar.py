@@ -73,6 +73,23 @@ BLOCKS: tuple[tuple[str, str], ...] = (
     ("FORM",
      "End each sentence with the bracketed numbers it rests on — [4] or [2][7]. For "
      "something the field does NOT contain, write [∅] instead."),
+    # THE WELD RULE, STATED. It was checked and never stated, and that is the one arrangement
+    # a rule may not have: a sentence co-citing two objects was convicted for asserting a
+    # relation the field lacks, while nothing in the prompt said co-citation asserted anything.
+    # The frozen fixture measured four such convictions in one answer — every one of them a
+    # true statement, listed rather than related, from a medium that had no way to know a list
+    # was a claim. A rule the medium cannot comply with is a rule that only ever convicts.
+    #
+    # WHY THIS IS NOT THE RECITED CODEX RETURNING. The codex was six rules and a page of prose,
+    # and the model answered by describing it. This is one clause of CODOMAIN SYNTAX — the
+    # same category FLAG 1 ruled ARROW_FORM into: type information about the shape of the
+    # output, not a standard to live up to. It says what a sentence may carry, in the same
+    # breath as "[4] or [2][7]", and it names the two ways to comply rather than the failure.
+    ("FORM",
+     "[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the "
+     "ARROW line's own number cited alongside them — otherwise give each object its own "
+     "sentence, or write [∅rel] for a relation the field does not declare. An object the "
+     "state marks (!) is cited as [7][!]."),
 )
 
 

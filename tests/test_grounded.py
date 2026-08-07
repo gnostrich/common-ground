@@ -553,3 +553,62 @@ class TheWorkflowsFourGaps(unittest.TestCase):
         structure_lines(CorpusSnapshot(slots={}, arrows=()), cites, Citable)
         bare = [c.n for c in cites if not _re.match(r"^[a-z]\\d+$", str(c.n))]
         self.assertEqual(bare, [], f"a citer minted untagged numbers: {bare}")
+
+
+class EveryRuleTheRefereeEnforcesIsSTATEDWhereTheMediumCanReadIt(unittest.TestCase):
+    """THE NAMED DEFECT CLASS, as a standing control rather than four separate bug fixes.
+
+    A rule the medium cannot comply with is a rule that only ever convicts. The operational
+    form: for every verdict `check_answer` can return, the prompt must contain the token that
+    makes compliance possible — not a description of the rule, which is the recited codex this
+    project already deleted once, but the SYNTAX the medium would have to write.
+
+    The measurement that forced it: on the frozen certified-positivity fixture the checker
+    returned four WELDED verdicts against one answer, every convicted sentence a true statement
+    listing objects rather than relating them, from a medium whose prompt never said that a
+    list was a claim. `[u2205rel]` was enforceable and unwritable.
+
+    A KNOWN GAP, named rather than skipped: turn 1 is checked for CONTEST but its sheet -
+    `region.render_region` - does not mark contested objects, so `[!]` is not asserted below
+    for the turn-1 prompt. That sheet is byte-shared with the unattended walk (see
+    tests/test_perturb.py), so marking it changes the daemon's wire and is not a change to make
+    inside a measurement. It cannot fire today (the loaded corpus holds no contested slot) and
+    it is owed.
+    """
+
+    #: verdict kind -> the token a medium must be able to write to avoid it.
+    LICENCE = {"uncited": "[4]", "vacuous": "[\u2205]", "welded": "[\u2205rel]",
+               "uncontested": "[!]"}
+
+    def test_the_render_path_prompt_states_every_one_of_them(self):
+        from engine.dialogue import render_prompt
+
+        prompt = render_prompt()
+        for kind, token in self.LICENCE.items():
+            with self.subTest(kind=kind):
+                self.assertIn(token, prompt,
+                              f"{kind} is enforced against a prompt that never shows {token}")
+
+    def test_turn_one_states_every_rule_its_sheet_can_carry(self):
+        from engine.dialogue import turn_one_prompt
+
+        prompt = turn_one_prompt()
+        for kind in ("uncited", "vacuous", "welded"):
+            with self.subTest(kind=kind):
+                token = self.LICENCE[kind].replace("[4]", "[e1]")
+                self.assertIn(token, prompt)
+
+    def test_the_licence_table_covers_every_verdict_the_checker_can_return(self):
+        """PLANTED AGAINST DRIFT. A new violation kind added to the Verdict with no entry here
+        would be a new rule enforced against a prompt nobody checked."""
+        import dataclasses
+
+        from engine.grounded import Verdict
+
+        kinds = {f.name for f in dataclasses.fields(Verdict)
+                 if f.name not in ("checked", "cited", "asserted_absent", "citable",
+                                   "resolved", "warrants")}
+        # `unresolved` and `unwarranted` are not licensable by a token: they fire on a label or
+        # a warrant name the field never emitted, and the compliant act is to cite one it did.
+        self.assertEqual(kinds - set(self.LICENCE), {"unresolved", "unwarranted"},
+                         "a checker verdict has no stated licence in the prompt")

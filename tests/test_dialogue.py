@@ -680,5 +680,82 @@ class TheUnansweredQuestionIsARESIDUAL(unittest.TestCase):
         self.assertEqual(got, {"e7"})
 
 
+class ARESIDUALTHATNEVERFIRESISNOTARESIDUAL(unittest.TestCase):
+    """Both blind spots the frozen fixture found, on the run AFTER the seating fix.
+
+    The measured state: turn 1 came back as seven arrow lines and no words. `said()` stripped
+    them, so the page displayed an EMPTY ANSWER, and the residual — whose entire job is that
+    case — declined to fire. Two independent reasons, either of which alone was enough:
+
+      1. `answers()` read the RAW reply. `[b0] -bears_on-> [e3]` contains `[e3]`, so a turn
+         that only related counted as a turn that answered. The arrow channel is not the
+         answer channel; that was already ruled, and this function was reading the wrong one.
+      2. `attached_labels()` read the attachment records for a label those records do not
+         carry — the label is assigned downstream by the labeller. So the loop found nothing
+         on EVERY request and the degradation clause ran every time: "what [b0] reached" meant
+         "every citable object", which after seating is fifty-nine of them.
+
+    Both are the same shape as the class already in the ledger, inverted: a control that can
+    never convict is as useless as one that only ever does.
+    """
+
+    def test_a_turn_of_pure_arrows_does_not_ANSWER(self):
+        from engine.dialogue import answers, said
+
+        arrows_only = "[b0] -bears_on-> [e3]\n[e3] -same_claim-> [l7]"
+        self.assertEqual(said(arrows_only), "", "fixture must be arrows and nothing else")
+        self.assertFalse(answers(Turn(n=1, ask="q", prose=arrows_only), {"e3"}),
+                         "a turn that only related was counted as a turn that answered")
+
+    def test_words_in_the_same_reply_as_arrows_still_ANSWER(self):
+        """The other direction: stripping arrows must not strip the answer with them."""
+        from engine.dialogue import answers
+
+        both = "[b0] -bears_on-> [e3]\nThe work establishes positivity [e3]."
+        self.assertTrue(answers(Turn(n=1, ask="q", prose=both), {"e3"}))
+
+    def test_attached_labels_are_the_ATTACHED_ones_not_every_citable_one(self):
+        from engine.dialogue import attached_labels
+
+        compiled = {"citations": [{"n": "e3", "kind": "attached", "slot": "s1"},
+                                  {"n": "e9", "kind": "bears_on", "slot": "s2"},
+                                  {"n": "e40", "kind": "seated", "slot": "s3"},
+                                  {"n": "e41", "kind": "moved", "slot": "s4"}],
+                    "attachment": {"attachment": [{"kind": "bears_on", "chart": "english"}]}}
+        self.assertEqual(attached_labels(compiled), {"e3", "e9"},
+                         "seated and moved objects are not things [b0] reached")
+
+    def test_the_degradation_still_runs_when_NOTHING_attached(self):
+        """Kept deliberately. A residual that fires because a record is missing re-asks
+        forever, so with no attachment citations at all the check widens rather than convicts."""
+        from engine.dialogue import attached_labels
+
+        self.assertEqual(attached_labels({"citations": [{"n": "e7", "kind": "seated",
+                                                         "slot": "s"}]}), {"e7"})
+
+    def test_the_residual_FIRES_on_a_turn_that_only_drew_arrows(self):
+        """End to end, through `converse`, which is where it failed on the fixture."""
+        from engine.dialogue import converse
+
+        compiled = {"compiled": "FIELD", "citations": [
+            {"n": "e3", "kind": "attached", "slot": "s1"},
+            {"n": "l7", "kind": "seated", "slot": "s2"}]}
+        # TURN 1 IS SEEDED, so the transport is never called for it — the only call this
+        # dialogue makes is the re-ask. A transport indexed off its own call count would hand
+        # the re-ask turn 1's arrows back, which is the test lying to itself.
+        seen = []
+
+        def transport(system, user):
+            seen.append(user)
+            return "The work establishes positivity [e3].", {}
+
+        d = converse("what does it establish", compiled, transport, budget=1,
+                     first_turn=Turn(n=1, ask="what does it establish",
+                                     prose="[b0] -bears_on-> [e3]"))
+        self.assertEqual(len(d.turns), 2, "the unanswered question was not re-asked")
+        self.assertIn("no answering turn", d.stopped)
+        self.assertIn("positivity", d.answer)
+
+
 if __name__ == "__main__":
     unittest.main()
