@@ -249,6 +249,22 @@ class Dialogue:
 
     @property
     def answer(self) -> str:
+        """The last turn that answered THE OPERATOR'S QUESTION — not simply the last turn.
+
+        "The final turn is the answer" holds when the dialogue ends because the graph went
+        quiet: the last thing said was said to the operator. It does NOT hold when the budget
+        runs out mid-interrogation, and the first run where the interrogator actually fired
+        proved it — four turns, budget exhausted, and what displayed was turn 4 replying to
+        "the field holds more than one value for [e18], which does the state support?". A
+        correct answer to a question the operator never asked.
+
+        An interrogation turn is a measurement, not a reply. The answer is the most recent
+        thing the medium said TO THE OPERATOR, which later interrogations improve the field
+        for but do not replace.
+        """
+        for t in reversed(self.turns):
+            if t.ask == self.question:
+                return t.prose
         return self.turns[-1].prose if self.turns else ""
 
     @property

@@ -498,5 +498,62 @@ class TheDaemonNeverConverses(unittest.TestCase):
                 self.assertNotIn("dialogue", body)
 
 
+class TheANSWERIsWhatWasSaidToTheOPERATOR(unittest.TestCase):
+    """Found on column C-prime, the first run where the interrogator actually fired.
+
+    Making the contest visible in the input gave the interrogator something to ask about, it
+    asked three times, the budget ran out, and what displayed was turn 4 replying to "the field
+    holds more than one value for [e18] — which does the state support?". A correct answer to a
+    question the operator never asked, presented as the answer.
+
+    "The final turn is the answer" holds when the dialogue ends because the graph went quiet.
+    It does not hold when the budget runs out mid-interrogation. An interrogation turn is a
+    MEASUREMENT; the answer is the most recent thing the medium said TO THE OPERATOR.
+    """
+
+    def _field(self):
+        return {"compiled": "F",
+                "citations": [{"n": "e1", "slot": "s1"}, {"n": "l7", "slot": "s7"},
+                              {"n": "e3", "contested": True},
+                              {"n": "e4", "contested": True},
+                              {"n": "e5", "contested": True}]}
+
+    def _transport(self, replies):
+        seen = []
+
+        def t(system, user):
+            seen.append(user)
+            return (replies[len(seen) - 1] if len(seen) <= len(replies) else replies[-1]), {}
+
+        return t, seen
+
+    def test_a_budget_exhausted_dialogue_answers_the_OPERATORS_question(self):
+        t, _ = self._transport(["THE ANSWER, to the operator [e1].",
+                                "interrogation reply one [e3].",
+                                "interrogation reply two [e4].",
+                                "interrogation reply three [e5]."])
+        d = converse("the operator's question", self._field(), t, budget=4)
+        self.assertEqual(d.stopped, "budget", "this control needs the budget to bind")
+        self.assertGreater(len(d.turns), 1, "and needs interrogations to have fired")
+        self.assertEqual(d.answer, "THE ANSWER, to the operator [e1].")
+        self.assertNotEqual(d.answer, d.turns[-1].prose,
+                            "the last turn replied to the engine, not to the operator")
+
+    def test_a_quiet_graph_still_answers_from_the_last_turn(self):
+        """The original rule is untouched where it was right."""
+        t, _ = self._transport(["only turn, and the answer [e1]."])
+        d = converse("q", {"compiled": "F", "citations": [{"n": "e1", "slot": "s1"}]}, t)
+        self.assertEqual(len(d.turns), 1)
+        self.assertEqual(d.answer, d.turns[-1].prose)
+
+    def test_a_later_turn_that_RE_ASKS_the_question_wins(self):
+        """Most recent thing said to the operator — not the first thing."""
+        d = Dialogue(question="q")
+        d.turns = [Turn(n=1, ask="q", prose="early [e1]."),
+                   Turn(n=2, ask="engine asks", prose="measurement [e2]."),
+                   Turn(n=3, ask="q", prose="later and better [e1][e2].")]
+        self.assertEqual(d.answer, "later and better [e1][e2].")
+
+
 if __name__ == "__main__":
     unittest.main()
