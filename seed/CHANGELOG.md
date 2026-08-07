@@ -221,7 +221,10 @@ Repo: [gnostrich/common-ground](https://github.com/gnostrich/common-ground). Lin
 
 ---
 
-*Compiled 2026-08-07 by reading `git log --oneline` (170 commits at the session's start,
-171 after the null surface landed mid-task) against `seed/INVENTORY.md`,
-`seed/CONSTITUTION.md`, and each cited commit's own message. Omissions are a curation choice,
-not an oversight — see the note at the top.*
+*Compiled 2026-08-07 by reading `git log --oneline` (170 commits on this branch at the start
+of this task, through `80791f0`) against `seed/INVENTORY.md`, `seed/CONSTITUTION.md`, and each
+cited commit's own message. The null surface (`0175806`) landed mid-task, and this file was
+updated to cover it; further commits landed on this branch after that from a concurrent lane
+(a running amendment-gate and auditor effort) are not yet reflected here — check `git log
+--oneline` past `0175806` for anything newer. Omissions are otherwise a curation choice, not
+an oversight — see the note at the top.*
