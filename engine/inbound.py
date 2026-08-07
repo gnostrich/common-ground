@@ -97,15 +97,16 @@ class Landing:
 
 @dataclass(frozen=True, slots=True)
 class Citable:
-    """One object the answer is allowed to cite, and the integer it cites it by.
+    """One object the answer is allowed to cite, and the LABEL it cites it by.
 
-    The number is the WHOLE relation between a sentence and the trace. It is assigned here,
-    printed into the prompt here, and resolved by `engine.grounded` as integer membership —
-    no text is compared at any point. The referee that licenses answer-first cannot itself be
-    a similarity mechanism, and a citation index is the only shape that avoids it.
+    The label is the WHOLE relation between a sentence and the trace. It is assigned here,
+    printed into the prompt here, and resolved by `engine.grounded` as EXACT MEMBERSHIP IN A
+    DECLARED LABEL SET — no text is compared at any point. The referee that licenses
+    answer-first cannot itself be a similarity mechanism, and a citation index is the only
+    shape that avoids it.
     """
 
-    n: int
+    n: str
     kind: str          # "moved" | "attached" | "bears_on" | "arrow" | "absent"
     chart: str
     slot: str
@@ -122,8 +123,14 @@ class Citable:
     group: str = ""
 
     def as_record(self) -> dict[str, object]:
+        # JOINS, CONTESTED AND GROUP TRAVEL. They did not, and the consequence was that the
+        # checker convicted CORRECT answers: two claims in one fiber, co-cited, came back
+        # WELDED because `group` was dropped before `check_answer` could read it — and the
+        # weld rule is precisely about claims from DIFFERENT groups. A field the referee
+        # cannot see is a field the referee rules against.
         return {"n": self.n, "kind": self.kind, "chart": self.chart,
-                "slot": self.slot[:16], "nu": self.nu}
+                "slot": self.slot[:16], "nu": self.nu,
+                "joins": list(self.joins), "contested": self.contested, "group": self.group}
 
 
 @dataclass(slots=True)
@@ -565,10 +572,15 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
             # has no region label and the labeller mints one in its own chart. One label space,
             # not two: the letter means the chart everywhere or it means nothing anywhere.
             n = labeller.label_for(m.slot, m.chart) if labeller else str(len(cites) + 1)
+            mark = "CONTESTED" if m.contested else "settled"
             if cites is not None:
                 cites.append(Citable(n=n, kind="moved", chart=m.chart, slot=m.slot,
-                                     nu=display(m.nu)))
-            mark = "CONTESTED" if m.contested else "settled"
+                                     nu=display(m.nu), contested=bool(m.contested),
+                                     # THE FIBER IS THE GROUP. Two faces of one quotient are
+                                     # not a weld — the quotient IS the declared relation
+                                     # between them — and the referee can only know that if
+                                     # the group travels.
+                                     group=(str(members[0]) if len(members) > 1 else "")))
             origin = ("the bias landed here" if m.hops == 0
                       else f"reached in {m.hops} declared hop(s), weakest arrow "
                            f"{m.weakest_tier}")
@@ -586,7 +598,13 @@ def _relaxed_block(rel: Relaxation, snapshot: CorpusSnapshot,
             _text = mover_text(n, m)
             # ONCE, not twice. The claim was printed on the label line and again on the line
             # below it — the same sentence, doubled, in every mover of every answer's input.
-            lines.append(f"  [{n}] [{m.chart}] {_text}")
+            # THE CONTEST IS SHOWN. `mark` was computed and never printed — dead since it
+            # was written — so the grammar required a sentence citing a contested claim to
+            # carry [!] while the input never said which claim was contested. A rule the
+            # medium cannot comply with is a rule that only ever convicts.
+            lines.append(f"  [{n}] [{m.chart}]"
+                         + (" [CONTESTED]" if mark == "CONTESTED" else "")
+                         + f" {_text}")
             for step in m.path:
                 lines.append(f"      VIA {step.render()}")
             facts.append({"kind": "moved", **m.as_record()})
@@ -742,7 +760,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     out_signature = sig
     if sig.structural:
         lines.append(sig.render())
-        lines.extend(structure_lines(snapshot, cites, Citable))
+        lines.extend(structure_lines(snapshot, cites, Citable, labeller=labeller))
         lines.append("")
 
     contested_here = sum(1 for m in rel.moved if m.contested)

@@ -113,7 +113,7 @@ def _nu(snapshot, slot: str) -> tuple[str, str]:
     return (getattr(s, "chart", "?"), getattr(s, "nu", "") or slot[:16])
 
 
-def structure_lines(snapshot, cites: list, Citable) -> list[str]:
+def structure_lines(snapshot, cites: list, Citable, labeller=None) -> list[str]:
     """The corpus's shape, numbered into the same citation stream the movers use."""
     from .inbound import display
 
@@ -121,8 +121,26 @@ def structure_lines(snapshot, cites: list, Citable) -> list[str]:
     arrows = list(getattr(snapshot, "arrows", None) or [])
     fibers = list(getattr(snapshot, "fibers", None) or [])
 
-    def cite(kind: str, chart: str, slot: str, nu: str) -> int:
-        n = len(cites) + 1
+    def cite(kind: str, chart: str, slot: str, nu: str) -> str:
+        """THE THIRD CITER, and the last one still minting bare numbers.
+
+        Two of the three `Citable` construction sites moved to the region's tagged label space
+        and this one did not, so a structural question produced forty citations like `e11` and
+        one `[41]` — an actual integer — in the same bracket stream the model reads. It did not
+        crash, because `[a-z]?\d+` matches a bare number: silent by construction, which is the
+        exact shape of the half-collapse this label space exists to make impossible.
+
+        The labeller is passed in now. Without one it still mints, tagged, so a caller that
+        forgets gets a label rather than a number — degrading to the old defect would be the
+        one failure this signature must not have.
+        """
+        if labeller is not None:
+            n = labeller.label_for(slot, chart)
+            cites.append(Citable(n=n, kind=kind, chart=chart, slot=slot, nu=nu))
+            return n
+        from .region import tag_of
+
+        n = f"{tag_of(chart)}{len([c for c in cites if str(c.n)[:1] == tag_of(chart)])}"
         cites.append(Citable(n=n, kind=kind, chart=chart, slot=slot, nu=nu))
         return n
 

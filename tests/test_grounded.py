@@ -145,7 +145,10 @@ class TheRefereeIsNotALEXICALMECHANISM(unittest.TestCase):
         # `[a-z]?` and never `[a-z]+` — one character is a chart tag, and a RUN of them is a
         # word, which is the thing this whole class exists to keep out of the referee.
         self.assertIn(r"\[([a-z]?\d+)\]", patterns)                # a citation
-        self.assertIn("\\[\\u2205(?::([\\d,\\s]+))?([a-z_]+)?\\]", patterns)   # an absence
+        # THE SCOPE GROUP TAKES LABELS. It was `[\\d,\\s]+` and `[∅:e3,e7]` was invisible,
+        # so an honest scoped negative naming two tagged lines came back UNCITED — convicting
+        # the careful answer and passing the vague one.
+        self.assertIn("\\[\\u2205(?::([a-z\\d,\\s]+))?([a-z_]+)?\\]", patterns)   # an absence
         # The third is the sentence splitter; none of the three matches a word.
         for pat in patterns:
             self.assertNotIn("a-z0-9", pat)
@@ -466,3 +469,87 @@ class TheContestRule(unittest.TestCase):
     def test_an_uncontested_object_needs_no_marker(self):
         self.assertTrue(check_answer("The settling floor is measured over cycles here [1].",
                                      self._c()).ok)
+
+
+class TheWorkflowsFourGaps(unittest.TestCase):
+    """Found by an exhaustive blast-radius mapping, each verified by EXECUTION not by reading.
+
+    All four were silent: none crashed, none turned the suite red, and three of them made the
+    referee convict CORRECT answers — which is the worst direction for a faithfulness gate to
+    be wrong in, because a false RED teaches the reader to stop believing the green.
+    """
+
+    def test_a_fibered_pair_co_cited_is_NOT_a_weld(self):
+        """G2. `Citable.as_record()` dropped `group`, so two faces of ONE quotient came back
+        WELDED — and the weld rule is precisely about claims from DIFFERENT groups. The
+        quotient IS the declared relation between them."""
+        from engine.inbound import Citable
+
+        compiled = {"citations": [
+            Citable(n="e1", kind="moved", chart="english", slot="s1", nu="a",
+                    group="fiber-A").as_record(),
+            Citable(n="l1", kind="moved", chart="lean", slot="s2", nu="b",
+                    group="fiber-A").as_record()]}
+        v = check_answer("Both state the same proposition in different charts [e1][l1].",
+                         compiled)
+        self.assertEqual([w.render() for w in v.welded], [])
+        self.assertTrue(v.ok, v.as_record())
+
+    def test_two_DIFFERENT_groups_co_cited_is_still_a_weld(self):
+        """The other direction, or the fix would have deleted the rule instead of feeding it."""
+        from engine.inbound import Citable
+
+        compiled = {"citations": [
+            Citable(n="e1", kind="moved", chart="english", slot="s1", nu="a",
+                    group="fiber-A").as_record(),
+            Citable(n="l1", kind="moved", chart="lean", slot="s2", nu="b",
+                    group="fiber-B").as_record()]}
+        self.assertTrue(check_answer("These two are related [e1][l1].", compiled).welded)
+
+    def test_contested_and_joins_survive_the_record_too(self):
+        from engine.inbound import Citable
+
+        rec = Citable(n="e1", kind="arrow", chart="english", slot="s", nu="x",
+                      contested=True, joins=("e1", "e2")).as_record()
+        self.assertTrue(rec["contested"])
+        self.assertEqual(rec["joins"], ["e1", "e2"])
+
+    def test_a_scoped_absence_over_LABELS_resolves(self):
+        """G4. `[∅:e3,e7]` was invisible to _ABSENT, so an honest scoped negative naming two
+        tagged lines came back UNCITED — convicting the careful answer and passing the vague
+        one."""
+        compiled = _compiled(["e3", "e7"])
+        v = check_answer("Neither moved claim relates them directly [∅:e3,e7].", compiled)
+        self.assertEqual(v.uncited, [])
+        self.assertEqual(v.unresolved, [])
+        self.assertTrue(v.ok, v.as_record())
+
+    def test_a_scoped_absence_over_a_LABEL_never_shown_is_still_unresolved(self):
+        """Widening the scope group must not have widened what resolves."""
+        v = check_answer("The field does not relate those two lines at all [∅:l99].",
+                         _compiled(["e3"]))
+        self.assertTrue(v.unresolved)
+
+    def test_the_bare_number_form_still_resolves(self):
+        """A field emitted before the collapse must still be readable."""
+        self.assertTrue(check_answer("A claim [1].", _compiled([1])).ok)
+
+    def test_NO_CITER_ANYWHERE_mints_a_bare_number(self):
+        """G3, and this is the control that would have caught the whole class.
+
+        Two of three Citable construction sites moved to tagged labels and the third did not,
+        so a structural question produced forty `e11`-style citations and one `[41]` — an
+        actual int — in the same bracket stream. It did not crash, because `[a-z]?\\d+` matches
+        a bare number. Silent by construction, which is the shape of the half-collapse this
+        label space exists to make impossible.
+        """
+        import re as _re
+
+        from engine.corpus_state import CorpusSnapshot
+        from engine.inbound import Citable
+        from engine.structure_trace import structure_lines
+
+        cites: list = []
+        structure_lines(CorpusSnapshot(slots={}, arrows=()), cites, Citable)
+        bare = [c.n for c in cites if not _re.match(r"^[a-z]\\d+$", str(c.n))]
+        self.assertEqual(bare, [], f"a citer minted untagged numbers: {bare}")

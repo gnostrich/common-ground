@@ -89,7 +89,14 @@ _CITE = re.compile(r"\[([a-z]?\d+)\]")
 
 #: An absence marker: bare, index-scoped, or warrant-named. Same shape, same bracket, and the
 #: only thing read out of it is integers and a name from a CLOSED list.
-_ABSENT = re.compile(r"\[\u2205(?::([\d,\s]+))?([a-z_]+)?\]")
+#: THE SCOPED ABSENCE TAKES LABELS TOO. `_CITE` and `_CITE_RUN` were widened to `[a-z]?\d+`
+#: and this one was missed, so `[∅:e3,e7]` was invisible to it and an honest, correctly scoped
+#: negative naming two tagged lines came back UNCITED — the opposite of resolve-or-void's
+#: intent, convicting the careful answer and passing the vague one.
+#:
+#: The warrant group stays `[a-z_]+` because a warrant is a NAME from a closed list, not a
+#: label, and the scope group is separated from it by the colon that must precede a scope.
+_ABSENT = re.compile(r"\[\u2205(?::([a-z\d,\s]+))?([a-z_]+)?\]")
 
 #: Sentence boundary. Splitting decides WHERE a sentence ends; the only thing done with the
 #: sentence afterwards is reading its brackets.
