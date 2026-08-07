@@ -40,7 +40,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from engine.battery import BATTERY_PATH  # noqa: E402
-from tools.redact_run import redact  # noqa: E402
+from tools.redact_run import redact, skeleton  # noqa: E402
 
 #: THE OPERATOR'S OWN QUESTIONS, the same three `tools/acceptance.py` runs. Together with the
 #: three frozen battery inputs these are the six frozen prompts.
@@ -82,6 +82,24 @@ class Finding:
     evidence: object = None
     #: How many times this exact finding was raised on this probe. One finding, N records.
     seen: int = 1
+
+    def __post_init__(self) -> None:
+        """THE EVIDENCE IS REDACTED WHERE IT IS BUILT, not where it is written out.
+
+        These artifacts attach to issues on a PUBLIC repository, and a finding's evidence is
+        the one place raw corpus prose reaches them: `sentence` and `lines` are copied straight
+        off the served response. Two of them did exactly that before this existed, and were
+        caught on the way into git rather than by design — which is the argument for doing it
+        at construction, where every present and future check passes through, instead of at
+        the boundary, where the next check to be written will forget.
+        """
+        if isinstance(self.evidence, dict):
+            ev = dict(self.evidence)
+            if isinstance(ev.get("sentence"), str):
+                ev["sentence"] = skeleton(ev["sentence"])
+            if isinstance(ev.get("lines"), list):
+                ev["lines"] = [skeleton(str(x)) for x in ev["lines"]]
+            object.__setattr__(self, "evidence", ev) if False else setattr(self, "evidence", ev)
 
     def as_record(self) -> dict:
         return {"check": self.check, "probe": self.probe, "detail": self.detail,

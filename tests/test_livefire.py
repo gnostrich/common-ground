@@ -177,6 +177,45 @@ class EachCheckDiscriminates(unittest.TestCase):
         self.assertTrue(found, "a malformed run produced no finding at all")
 
 
+class NoArtifactCarriesCorpusProse(unittest.TestCase):
+    """THE ARTIFACTS ARE PUBLISHED. They are committed, and they attach to issues.
+
+    A finding's evidence is the one place raw corpus prose reaches an artifact: `sentence` and
+    `lines` are copied straight off the served response. Two of them did exactly that and were
+    caught on the way into git — by a scan, not by design. So the redaction moved to the
+    Finding's own constructor, where every present and future check passes through it, instead
+    of to the boundary, where the next check to be written would have forgotten.
+    """
+
+    def test_a_finding_redacts_its_evidence_sentence_at_construction(self):
+        from tools.livefire import Finding
+
+        f = Finding("c", "p", "detail", {"sentence": "The cone is positive [e3][l7]."})
+        self.assertNotIn("cone", f.evidence["sentence"])
+        self.assertIn("[e3]", f.evidence["sentence"], "the brackets must survive")
+        self.assertIn("[l7]", f.evidence["sentence"])
+
+    def test_a_finding_redacts_its_evidence_LINES(self):
+        from tools.livefire import Finding
+
+        f = Finding("c", "p", "d", {"lines": ["A claim about the spectral gap [e9]."]})
+        self.assertNotIn("spectral", f.evidence["lines"][0])
+        self.assertIn("[e9]", f.evidence["lines"][0])
+
+    def test_evidence_that_is_not_prose_is_left_alone(self):
+        from tools.livefire import Finding
+
+        f = Finding("c", "p", "d", {"labels": ["e3", "l7"], "shown": 60, "citable": 59})
+        self.assertEqual(f.evidence, {"labels": ["e3", "l7"], "shown": 60, "citable": 59})
+
+    def test_every_check_that_puts_prose_in_evidence_goes_through_Finding(self):
+        """PLANTED AGAINST A BYPASS. A check that builds its record dict by hand would skip the
+        constructor entirely, which is the only way this protection can be lost."""
+        src = (Path(__file__).resolve().parents[1] / "tools" / "livefire.py").read_text()
+        self.assertNotIn('"check":', src.split("def as_record")[0],
+                         "a finding record was built without going through Finding()")
+
+
 class TheProbeSetIsTheONeTheOrderNamed(unittest.TestCase):
     def test_the_six_frozen_prompts_the_fixture_and_the_dialogue_era_probes(self):
         names = [n for n, _t, _w in probes()]

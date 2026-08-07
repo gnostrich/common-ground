@@ -81,3 +81,11 @@ runs/audit.json
 # is public. The fixture RECORD in seed/ carries the numbers, which is what a fixture is for;
 # the claim text stays on the machine that measured it.
 runs/fixture-*/
+
+# The live-fire artifacts ARE committed — deliberately, and against the rule directly above
+# them. `runs/fixture-*/` is ignored because it carries the answer verbatim; a livefire
+# artifact carries the BRACKET SKELETON and nothing else, redacted in `Finding.__post_init__`
+# and in `redact()` before it is ever written, with a control asserting both. They are the
+# evidence a deploy LANDED, git is the only durable store this container has, and evidence
+# that does not survive a reclaim is not evidence.
+!runs/livefire/
