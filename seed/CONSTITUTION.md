@@ -429,7 +429,27 @@ applied to the registry itself).
 SERVED wire: OI table resolution, control liveness, the six-prompt battery with pre-registered
 shapes, SPEC/CONSTITUTION conformance diff (every `[E:]` site exists at its symbol; drift =
 defect in code or doc — **never silently reconciled**), prompt-content enumeration, header
-self-identification. Findings filed with artifact evidence. Main session disposes.
+self-identification, CHANGELOG completeness. Findings filed with artifact evidence. Main
+session disposes.
+
+**ITS METHOD IS FAN-OUT, ADVERSARIAL VERIFY, ONE SYNTHESIS — not a one-off.** A single reader
+sweeping a codebase reads harder and misses the same things twice, which is measured rather
+than supposed: a half-collapsed pipeline shipped green twice in one session, found both times
+by an operator reading a live transcript and neither time by a careful re-read. The method that
+did find it, in one pass:
+
+  * **FAN OUT** one reader per subsystem that produces or consumes the property under audit,
+    each blind to the others, each reporting file:line with the code quoted verbatim;
+  * **ADVERSARIALLY VERIFY** every claim marked *silent* — a defect that leaves the suite green
+    is the only kind worth a second agent, and that agent's instruction is to REFUTE, defaulting
+    to not-real when it cannot substantiate. A loud break announces itself; a cosmetic one costs
+    nothing if wrong;
+  * **ONE SYNTHESIS** producing an ordered plan in which every step names the control that
+    proves it, and which states plainly what a HALF-DONE version of the change would look like
+    and which single control would catch it.
+
+Findings are claims until verified BY EXECUTION. A finding that was only read is filed as
+unverified and says so.
 
 **B4. AMENDMENT RULE.** This document changes ONLY by operator ruling, recorded as a dated
 amendment with the superseded text retained (the withdrawal discipline applied to the

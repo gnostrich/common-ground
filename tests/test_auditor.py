@@ -641,3 +641,47 @@ class TheChangelogCheckStartsWhereTheRULEStarted(unittest.TestCase):
             self.assertEqual(A._feature_diff_landed(), "")
         finally:
             A._run = real
+
+
+class TheMethodIsCHARTERNotAOneOff(unittest.TestCase):
+    """B3 gained a method, because reading harder is not a method.
+
+    A half-collapsed pipeline shipped green twice in one session — found both times by an
+    operator reading a live transcript, neither time by a careful re-read. A fan-out with
+    adversarial verification found four more in one pass, three of them making the referee
+    convict correct answers. So the method is written down where the charter is, and a control
+    asserts the two agree rather than trusting that they do.
+    """
+
+    def _constitution(self):
+        return (REPO / "seed" / "CONSTITUTION.md").read_text()
+
+    def test_B3_names_all_three_stages(self):
+        b3 = self._constitution()
+        i = b3.index("**B3.")
+        window = b3[i:i + 3000]
+        for stage in ("FAN OUT", "ADVERSARIALLY VERIFY", "ONE SYNTHESIS"):
+            with self.subTest(stage=stage):
+                self.assertIn(stage, window, f"B3 does not name {stage}")
+
+    def test_B3_says_findings_are_claims_until_EXECUTED(self):
+        b3 = self._constitution()
+        i = b3.index("**B3.")
+        self.assertIn("claims until verified BY EXECUTION", b3[i:i + 3000])
+
+    def test_the_auditor_carries_the_method_too(self):
+        """The charter and the tool must not drift: the tool is what runs."""
+        import tools.auditor as A
+
+        self.assertTrue(hasattr(A, "AUDIT_METHOD"))
+        for word in ("fan-out", "adversarial", "synthesis", "execution"):
+            with self.subTest(word=word):
+                self.assertIn(word, A.AUDIT_METHOD.lower())
+
+    def test_the_verifier_is_told_to_REFUTE_not_to_confirm(self):
+        """The asymmetry is the whole value. An agent asked to confirm a finding confirms it."""
+        b3 = self._constitution()
+        i = b3.index("**B3.")
+        window = b3[i:i + 3000]
+        self.assertIn("REFUTE", window)
+        self.assertIn("defaulting", window)

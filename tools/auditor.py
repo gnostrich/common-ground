@@ -733,3 +733,21 @@ if __name__ == "__main__":
         for n in out["not_implemented"]:
             print("  ○", n)
     raise SystemExit(0 if out["clean"] else 1)
+
+
+#: B3'S METHOD, and it is now charter rather than a one-off. A single reader sweeping a
+#: codebase reads harder and misses the same things twice — measured, not supposed: a
+#: half-collapsed pipeline shipped green twice in one session, found both times by an operator
+#: reading a live transcript and neither time by a careful re-read. A 31-agent fan-out with
+#: adversarial verification found four more in one pass, three of which were making the
+#: referee convict CORRECT answers.
+#:
+#: FAN OUT one reader per subsystem, blind to each other, quoting file:line verbatim.
+#: ADVERSARIALLY VERIFY every claim marked SILENT — a defect that leaves the suite green is the
+#: only kind worth a second agent, and that agent is told to REFUTE, defaulting to not-real
+#: when it cannot substantiate. ONE SYNTHESIS orders the plan, names the control proving each
+#: step, and states what a HALF-DONE version would look like and which control would catch it.
+#:
+#: FINDINGS ARE CLAIMS UNTIL VERIFIED BY EXECUTION. One filed from reading alone says so.
+AUDIT_METHOD = ("fan-out per subsystem, adversarial verification of every silent-breaker "
+                "claim, one synthesis; findings are claims until verified by execution")
