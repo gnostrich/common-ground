@@ -344,6 +344,41 @@ class Handler(BaseHTTPRequestHandler):
                     ctl.max_cost = None if b["max_cost"] in (None, "") else float(b["max_cost"])
                 ctl.write(CONTROL_PATH)
                 self._send(200, json.dumps(_proposer_ledger()))
+            elif path == "/intake":
+                # THE INTAKE SURFACE. One door for material arriving from outside, and lineage
+                # is a thing an arrival may DECLARE about itself rather than a second path.
+                # Material with no manifest travels the identical route.
+                #
+                # BEHIND THE SEED-UPLOAD TOKEN, not the read token. This WRITES to the corpus,
+                # and the read token gates disclosure and spend — a different question. The
+                # endpoint does not exist when the variable is unset, the same 404 as any
+                # unrouted path, so a deploy with no upload token has no intake surface to
+                # find.
+                seed_token = os.environ.get(SEED_UPLOAD_ENV, "")
+                if not seed_token:
+                    return self._send(404, json.dumps({"error": "not found"}))
+                if not hmac.compare_digest(self.headers.get("X-Seed-Token", ""), seed_token):
+                    return self._send(401, json.dumps({"error": "bad seed token"}))
+                from engine.corpus_state import SNAPSHOT_PATH
+                from engine.intake import intake
+                from engine.lineage import Export
+
+                snap = corpus_snapshot()
+                export = None
+                if b.get("export"):
+                    # VERIFIED, NOT TRUSTED. The id is a hash of the question and the
+                    # addresses, so a forged stub is refused here rather than becoming
+                    # lineage nobody declared.
+                    export = Export.read(b["export"])
+                arrival = intake(b.get("documents") or [], snap,
+                                 manifest=b.get("manifest"), export=export)
+                # PERSISTED, or the merge lives only until the next reload. Saved AFTER the
+                # arrival is complete, so a failed intake leaves the corpus as it was.
+                if arrival.slots_new or arrival.edges:
+                    snap.save(SNAPSHOT_PATH)
+                    corpus_snapshot(reload=True)
+                self._send(200, json.dumps({"arrival": arrival.as_record(),
+                                            "corpus_header": corpus_header()}))
             elif path == "/ask":
                 question = str(b.get("question", ""))
                 # PHASES ARE RECORDED, NOT STREAMED — and that is a retreat, recorded as one.

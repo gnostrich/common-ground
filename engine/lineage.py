@@ -69,6 +69,32 @@ class Export:
             ("\x01".join([question] + slots)).encode("utf-8")).hexdigest()[:16]
         return Export(context_id=f"cg-{digest}", question=question, built_from=tuple(slots))
 
+    @staticmethod
+    def read(raw: object) -> "Export":
+        """An export handed back by a builder, VERIFIED rather than trusted.
+
+        The ID is a hash of the question and the addresses, so an export can certify itself:
+        recompute it from the fields presented and refuse a mismatch. Without this, a caller
+        could hand back any `context_id` beside any address list and declare descent from
+        material the export never contained — which would make lineage forgeable and turn a
+        declaration into an assertion.
+        """
+        if isinstance(raw, (str, bytes)):
+            raw = json.loads(raw)
+        if not isinstance(raw, dict):
+            raise ValueError("an export stub must be an object")
+        got = Export(context_id=str(raw.get("context_id") or ""),
+                     question=str(raw.get("question") or ""),
+                     built_from=tuple(str(x) for x in (raw.get("built_from") or ())))
+        rebuilt = Export.of({"typed": got.question,
+                             "citations": [{"slot": s} for s in got.built_from]})
+        if rebuilt.context_id != got.context_id:
+            raise ValueError(
+                f"this export does not certify itself: {got.context_id!r} is not the id of "
+                f"the question and addresses presented ({rebuilt.context_id!r}). An id that "
+                f"does not follow from its own content would make lineage forgeable.")
+        return got
+
     def as_record(self) -> dict:
         return {"schema": SCHEMA, "context_id": self.context_id,
                 "question": self.question, "built_from": list(self.built_from),

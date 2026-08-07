@@ -306,6 +306,42 @@ def cmd_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_intake(args: argparse.Namespace) -> int:
+    """THE INTAKE SURFACE, from a terminal. Material in, lineage optional, one door.
+
+    The same `engine.intake.intake` the endpoint calls — not a parallel implementation, which
+    is the failure this project deletes on sight. A CLI that ingested differently from the
+    endpoint would be two intake surfaces with one name.
+    """
+    import json as _json
+
+    from engine.corpus_state import SNAPSHOT_PATH, CorpusSnapshot
+    from engine.intake import intake
+    from engine.lineage import Export
+
+    paths = [Path(p) for p in args.files]
+    missing = [str(p) for p in paths if not p.exists()]
+    if missing:
+        print(f"{RED}no such file: {', '.join(missing)}{RESET}", file=sys.stderr)
+        return 1
+    docs = [{"id": str(p), "chart": args.chart, "text": p.read_text(encoding="utf-8")}
+            for p in paths]
+
+    manifest = _json.loads(Path(args.manifest).read_text(encoding="utf-8")) \
+        if args.manifest else None
+    export = Export.read(_json.loads(Path(args.export).read_text(encoding="utf-8"))) \
+        if args.export else None
+
+    snap = CorpusSnapshot.load(args.snapshot)
+    arrival = intake(docs, snap, manifest=manifest, export=export)
+    if args.dry_run:
+        print(f"{YELLOW}DRY RUN — nothing was written{RESET}", file=sys.stderr)
+    elif arrival.slots_new or arrival.edges:
+        snap.save(args.snapshot)
+    print(_json.dumps(arrival.as_record(), indent=1))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="common-ground", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -351,6 +387,16 @@ def main(argv: list[str] | None = None) -> int:
                          help="slots | contested | verdicts | floors | correspondences | chart | find")
     p_query.add_argument("arg", nargs="?", default=None, help="name (chart) or term (find)")
     p_query.set_defaults(fn=cmd_query)
+
+    p_in = sub.add_parser("intake", help="admit material, with optional declared lineage")
+    p_in.add_argument("files", nargs="+", help="files to admit")
+    p_in.add_argument("--chart", default="english", help="the chart this material declares")
+    p_in.add_argument("--manifest", default="", help="a lineage manifest JSON file")
+    p_in.add_argument("--export", default="", help="the export stub the manifest cites")
+    p_in.add_argument("--snapshot", default="runs/corpus.snapshot")
+    p_in.add_argument("--dry-run", action="store_true",
+                      help="report what would be admitted; write nothing")
+    p_in.set_defaults(fn=cmd_intake)
 
     args = parser.parse_args(argv)
     if getattr(args, "samples", None) is None and hasattr(args, "samples"):
