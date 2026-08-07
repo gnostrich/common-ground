@@ -555,5 +555,51 @@ class TheANSWERIsWhatWasSaidToTheOPERATOR(unittest.TestCase):
         self.assertEqual(d.answer, "later and better [e1][e2].")
 
 
+class TheArrowLinesAreNotTheANSWER(unittest.TestCase):
+    """One reply, two roles — and only one of them is what the operator reads.
+
+    A turn answers in cited prose AND writes its arrows in the same reply, because they are one
+    act; that is what the collapse means. But an arrow line is the extraction channel, already
+    harvested into proposals by the time anyone reads the answer. On a served run turn 1 came
+    back as eighty-four arrow lines and nothing else, every one of them was then parsed as an
+    uncited sentence, and the operator was shown a wiring diagram.
+
+    Removing them is PRESENTATION. Not a second turn, not a second parse — the same lines the
+    extractor consumed, dropped from the display.
+    """
+
+    def test_arrow_lines_are_stripped_and_the_prose_survives(self):
+        from engine.dialogue import said
+
+        got = said("e3 -bears_on-> b0\nThe work establishes positivity [e7].\n"
+                   "[e1] -refines-> [e2]")
+        self.assertEqual(got, "The work establishes positivity [e7].")
+
+    def test_a_turn_that_ONLY_related_reads_as_EMPTY_not_as_a_diagram(self):
+        """A turn that never answered is a real state and the operator should see it happened,
+        rather than being handed the wiring as though it were prose."""
+        from engine.dialogue import said
+
+        self.assertEqual(said("e1 -refines-> e2\ne3 -refines-> e4"), "")
+
+    def test_a_SENTENCE_containing_an_arrow_keeps_its_words(self):
+        """Anchored at both ends. The medium may legitimately write a sentence with an arrow
+        in it, and the sentence is not the arrow."""
+        from engine.dialogue import said
+
+        line = "It refines it, [e1] -refines-> [e7], clearly [e1]."
+        self.assertEqual(said(line), line)
+
+    def test_the_arrows_are_still_EXTRACTED_from_the_unstripped_prose(self):
+        """Stripping is for the display only. The extractor reads the reply as sent."""
+        prose = "e1 -refines-> e7\nThe answer [e1]."
+        self.assertEqual(len([p for p in arrows_from(prose, {"e1", "e7"}) if p.ok]), 1)
+
+    def test_the_dialogue_answer_uses_the_stripped_form(self):
+        d = Dialogue(question="q")
+        d.turns = [Turn(n=1, ask="q", prose="e1 -refines-> e7\nThe answer [e1].")]
+        self.assertEqual(d.answer, "The answer [e1].")
+
+
 if __name__ == "__main__":
     unittest.main()

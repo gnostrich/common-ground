@@ -105,6 +105,31 @@ class Turn:
                 "moved": self.moved, "interrogation": self.interrogation}
 
 
+def said(prose: str) -> str:
+    """The turn's WORDS, with its arrow lines removed. One reply, two roles.
+
+    A turn answers in cited prose AND writes its arrows in that same reply, because they are
+    one act — that is what the collapse means. But an arrow line is the extraction channel: it
+    has already been harvested into proposals by the time anyone reads this, and leaving it in
+    the answer shows the operator a wiring diagram instead of a sentence. On one served run
+    turn 1 came back as eighty-four arrow lines and nothing else, and every one of them was
+    then parsed as an uncited sentence.
+
+    Removing them is PRESENTATION, not a second turn and not a second parse: the same lines the
+    extractor consumed, dropped from the display. If nothing remains, the answer is genuinely
+    empty and must read as empty rather than as a diagram — a turn that only related and never
+    answered is a real state, and the operator should see that it happened.
+    """
+    kept = [ln for ln in (prose or "").splitlines() if not _ARROW_ONLY.match(ln.strip())]
+    return "\n".join(kept).strip()
+
+
+#: A LINE THAT IS ONLY AN ARROW. Anchored at both ends, so a sentence that happens to contain
+#: an arrow keeps its words — the medium may legitimately write "this refines that, [e1]
+#: -refines-> [e7]" and the sentence is not the arrow.
+_ARROW_ONLY = re.compile(r"^\[?[a-z]?\d+\]?\s*-\w+->\s*\[?[a-z]?\d+\]?[.;]?$")
+
+
 def arrows_from(prose: str, citable: set, turn: int = 0) -> list:
     """Every `[i] -kind-> [j]` in one turn, resolved against what the field actually showed.
 
@@ -264,8 +289,8 @@ class Dialogue:
         """
         for t in reversed(self.turns):
             if t.ask == self.question:
-                return t.prose
-        return self.turns[-1].prose if self.turns else ""
+                return said(t.prose)
+        return said(self.turns[-1].prose) if self.turns else ""
 
     @property
     def resolved(self) -> list:
