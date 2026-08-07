@@ -133,3 +133,129 @@ class TheGateActuallyREFUSES(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheAmendmentGateHasTeeth(unittest.TestCase):
+    """B4 was a paragraph. /seed is the law, and law may not change silently.
+
+    Each control builds a THROWAWAY repository, installs the real hook, and pushes for real.
+    Nothing here reads the hook's source: a gate is verified by being REFUSED, and a substring
+    check over a shell script is the map-not-territory failure this project has shipped once.
+
+    THE INNER SUITE IS PINNED. The hook runs `python3 -m unittest discover -s tests` from the
+    repository being pushed, so these throwaway repos carry one trivial test of their own. That
+    also isolates them from the outer run: without `cwd` set to the throwaway, the inner
+    discover walked THIS repository's tests and the controls passed alone but failed under the
+    full suite — an order dependence that would have made every green here conditional on how
+    the suite was invoked.
+    """
+
+    FULL = ("law change\n\nFEATURE-DIFF\n  WHAT x\n  SUPERSEDES y\n"
+            "  CONTROLS z\n  FIXTURES w\n")
+
+    def _repo(self, tmp: Path):
+        bare, work = tmp / "remote.git", tmp / "work"
+        subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+        subprocess.run(["git", "init", "-q", str(work)], check=True)
+        hooks = work / "hooks"
+        hooks.mkdir()
+        (hooks / "pre-push").write_text((REPO / "hooks" / "pre-push").read_text())
+        (hooks / "pre-push").chmod(0o755)
+        (work / "tests").mkdir()
+        (work / "tests" / "test_ok.py").write_text(
+            "import unittest\n\nclass T(unittest.TestCase):\n    def test_ok(self): pass\n")
+        for k, v in (("user.email", "t@t"), ("user.name", "t"), ("core.hooksPath", "hooks")):
+            subprocess.run(["git", "-C", str(work), "config", k, v], check=True)
+        subprocess.run(["git", "-C", str(work), "remote", "add", "origin", str(bare)], check=True)
+        return work
+
+    def _commit(self, work: Path, path: str, body: str, message: str):
+        f = work / path
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(body)
+        subprocess.run(["git", "-C", str(work), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(work), "commit", "-q", "-m", message], check=True)
+
+    def _push(self, work: Path):
+        # cwd IS THE THROWAWAY. See the class docstring: without it the hook's own suite run
+        # discovers this repository's tests and the result depends on the caller's directory.
+        return subprocess.run(["git", "push", "-u", "origin", "HEAD:main"],
+                              cwd=str(work), capture_output=True, text=True, timeout=900)
+
+    def test_a_seed_change_WITHOUT_a_feature_diff_is_REFUSED(self):
+        with tempfile.TemporaryDirectory() as d:
+            work = self._repo(Path(d))
+            self._commit(work, "seed/SPEC.md", "the law\n", "tweak the spec")
+            r = self._push(work)
+            self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+            self.assertIn("without a complete FEATURE-DIFF", r.stderr)
+
+    def test_a_seed_change_WITH_a_complete_feature_diff_PASSES(self):
+        """Not vacuous: the same change with the block must go through, or it is a wall."""
+        with tempfile.TemporaryDirectory() as d:
+            work = self._repo(Path(d))
+            self._commit(work, "seed/SPEC.md", "the law\n", self.FULL)
+            r = self._push(work)
+            self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_an_INCOMPLETE_block_is_refused_and_NAMES_what_is_missing(self):
+        with tempfile.TemporaryDirectory() as d:
+            work = self._repo(Path(d))
+            self._commit(work, "seed/SPEC.md", "the law\n",
+                         "law change\n\nFEATURE-DIFF\n  WHAT x\n")
+            r = self._push(work)
+            self.assertNotEqual(0, r.returncode)
+            self.assertIn("SUPERSEDES", r.stderr)
+            self.assertIn("FIXTURES", r.stderr)
+
+    def test_a_NON_seed_change_needs_no_feature_diff(self):
+        """The gate guards the law, not every commit. Requiring it everywhere makes the block
+        a ritual, and a ritual is not read."""
+        with tempfile.TemporaryDirectory() as d:
+            work = self._repo(Path(d))
+            self._commit(work, "engine/x.py", "x = 1\n", "ordinary change")
+            self.assertEqual(0, self._push(work).returncode)
+
+    def test_DELETING_from_the_archive_is_REFUSED(self):
+        with tempfile.TemporaryDirectory() as d:
+            work = self._repo(Path(d))
+            self._commit(work, "archive/design/old.md", "the old design\n", "archive it")
+            self.assertEqual(0, self._push(work).returncode)
+            (work / "archive" / "design" / "old.md").unlink()
+            subprocess.run(["git", "-C", str(work), "add", "-A"], check=True)
+            subprocess.run(["git", "-C", str(work), "commit", "-q", "-m", "drop it"], check=True)
+            r = self._push(work)
+            self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+            self.assertIn("deletes from archive/", r.stderr)
+
+    def test_ADDING_to_the_archive_is_fine(self):
+        with tempfile.TemporaryDirectory() as d:
+            work = self._repo(Path(d))
+            self._commit(work, "archive/design/a.md", "one\n", "archive one")
+            self.assertEqual(0, self._push(work).returncode)
+            self._commit(work, "archive/design/b.md", "two\n", "archive two")
+            self.assertEqual(0, self._push(work).returncode)
+
+    def test_EVERY_commit_in_the_range_is_checked_not_only_the_tip(self):
+        """A bad commit hidden behind an innocent one is the obvious way past a tip-only gate."""
+        with tempfile.TemporaryDirectory() as d:
+            work = self._repo(Path(d))
+            self._commit(work, "engine/x.py", "x = 1\n", "base")
+            self.assertEqual(0, self._push(work).returncode)
+            self._commit(work, "seed/SPEC.md", "law\n", "sneak the law in")
+            self._commit(work, "engine/y.py", "y = 1\n", "innocent tip")
+            r = self._push(work)
+            self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+            self.assertIn("without a complete FEATURE-DIFF", r.stderr)
+
+    def test_the_red_suite_gate_still_stands(self):
+        """The new gate must not have displaced the old one."""
+        with tempfile.TemporaryDirectory() as d:
+            work = self._repo(Path(d))
+            (work / "tests" / "test_bad.py").write_text(
+                "import unittest\n\nclass T(unittest.TestCase):\n"
+                "    def test_bad(self): self.fail('planted')\n")
+            self._commit(work, "engine/x.py", "x = 1\n", "ordinary change")
+            r = self._push(work)
+            self.assertNotEqual(0, r.returncode)
+            self.assertIn("the suite is red", r.stderr)
