@@ -54,7 +54,11 @@ class C2CaseSensitivity(unittest.TestCase):
         faces = {"true_kernel_grid_posdef": "the authored reading"}
         self.assertEqual(gloss_for(LEAN_NU, faces).tier, AUTHORED)
         wrong = {"True_Kernel_Grid_PosDef": "the authored reading"}
-        got = gloss_for(LEAN_NU, wrong)
+        self.assertIsNone(gloss_for(LEAN_NU, wrong),
+                          "a case variant hit the authored face")
+        # AND WITH TIER B ASKED FOR EXPLICITLY, so the miss is shown to be a miss rather than
+        # the withdrawal swallowing it: the case variant lands on the rendering, not the face.
+        got = gloss_for(LEAN_NU, wrong, rendered=True)
         self.assertEqual(got.tier, RENDERED, "a case variant hit the authored face")
 
 
@@ -64,7 +68,7 @@ class C3ResolveOrVoid(unittest.TestCase):
         self.assertIsNone(gloss_for(""))
 
     def test_an_unauthored_name_falls_to_the_RENDERING_and_says_so(self):
-        got = gloss_for(LEAN_NU, {})
+        got = gloss_for(LEAN_NU, {}, rendered=True)
         self.assertEqual(got.tier, RENDERED)
         self.assertIn(UNAUTHORED_TAG, got.line)
 
@@ -91,7 +95,7 @@ class C4TheGroupFieldIsNeverTouched(unittest.TestCase):
             self.assertNotIn(banned, names, f"the lane named {banned}")
 
     def test_a_gloss_records_that_it_ENTERED_NOTHING(self):
-        rec = gloss_for(LEAN_NU, {}).as_record()
+        rec = gloss_for(LEAN_NU, {}, rendered=True).as_record()
         self.assertFalse(rec["citable"])
         self.assertIn("nothing", rec["entered"])
 
@@ -117,7 +121,7 @@ class C6TheWalksWireIsUNCHANGED(unittest.TestCase):
 
     def test_the_gloss_appears_only_when_ASKED_FOR(self):
         r = _region()
-        wire = render_region(r, glosses=glosses_for(r, {}))
+        wire = render_region(r, glosses=glosses_for(r, {}, rendered=True))
         self.assertIn("reads as", wire)
         self.assertIn(UNAUTHORED_TAG, wire)
 
@@ -127,7 +131,8 @@ class C7ItIsAnANNOTATIONNotAnObject(unittest.TestCase):
         import re
 
         r = _region()
-        wire = render_region(r, glosses=glosses_for(r, {}))
+        wire = render_region(r, glosses=glosses_for(r, {}, rendered=True))
+        self.assertIn("reads as", wire, "the control inspected a wire with no glosses on it")
         for line in wire.splitlines():
             if "reads as" in line:
                 self.assertIsNone(re.match(r"\s*\[[a-z]?\d+\]", line),
@@ -138,14 +143,15 @@ class C7ItIsAnANNOTATIONNotAnObject(unittest.TestCase):
 
         r = _region()
         bare = len(re.findall(r"^\[[a-z]?\d+\]", render_region(r), re.M))
-        glossed = len(re.findall(r"^\[[a-z]?\d+\]", render_region(r, glosses=glosses_for(r, {})),
-                                 re.M))
+        glossed = len(re.findall(
+            r"^\[[a-z]?\d+\]",
+            render_region(r, glosses=glosses_for(r, {}, rendered=True)), re.M))
         self.assertEqual(bare, glossed, "glossing changed how many objects were shown")
 
 
 class C8OnlyTheGlossedChart(unittest.TestCase):
     def test_an_english_member_is_never_glossed(self):
-        got = glosses_for(_region(), {})
+        got = glosses_for(_region(), {}, rendered=True)
         self.assertNotIn("s1", got, "an english object was glossed")
         self.assertIn("s2", got)
         self.assertEqual(GLOSSED_CHART, "lean")
@@ -162,7 +168,8 @@ class C9CoverageTravels(unittest.TestCase):
 
     def test_zero_authored_coverage_is_VISIBLE_not_absent(self):
         r = _region()
-        c = coverage(r, glosses_for(r, {}))
+        c = coverage(r, glosses_for(r, {}, rendered=True))
+        self.assertEqual(c["glossed"], 1, "the control read a coverage row with nothing in it")
         self.assertEqual(c["authored"], 0)
         self.assertEqual(c["authored_fraction"], 0.0)
         self.assertIn("DATA", c["note"])
@@ -225,6 +232,55 @@ class C11AGlossDoesNotSILENCETheLexicalResidual(unittest.TestCase):
             encoding="utf-8")
         for banned in ("from .gloss", "import gloss", "gloss_for", "glosses_for"):
             self.assertNotIn(banned, src, f"the fourth door reached the lexicon lane: {banned}")
+
+
+class C12TierBIsOffByDefaultBYMEASUREMENT(unittest.TestCase):
+    """THE WITHDRAWAL, planted so it cannot be undone by accident.
+
+    Tier B was specified, built, and measured, and the measurement withdrew it. Local A/B on
+    one commit with the lane as the only variable, authored coverage 0%:
+
+        lane OFF   attachment 8 of 59   discrimination 0.1356    0 violations
+        lane ON    attachment 2 of 59   discrimination 0.0339   17 violations
+
+    Lean attachment stayed 0 in BOTH arms at coverage 19 of 19, fraction 1.0. Nineteen
+    mechanical readings bridged nothing and pushed attachment toward the empty pole. Nothing is
+    deleted — tier A runs unchanged the day authored faces exist, and tier B stays reachable
+    behind an explicit argument so the next person measures it rather than re-deriving it.
+    """
+
+    def test_an_unauthored_name_gets_NOTHING_unless_the_caller_asks(self):
+        self.assertIsNone(gloss_for(LEAN_NU, {}))
+        self.assertIsNone(gloss_for(LEAN_NU, None))
+        self.assertEqual(glosses_for(_region(), {}), {})
+
+    def test_an_AUTHORED_face_is_unaffected_by_the_withdrawal(self):
+        """What was withdrawn is the mechanical rendering, not the lane."""
+        faces = {"true_kernel_grid_posdef": "the authored reading"}
+        self.assertEqual(gloss_for(LEAN_NU, faces).tier, AUTHORED)
+        self.assertEqual(set(glosses_for(_region(), faces)), {"s2"})
+
+    def test_the_default_is_a_DEFAULT_not_a_deletion(self):
+        """AST on the signature: tier B is reachable, and its gate is a parameter defaulting
+        to False — not a removed branch, and not a constant somebody has to edit."""
+        tree = ast.parse(MODULE.read_text(encoding="utf-8"))
+        seen = {}
+        for fn in ast.walk(tree):
+            if isinstance(fn, ast.FunctionDef) and fn.name in ("gloss_for", "glosses_for"):
+                args = fn.args.args
+                self.assertEqual(args[-1].arg, "rendered", f"{fn.name} lost its tier-B gate")
+                default = fn.args.defaults[-1]
+                self.assertIsInstance(default, ast.Constant)
+                self.assertIs(default.value, False, f"{fn.name} re-enabled tier B by default")
+                seen[fn.name] = True
+        self.assertEqual(set(seen), {"gloss_for", "glosses_for"})
+
+    def test_the_withdrawal_carries_its_MEASUREMENT_in_the_module_itself(self):
+        """A default with no number beside it is a preference. These are the two figures the
+        A/B turned on, and the coverage fraction that makes them readable."""
+        doc = ast.get_docstring(ast.parse(MODULE.read_text(encoding="utf-8"))) or ""
+        for figure in ("0.1356", "0.0339", "19 of 19"):
+            self.assertIn(figure, doc, f"the withdrawal dropped its measurement: {figure}")
 
 
 if __name__ == "__main__":

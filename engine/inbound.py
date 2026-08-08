@@ -785,7 +785,7 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         from .gloss import authored_faces
 
         att = perturb(text, snapshot, transport, chart, system=turn_one_prompt(),
-                      contest_marks=True, gloss_faces=None)   # LANE OFF — bisect arm
+                      contest_marks=True, gloss_faces=authored_faces(lexicon_registry()))
         labeller = Labeller(att.region) if att.region is not None else Labeller()
         stages["attach"] = round(_time.time() - _t, 3)
         if not att.seeds:

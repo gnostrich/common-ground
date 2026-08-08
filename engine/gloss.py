@@ -22,11 +22,27 @@ folding, no fragment matching, no ranking. `engine/faces.py`'s word-fragment anc
 killed for "growing a rule pile — the same failure as similarity, one layer up", and the
 difference is exactly this: a whole declared name matches an authored face or it does not.
 
-TWO TIERS, AND THE SECOND ONE IS TOTAL — stated rather than hidden, because it is this design's
-one soft spot. Tier A is an AUTHORED face: the operator's own lexicon, exact match on the Lean
-declaration name. Tier B is `engine.rmap.render`, a declared deterministic name→English
-rendering, which always produces something and therefore always could. It travels wearing
-`[REPO_DOC — unauthored]` so no reader can mistake a mechanical rendering for an authored one.
+TWO TIERS, AND TIER B IS OFF BY DEFAULT BECAUSE IT WAS MEASURED AND WITHDRAWN. Tier A is an
+AUTHORED face: the operator's own lexicon, exact match on the Lean declaration name. Tier B is
+`engine.rmap.render`, a declared deterministic name→English rendering, which always produces
+something and therefore always could — the soft spot named in the spec before it was built.
+
+THE MEASUREMENT WITHDREW IT. Local A/B on one commit, the lane as the only variable, tier B
+alone with authored coverage at 0%:
+
+    lane OFF   attachment 8 of 59   discrimination 0.1356   0 violations
+    lane ON    attachment 2 of 59   discrimination 0.0339   17 violations
+
+Coverage was 19 of 19 at fraction 1.0 and LEAN ATTACHMENT STAYED 0 IN BOTH ARMS. Nineteen
+mechanical readings bridged nothing and pushed attachment toward the empty pole — the same
+shape as the withdrawn roster clause, which is the second time a well-intentioned addition to
+turn 1's sheet has cost attachment. THE COVERAGE COLUMN IS WHAT MAKES THIS READABLE: a flat
+number at 0% AUTHORED coverage says the data is the constraint, and it also says a mechanical
+rendering is not a substitute for the data.
+
+So `rendered` defaults to False and tier A is the lane. Nothing is deleted: the day authored
+faces exist, tier A runs with no code change, and tier B remains available behind an explicit
+argument for anyone who wants to measure it again rather than re-derive it.
 
 Spec: sent before this file existed. Controls c1-c11 in tests/test_gloss.py.
 """
@@ -96,7 +112,7 @@ def authored_faces(registry) -> dict:
     return out
 
 
-def gloss_for(nu: str, faces: dict | None = None) -> Gloss | None:
+def gloss_for(nu: str, faces: dict | None = None, rendered: bool = False) -> Gloss | None:
     """The handle for one Lean object, or None when the line declares no name.
 
     THE ORDER IS THE WHOLE POLICY: an authored face wins, a rendering fills in, and a line that
@@ -111,11 +127,15 @@ def gloss_for(nu: str, faces: dict | None = None) -> Gloss | None:
     authored = (faces or {}).get(name)
     if authored:
         return Gloss(name=name, reading=str(authored), tier=AUTHORED)
+    if not rendered:
+        # TIER B IS OFF BY DEFAULT, BY MEASUREMENT. See the withdrawal note in this module's
+        # docstring: mechanical renderings cost attachment and bought nothing.
+        return None
     reading = render(name)
     return Gloss(name=name, reading=reading, tier=RENDERED) if reading else None
 
 
-def glosses_for(region, faces: dict | None = None) -> dict:
+def glosses_for(region, faces: dict | None = None, rendered: bool = False) -> dict:
     """slot -> Gloss for every Lean member of a region. Nothing else is touched.
 
     Keyed by SLOT rather than by label, because a label is assigned downstream and a handle
@@ -125,7 +145,7 @@ def glosses_for(region, faces: dict | None = None) -> dict:
     for m in (getattr(region, "members", None) or ()):
         if getattr(m, "chart", "") != GLOSSED_CHART:
             continue
-        g = gloss_for(getattr(m, "nu", "") or "", faces)
+        g = gloss_for(getattr(m, "nu", "") or "", faces, rendered)
         if g is not None:
             out[m.slot] = g
     return out

@@ -315,8 +315,10 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
         # acquire a dialogue by accident because acquiring one takes an argument.
         # THE HANDLES ARE BUILT FROM THIS REGION, not handed in — the region is built here and
         # a caller passing glosses would be keying them on a region it had to guess. `None`
-        # means the lane is OFF and is what the walk passes; a dict means ON, and an EMPTY dict
-        # is meaningful — gloss with no authored faces, which is tier B alone.
+        # means the lane is OFF and is what the walk passes; a dict means ON. An EMPTY dict now
+        # produces NO glosses rather than tier-B renderings: tier B was measured and withdrawn
+        # (see engine/gloss.py's docstring), so the coverage row it reports is an honest zero
+        # instead of nineteen mechanical readings that bridged nothing.
         from .gloss import coverage as _coverage, glosses_for
         glosses = None if gloss_faces is None else glosses_for(region, gloss_faces)
         if glosses is not None:
