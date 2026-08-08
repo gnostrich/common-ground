@@ -856,6 +856,36 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
     _phase("rendering")
     stages["render"] = round(_time.time() - _t0 - sum(stages.values()), 3)
     stages["total"] = round(_time.time() - _t0, 3)
+    # THE SHOWN CONTESTED SET WINS, and this is the keystone one layer over citability.
+    #
+    # Two constructions of one fact had been disagreeing, symmetrically, on the frozen fixture:
+    # `render_region` marks an object `(!)` from its region Member's flag, while
+    # `grounded.contested_numbers` unions the `contested` field across every citation entry
+    # sharing a label — and an attachment citation never carried one at all. Measured, three
+    # draws, byte-identical: the checker held 19 labels hot, the wire marked 19, and they
+    # differed by THREE IN EACH DIRECTION. Three objects were convicted for a mark the medium
+    # was never shown (row 523's class, alive), and three were shown a mark the checker did not
+    # enforce (the opposite waste — a mark that means nothing teaches the medium the mark means
+    # nothing).
+    #
+    # THE CHECKER'S CONTESTED SET IS THE SHOWN CONTESTED SET, byte-derived from the same
+    # compile, never rebuilt — the same sentence that governs citability, applied to the other
+    # thing a sheet says about an object. For any label the region showed, the region's own
+    # flag is authoritative and overwrites whatever a later citation carried. A mover OUTSIDE
+    # the region keeps its own flag: it was never on turn 1's sheet, so there is no shown value
+    # to defer to.
+    if att is not None and getattr(att, "region", None) is not None and labeller is not None:
+        from .region import BIAS_CHART as _BIAS
+
+        shown = {}
+        for m in att.region.members:
+            if m.chart != _BIAS:
+                shown[labeller.label_for(m.slot, m.chart)] = bool(m.contested)
+        cites = [c if str(c.n) not in shown or c.contested == shown[str(c.n)]
+                 else Citable(n=c.n, kind=c.kind, chart=c.chart, slot=c.slot, nu=c.nu,
+                              joins=c.joins, contested=shown[str(c.n)], group=c.group)
+                 for c in cites]
+
     out = CompiledInput(typed=text, compiled="\n".join(state), landings=landings,
                         scope=scope_text, diagnostics=tuple(DIAGNOSTICS),
                         facts=facts, field_status=status, conditioned=True, relaxation=rel,

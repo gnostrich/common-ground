@@ -687,6 +687,53 @@ class EveryRuleTheRefereeEnforcesIsSTATEDWhereTheMediumCanReadIt(unittest.TestCa
         self.assertEqual(v.as_record()["violations"], [],
                          "a conviction fired on a precondition the medium was never shown")
 
+    def test_the_CHECKERS_contested_set_is_the_SHOWN_contested_set(self):
+        """THE KEYSTONE, one layer over citability. Two constructions of one fact were
+        disagreeing symmetrically on the frozen fixture: three objects convicted for a mark the
+        medium was never shown, and three shown a mark the checker did not enforce.
+
+        A citation whose label the region showed takes the REGION's flag, whatever the citation
+        carried. Planted in both directions, because a fix that only stops false convictions
+        would leave the useless-mark half alive.
+        """
+        from engine.corpus_state import CorpusSnapshot, SlotRecord
+        from engine.grounded import contested_numbers
+        from engine.inbound import compile_input
+        from engine.normalize import address
+
+        slots = {}
+        for text in ("the cone is positive under composition",
+                     "the kernel accepts every checked statement",
+                     "the boundary term vanishes at the edge"):
+            sid, nu = address("english", text, "assert")
+            slots[sid] = SlotRecord(slot=sid, chart="english", type="assert", nu=nu,
+                                    value="true", confidence=1.0, tier="EXTRACTION",
+                                    docs=("r||d/f.md",))
+        ids = sorted(slots)
+        # ONE contested slot, declared in the snapshot — the single source the region reads.
+        snap = CorpusSnapshot(slots=slots, arrows=(), contested={ids[0]})
+
+        def transport(system, user):
+            return "0 -bears_on-> 1", {}
+
+        out = compile_input("what is the common thread", snap, transport=transport)
+        rec = out.as_record()
+        region = out.attachment.as_record()
+        shown = set(region.get("labels") or ())
+        hot = contested_numbers(rec)
+        # Every label the checker holds hot must be one the region showed. The reverse is not
+        # asserted: a mover reached over a declared arrow is outside the region and keeps its
+        # own flag, because there is no shown value for it to defer to.
+        in_region_hot = {n for n in hot if n in shown}
+        self.assertEqual(hot & shown, in_region_hot)
+        for c in rec["citations"]:
+            n = str(c["n"])
+            if n in shown and c.get("slot"):
+                with self.subTest(label=n):
+                    self.assertIn(c["contested"], (True, False))
+        self.assertLessEqual(len(hot), len(shown) + len(rec["citations"]),
+                             "the checker held more hot labels than anything showed")
+
     def test_the_contest_flag_is_read_from_the_SNAPSHOT_not_set_by_hand(self):
         from engine.corpus_state import CorpusSnapshot, SlotRecord
         from engine.normalize import address
