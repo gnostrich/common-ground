@@ -1,4 +1,4 @@
-# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, six columns
+# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, six columns and a baseline
 
 **FROZEN.** The question, the table's rows, and the pre-registration do not change. Columns are
 added as the pipeline changes; **no column is ever removed or rewritten**, including the ones
@@ -285,6 +285,43 @@ convictions beats a degenerate system with a lower count.
 
 **TEMPLATE BYTES ARE STEERING BYTES.** Any future wording change to a prompt gets a code-grade
 acceptance: three draws on this fixture, discrimination reported, before it lands.
+
+---
+
+## THE BASELINE — `baseline-1`, build `b484b945d8af`
+
+**The convergence target, met.** Not an aspiration: a checklist frozen before the pass was run,
+and every item measured on the SERVED build.
+
+| check | target | measured |
+|---|---|---|
+| **a. no degeneracy** | discrimination in a sane band, attachment informative | **0.576**, 34 of 59 attached |
+| **b. battery** | ≤ 2 standing-known findings over 10 probes | **0 findings over 10 probes** |
+| **c. stability** | 3 consecutive draws, consistent shape | 3 draws, **byte-identical figures** |
+| **d. turn shape** | distinct residuals, discharge, answer-debt only when owed | 4 turns, `[e1]`/`[e31]`/`[e43]`, all **resolved**, no re-ask needed |
+| **e. walk wire** | byte-identical to pre-fix | the `build_region` invariance property, **green** |
+
+**THE HONEST COMPOSITION, which is the baseline's real content:**
+
+```
+58 sentences checked, 60 violations
+  31 welded      18 genuine (a)-class + 13 enumeration (b)-class — the RECORDED COST
+                 of withdrawing the roster clause, per the convergence mandate
+  28 uncontested compliable and uncomplied: the (!) mark reaches turn 1's sheet and the
+                 rule is stated, and the medium does not write [!]. A conviction, not a trap.
+   1 unresolved
+```
+
+**A COUNT OF 60 IS NOT A FAILING GRADE HERE, AND THAT IS THE POINT OF RECORDING THE
+COMPOSITION.** Every one of the 60 is understood, classified, and traceable to a decision
+somebody made on purpose. Column F is what a lower count bought last time: 4 violations at
+discrimination 1.00, which is a machine that has stopped discriminating rather than a machine
+that has stopped erring.
+
+**FROM HERE, THE AUDITOR'S JOB IS DEFENDING THIS.** Any regression from these figures is a RED
+that outranks other work: discrimination outside the band, a finding on any probe, a
+draw-to-draw shape collapse, a turn without a preceding question, or a change in the walk's
+wire.
 
 ---
 
