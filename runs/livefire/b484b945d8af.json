@@ -5,7 +5,7 @@
    "probe": "battery-sharp",
    "text": "no renderer/decoder is imported here on the cloud path (no cloud decoder)",
    "why": "frozen battery input",
-   "seconds": 30.9,
+   "seconds": 30.0,
    "turns": 5,
    "stopped": "budget; [b0] had no answering turn, so it was re-asked",
    "arrows": 483,
@@ -33,21 +33,33 @@
      ],
      "question": "The field holds more than one value for [e2]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
      "turn": 4,
-     "outcome": "state-undecided"
+     "outcome": "resolved"
     }
    ],
    "faithful": {
     "ok": false,
-    "checked": 2,
-    "cited": 2,
+    "checked": 5,
+    "cited": 5,
     "asserted_absent": 0,
     "citable": 67
    },
-   "violations": 4,
-   "answer_chars": 265,
-   "findings": [],
+   "violations": 9,
+   "answer_chars": 289,
+   "findings": [
+    {
+     "check": "discrimination-is-in-the-sane-band",
+     "probe": "battery-sharp",
+     "detail": "attachment fraction 0.0169 at or below 0.05: the field did not respond to a region of 59 object(s)",
+     "evidence": {
+      "fraction": 0.0169,
+      "attached": 1,
+      "shown": 59
+     },
+     "seen": 1
+    }
+   ],
    "run": {
-    "answer": "<w><w><w>[e24][p25]<w><w><w><w>[e24][e33][p25]<w>",
+    "answer": "<w><w><w>[e33]<w>[e33][25]<w>[e33][25]<w>[e33][25]<w>[e33][25]<w>",
     "dialogue": {
      "question": "no renderer/decoder is imported here on the cloud path (no cloud decoder)",
      "turn_count": 5,
@@ -65,28 +77,28 @@
       {
        "turn": 2,
        "ask": "The field holds more than one value for [e10]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[e10]<w>[\u2205]<w>",
+       "prose": "<w><w><w>[e10]<w>[10]",
        "resolved": 0,
        "interrogation": "The field holds more than one value for [e15]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
       },
       {
        "turn": 3,
        "ask": "The field holds more than one value for [e15]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[e15]<w>[\u2205]<w>",
+       "prose": "<w>[e15]<w><w>[e15]<w>",
        "resolved": 0,
        "interrogation": "The field holds more than one value for [e2]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
       },
       {
        "turn": 4,
        "ask": "The field holds more than one value for [e2]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w>[\u2205]<w>",
+       "prose": "<w>[e2]<w><w><w>[e2]<w>",
        "resolved": 0,
        "interrogation": ""
       },
       {
        "turn": 5,
        "ask": "no renderer/decoder is imported here on the cloud path (no cloud decoder)",
-       "prose": "<w><w><w>[e24][p25]<w><w><w><w>[e24][e33][p25]<w>",
+       "prose": "<w><w><w>[e33]<w>[e33][25]<w>[e33][25]<w>[e33][25]<w>[e33][25]<w>",
        "resolved": 0,
        "interrogation": ""
       }
@@ -114,53 +126,87 @@
        ],
        "question": "The field holds more than one value for [e2]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
        "turn": 4,
-       "outcome": "state-undecided"
+       "outcome": "resolved"
       }
      ]
     },
     "faithful": {
      "ok": false,
-     "checked": 2,
-     "cited": 2,
+     "checked": 5,
+     "cited": 5,
      "asserted_absent": 0,
      "citable": 67,
      "violations": [
       {
-       "kind": "welded",
+       "kind": "unresolved",
        "numbers": [
-        "e24",
-        "p25"
+        "25"
        ],
-       "sentence": "<w><w><w>[e24][p25]<w>",
+       "sentence": "<w>[e33][25]<w>",
        "warrant": ""
       },
       {
-       "kind": "welded",
+       "kind": "unresolved",
        "numbers": [
-        "e24",
-        "e33",
-        "p25"
+        "25"
        ],
-       "sentence": "<w><w><w><w>[e24][e33][p25]<w>",
+       "sentence": "<w>[e33][25]<w>",
+       "warrant": ""
+      },
+      {
+       "kind": "unresolved",
+       "numbers": [
+        "25"
+       ],
+       "sentence": "<w>[e33][25]<w>",
+       "warrant": ""
+      },
+      {
+       "kind": "unresolved",
+       "numbers": [
+        "25"
+       ],
+       "sentence": "<w>[e33][25]<w>",
        "warrant": ""
       },
       {
        "kind": "uncontested",
        "numbers": [
-        "e24",
-        "p25"
+        "e33"
        ],
-       "sentence": "<w><w><w>[e24][p25]<w>",
+       "sentence": "<w><w><w>[e33]<w>",
        "warrant": ""
       },
       {
        "kind": "uncontested",
        "numbers": [
-        "e24",
-        "e33",
-        "p25"
+        "e33"
        ],
-       "sentence": "<w><w><w><w>[e24][e33][p25]<w>",
+       "sentence": "<w>[e33][25]<w>",
+       "warrant": ""
+      },
+      {
+       "kind": "uncontested",
+       "numbers": [
+        "e33"
+       ],
+       "sentence": "<w>[e33][25]<w>",
+       "warrant": ""
+      },
+      {
+       "kind": "uncontested",
+       "numbers": [
+        "e33"
+       ],
+       "sentence": "<w>[e33][25]<w>",
+       "warrant": ""
+      },
+      {
+       "kind": "uncontested",
+       "numbers": [
+        "e33"
+       ],
+       "sentence": "<w>[e33][25]<w>",
        "warrant": ""
       }
      ]
@@ -582,28 +628,14 @@
        "contested": true
       },
       {
-       "n": "e60",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "p44",
+       "n": "p9",
        "kind": "moved",
        "chart": "python",
-       "group": "",
+       "group": "020bed75ed1abb4583b437113905aacd12a5b82b24fda315ea432525826ade04",
        "contested": true
       },
       {
        "n": "e54",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e2",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -617,21 +649,7 @@
        "contested": true
       },
       {
-       "n": "e61",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e32",
-       "kind": "moved",
-       "chart": "english",
-       "group": "0be0b087af13aa76089900b51b47989aa72f019e98e1c73a9988408b21a78f44",
-       "contested": true
-      },
-      {
-       "n": "e62",
+       "n": "e15",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -645,7 +663,35 @@
        "contested": true
       },
       {
-       "n": "e63",
+       "n": "e60",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e32",
+       "kind": "moved",
+       "chart": "english",
+       "group": "0be0b087af13aa76089900b51b47989aa72f019e98e1c73a9988408b21a78f44",
+       "contested": true
+      },
+      {
+       "n": "e33",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e61",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e62",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -659,14 +705,14 @@
        "contested": true
       },
       {
-       "n": "e33",
+       "n": "e63",
        "kind": "moved",
        "chart": "english",
        "group": "",
        "contested": true
       },
       {
-       "n": "e15",
+       "n": "e58",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -677,13 +723,6 @@
        "kind": "moved",
        "chart": "english",
        "group": "",
-       "contested": true
-      },
-      {
-       "n": "p9",
-       "kind": "moved",
-       "chart": "python",
-       "group": "020bed75ed1abb4583b437113905aacd12a5b82b24fda315ea432525826ade04",
        "contested": true
       },
       {
@@ -701,20 +740,6 @@
        "contested": true
       },
       {
-       "n": "e46",
-       "kind": "moved",
-       "chart": "english",
-       "group": "002450b5b331c8885c9f42af40018e178af4316a4592963b0be05a2bfa78b738",
-       "contested": true
-      },
-      {
-       "n": "e58",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
        "n": "e67",
        "kind": "moved",
        "chart": "english",
@@ -722,10 +747,31 @@
        "contested": true
       },
       {
+       "n": "e46",
+       "kind": "moved",
+       "chart": "english",
+       "group": "002450b5b331c8885c9f42af40018e178af4316a4592963b0be05a2bfa78b738",
+       "contested": true
+      },
+      {
        "n": "e24",
        "kind": "moved",
        "chart": "english",
        "group": "",
+       "contested": true
+      },
+      {
+       "n": "p44",
+       "kind": "moved",
+       "chart": "python",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "p25",
+       "kind": "moved",
+       "chart": "python",
+       "group": "0692a9ac9cc83c6134c213ac2aba9e343151a46078c99f5502fed39f98ea2bdf",
        "contested": true
       },
       {
@@ -743,10 +789,10 @@
        "contested": true
       },
       {
-       "n": "p25",
+       "n": "e2",
        "kind": "moved",
-       "chart": "python",
-       "group": "0692a9ac9cc83c6134c213ac2aba9e343151a46078c99f5502fed39f98ea2bdf",
+       "chart": "english",
+       "group": "",
        "contested": true
       }
      ],
@@ -831,40 +877,40 @@
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[e10]<w>[\u2205]<w>",
+      "reply": "<w><w><w>[e10]<w>[10]",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "2b4547bd607daaec"
+      "reply_sha": "2442c5931be65442"
      },
      {
       "port": "turn 3",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[e15]<w>[\u2205]<w>",
+      "reply": "<w>[e15]<w><w>[e15]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "6964d426db1a3081"
+      "reply_sha": "026e1cd149fc46b2"
      },
      {
       "port": "turn 4",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w>[\u2205]<w>",
+      "reply": "<w>[e2]<w><w><w>[e2]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "3a611c150bc1ebd1"
+      "reply_sha": "8e27d53371bdda00"
      },
      {
       "port": "turn 5",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w><w>[e24][p25]<w><w><w><w>[e24][e33][p25]<w>",
+      "reply": "<w><w><w>[e33]<w>[e33][25]<w>[e33][25]<w>[e33][25]<w>[e33][25]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "2ef003f4717f7cbc"
+      "reply_sha": "03085306b9f0cfb0"
      }
     ]
    }
@@ -873,7 +919,7 @@
    "probe": "battery-question",
    "text": "how do the cloud decoder path and the renderer import rule relate",
    "why": "frozen battery input",
-   "seconds": 6.6,
+   "seconds": 5.6,
    "turns": 2,
    "stopped": "the graph had nothing left to ask; [b0] had no answering turn, so it was re-asked",
    "arrows": 59,
@@ -888,7 +934,19 @@
    },
    "violations": 0,
    "answer_chars": 257,
-   "findings": [],
+   "findings": [
+    {
+     "check": "discrimination-is-in-the-sane-band",
+     "probe": "battery-question",
+     "detail": "attachment fraction 0.0 at or below 0.05: the field did not respond to a region of 59 object(s)",
+     "evidence": {
+      "fraction": 0.0,
+      "attached": 0,
+      "shown": 59
+     },
+     "seen": 1
+    }
+   ],
    "run": {
     "answer": "<w><w><w>[\u2205]<w><w>[\u2205]<w><w>[\u2205]<w>",
     "dialogue": {
@@ -1433,7 +1491,7 @@
    "probe": "battery-vague",
    "text": "common structure across the lean work",
    "why": "frozen battery input",
-   "seconds": 0.9,
+   "seconds": 1.1,
    "turns": 1,
    "stopped": "the graph had nothing left to ask",
    "arrows": 0,
@@ -1512,7 +1570,7 @@
    "probe": "operator-1",
    "text": "what is the relationship between the second fundamental form and the spectral gap",
    "why": "the operator's own question",
-   "seconds": 12.2,
+   "seconds": 11.5,
    "turns": 5,
    "stopped": "budget; [b0] had no answering turn, so it was re-asked",
    "arrows": 149,
@@ -1554,7 +1612,7 @@
    "answer_chars": 123,
    "findings": [],
    "run": {
-    "answer": "<w><w><w>[\u2205]<w>",
+    "answer": "<w><w><w><w>[\u2205]",
     "dialogue": {
      "question": "what is the relationship between the second fundamental form and the spectral gap",
      "turn_count": 5,
@@ -1586,14 +1644,14 @@
       {
        "turn": 4,
        "ask": "The field holds more than one value for [c25]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[c25]<w>[\u2205]<w>",
+       "prose": "<w>[c25]<w>[c25][!]<w>",
        "resolved": 0,
        "interrogation": ""
       },
       {
        "turn": 5,
        "ask": "what is the relationship between the second fundamental form and the spectral gap",
-       "prose": "<w><w><w>[\u2205]<w>",
+       "prose": "<w><w><w><w>[\u2205]",
        "resolved": 0,
        "interrogation": ""
       }
@@ -2050,6 +2108,118 @@
        "contested": false
       },
       {
+       "n": "e37",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "p29",
+       "kind": "moved",
+       "chart": "python",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "c25",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e53",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "p58",
+       "kind": "moved",
+       "chart": "python",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e11",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "p12",
+       "kind": "moved",
+       "chart": "python",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e13",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "c16",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "c26",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "c5",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e34",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e9",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e32",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e22",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e20",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
        "n": "e8",
        "kind": "moved",
        "chart": "english",
@@ -2057,7 +2227,7 @@
        "contested": true
       },
       {
-       "n": "p41",
+       "n": "p1",
        "kind": "moved",
        "chart": "python",
        "group": "",
@@ -2071,86 +2241,16 @@
        "contested": true
       },
       {
-       "n": "e53",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e17",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "c16",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e13",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "c25",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "p1",
+       "n": "p41",
        "kind": "moved",
        "chart": "python",
        "group": "",
        "contested": true
       },
       {
-       "n": "c26",
+       "n": "c35",
        "kind": "moved",
        "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e37",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "c5",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "p12",
-       "kind": "moved",
-       "chart": "python",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e9",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e20",
-       "kind": "moved",
-       "chart": "english",
        "group": "",
        "contested": true
       },
@@ -2169,49 +2269,7 @@
        "contested": true
       },
       {
-       "n": "e32",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "c35",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e22",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e34",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "p58",
-       "kind": "moved",
-       "chart": "python",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "p29",
-       "kind": "moved",
-       "chart": "python",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e11",
+       "n": "e17",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -2319,20 +2377,20 @@
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[c25]<w>[\u2205]<w>",
+      "reply": "<w>[c25]<w>[c25][!]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "44c7ef96aa0c6b48"
+      "reply_sha": "80456653c1beb3a2"
      },
      {
       "port": "turn 5",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w><w>[\u2205]<w>",
+      "reply": "<w><w><w><w>[\u2205]",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "2d1f96c00b957e51"
+      "reply_sha": "0b578db7bb84523e"
      }
     ]
    }
@@ -2341,7 +2399,7 @@
    "probe": "operator-2",
    "text": "does this corpus contain anything about holonomy",
    "why": "the operator's own question",
-   "seconds": 10.1,
+   "seconds": 9.3,
    "turns": 4,
    "stopped": "budget",
    "arrows": 85,
@@ -2408,14 +2466,14 @@
       {
        "turn": 3,
        "ask": "The field holds more than one value for [c41]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[c41]<w><w>[c41]<w><w><w>[c41]<w>",
+       "prose": "<w><w>[c41]<w><w>[c41]<w><w>[c41]<w>",
        "resolved": 0,
        "interrogation": "The field holds more than one value for [c57]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
       },
       {
        "turn": 4,
        "ask": "The field holds more than one value for [c57]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[c57][\u2205]<w>",
+       "prose": "<w>[c57]<w>[c57][!]<w><w><w>[\u2205]<w>",
        "resolved": 0,
        "interrogation": ""
       }
@@ -2881,13 +2939,6 @@
        "contested": false
       },
       {
-       "n": "e14",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
        "n": "p37",
        "kind": "moved",
        "chart": "python",
@@ -2895,14 +2946,35 @@
        "contested": true
       },
       {
-       "n": "e47",
+       "n": "c27",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e34",
        "kind": "moved",
        "chart": "english",
        "group": "",
        "contested": true
       },
       {
-       "n": "e53",
+       "n": "p12",
+       "kind": "moved",
+       "chart": "python",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e9",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e18",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -2916,30 +2988,16 @@
        "contested": true
       },
       {
+       "n": "e51",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
        "n": "p44",
        "kind": "moved",
        "chart": "python",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "p12",
-       "kind": "moved",
-       "chart": "python",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e18",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e9",
-       "kind": "moved",
-       "chart": "english",
        "group": "",
        "contested": true
       },
@@ -2951,16 +3009,30 @@
        "contested": true
       },
       {
-       "n": "e34",
+       "n": "e26",
        "kind": "moved",
        "chart": "english",
        "group": "",
        "contested": true
       },
       {
-       "n": "c27",
+       "n": "e53",
        "kind": "moved",
-       "chart": "conversation",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e14",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e47",
+       "kind": "moved",
+       "chart": "english",
        "group": "",
        "contested": true
       },
@@ -2972,30 +3044,9 @@
        "contested": true
       },
       {
-       "n": "e54",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "c57",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
        "n": "c59",
        "kind": "moved",
        "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e51",
-       "kind": "moved",
-       "chart": "english",
        "group": "",
        "contested": true
       },
@@ -3007,18 +3058,25 @@
        "contested": true
       },
       {
-       "n": "e10",
+       "n": "e21",
        "kind": "moved",
        "chart": "english",
        "group": "",
        "contested": false
       },
       {
-       "n": "e21",
+       "n": "c57",
        "kind": "moved",
-       "chart": "english",
+       "chart": "conversation",
        "group": "",
-       "contested": false
+       "contested": true
+      },
+      {
+       "n": "c41",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": true
       },
       {
        "n": "c8",
@@ -3028,16 +3086,16 @@
        "contested": true
       },
       {
-       "n": "e26",
+       "n": "e10",
        "kind": "moved",
        "chart": "english",
        "group": "",
-       "contested": true
+       "contested": false
       },
       {
-       "n": "c41",
+       "n": "e54",
        "kind": "moved",
-       "chart": "conversation",
+       "chart": "english",
        "group": "",
        "contested": true
       },
@@ -3140,20 +3198,20 @@
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[c41]<w><w>[c41]<w><w><w>[c41]<w>",
+      "reply": "<w><w>[c41]<w><w>[c41]<w><w>[c41]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "56245612b5d5ebe8"
+      "reply_sha": "bf5d4f42df1684d0"
      },
      {
       "port": "turn 4",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[c57][\u2205]<w>",
+      "reply": "<w>[c57]<w>[c57][!]<w><w><w>[\u2205]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "fc36d8fea6d56709"
+      "reply_sha": "1abaa5cbd66e49d1"
      }
     ]
    }
@@ -3162,7 +3220,7 @@
    "probe": "operator-3",
    "text": "what won't reconcile",
    "why": "the operator's own question",
-   "seconds": 10.4,
+   "seconds": 11.7,
    "turns": 4,
    "stopped": "budget",
    "arrows": 91,
@@ -3202,7 +3260,20 @@
    },
    "violations": 12,
    "answer_chars": 1440,
-   "findings": [],
+   "findings": [
+    {
+     "check": "discrimination-is-in-the-sane-band",
+     "probe": "operator-3",
+     "detail": "attachment fraction 0.9831 at or above 0.9: the medium drew an arrow to essentially everything it was shown, so this attachment carries no information about which claims the input bears on",
+     "evidence": {
+      "fraction": 0.9831,
+      "attached": 58,
+      "shown": 59,
+      "engine_red": true
+     },
+     "seen": 1
+    }
+   ],
    "run": {
     "answer": "<w>[b0]<w><w><w>[e12]<w><w><w>[e1]<w>[e2]<w>[e10]<w>[e13]<w>[e14]<w>[e16]<w>[e18]<w>[e22]<w>[e30]<w>[e33]<w>[e35]<w>[e42]<w>[e43]<w>[e44]<w>[e47]<w>[e49]<w>[e52]<w>[e55]<w>[e57]<w>[e23]<w>[e15]<w>[e29]<w>[e45]<w>[e21]<w>[e6]<w>[e7]<w>[e18]<w>[e28]<w>[e6]<w><w>[e53]<w>[e6]<w>[e35]<w><w>[c19]<w>[c27]<w>[c32]<w>[c51]<w>[e10]<w><w>[c54]<w>[e36]<w>[c8]<w>[c58]<w>",
     "dialogue": {
@@ -3222,21 +3293,21 @@
       {
        "turn": 2,
        "ask": "The field holds more than one value for [c19]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[c19][!]<w>[c19]<w>[c19]<w><w>[\u2205]<w>",
+       "prose": "<w><w>[c19][!]<w><w>[c19][!]<w><w><w>[c19][!]<w>",
        "resolved": 0,
        "interrogation": "The field holds more than one value for [c27]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
       },
       {
        "turn": 3,
        "ask": "The field holds more than one value for [c27]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w>[c27]<w>[\u2205]<w>",
+       "prose": "<w>[c27]<w>[c27][!]<w>",
        "resolved": 0,
        "interrogation": "The field holds more than one value for [c32]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
       },
       {
        "turn": 4,
        "ask": "The field holds more than one value for [c32]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[c32][!]<w>[c32]<w>[c32][!]<w><w>[\u2205]<w>",
+       "prose": "<w>[c32]<w>[c32][!]<w>",
        "resolved": 0,
        "interrogation": ""
       }
@@ -3830,42 +3901,7 @@
        "contested": false
       },
       {
-       "n": "e49",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "c54",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e21",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "c51",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "c59",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e47",
+       "n": "e28",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -3879,13 +3915,6 @@
        "contested": false
       },
       {
-       "n": "e14",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
        "n": "e35",
        "kind": "moved",
        "chart": "english",
@@ -3893,7 +3922,21 @@
        "contested": true
       },
       {
-       "n": "e2",
+       "n": "c9",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "c51",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e47",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -3907,49 +3950,14 @@
        "contested": false
       },
       {
-       "n": "e10",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "c17",
+       "n": "c32",
        "kind": "moved",
        "chart": "conversation",
        "group": "",
-       "contested": false
+       "contested": true
       },
       {
        "n": "e23",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "c27",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "c19",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "c3",
-       "kind": "moved",
-       "chart": "conversation",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e30",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -3963,6 +3971,34 @@
        "contested": false
       },
       {
+       "n": "c19",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "c59",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e2",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "c54",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": true
+      },
+      {
        "n": "e45",
        "kind": "moved",
        "chart": "english",
@@ -3970,30 +4006,65 @@
        "contested": false
       },
       {
-       "n": "c32",
+       "n": "c27",
        "kind": "moved",
        "chart": "conversation",
        "group": "",
        "contested": true
       },
       {
-       "n": "e28",
+       "n": "c38",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "c17",
+       "kind": "moved",
+       "chart": "conversation",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e30",
        "kind": "moved",
        "chart": "english",
        "group": "",
        "contested": false
       },
       {
-       "n": "c9",
+       "n": "e10",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e49",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "c3",
        "kind": "moved",
        "chart": "conversation",
        "group": "",
        "contested": false
       },
       {
-       "n": "c38",
+       "n": "e21",
        "kind": "moved",
-       "chart": "conversation",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e14",
+       "kind": "moved",
+       "chart": "english",
        "group": "",
        "contested": false
       },
@@ -4114,30 +4185,30 @@
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[c19][!]<w>[c19]<w>[c19]<w><w>[\u2205]<w>",
+      "reply": "<w><w>[c19][!]<w><w>[c19][!]<w><w><w>[c19][!]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "017e899dc037914f"
+      "reply_sha": "4423f91729b130d5"
      },
      {
       "port": "turn 3",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w>[c27]<w>[\u2205]<w>",
+      "reply": "<w>[c27]<w>[c27][!]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "eb37e1657485aba8"
+      "reply_sha": "13c87371acbce440"
      },
      {
       "port": "turn 4",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[c32][!]<w>[c32]<w>[c32][!]<w><w>[\u2205]<w>",
+      "reply": "<w>[c32]<w>[c32][!]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "f10c0fd0e95e3e29"
+      "reply_sha": "183a75014f2111e0"
      }
     ]
    }
@@ -4146,7 +4217,7 @@
    "probe": "fixture-certified-positivity",
    "text": "what does the certified positivity work establish",
    "why": "the frozen fixture question",
-   "seconds": 26.8,
+   "seconds": 29.1,
    "turns": 4,
    "stopped": "budget",
    "arrows": 225,
@@ -4206,21 +4277,21 @@
       {
        "turn": 2,
        "ask": "The field holds more than one value for [e1]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[e1]<w>[e1]<w>[e1][!]<w><w>[\u2205]<w>",
+       "prose": "<w><w><w><w><w>[e1][!]<w>",
        "resolved": 0,
        "interrogation": "The field holds more than one value for [e31]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
       },
       {
        "turn": 3,
        "ask": "The field holds more than one value for [e31]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w>[e31]<w>[e31][!]<w><w>[\u2205]<w>",
+       "prose": "<w>[e31]<w>[e31][!]<w>[e31]<w><w><w><w>[e31][!]<w>",
        "resolved": 0,
        "interrogation": "The field holds more than one value for [e43]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
       },
       {
        "turn": 4,
        "ask": "The field holds more than one value for [e43]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w>[e43]<w>[e43]<w><w>[e43][\u2205]<w>",
+       "prose": "<w><w>[e43]<w>[\u2205]<w>",
        "resolved": 0,
        "interrogation": ""
       }
@@ -5442,28 +5513,21 @@
        "contested": false
       },
       {
-       "n": "e27",
+       "n": "e55",
        "kind": "moved",
        "chart": "english",
        "group": "",
        "contested": false
       },
       {
-       "n": "e40",
+       "n": "e1",
        "kind": "moved",
        "chart": "english",
        "group": "",
-       "contested": false
+       "contested": true
       },
       {
-       "n": "e12",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e11",
+       "n": "e57",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -5471,6 +5535,13 @@
       },
       {
        "n": "e50",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e48",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -5491,7 +5562,14 @@
        "contested": false
       },
       {
-       "n": "e44",
+       "n": "e47",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e11",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -5505,63 +5583,7 @@
        "contested": false
       },
       {
-       "n": "e10",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e57",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
        "n": "e52",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e7",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e2",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e55",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e15",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e33",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
-       "n": "e47",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -5575,7 +5597,7 @@
        "contested": true
       },
       {
-       "n": "e48",
+       "n": "e20",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -5589,11 +5611,11 @@
        "contested": true
       },
       {
-       "n": "e1",
+       "n": "e12",
        "kind": "moved",
        "chart": "english",
        "group": "",
-       "contested": true
+       "contested": false
       },
       {
        "n": "e43",
@@ -5603,7 +5625,56 @@
        "contested": true
       },
       {
-       "n": "e20",
+       "n": "e33",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e10",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e27",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e15",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e7",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e44",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e2",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
+      },
+      {
+       "n": "e40",
        "kind": "moved",
        "chart": "english",
        "group": "",
@@ -5726,30 +5797,30 @@
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[e1]<w>[e1]<w>[e1][!]<w><w>[\u2205]<w>",
+      "reply": "<w><w><w><w><w>[e1][!]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "c2ef81919d46e48f"
+      "reply_sha": "a6554a2ce85b084d"
      },
      {
       "port": "turn 3",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w>[e31]<w>[e31][!]<w><w>[\u2205]<w>",
+      "reply": "<w>[e31]<w>[e31][!]<w>[e31]<w><w><w><w>[e31][!]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "2de5612bfa791ea2"
+      "reply_sha": "751588256f69682b"
      },
      {
       "port": "turn 4",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w>[e43]<w>[e43]<w><w>[e43][\u2205]<w>",
+      "reply": "<w><w>[e43]<w>[\u2205]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "ec0d5efea0738689"
+      "reply_sha": "aa69f020f3286cee"
      }
     ]
    }
@@ -5758,7 +5829,7 @@
    "probe": "residual-rich",
    "text": "what does the corpus hold about positive definiteness across lean and english",
    "why": "a question over material dense enough to seat a cluster: residuals are EXPECTED, and a run with none is a signal the interrogator went quiet, not that the field was clean",
-   "seconds": 3.2,
+   "seconds": 4.0,
    "turns": 2,
    "stopped": "the graph had nothing left to ask; [b0] had no answering turn, so it was re-asked",
    "arrows": 2,
@@ -5772,10 +5843,22 @@
     "citable": 59
    },
    "violations": 9,
-   "answer_chars": 1086,
-   "findings": [],
+   "answer_chars": 1073,
+   "findings": [
+    {
+     "check": "discrimination-is-in-the-sane-band",
+     "probe": "residual-rich",
+     "detail": "attachment fraction 0.0 at or below 0.05: the field did not respond to a region of 59 object(s)",
+     "evidence": {
+      "fraction": 0.0,
+      "attached": 0,
+      "shown": 59
+     },
+     "seen": 1
+    }
+   ],
    "run": {
-    "answer": "<w><w><w>[e7][e8][e23][e27][e35][e38][e42][e43][l6][l14][l37][l39][l50][l51][l55][l57][l58]<w>\n\n<w><w>[e7][e23][e35][e42][e43]<w><w>[e8]<w><w><w>[e38]<w>\n\n<w><w><w>[l6][l14][l37][l39][l50][l51][l55][l57][l58]<w><w>[l6]<w><w>[l14][l55]<w><w>[l37]<w><w>[l50][l51][l57]<w><w><w>[l58]<w><w><w><w>[l39]<w>",
+    "answer": "<w><w><w>[e7][e8][e23][e27][e35][e38][e42][e43][l6][l14][l37][l39][l50][l51][l55][l57][l58]<w>\n\n<w><w>[e7][e23][e35][e42][e43]<w><w>[e8]<w><w><w>[e38]<w>\n\n<w><w><w>[l6][l14][l37][l39][l50][l51][l55][l57][l58]<w><w>[l6]<w><w>[l14][l55]<w><w>[l37]<w><w><w>[l50][l51]<w><w><w>[l58]<w><w><w>[l39]<w>",
     "dialogue": {
      "question": "what does the corpus hold about positive definiteness across lean and english",
      "turn_count": 2,
@@ -5793,7 +5876,7 @@
       {
        "turn": 2,
        "ask": "what does the corpus hold about positive definiteness across lean and english",
-       "prose": "<w><w><w>[e7][e8][e23][e27][e35][e38][e42][e43][l6][l14][l37][l39][l50][l51][l55][l57][l58]<w>\n\n<w><w>[e7][e23][e35][e42][e43]<w><w>[e8]<w><w><w>[e38]<w>\n\n<w><w><w>[l6][l14][l37][l39][l50][l51][l55][l57][l58]<w><w>[l6]<w><w>[l14][l55]<w><w>[l37]<w><w>[l50][l51][l57]<w><w><w>[l58]<w><w><w><w>[l39]<w>",
+       "prose": "<w><w><w>[e7][e8][e23][e27][e35][e38][e42][e43][l6][l14][l37][l39][l50][l51][l55][l57][l58]<w>\n\n<w><w>[e7][e23][e35][e42][e43]<w><w>[e8]<w><w><w>[e38]<w>\n\n<w><w><w>[l6][l14][l37][l39][l50][l51][l55][l57][l58]<w><w>[l6]<w><w>[l14][l55]<w><w>[l37]<w><w><w>[l50][l51]<w><w><w>[l58]<w><w><w>[l39]<w>",
        "resolved": 0,
        "interrogation": ""
       }
@@ -5874,10 +5957,9 @@
        "kind": "welded",
        "numbers": [
         "l50",
-        "l51",
-        "l57"
+        "l51"
        ],
-       "sentence": "<w><w>[l50][l51][l57]<w>",
+       "sentence": "<w><w><w>[l50][l51]<w>",
        "warrant": ""
       },
       {
@@ -5910,10 +5992,9 @@
       {
        "kind": "uncontested",
        "numbers": [
-        "l51",
-        "l57"
+        "l51"
        ],
-       "sentence": "<w><w>[l50][l51][l57]<w>",
+       "sentence": "<w><w><w>[l50][l51]<w>",
        "warrant": ""
       }
      ]
@@ -6416,10 +6497,10 @@
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w><w>[e7][e8][e23][e27][e35][e38][e42][e43][l6][l14][l37][l39][l50][l51][l55][l57][l58]<w>\n\n<w><w>[e7][e23][e35][e42][e43]<w><w>[e8]<w><w><w>[e38]<w>\n\n<w><w><w>[l6][l14][l37][l39][l50][l51][l55][l57][l58]<w><w>[l6]<w><w>[l14][l55]<w><w>[l37]<w><w>[l50][l51][l57]<w><w><w>[l58]<w><w><w><w>[l39]<w>",
+      "reply": "<w><w><w>[e7][e8][e23][e27][e35][e38][e42][e43][l6][l14][l37][l39][l50][l51][l55][l57][l58]<w>\n\n<w><w>[e7][e23][e35][e42][e43]<w><w>[e8]<w><w><w>[e38]<w>\n\n<w><w><w>[l6][l14][l37][l39][l50][l51][l55][l57][l58]<w><w>[l6]<w><w>[l14][l55]<w><w>[l37]<w><w><w>[l50][l51]<w><w><w>[l58]<w><w><w>[l39]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "8af302a6c4166866"
+      "reply_sha": "7c8878969648a0f7"
      }
     ]
    }
@@ -6467,10 +6548,22 @@
     "citable": 59
    },
    "violations": 3,
-   "answer_chars": 216,
-   "findings": [],
+   "answer_chars": 224,
+   "findings": [
+    {
+     "check": "discrimination-is-in-the-sane-band",
+     "probe": "residual-free",
+     "detail": "attachment fraction 0.0169 at or below 0.05: the field did not respond to a region of 59 object(s)",
+     "evidence": {
+      "fraction": 0.0169,
+      "attached": 1,
+      "shown": 59
+     },
+     "seen": 1
+    }
+   ],
    "run": {
-    "answer": "<w><w>[e59]<w><w>[e59]<w><w>[e59]<w>",
+    "answer": "<w><w><w>[e59]<w><w>[e59]<w><w>[e59]<w>",
     "dialogue": {
      "question": "what is the toolchain version",
      "turn_count": 5,
@@ -6495,7 +6588,7 @@
       {
        "turn": 3,
        "ask": "The field holds more than one value for [c19]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[c19][\u2205]<w>",
+       "prose": "<w><w>[c19]<w><w>[\u2205]<w>",
        "resolved": 0,
        "interrogation": "The field holds more than one value for [e59]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
       },
@@ -6509,7 +6602,7 @@
       {
        "turn": 5,
        "ask": "what is the toolchain version",
-       "prose": "<w><w>[e59]<w><w>[e59]<w><w>[e59]<w>",
+       "prose": "<w><w><w>[e59]<w><w>[e59]<w><w>[e59]<w>",
        "resolved": 0,
        "interrogation": ""
       }
@@ -6553,7 +6646,7 @@
        "numbers": [
         "e59"
        ],
-       "sentence": "<w><w>[e59]<w>",
+       "sentence": "<w><w><w>[e59]<w>",
        "warrant": ""
       },
       {
@@ -6991,16 +7084,16 @@
        "contested": false
       },
       {
-       "n": "e59",
+       "n": "c18",
        "kind": "moved",
-       "chart": "english",
+       "chart": "conversation",
        "group": "",
        "contested": true
       },
       {
-       "n": "c18",
+       "n": "e59",
        "kind": "moved",
-       "chart": "conversation",
+       "chart": "english",
        "group": "",
        "contested": true
       },
@@ -7103,10 +7196,10 @@
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[c19][\u2205]<w>",
+      "reply": "<w><w>[c19]<w><w>[\u2205]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "ebfe889ba70e56d3"
+      "reply_sha": "1d58a5a0cb66ebf0"
      },
      {
       "port": "turn 4",
@@ -7123,10 +7216,10 @@
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[e59]<w><w>[e59]<w><w>[e59]<w>",
+      "reply": "<w><w><w>[e59]<w><w>[e59]<w><w>[e59]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "642c9c6947cec57c"
+      "reply_sha": "c5067419eee5fcf4"
      }
     ]
    }
@@ -7135,7 +7228,7 @@
    "probe": "thin-material",
    "text": "what does this corpus establish about sheaf cohomology on rigid analytic spaces",
    "why": "material the corpus does not hold. The honest answer is an ABSENCE, and a confident answer here is the failure the absence grammar exists to make visible",
-   "seconds": 7.5,
+   "seconds": 7.8,
    "turns": 5,
    "stopped": "budget; [b0] had no answering turn, so it was re-asked",
    "arrows": 33,
@@ -7202,14 +7295,14 @@
       {
        "turn": 3,
        "ask": "The field holds more than one value for [e23]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w><w><w><w>[e23]<w><w>[e23][\u2205]<w>",
+       "prose": "<w><w>[e23]<w>[\u2205]<w>",
        "resolved": 0,
        "interrogation": "The field holds more than one value for [e33]. Say which the state supports, citing it, or say the state does not decide it with [\u2205]."
       },
       {
        "turn": 4,
        "ask": "The field holds more than one value for [e33]. Say which the state supports, citing it, or say the state does not decide it with [\u2205].",
-       "prose": "<w><w>[e33][\u2205]<w>",
+       "prose": "<w>[e33]<w>[\u2205]<w>",
        "resolved": 0,
        "interrogation": ""
       },
@@ -7673,21 +7766,14 @@
        "contested": false
       },
       {
-       "n": "p5",
-       "kind": "moved",
-       "chart": "python",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e60",
+       "n": "e33",
        "kind": "moved",
        "chart": "english",
        "group": "",
        "contested": true
       },
       {
-       "n": "p59",
+       "n": "p5",
        "kind": "moved",
        "chart": "python",
        "group": "",
@@ -7701,11 +7787,18 @@
        "contested": true
       },
       {
-       "n": "e43",
+       "n": "e60",
        "kind": "moved",
        "chart": "english",
        "group": "",
        "contested": true
+      },
+      {
+       "n": "e53",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": false
       },
       {
        "n": "e61",
@@ -7722,9 +7815,16 @@
        "contested": true
       },
       {
-       "n": "e62",
+       "n": "e48",
        "kind": "moved",
        "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "p59",
+       "kind": "moved",
+       "chart": "python",
        "group": "",
        "contested": true
       },
@@ -7732,6 +7832,27 @@
        "n": "p40",
        "kind": "moved",
        "chart": "python",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e62",
+       "kind": "moved",
+       "chart": "english",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "p52",
+       "kind": "moved",
+       "chart": "python",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e43",
+       "kind": "moved",
+       "chart": "english",
        "group": "",
        "contested": true
       },
@@ -7750,34 +7871,6 @@
        "contested": true
       },
       {
-       "n": "e48",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e33",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "e17",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": true
-      },
-      {
-       "n": "p52",
-       "kind": "moved",
-       "chart": "python",
-       "group": "",
-       "contested": true
-      },
-      {
        "n": "p46",
        "kind": "moved",
        "chart": "python",
@@ -7785,16 +7878,16 @@
        "contested": true
       },
       {
-       "n": "e53",
-       "kind": "moved",
-       "chart": "english",
-       "group": "",
-       "contested": false
-      },
-      {
        "n": "p61",
        "kind": "moved",
        "chart": "python",
+       "group": "",
+       "contested": true
+      },
+      {
+       "n": "e17",
+       "kind": "moved",
+       "chart": "english",
        "group": "",
        "contested": true
       }
@@ -7890,20 +7983,20 @@
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w><w><w><w>[e23]<w><w>[e23][\u2205]<w>",
+      "reply": "<w><w>[e23]<w>[\u2205]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "953c5aa45da67fb5"
+      "reply_sha": "c44ad1affa35f4d3"
      },
      {
       "port": "turn 4",
       "model": "google/gemini-2.5-flash",
       "system": "Below is a settled field and a question. Each line is one object: its chart in brackets, its claim, and a number in square brackets. ARROW lines state a measured relation between two numbered objects. ABSENT lines state what the field reports it does not have. (!) marks an object the field holds more than one value for.\n\nAnswer the question from this state.\n\nEnd each sentence with the bracketed numbers it rests on \u2014 [4] or [2][7]. For something the field does NOT contain, write [\u2205] instead.\n\n[2][7] on one sentence asserts that [2] and [7] are related, so write it only with the ARROW line's own number cited alongside them \u2014 otherwise give each object its own sentence, or write [\u2205rel] for a relation the field does not declare. An object the state marks (!) is cited as [7][!].\n\nWhen two numbered objects are related and no ARROW line already says so, write the relation on its own as [i] -kind-> [j], kind one of same_claim, refines, instance_of.",
       "user": "<region>",
-      "reply": "<w><w>[e33][\u2205]<w>",
+      "reply": "<w>[e33]<w>[\u2205]<w>",
       "system_sha": "853dfa069778f76a",
       "user_sha": "352fe73b2d2de531",
-      "reply_sha": "621a4ef7b4a06d2f"
+      "reply_sha": "0eb841fba7cf4c80"
      },
      {
       "port": "turn 5",
@@ -7919,8 +8012,65 @@
    }
   }
  ],
- "findings": [],
- "clean": true,
+ "findings": [
+  {
+   "check": "discrimination-is-in-the-sane-band",
+   "probe": "battery-sharp",
+   "detail": "attachment fraction 0.0169 at or below 0.05: the field did not respond to a region of 59 object(s)",
+   "evidence": {
+    "fraction": 0.0169,
+    "attached": 1,
+    "shown": 59
+   },
+   "seen": 1
+  },
+  {
+   "check": "discrimination-is-in-the-sane-band",
+   "probe": "battery-question",
+   "detail": "attachment fraction 0.0 at or below 0.05: the field did not respond to a region of 59 object(s)",
+   "evidence": {
+    "fraction": 0.0,
+    "attached": 0,
+    "shown": 59
+   },
+   "seen": 1
+  },
+  {
+   "check": "discrimination-is-in-the-sane-band",
+   "probe": "operator-3",
+   "detail": "attachment fraction 0.9831 at or above 0.9: the medium drew an arrow to essentially everything it was shown, so this attachment carries no information about which claims the input bears on",
+   "evidence": {
+    "fraction": 0.9831,
+    "attached": 58,
+    "shown": 59,
+    "engine_red": true
+   },
+   "seen": 1
+  },
+  {
+   "check": "discrimination-is-in-the-sane-band",
+   "probe": "residual-rich",
+   "detail": "attachment fraction 0.0 at or below 0.05: the field did not respond to a region of 59 object(s)",
+   "evidence": {
+    "fraction": 0.0,
+    "attached": 0,
+    "shown": 59
+   },
+   "seen": 1
+  },
+  {
+   "check": "discrimination-is-in-the-sane-band",
+   "probe": "residual-free",
+   "detail": "attachment fraction 0.0169 at or below 0.05: the field did not respond to a region of 59 object(s)",
+   "evidence": {
+    "fraction": 0.0169,
+    "attached": 1,
+    "shown": 59
+   },
+   "seen": 1
+  }
+ ],
+ "clean": false,
  "probes": 10,
  "build": "b484b945d8af"
 }

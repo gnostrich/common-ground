@@ -265,8 +265,50 @@ class TheProbeSetIsTheONeTheOrderNamed(unittest.TestCase):
 
     def test_every_check_is_reachable_from_the_registry(self):
         """A check defined and not registered runs on nothing."""
-        self.assertEqual(len(CHECKS), 9)
+        self.assertEqual(len(CHECKS), 11)
         self.assertEqual(len(CHECKS), len({c.__name__ for c in CHECKS}))
+
+    def test_a_degenerate_attachment_is_caught_at_BOTH_poles(self):
+        """Column F's degeneracy, planted at both ends. 59 of 59 read as the cross-chart
+        boundary finally falling; it was 19 of 19 lean because EVERYTHING was 59 of 59."""
+        from tools.livefire import check_discrimination_is_in_the_sane_band as chk
+
+        def run(attached, shown):
+            return {"compiled": {"attachment": {"discrimination": {
+                "attached": attached, "shown": shown, "fraction": attached / shown,
+                "red": attached / shown >= 0.9}}}}
+
+        self.assertTrue(chk("planted", run(59, 59)), "fraction 1.0 passed as a crossing")
+        self.assertTrue(chk("planted", run(0, 59)), "a field that did not respond passed")
+        self.assertEqual(chk("planted", run(34, 59)), [], "the baseline's own figure convicted")
+
+    def test_a_THIN_region_is_not_a_degeneracy(self):
+        """Attaching to all of a five-object field is a small field, not a machine that stopped
+        discriminating. Without this the check fires on every narrow question."""
+        from tools.livefire import check_discrimination_is_in_the_sane_band as chk
+
+        self.assertEqual(chk("planted", {"compiled": {"attachment": {"discrimination": {
+            "attached": 5, "shown": 5, "fraction": 1.0, "red": True}}}}), [])
+
+    def test_a_violation_that_lost_its_KIND_is_caught(self):
+        """A count without its composition is not a measurement — 60 with a composition is an
+        understood state, and 60 bare is a number nobody can read."""
+        from tools.livefire import check_a_violation_count_carries_its_composition as chk
+
+        self.assertTrue(chk("planted", {"faithful": {"violations": [{"sentence": "x"}]}}))
+        self.assertEqual(chk("planted", {"faithful": {"violations": [{"kind": "welded"}]}}), [])
+
+    def test_the_baseline_is_declared_in_SEED_not_in_the_tool(self):
+        """A baseline a tool could edit is not one."""
+        from tools.livefire import BASELINE_PATH, baseline
+
+        self.assertEqual(BASELINE_PATH.parent.name, "seed")
+        b = baseline()
+        self.assertEqual(b.get("build"), "b484b945d8af")
+        self.assertEqual(b["fixture"]["composition"],
+                         {"welded": 31, "uncontested": 28, "unresolved": 1})
+        self.assertLess(b["bands"]["discrimination_low"], b["fixture"]["discrimination"])
+        self.assertGreater(b["bands"]["discrimination_high"], b["fixture"]["discrimination"])
 
     def test_shown_labels_unions_both_sheets_and_EXCLUDES_the_question(self):
         """[b0] is shown and is deliberately not citable: an answer resting on the question

@@ -392,6 +392,77 @@ def check_uncited_sentences_are_not_escaped_arrow_lines(name: str, run: dict) ->
     return out
 
 
+#: THE FROZEN BASELINE. Declared in seed, not here — a baseline a tool could edit is not one.
+BASELINE_PATH = Path(__file__).resolve().parent.parent / "seed" / "BASELINE.json"
+
+
+def baseline() -> dict:
+    try:
+        return json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def check_discrimination_is_in_the_sane_band(name: str, run: dict) -> list:
+    """A DEGENERACY IS NOT A LOW SCORE, and this is the check that says so.
+
+    At or above the engine's own INDISCRIMINATE threshold the medium drew an arrow to
+    essentially every object it was shown, so the attachment carries no information about which
+    claims the input bears on. At the other pole the field did not respond at all.
+
+    Column F sat at 1.00, and its lean-attachment figure read as the boundary this project has
+    chased since column A — it was 19 of 19 because EVERYTHING was 59 of 59. A BOUNDARY CROSSED
+    AT FRACTION 1.0 WAS NOT CROSSED. This is a battery check rather than a note because the
+    number that made it look crossed was already on the record and nothing contradicted it.
+    """
+    att = (run.get("compiled") or {}).get("attachment") or {}
+    disc = att.get("discrimination") or {}
+    fraction = disc.get("fraction")
+    if fraction is None:
+        return []
+    band = baseline().get("bands") or {}
+    low, high = float(band.get("discrimination_low", 0.05)), float(
+        band.get("discrimination_high", 0.9))
+    shown = int(disc.get("shown") or 0)
+    # A THIN REGION HAS NO SANE BAND. With almost nothing shown, attaching to all of it is a
+    # small field rather than a degeneracy, and convicting it would fire on every narrow
+    # question the operator asks.
+    if shown < 10:
+        return []
+    if fraction >= high:
+        return [Finding("discrimination-is-in-the-sane-band", name,
+                        f"attachment fraction {fraction} at or above {high}: the medium drew an "
+                        f"arrow to essentially everything it was shown, so this attachment "
+                        f"carries no information about which claims the input bears on",
+                        {"fraction": fraction, "attached": disc.get("attached"),
+                         "shown": shown, "engine_red": disc.get("red")})]
+    if fraction <= low:
+        return [Finding("discrimination-is-in-the-sane-band", name,
+                        f"attachment fraction {fraction} at or below {low}: the field did not "
+                        f"respond to a region of {shown} object(s)",
+                        {"fraction": fraction, "attached": disc.get("attached"),
+                         "shown": shown})]
+    return []
+
+
+def check_a_violation_count_carries_its_composition(name: str, run: dict) -> list:
+    """A COUNT WITHOUT ITS COMPOSITION IS NOT A MEASUREMENT.
+
+    Three violations became sixty when the referee was repaired and reach doubled, and every
+    part of that increase was the machine working — only the composition said which. This
+    asserts the verdict can always produce one: a violations list that lost its kinds would let
+    a count be reported bare, which is the reporting failure ruled against after column E.
+    """
+    violations = (run.get("faithful") or {}).get("violations") or []
+    kindless = [v for v in violations if not v.get("kind")]
+    if kindless:
+        return [Finding("a-violation-count-carries-its-composition", name,
+                        f"{len(kindless)} of {len(violations)} violation(s) carry no kind, so "
+                        f"this count cannot be reported with its composition",
+                        {"total": len(violations), "kindless": len(kindless)})]
+    return []
+
+
 #: EVERY CHECK, in order. Each one is a defect the operator caught by reading a transcript.
 CHECKS = (
     check_citations_resolve_against_the_shown_sheet,
@@ -403,6 +474,11 @@ CHECKS = (
     check_panel_hashes_verify,
     check_no_question_asked_twice_with_the_same_reply,
     check_uncited_sentences_are_not_escaped_arrow_lines,
+    # THE BASELINE'S TWO DEFENDERS, added when the baseline was frozen. Neither is a defect the
+    # operator caught in a transcript — they are the two ways column F's degeneracy could have
+    # been reported as progress, turned into checks so it cannot happen twice.
+    check_discrimination_is_in_the_sane_band,
+    check_a_violation_count_carries_its_composition,
 )
 
 

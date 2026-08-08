@@ -1,0 +1,79 @@
+{
+ "schema": "common-ground/baseline/v0",
+ "tag": "baseline-1",
+ "build": "b484b945d8af",
+ "commit": "3262d3e",
+ "note": "THE CONVERGENCE BASELINE. Frozen figures from the served build, measured against a checklist written before the pass was run. The auditor's job is defending these: any regression is a RED that outranks other work. A number here is not a target to tune toward \u2014 it is a state that was reached and understood, and a DEPARTURE in either direction is the signal.",
+ "question": "what does the certified positivity work establish",
+ "fixture": {
+  "attached": 34,
+  "region_size": 59,
+  "discrimination": 0.5763,
+  "turns": 4,
+  "residuals": 3,
+  "checked": 58,
+  "violations": 60,
+  "composition": {
+   "welded": 31,
+   "uncontested": 28,
+   "unresolved": 1
+  },
+  "answer_chars": 8871
+ },
+ "battery": {
+  "probes": 10,
+  "findings_at_freeze": 0,
+  "checks_at_freeze": 9,
+  "findings_now": 5,
+  "checks_now": 11,
+  "correction": "THE ZERO WAS TRUE AND IT WAS NOT THE WHOLE TRUTH. The baseline pass reported 0 findings over 10 probes against the NINE checks that existed when it ran. Two checks were then added to defend the baseline \u2014 discrimination band, and composition-carrying \u2014 and the SAME BUILD immediately reported 5. Nothing regressed: a property that was always there became visible. The figure is corrected here rather than in a later commit, because a baseline claiming zero while the battery reports five is a baseline nobody can defend.",
+  "standing_known": [
+   {
+    "check": "discrimination-is-in-the-sane-band",
+    "probe": "battery-sharp",
+    "attached": 1,
+    "shown": 59,
+    "fraction": 0.0169
+   },
+   {
+    "check": "discrimination-is-in-the-sane-band",
+    "probe": "battery-question",
+    "attached": 0,
+    "shown": 59,
+    "fraction": 0.0
+   },
+   {
+    "check": "discrimination-is-in-the-sane-band",
+    "probe": "operator-3",
+    "attached": 58,
+    "shown": 59,
+    "fraction": 0.9831
+   },
+   {
+    "check": "discrimination-is-in-the-sane-band",
+    "probe": "residual-rich",
+    "attached": 0,
+    "shown": 59,
+    "fraction": 0.0
+   },
+   {
+    "check": "discrimination-is-in-the-sane-band",
+    "probe": "residual-free",
+    "attached": 1,
+    "shown": 59,
+    "fraction": 0.0169
+   }
+  ],
+  "the_open_item": "ATTACHMENT IS UNSTABLE ACROSS QUESTIONS on this build. Four probes get essentially nothing from a 59-object region and one gets essentially all of it, while the frozen fixture sits at 0.576 \u2014 a healthy middle. The fixture met the convergence target and the battery says the fixture is not representative. That is the top open item, and it is the same instability the roster clause exposed rather than caused: the clause moved attachment to a pole, and the poles were already reachable without it."
+ },
+ "bands": {
+  "discrimination_low": 0.05,
+  "discrimination_high": 0.9,
+  "why": "A fraction at or above the high bound is the engine's own INDISCRIMINATE threshold \u2014 the medium drew an arrow to essentially everything, so the attachment carries no information about which claims the input bears on. At or below the low bound the field did not respond at all. Column F sat at 1.00 and read as a boundary crossing; the local arm of the same bisect sat at 0.00. Both poles are degeneracies and neither is a better answer than the middle."
+ },
+ "composition_rule": "A VIOLATION COUNT IS NEVER RECORDED WITHOUT ITS COMPOSITION. 60 with this composition is a understood state; 4 at discrimination 1.00 was a machine that had stopped discriminating rather than one that had stopped erring.",
+ "known_costs": {
+  "welded_enumeration": "13 of the 31 welds are enumeration-shaped, the recorded cost of withdrawing the roster clause after two razor-legal wordings both degenerated. See seed/INVENTORY.md row 530 and fixture column F.",
+  "uncontested": "The (!) mark reaches turn 1's sheet and both prompts state the rule, so these are compliable-and-uncomplied \u2014 convictions, not traps."
+ }
+}
