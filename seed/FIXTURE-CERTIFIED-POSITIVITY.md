@@ -1,4 +1,4 @@
-# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, six columns and a baseline
+# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, seven columns and a baseline
 
 **FROZEN.** The question, the table's rows, and the pre-registration do not change. Columns are
 added as the pipeline changes; **no column is ever removed or rewritten**, including the ones
@@ -322,6 +322,94 @@ that has stopped erring.
 that outranks other work: discrimination outside the band, a finding on any probe, a
 draw-to-draw shape collapse, a turn without a preceding question, or a change in the walk's
 wire.
+
+---
+
+## COLUMN G — THE LEXICON LANE, TIER B MEASURED AND WITHDRAWN
+
+**THIS COLUMN LANDS BECAUSE IT WAS PROMISED, NOT BECAUSE IT WENT WELL.** The rider on the go
+order was that the acceptance table lands as a fixture artifact *regardless of outcome — all
+three pre-registered branches produce a recorded column, including withdrawal*. This is the
+withdrawal branch, recorded.
+
+### What was measured
+
+One local A/B on a single commit with the lane as the ONLY variable, two draws per arm,
+byte-identical within each arm. **Tier B alone**, because tier A had nothing in it:
+`seed/DECISIONS.json` records **0 of 184 imported senses carrying a formal face**, so
+`lexicon_registry()` returns an empty registry and every gloss on the wire was a mechanical
+`rmap.render` output wearing `[REPO_DOC — unauthored]`.
+
+| | **lane OFF** | **lane ON — tier B** |
+|---|---|---|
+| build | one commit, both arms | same commit |
+| corpus | local, **0 arrows** | local, **0 arrows** |
+| draws | 2, byte-identical | 2, byte-identical |
+| attachment | **8 of 59** | **2 of 59** |
+| **discrimination** | **0.1356 — in band** | **0.0339 — BELOW the 0.05 floor** |
+| lean attached | **0 of 19** | **0 of 19** |
+| gloss coverage | n/a — lane off | **19 of 19, fraction 1.00** |
+| **authored coverage** | n/a | **0 of 19, fraction 0.00** |
+| dialogue turns | 2 | 1 |
+| sentences checked | 6 | 45 |
+| violations | **0** — `{}` | **17** — `{welded: 11, unresolved: 6}` |
+| answer | 650 / 666 chars | 5,425 chars |
+
+**THE ARROW COUNT IS ON THE TABLE BECAUSE IT HAS TO BE** (row 531): both arms ran on the local
+corpus at 0 arrows, where the served build stands on ~19K. Two measurements at different arrow
+counts are two measurements of two corpora — so these figures are comparable *to each other*,
+which is all an A/B needs, and are **not** comparable to the served baseline's 0.576.
+
+### The reading, against the branches pre-registered before the run
+
+1. *Lean attachment rises AND the discrimination spread narrows* → the lane works.
+   **Did not fire.** Lean attachment was 0 in both arms and discrimination fell out of band.
+2. *Rises where coverage is high, flat where it is zero* → the mechanism works, the data is the
+   constraint. **UNTESTED, and it is the live one.** Authored coverage was 0.00 in every arm;
+   there is no arm in which it was high. Branch 2 cannot be read off a measurement that never
+   varied the quantity it names.
+3. *Flat despite coverage* → the handle is not what was missing; **the lane is withdrawn and
+   the finding recorded.** **FIRED, for tier B.** Coverage 19 of 19 at fraction 1.00, and lean
+   attachment did not move.
+
+**SO: TIER B IS WITHDRAWN AND TIER A IS UNMEASURED.** Those are two different statements and
+the coverage split is what keeps them apart — which is exactly why coverage was made mandatory
+on every figure this lane produces before any figure existed.
+
+### Why "no change" would have been the wrong call
+
+Tier B did not merely fail to help. **Attachment fell 8 → 2 and the engine's own guard fired**
+at 0.0339, below the 0.05 floor. Nineteen mechanical readings bridged nothing and pushed
+attachment toward the empty pole, and violations went 0 → 17 as the answer grew eightfold.
+
+**THIS IS THE SECOND TIME AN ADDITION TO TURN 1'S SHEET HAS COST ATTACHMENT** — the roster
+clause of column F was the first, and it destabilized in both directions. The lane is a
+different mechanism with the same signature, and the standing rule reads the same way it did in
+column F: **a boundary metric is not reportable without its discrimination fraction, and an
+addition that moves the fraction out of band is withdrawn regardless of its intent.**
+
+### What landed, and what did not
+
+`rendered` defaults to **False** on `gloss_for` and `glosses_for`. **Nothing is deleted.** Tier
+A — an operator-AUTHORED face, resolved by exact whole-string membership — runs with no code
+change the day those faces exist, and tier B stays reachable behind an explicit argument so the
+next person measures it rather than re-deriving it. `c12` plants all of that four ways,
+including an AST check that the gate is a parameter defaulting to False rather than a deleted
+branch, and a check that the module still carries the two figures that withdrew it.
+
+**THE RIDER'S PLANTED CONTROL IS GREEN.** `c11` asserts that a gloss cannot silence the lexical
+residual: a glossed cluster with no apex **still** raises `apexless`, and an AST check confirms
+the fourth door has no import path to this lane at all. A gloss reads one declaration; it is
+not a name for a proposition several claims share, so it must not satisfy `named()`.
+
+### THE SHORTFALL, STATED
+
+**The acceptance as specced was a battery-wide spread over the ten probe types, before and
+after. What decided it was a single-probe A/B on this fixture.** The spread was not bought,
+because an arm that lands below the discrimination floor on the first probe is not a candidate
+whose spread is worth paying for — but the shortfall is real and it is recorded here rather
+than implied by a table that looks complete. **The spread is owed to tier A**, on the day
+authored faces exist, and that is the run branch 2 was written for.
 
 ---
 
