@@ -288,7 +288,25 @@ acceptance: three draws on this fixture, discrimination reported, before it land
 
 ---
 
-## THE BASELINE — `baseline-1`, build `b484b945d8af`
+## THE BASELINE — `baseline-1`, RE-STAMPED to build `73d7706cb397`
+
+> **RE-STAMP NOTE, appended rather than applied.** This block was written at build
+> `b484b945d8af` and its figures below are that build's, kept because nothing here is ever
+> rewritten. `seed/BASELINE.json` was then re-stamped to **`73d7706cb397`** after row 532's
+> fix, and the authoritative figures moved: **violations 60 → 59**, composition **31 welded /
+> 28 uncontested / 1 unresolved → 31 / 27 / 1**. Everything else held.
+>
+> **THE COUNT MOVING BY ONE UNDERSTATES IT ENTIRELY.** The fix was symmetric — three objects
+> the checker held hot without the wire marking them stopped convicting (the trap), and three
+> the wire marked without the checker enforcing started convicting (the useless mark). Six
+> convictions were replaced by five. What changed is that **every remaining conviction is
+> compliable**: 19 marked on the wire, 19 held hot by the checker, and the two sets identical.
+>
+> **`seed/BASELINE.json` IS AUTHORITATIVE**, and it is the record the auditor defends. This
+> divergence sat here undetected between the re-stamp and column G — two records of one fact
+> disagreeing, which is row 532's own shape one layer up — so it now carries a control:
+> `tests/test_baseline_record.py` refuses a fixture file that does not name the current
+> baseline build and its violation count.
 
 **The convergence target, met.** Not an aspiration: a checklist frozen before the pass was run,
 and every item measured on the SERVED build.
