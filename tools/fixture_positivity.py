@@ -131,6 +131,12 @@ def row(out: dict, calls: list[dict], seconds: float) -> dict:
         "served": next((c["served"] for c in reversed(calls) if c.get("served")), ""),
         "region": region,
         "region_size": len(labels),
+        # DISCRIMINATION TRAVELS WITH EVERY ATTACHMENT NUMBER, permanently, after column F.
+        # A boundary metric reported without it can be read as a crossing when it is a
+        # degeneracy: lean 19 of 19 looked like the two-tier measurement's whole question
+        # answered, and it was 19 of 19 because EVERYTHING was 59 of 59. A boundary crossed at
+        # fraction 1.0 was not crossed.
+        "discrimination": (att.get("discrimination") or {}),
         "attached_by_chart": seated,
         "attached": len(attached),
         # THE NUMBER UNDER TEST. Lean objects seated in the region, lean objects the medium

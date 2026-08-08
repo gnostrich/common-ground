@@ -588,8 +588,7 @@ TURN_ONE_FORM = (
     "[b0] is the question itself and is not evidence: relate to it, never cite it. "
     "An object shown with (!) is one the field holds more than one value for: a sentence "
     "resting on it must carry [!] as well, as in [e12][!], or say the state does not decide "
-    "it with [∅]. A run of three or more like [e2][e7][e9] is a ROSTER and asserts every pair "
-    "in it: split a roster into one sentence per object, each ending in its own label.")
+    "it with [∅].")
 
 
 def turn_one_prompt() -> str:

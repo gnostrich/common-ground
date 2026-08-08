@@ -109,10 +109,30 @@ BLOCKS: tuple[tuple[str, str], ...] = (
     # neither used — and this names the specific shape that fails it. If the habit survives
     # explicit instruction, that is a measured limitation of the medium and the count stays red
     # and true.
-    ("FORM",
-     "A run of three or more like [2][7][9] is a ROSTER, and it asserts every pair in it. "
-     "Split a roster into one sentence per object, each ending in its own [n], unless an "
-     "ARROW line's number is cited alongside them."),
+    #
+    # AND IT DID NOT SURVIVE MEASUREMENT. THERE IS NO ROSTER CLAUSE HERE, and this comment is
+    # the record of why — a deletion with no explanation invites the next person to try it
+    # again.
+    #
+    # BISECT, same commit, same corpus, same model, the clause the only variable, three draws
+    # per arm: WITH it, attachment collapsed to 0 of 59 and discrimination read 0.0; WITHOUT
+    # it, 8 of 59 at 0.136 with ZERO violations. On the served build the same clause drove
+    # attachment the other way — 59 of 59 at fraction 1.0, which the discrimination guard calls
+    # indiscriminate. Opposite poles, one instability: "split a roster into one sentence per
+    # object" reads as MENTION EVERYTHING, and a medium told to mention everything either
+    # relates to everything or gives up.
+    #
+    # ITERATION 2 constrained shape without inviting coverage — "at most two labels per
+    # sentence", plus "a claim needs a sentence only if the answer rests on it". Three draws:
+    # attachment 2 of 59, and a FIFTY-NINE-THOUSAND-CHARACTER answer over 370 sentences. A
+    # third failure mode from a second razor-legal wording.
+    #
+    # Two wordings, two degeneracies, so the clause is gone and the 13 enumeration-shaped
+    # convictions return as the KNOWN, RECORDED, HONEST COST. A working system with understood
+    # convictions beats a degenerate system with a lower count. See seed/INVENTORY.md row 530.
+    #
+    # TEMPLATE BYTES ARE STEERING BYTES. Any future wording here gets a code-grade acceptance:
+    # three draws on the frozen fixture, discrimination reported, before it lands.
 )
 
 

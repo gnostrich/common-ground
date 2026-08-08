@@ -1,4 +1,4 @@
-# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, five columns
+# THE CERTIFIED-POSITIVITY FIXTURE — frozen acceptance, six columns
 
 **FROZEN.** The question, the table's rows, and the pre-registration do not change. Columns are
 added as the pipeline changes; **no column is ever removed or rewritten**, including the ones
@@ -241,6 +241,50 @@ times.
 
 **THE STANDING RULE, FROM HERE:** a violation count is never recorded anywhere in this project
 without its composition beside it.
+
+---
+
+## COLUMN F — THE ROSTER CLAUSE, MEASURED AND WITHDRAWN
+
+One FORM clause naming the roster shape. Three identical draws on the served build, then a
+bisect on one commit with the clause as the only variable.
+
+| | **E** | **F — served** | **bisect A** (local, with) | **bisect B** (local, without) |
+|---|---|---|---|---|
+| build | `65d190e` | `cf27ddb` | `cf27ddb` | `cf27ddb` |
+| violations | 60 | **4** | 3 | **0** |
+| composition | 31 welded / 28 uncontested / 1 unresolved | 0 welded / 3 uncontested / 1 unresolved | 2 welded / 1 unresolved | — |
+| attachment | 34 of 59 | **59 of 59** | **0 of 59** | 8 of 59 |
+| **discrimination** | 0.576 | **1.00 — RED** | **0.00** | **0.136 — ok** |
+| lean attached | 0 of 19 | 19 of 19 *(void)* | 0 | 0 |
+| answer | 8,871 chars | 4,585 | 5,403 | 232–783 |
+
+**THE WELD MEASUREMENT SUCCEEDED: 31 → 0.** No roster survived explicit instruction. That is a
+real answer to the question column F was run to ask.
+
+**AND THE CLAUSE DESTABILIZED ATTACHMENT, WHICH IS WHY IT IS GONE.** The engine's own guard
+flagged the served run: *"the medium drew an arrow to essentially every object it was shown, so
+the attachment carries no information."* Locally the same clause drove attachment to the
+opposite pole, 0 of 59 at fraction 0.00. Opposite directions, one instability — "split a roster
+into one sentence per object" reads as MENTION EVERYTHING, and a medium told to mention
+everything either relates to everything or gives up.
+
+**LEAN 19 OF 19 IS VOID.** It was 19 of 19 because everything was 59 of 59. The number the
+two-tier measurement chased has not moved; it was swamped. **A boundary crossed at fraction 1.0
+was not crossed** — and that is now a standing rule: no attachment metric is reportable without
+its discrimination fraction beside it.
+
+**A SECOND RAZOR-LEGAL WORDING ALSO FAILED.** "Relate at most two labels per sentence… a claim
+needs a sentence only if the answer rests on it" — constraining shape without inviting coverage
+— gave attachment 2 of 59 and a **59,349-character answer over 370 sentences**. A third failure
+mode from a second wording.
+
+**TWO WORDINGS, TWO DEGENERACIES, SO THE CLAUSE IS WITHDRAWN** and the 13 enumeration-shaped
+convictions return as the known, recorded, honest cost. A working system with understood
+convictions beats a degenerate system with a lower count.
+
+**TEMPLATE BYTES ARE STEERING BYTES.** Any future wording change to a prompt gets a code-grade
+acceptance: three draws on this fixture, discrimination reported, before it lands.
 
 ---
 
