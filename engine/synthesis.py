@@ -35,7 +35,6 @@ in tests/test_synthesis.py.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 
 #: TESTIMONY SUBCLASSES. Testimony carries no warrant at all — not a low tier, the absence of
@@ -43,19 +42,14 @@ from dataclasses import dataclass, field
 #: never gain one: a nomination that could be compared to EXTRACTION on a poset is a nomination
 #: that could be promoted, and unpromotable-by-type is the whole design.
 SYNTHESIS_CANDIDATE = "synthesis-candidate"
-TERM_CANDIDATE = "term-candidate"
 
-#: THE FOUR DECIDABLE CHECKS a proposed term is stressed by. Closed vocabulary: a check
-#: resolved against a closed set is a measurement, and a check phrased in prose is an opinion.
-COVERAGE, COLLISION, SPLIT, RESIDUE = "coverage", "apex-collision", "split", "residue"
-
-#: A TERM NOMINATION, as an exact form. The labels it covers, then the candidate surface in
-#: quotes. Resolve-or-void: every label must be one the field showed, and a line that does not
-#: match this shape is prose and yields nothing. The quoted string is a CANDIDATE SURFACE for a
-#: footprint — never a name the engine adopts, because adopting is the operator's act.
-NAME_FORM = re.compile(r'NAME\s+((?:\[[a-z]?\d+\]\s*)+)AS\s+"([^"]{1,60})"')
-
-_LABEL = re.compile(r"\[([a-z]?\d+)\]")
+#: DELETED BY THE DOORLESS RULING: the NAME form, the term-candidate subclass, and the four
+#: decidable checks that stressed a proposed term. All three were the SIGNATURE CEREMONY —
+#: apparatus for turning a coinage into an offer the operator could sign — and vocabulary no
+#: longer works that way. An apex's surface is DERIVED (see engine/apex_surface.py); a term the
+#: medium coins is ordinary testimony; adoption happens when the operator RE-USES the word,
+#: which puts it in the corpus as their own record through the normal inlet. See
+#: seed/DIALOGIC.md, THE DOORLESS SIMPLIFICATION.
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,12 +67,11 @@ class Candidate:
     text: str = ""             # the testimony sentence, verbatim, for the operator to read
     groups: tuple = ()         # the declared groups the footprint spans
     surfaces: tuple = ()       # candidate words, for a term nomination
-    offer: str = ""            # what the informed offer says about this footprint
 
     def as_record(self) -> dict:
         return {"kind": self.kind, "footprint": list(self.footprint), "turn": self.turn,
                 "text": self.text, "groups": list(self.groups),
-                "surfaces": list(self.surfaces), "offer": self.offer,
+
                 # STATED ON EVERY RECORD, because a reader who has to remember it will not.
                 "warrant": None, "record_kind": "testimony",
                 "entered": "nothing — a nomination reaches the field only by the operator's "
@@ -108,12 +101,6 @@ def _members(compiled: dict) -> dict:
     for n, g in _group_of(compiled).items():
         out.setdefault(g, set()).add(n)
     return {g: tuple(sorted(v)) for g, v in out.items()}
-
-
-def _label_of_slot(compiled: dict) -> dict:
-    """corpus slot -> the label it was shown under, for the informed offer's identity check."""
-    return {str(c.get("slot")): str(c.get("n")) for c in (compiled.get("citations") or ())
-            if c.get("slot") and c.get("n")}
 
 
 def named(group: str) -> str:
@@ -172,43 +159,10 @@ def collapse(candidates: list) -> list:
         if prior is None:
             out[key] = c
             continue
-        surfaces = tuple(dict.fromkeys(prior.surfaces + c.surfaces))
         out[key] = Candidate(kind=prior.kind, footprint=key[1],
                              turn=min(prior.turn, c.turn), text=prior.text or c.text,
-                             groups=prior.groups or c.groups, surfaces=surfaces,
-                             offer=prior.offer or c.offer)
+                             groups=prior.groups or c.groups)
     return [out[k] for k in sorted(out, key=lambda k: (k[0], k[1]))]
-
-
-def inform(candidate: Candidate, compiled: dict, snapshot=None) -> str:
-    """THE INFORMED OFFER. What the field already holds that this nomination would duplicate.
-
-    Two identity checks, both EXACT, neither a comparison of meaning:
-
-      1. the candidate's own text addressed by the ordinary normalizer — if that address is
-         already in the corpus, claiming it adds an EVENT, not a slot;
-      2. the footprint sitting inside ONE declared group — the quotient IS the declared
-         relation between its faces, so a nomination over one fiber names something the field
-         has already named as one proposition.
-
-    An offer that cannot name anything returns "", which is a genuine gap and the case the
-    whole door exists for.
-    """
-    if snapshot is not None and candidate.text:
-        try:
-            from .normalize import address
-
-            slot, _nu = address("english", candidate.text, "assert")
-            if slot in getattr(snapshot, "slots", {}):
-                shown = _label_of_slot(compiled).get(slot)
-                where = f" as [{shown}]" if shown else f" at slot {slot[:16]}"
-                return (f"this already exists{where}; claiming it adds an event, not a slot")
-        except Exception:
-            pass
-    if len(candidate.groups) == 1 and not candidate.groups[0].startswith("~"):
-        return (f"these are one declared proposition already — fiber "
-                f"{candidate.groups[0][:12]}; the quotient IS the relation between them")
-    return ""
 
 
 def apexless(compiled: dict, asked: set) -> tuple:
@@ -239,88 +193,18 @@ def apexless(compiled: dict, asked: set) -> tuple:
 
 
 def lexical_question(members: tuple) -> str:
-    """The interrogator's lexical question. Generated from the cluster, never from a reply."""
+    """The interrogator's lexical question. Generated from the cluster, never from a reply.
+
+    THE RESIDUAL STAYS AND THE CEREMONY IS GONE. This used to ask for a NAME in a declared form,
+    which existed so the name could become an offer the operator signed. There is no signature
+    now: an apex's surface is derived, and a coinage is testimony. So the question asks for what
+    the dialogue can actually consume — an ARROW relating the cluster to something already
+    named, or a stated absence. Its output is arrows and testimony like any other turn, which is
+    what "measurement pressure, part of settlement" means.
+    """
     cited = "".join(f"[{n}]" for n in members)
-    return (f"The structure at {cited} has no name. Name it with "
-            f'NAME {cited} AS "your-term", or decompose it through an existing name by '
-            f"relating its members to objects that have one. If the field gives you no basis "
-            f"for either, say so with [∅].")
+    return (f"The field says {cited} are one proposition and nothing here names it. Relate one "
+            f"of them to an object that IS named, writing the arrow, or say the field gives no "
+            f"basis for that with [∅].")
 
 
-def terms_from(prose: str, citable: set, turn: int = 0) -> list:
-    """Every `NAME [i][j] AS "..."` in one reply. Resolve-or-void, exactly like an arrow.
-
-    A label the field never showed voids the whole nomination rather than being repaired to a
-    nearby one: there is no nearest neighbour here and inventing one would be the mint this
-    module exists to make impossible.
-    """
-    out = []
-    for m in NAME_FORM.finditer(prose or ""):
-        foot = tuple(sorted(_LABEL.findall(m.group(1))))
-        if not foot or any(n not in citable for n in foot):
-            continue
-        out.append(Candidate(kind=TERM_CANDIDATE, footprint=foot, turn=turn,
-                             text=m.group(0), surfaces=(m.group(2).strip(),)))
-    return collapse(out)
-
-
-def stress(candidate: Candidate, compiled: dict, cluster: tuple = ()) -> list:
-    """THE FOUR DECIDABLE CHECKS. Each returns a failure or nothing; none reads a word.
-
-    | check         | question                                          | a failure means      |
-    |---------------|---------------------------------------------------|----------------------|
-    | coverage      | does its claimed footprint hold when settled?     | the name outran it   |
-    | apex-collision| does it land on a fiber something already names?  | synonym, decompose   |
-    | split         | do its citations span several clusters?           | two structures       |
-    | residue       | does it leave measured structure uncovered?       | the residue is next  |
-    """
-    groups = _group_of(compiled)
-    members = _members(compiled)
-    foot = set(candidate.footprint)
-    out = []
-
-    unknown = sorted(n for n in foot if n not in groups)
-    if unknown:
-        out.append({"check": COVERAGE, "failed": True, "detail": unknown,
-                    "note": "the name claims objects the settled field does not carry"})
-
-    spans = sorted({groups.get(n, f"~{n}") for n in foot})
-    for g in spans:
-        label = named(g)
-        if label:
-            out.append({"check": COLLISION, "failed": True, "detail": [g, label],
-                        "note": "this fiber already has a name; decompose, do not mint"})
-    if len(spans) > 1:
-        out.append({"check": SPLIT, "failed": True, "detail": spans,
-                    "note": "the citations span several declared clusters: two structures"})
-
-    whole = set(cluster) or {n for g in spans for n in members.get(g, ())}
-    left = sorted(whole - foot)
-    if left:
-        out.append({"check": RESIDUE, "failed": True, "detail": left,
-                    "note": "measured structure the name leaves uncovered — the residue IS "
-                            "the next question"})
-    return out
-
-
-@dataclass
-class Lexicon:
-    """What one dialogue did to the vocabulary. Counted, and every count says which it counts."""
-
-    nominated: list = field(default_factory=list)   # term candidates that survived the checks
-    rejected: list = field(default_factory=list)    # {candidate, failures}
-    open: list = field(default_factory=list)        # clusters asked about and still unnamed
-
-    def as_record(self) -> dict:
-        return {
-            "named": len(self.nominated), "rejected": len(self.rejected),
-            "open": len(self.open),
-            "nominations": [c.as_record() for c in self.nominated],
-            "rejections": [{"candidate": c.as_record(), "failures": f}
-                           for c, f in self.rejected],
-            "open_clusters": [list(x) for x in self.open],
-            # THE LEGAL ENDING, SPELLED. Budget exhaustion with open lexical residue is a
-            # recorded ending, never a silent one.
-            "note": (f"named: {len(self.nominated)}, open: {len(self.open)}. A nomination "
-                     f"entered nothing; the operator's signature is the only way in."),
-        }

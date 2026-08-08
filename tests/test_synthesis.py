@@ -1,4 +1,19 @@
-"""THE FOURTH DOOR's controls, c1-c6, planted as the spec wrote them.
+"""THE FOURTH DOOR's surviving controls, after the doorless ruling.
+
+WHAT WAS DELETED AND WHY THE FILE SHRANK: the nomination-offer-signature ceremony — the NAME
+form, the term-candidate subclass, the informed offer, the four decidable checks that stressed
+a proposed term, and the per-dialogue lexicon ledger. Vocabulary is no longer gated: an apex's
+surface is DERIVED (engine/apex_surface.py, tests/test_apex_surface.py), and a term the medium
+coins is ordinary testimony that enters the corpus only when the OPERATOR re-uses it. See
+seed/DIALOGIC.md, THE DOORLESS SIMPLIFICATION.
+
+WHAT SURVIVES HERE: the synthesis candidate as a RECORD (it enters nothing and never did), the
+lexical-frustration residual (measurement pressure, part of settlement), and the two-mouth
+law's tombstone for slots.
+
+The original header follows.
+
+THE FOURTH DOOR's controls, planted as the spec wrote them.
 
 seed/DIALOGIC.md declared these before the module existed. What they are all one control for:
 THE MEDIUM NOMINATES AND NEVER MINTS. Every other property here is a way for that one to fail
@@ -13,11 +28,18 @@ import ast
 import unittest
 from pathlib import Path
 
-from engine.synthesis import (COLLISION, COVERAGE, RESIDUE, SPLIT, SYNTHESIS_CANDIDATE,
-                              TERM_CANDIDATE, Candidate, apexless, collapse, inform,
-                              lexical_question, stress, synthesis_candidates, terms_from)
+from engine.synthesis import (SYNTHESIS_CANDIDATE, Candidate, apexless, collapse,
+                              lexical_question, synthesis_candidates)
 
 MODULE = Path(__file__).resolve().parents[1] / "engine" / "synthesis.py"
+
+#: The field the surviving controls read. It outlived the class that used to own it.
+_FIELD = {"compiled": "F", "citations": [
+    {"n": "e3", "kind": "seated", "slot": "s1", "group": "s1"},
+    {"n": "e7", "kind": "seated", "slot": "s2", "group": "s1"},
+    {"n": "e9", "kind": "seated", "slot": "s3", "group": "s1"},
+    {"n": "l4", "kind": "seated", "slot": "s4", "group": "s9"},
+    {"n": "l5", "kind": "seated", "slot": "s5", "group": "s9"}]}
 
 
 def _compiled(cites):
@@ -27,15 +49,15 @@ def _compiled(cites):
 class C1MintAttempt(unittest.TestCase):
     """c1. THE TWO-MOUTH LAW'S TOMBSTONE, extending the one the null surface left."""
 
-    def test_a_nomination_naming_an_unshown_label_yields_NOTHING(self):
-        got = terms_from('NAME [e3][e999] AS "mode-splitting"', {"e3", "e7"}, turn=2)
-        self.assertEqual(got, [], "a label the field never showed was accepted into a term")
-
-    def test_a_nomination_over_shown_labels_is_a_RECORD_and_enters_nothing(self):
-        got = terms_from('NAME [e3][e7] AS "mode-splitting"', {"e3", "e7"}, turn=2)
+    def test_a_synthesis_candidate_is_a_RECORD_and_enters_nothing(self):
+        verdict = {"violations": [{"kind": "welded", "numbers": ["e3", "l4"],
+                                   "sentence": "These jointly imply X."}]}
+        got = synthesis_candidates(verdict, _compiled([
+            {"n": "e3", "kind": "seated", "slot": "s1", "group": "g1"},
+            {"n": "l4", "kind": "seated", "slot": "s2", "group": "g2"}]), turn=1)
         self.assertEqual(len(got), 1)
         rec = got[0].as_record()
-        self.assertEqual(rec["kind"], TERM_CANDIDATE)
+        self.assertEqual(rec["kind"], SYNTHESIS_CANDIDATE)
         self.assertEqual(rec["record_kind"], "testimony")
         self.assertIsNone(rec["warrant"], "a nomination acquired a warrant")
         self.assertIn("nothing", rec["entered"])
@@ -53,11 +75,12 @@ class C1MintAttempt(unittest.TestCase):
                        "SlotRecord", "Delta", "commit", "clamp", "Clamp"):
             self.assertNotIn(banned, called, f"the fourth door called {banned}")
 
-    def test_address_is_used_for_IDENTITY_only_and_never_to_write(self):
-        """`address` IS called — the informed offer needs it to say "this already exists". What
-        must not happen is a write, which the test above covers, so this pins the read."""
+    def test_the_lane_no_longer_ADDRESSES_anything(self):
+        """The informed offer needed `address` to say "this already exists as [12]". The offer
+        went with the ceremony, and so did the only reason this module ever touched an
+        addresser — which is the deletion being real rather than renamed."""
         src = MODULE.read_text(encoding="utf-8")
-        self.assertIn("from .normalize import address", src)
+        self.assertNotIn("from .normalize import address", src)
         self.assertNotIn("snapshot.slots[", src, "the fourth door wrote into the corpus")
 
 
@@ -83,7 +106,8 @@ class C2FluencyBlindnessHolds(unittest.TestCase):
         q = lexical_question(("e3", "e7", "e9"))
         for n in ("e3", "e7", "e9"):
             self.assertIn(f"[{n}]", q)
-        self.assertIn("NAME", q)
+        self.assertNotIn("NAME", q, "the NAME ceremony survived in the question")
+        self.assertIn("arrow", q, "the question must ask for what the dialogue can consume")
         self.assertIn("[∅]", q, "the question must offer its own legal exit")
 
     def test_a_singleton_cluster_is_NOT_a_lexical_gap(self):
@@ -104,97 +128,6 @@ class C2FluencyBlindnessHolds(unittest.TestCase):
         field = _compiled([{"n": "e3", "kind": "moved", "slot": "s1", "group": "s1"},
                            {"n": "e7", "kind": "seated", "slot": "s2", "group": "s1"}])
         self.assertEqual(apexless(field, {("lex", "s1")})[0], ())
-
-
-class C3OneNominationPerFootprint(unittest.TestCase):
-    """c3. The footprint is the identity; words are candidate surfaces for it."""
-
-    def test_two_terms_over_the_same_objects_collapse_to_one_with_alternatives(self):
-        got = collapse([
-            Candidate(kind=TERM_CANDIDATE, footprint=("e3", "e7"), turn=2, surfaces=("alpha",)),
-            Candidate(kind=TERM_CANDIDATE, footprint=("e7", "e3"), turn=4, surfaces=("beta",)),
-        ])
-        self.assertEqual(len(got), 1)
-        self.assertEqual(got[0].surfaces, ("alpha", "beta"))
-        self.assertEqual(got[0].turn, 2, "the nomination happened at the earlier turn")
-
-    def test_different_footprints_do_not_collapse(self):
-        got = collapse([
-            Candidate(kind=TERM_CANDIDATE, footprint=("e3", "e7"), turn=2, surfaces=("a",)),
-            Candidate(kind=TERM_CANDIDATE, footprint=("e3", "e9"), turn=2, surfaces=("b",)),
-        ])
-        self.assertEqual(len(got), 2)
-
-    def test_a_restated_nomination_is_one_claim_and_the_record_says_so(self):
-        """The records-versus-pairs law, at the level of vocabulary."""
-        said = 'NAME [e3][e7] AS "alpha"\nNAME [e3][e7] AS "alpha"\nNAME [e3][e7] AS "beta"'
-        got = terms_from(said, {"e3", "e7"}, turn=2)
-        self.assertEqual(len(got), 1)
-        self.assertEqual(got[0].surfaces, ("alpha", "beta"))
-
-
-class C4SignatureOnlyEntry(unittest.TestCase):
-    """c4. An enthusiastic transcript changes nothing about tier or vocabulary."""
-
-    def test_an_enthusiastic_dialogue_leaves_the_field_untouched(self):
-        from engine.dialogue import Turn, converse
-
-        field = _compiled([{"n": "e3", "kind": "attached", "slot": "s1", "group": "s1"},
-                           {"n": "e7", "kind": "seated", "slot": "s2", "group": "s1"}])
-        before = [dict(c) for c in field["citations"]]
-
-        def transport(system, user):
-            return ('This is clearly one idea and it should be adopted at once.\n'
-                    'NAME [e3][e7] AS "mode-splitting"\n'
-                    'The work establishes it [e3].'), {}
-
-        d = converse("q", field, transport, budget=3,
-                     first_turn=Turn(n=1, ask="q", prose="The work establishes it [e3]."))
-        self.assertEqual(field["citations"], before, "the dialogue mutated the field")
-        rec = d.as_record()["lexicon"]
-        self.assertIsNotNone(rec, "a lexical residual ran and recorded nothing")
-        for c in rec["nominations"]:
-            self.assertIsNone(c["warrant"])
-            self.assertEqual(c["record_kind"], "testimony")
-
-    def test_a_surviving_nomination_is_still_only_a_record(self):
-        c = Candidate(kind=TERM_CANDIDATE, footprint=("e3", "e7"), turn=2, surfaces=("x",))
-        self.assertEqual(stress(c, _compiled([
-            {"n": "e3", "kind": "seated", "slot": "s1", "group": "s1"},
-            {"n": "e7", "kind": "seated", "slot": "s2", "group": "s1"}]), ("e3", "e7")), [],
-            "fixture must be a clean nomination")
-        self.assertIsNone(c.as_record()["warrant"])
-
-
-class C5InformedOfferIdentity(unittest.TestCase):
-    """c5. What the field already holds, named — exactly, never by resemblance."""
-
-    def test_a_candidate_whose_nu_EXISTS_is_told_where(self):
-        from engine.corpus_state import CorpusSnapshot, SlotRecord
-        from engine.normalize import address
-
-        text = "The cone is positive under composition."
-        slot, nu = address("english", text, "assert")
-        snap = CorpusSnapshot(slots={slot: SlotRecord(
-            slot=slot, chart="english", type="assert", nu=nu, value="true",
-            confidence=1.0, tier="EXTRACTION", docs=())}, arrows=())
-        compiled = _compiled([{"n": "e5", "kind": "seated", "slot": slot}])
-        c = Candidate(kind=SYNTHESIS_CANDIDATE, footprint=("e3", "e7"), turn=2, text=text)
-        offer = inform(c, compiled, snap)
-        self.assertIn("[e5]", offer)
-        self.assertIn("adds an event, not a slot", offer)
-
-    def test_a_footprint_inside_ONE_fiber_is_told_which(self):
-        c = Candidate(kind=SYNTHESIS_CANDIDATE, footprint=("e3", "e7"), turn=2,
-                      groups=("s1abcdef",))
-        offer = inform(c, _compiled([]), None)
-        self.assertIn("one declared proposition already", offer)
-        self.assertIn("s1abcdef"[:12], offer)
-
-    def test_a_genuine_gap_offers_NOTHING_and_says_so_by_being_empty(self):
-        c = Candidate(kind=SYNTHESIS_CANDIDATE, footprint=("e3", "e7"), turn=2,
-                      groups=("~e3", "~e7"))
-        self.assertEqual(inform(c, _compiled([]), None), "")
 
 
 class C6AnchoringIsStructural(unittest.TestCase):
@@ -222,51 +155,13 @@ class C6AnchoringIsStructural(unittest.TestCase):
         self.assertEqual(got, {"e3": "s1", "e7": "s1", "l9": "~l9"})
 
 
-class TheFourDecidableChecks(unittest.TestCase):
-    """The stress table, each failure planted at the shape the spec names."""
-
-    FIELD = {"compiled": "F", "citations": [
-        {"n": "e3", "kind": "seated", "slot": "s1", "group": "s1"},
-        {"n": "e7", "kind": "seated", "slot": "s2", "group": "s1"},
-        {"n": "e9", "kind": "seated", "slot": "s3", "group": "s1"},
-        {"n": "l4", "kind": "seated", "slot": "s4", "group": "s9"},
-        {"n": "l5", "kind": "seated", "slot": "s5", "group": "s9"}]}
-
-    def _checks(self, foot, cluster=()):
-        c = Candidate(kind=TERM_CANDIDATE, footprint=foot, turn=2, surfaces=("x",))
-        return {f["check"] for f in stress(c, self.FIELD, cluster)}
-
-    def test_COVERAGE_fails_when_the_name_claims_an_object_the_field_lacks(self):
-        self.assertIn(COVERAGE, self._checks(("e3", "e7", "e9", "zz1")))
-
-    def test_SPLIT_fails_when_the_citations_span_two_clusters(self):
-        self.assertIn(SPLIT, self._checks(("e3", "l4")))
-
-    def test_RESIDUE_fails_when_the_name_leaves_measured_structure_uncovered(self):
-        got = self._checks(("e3", "e7"), cluster=("e3", "e7", "e9"))
-        self.assertIn(RESIDUE, got)
-
-    def test_a_name_covering_its_whole_cluster_passes_every_check(self):
-        self.assertEqual(self._checks(("e3", "e7", "e9"), cluster=("e3", "e7", "e9")), set())
-
-    def test_COLLISION_fails_when_the_fiber_already_has_a_name(self):
-        import engine.synthesis as syn
-
-        saved = syn.named
-        try:
-            syn.named = lambda g: "existing-name" if g == "s1" else ""
-            self.assertIn(COLLISION, self._checks(("e3", "e7", "e9"), ("e3", "e7", "e9")))
-        finally:
-            syn.named = saved
-
-
 class SynthesisCandidatesAreTheWELDSeenTwice(unittest.TestCase):
     """No second detector. A weld and a synthesis candidate are one measurement."""
 
     def test_a_weld_verdict_becomes_a_nomination_with_the_same_footprint(self):
         verdict = {"violations": [{"kind": "welded", "numbers": ["e3", "l4"],
                                    "sentence": "These jointly imply X [e3][l4]."}]}
-        got = synthesis_candidates(verdict, TheFourDecidableChecks.FIELD, turn=1)
+        got = synthesis_candidates(verdict, _FIELD, turn=1)
         self.assertEqual(len(got), 1)
         self.assertEqual(got[0].footprint, ("e3", "l4"))
         self.assertEqual(got[0].kind, SYNTHESIS_CANDIDATE)
@@ -275,7 +170,7 @@ class SynthesisCandidatesAreTheWELDSeenTwice(unittest.TestCase):
     def test_other_verdicts_are_NOT_nominations(self):
         verdict = {"violations": [{"kind": "unresolved", "numbers": ["zz1"], "sentence": "x"},
                                   {"kind": "uncited", "numbers": [], "sentence": "y"}]}
-        self.assertEqual(synthesis_candidates(verdict, TheFourDecidableChecks.FIELD), [])
+        self.assertEqual(synthesis_candidates(verdict, _FIELD), [])
 
     def test_the_module_holds_no_second_weld_detector(self):
         """PLANTED AGAINST Q5. If this module ever computes weldedness itself there are two

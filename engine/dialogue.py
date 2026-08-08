@@ -332,11 +332,12 @@ def discharge(residual: tuple, turn) -> str:
     """
     words = said(getattr(turn, "prose", "") or "")
     if residual[:1] == ("lex",):
-        # A LEXICAL RESIDUAL RESOLVES BY A WELL-FORMED NOMINATION, and by nothing else. Prose
-        # about the cluster is testimony; only the declared form crosses.
-        from .synthesis import NAME_FORM
-
-        if NAME_FORM.search(getattr(turn, "prose", "") or ""):
+        # A LEXICAL RESIDUAL RESOLVES BY AN ARROW, like every other residual. It used to
+        # resolve on a NAME form — apparatus for turning a coinage into an offer the operator
+        # signed — and the doorless ruling deleted the signature, so the form went with it. The
+        # question asks for a relation to something already named; a resolved arrow in the
+        # reply is that relation.
+        if any(p.ok for p in (getattr(turn, "proposals", None) or ())):
             return RESOLVED
     elif len(residual) == 2:
         want = tuple(sorted(residual))
@@ -418,10 +419,6 @@ class Dialogue:
     #: open set the moment it is asked and its outcome is recorded here — `state-undecided` is
     #: a finding, not an open item.
     residuals: list = field(default_factory=list)
-    #: THE FOURTH DOOR'S LEDGER for this conversation: term nominations that survived the four
-    #: checks, ones that did not and why, and clusters asked about and still unnamed. Nothing
-    #: in it has entered anything.
-    lexicon: object = None
 
     @property
     def answer(self) -> str:
@@ -465,39 +462,8 @@ class Dialogue:
             "resolved_records": len(self.resolved),
             "distinct_claims": len(self.claims),
             "residuals": list(self.residuals),
-            "lexicon": self.lexicon.as_record() if self.lexicon is not None else None,
             "answer": self.answer,
         }
-
-
-def _harvest(d, residual: tuple, question: str, turn, state: dict) -> None:
-    """Read one lexical turn's nominations, stress them, and file the outcome.
-
-    NOTHING HERE ENTERS ANYTHING. A surviving nomination is a record with the operator's name
-    on the next line, not a slot — the two-mouth law is not weakened by a term being good.
-    """
-    from .synthesis import Lexicon, apexless, stress, terms_from
-
-    if d.lexicon is None:
-        d.lexicon = Lexicon()
-    # THE CLUSTER THE QUESTION WAS ABOUT, re-read from the field rather than parsed back out of
-    # the question string: a residue check against labels scraped from its own prompt would be
-    # measuring the prompt.
-    from .synthesis import _members
-
-    cluster = _members(state).get(residual[1], ())
-    found = terms_from(turn.prose, set(slot_of(state)), turn=turn.n)
-    if not found:
-        d.lexicon.open.append(cluster or residual)
-        return
-    for cand in found:
-        failures = stress(cand, state, cluster)
-        if failures:
-            d.lexicon.rejected.append((cand, failures))
-        else:
-            d.lexicon.nominated.append(cand)
-    if not d.lexicon.nominated:
-        d.lexicon.open.append(cluster or residual)
 
 
 def converse(question: str, compiled: dict, transport, settle=None,
@@ -564,8 +530,6 @@ def converse(question: str, compiled: dict, transport, settle=None,
         d.turns.append(answer_turn)
         d.residuals.append({"residual": list(residual), "question": q, "turn": n,
                             "outcome": discharge(residual, answer_turn)})
-        if residual[:1] == ("lex",):
-            _harvest(d, residual, q, answer_turn, state)
 
 
 #: TURN 1's PROMPT. The region wire's legend, plus the citation grammar, plus the arrow form.
