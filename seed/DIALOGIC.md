@@ -87,6 +87,72 @@ written down first — OI-28: reasoning designs, measurement tripwires.
 
 ---
 
+# THE DOORLESS SIMPLIFICATION — the ruling that supersedes the fourth door's gate
+
+**EVERYTHING BELOW THIS SECTION IS PRESERVED VERBATIM AND PARTS OF IT NO LONGER HOLD.** Nothing
+is overwritten: a design that was written down, built, and then ruled against is more useful
+standing beside its supersession than deleted, because the next person to propose it deserves
+to find why it was withdrawn rather than to rediscover it.
+
+## THE RULING
+
+> There cant be any layers to this. There has to be a natural settlement like eqprop of corpus
+> and lm. thats it. and whatever new stuff comes in would be from the corpus / arrows expansion
+> accordingly.
+
+The machine is **field (corpus) + clamp (operator input) + medium (LM, part of the settling
+process) → settlement → ARROWS.** Arrows enter at extraction tier and live or die by the
+standing economy — aging, confirmation, K. Everything above an arrow is DERIVED from arrow-field
+density and nothing else:
+
+| | is | not |
+|---|---|---|
+| relation | one arrow surviving | a thing anybody grants |
+| cluster | arrows condensing into an equivalence class | a thing anybody groups |
+| concept / apex | the quotient the machinery already mints FROM MEASUREMENT — a coequalizer | a ceremony |
+| name | a SURFACE on an apex, derived from what the settlement touched | a thing anybody signs |
+
+## WHAT IS DELETED
+
+1. **The nomination → offer → signature flow, as a GATE on vocabulary.** No offer cards, no
+   claim/rename/ignore ceremony, no operator signature required for a surface to attach to an
+   apex. The claiming UI is **cancelled outright** — it was never built and must not be.
+2. **"Terms enter the idiolect only by operator signature", as an enforcement rule.** Deleted
+   with the rest of the ceremony.
+
+## WHAT IS NOT DELETED, STATED SO THE REMOVAL CANNOT OVERREACH
+
+- **OI-44's two-mouth law STANDS for statements and objects.** Nothing mints a SLOT but the
+  operator's mouth and declared artifacts. This ruling touches vocabulary SURFACES only, and
+  the distinction is the whole of it: a surface is what an apex is called, and a slot is a
+  claim the corpus holds.
+- **OI-45's minimal-consistent-extension STANDS** as the exit-condition law.
+- **The lexical-frustration residual STAYS.** An unnamed-cluster question is MEASUREMENT
+  PRESSURE, part of settlement, and its output is arrows and testimony like any other turn.
+  What was deleted is only the ceremony downstream of it.
+
+## THE SURFACE RULE, exactly, no judgment and no LM call at read time
+
+An apex's display surface is the first of these that exists:
+
+1. an **operator-authored** member's surface;
+2. a **KERNEL-tier** member's identifier (a Lean name, say);
+3. a **reference-tier gloss** — the lexicon lane's handle;
+4. the **shortest member surface**.
+
+Ties inside a rank break by the member's slot id, ascending, so the rule is total and
+byte-stable: the same apex membership yields the same surface on every run, in any process.
+There is no scoring, no similarity and no ranking function — the order above IS the rule.
+
+## VOCABULARY ADOPTION IS BY USE, WHICH IS HOW IDIOLECTS ACTUALLY GROW
+
+A term the medium coins in a dialogue is **ordinary testimony**. If the operator re-uses it in a
+later utterance it enters the corpus as the operator's own record, through the normal inlet, at
+the ordinary tier — because the operator said it. That is not a mechanism and must not become
+one: a control asserts NO CODE PATH TREATS A MEDIUM COINAGE SPECIALLY.
+
+---
+
 # THE FOURTH DOOR — synthesis nominations and naming-as-settlement
 
 **Status: SPEC'D, NOT BUILT.** Amended before the code, as part one was.

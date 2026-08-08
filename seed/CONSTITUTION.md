@@ -255,8 +255,18 @@ warrant: there is no third arrow up the poset, and there is no second mouth into
 archive rule forbids overwriting a supersession record. The whole fourth-door block therefore
 shifts up one: the minimal-consistent-extension principle, ordered as 44, is OI-45. The order
 between them is preserved, which is what the numbering was carrying.**
-`[E: engine/dialogue.py; C: tests/test_dialogue.py — the mint-attempt and signature-only
-controls, c1 and c4 of seed/DIALOGIC.md]`
+**AMENDED 2026-08-07 BY THE DOORLESS RULING — APPEND, NOT OVERWRITE.** The two-mouth law
+STANDS for statements and objects: nothing mints a SLOT but the operator's mouth, the measure's
+own quotients, and ruled ingestion. **The VOCABULARY clause above is superseded.** A term no
+longer enters the idiolect by signature, because there is no signature: an apex's surface is
+DERIVED by a declared deterministic rule from what the settlement touched, and vocabulary
+adoption happens by USE — the operator re-using a word puts it in the corpus as their own
+record through the normal inlet, which is not a mechanism and must not become one. The
+distinction the amendment turns on: a SURFACE is what an apex is called, a SLOT is a claim the
+corpus holds, and only the second was ever the two-mouth law's business. See
+seed/DIALOGIC.md, THE DOORLESS SIMPLIFICATION.
+`[E: engine/dialogue.py, engine/apex_surface.py; C: tests/test_dialogue.py — the mint-attempt
+control c1; tests/test_apex_surface.py — the no-gate and determinism controls]`
 
 **OI-45** **THE MINIMAL CONSISTENT EXTENSION.** The dialogue settles toward the minimal
 consistent extension of the corpus — not toward the corpus as it stands (that is description),
@@ -266,6 +276,13 @@ uncovered footprints, contested claims. Every admitted step must resolve more fr
 it introduces. The four decidable checks — coverage, apex-collision, split, residue — are this
 principle's ENFORCEMENT and not its definition. Should a future check be needed, it is DERIVED
 from this principle against a real observed instance, never invented against a hypothetical.
+**AMENDED 2026-08-07 BY THE DOORLESS RULING — APPEND, NOT OVERWRITE.** This principle STANDS
+unchanged as the exit-condition law, and the lexical-frustration residual it licenses STAYS:
+an unnamed-cluster question is measurement pressure, part of settlement, and its output is
+arrows and testimony like any other turn. What the ruling deleted is the ceremony DOWNSTREAM of
+that residual — the offer, the claim gesture, the signature — not the pressure itself. The four
+decidable checks stressed a PROPOSED TERM through that ceremony and go with it; the principle
+they enforced does not depend on them.
 *This is why the mechanics can be replaced without the rationale being lost, which is OI-26
 applied in advance rather than after a caution has outlived its defect.*
 **WATCH, not WEAK:** "minimal" has no explicit check today. Nothing prevents a valid but
