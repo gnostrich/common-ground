@@ -283,5 +283,39 @@ class C12TierBIsOffByDefaultBYMEASUREMENT(unittest.TestCase):
             self.assertIn(figure, doc, f"the withdrawal dropped its measurement: {figure}")
 
 
+class C13AnEmptyRegistryIsSILENTONTHEWIRE(unittest.TestCase):
+    """WHAT MAKES THE SERVED MEASUREMENT ISOLATED, and it is not an accident.
+
+    Tier A is empty today — seed/DECISIONS.json records 0 of 184 imported senses carrying a
+    formal face — so with tier B withdrawn the lane is WIRED IN AND CONTRIBUTES NOTHING. That
+    matters beyond tidiness: it is what lets a served run measure some OTHER change with the
+    lane in the tree, instead of measuring the two together and calling the sum an echo.
+
+    The property is byte-identity, not "no glosses". An empty dict travelling where None
+    travelled is exactly the kind of difference that shows up as one changed line somewhere
+    downstream, so the control compares the bytes.
+    """
+
+    def test_the_wire_is_byte_identical_with_an_empty_registry(self):
+        from engine.inbound import lexicon_registry
+
+        faces = authored_faces(lexicon_registry())
+        self.assertEqual(faces, {}, "tier A gained content — this control's premise moved")
+        r = _region()
+        glosses = glosses_for(r, faces)
+        self.assertEqual(glosses, {})
+        for marks in (False, True):
+            self.assertEqual(render_region(r, contest_marks=marks, glosses=None),
+                             render_region(r, contest_marks=marks, glosses=glosses),
+                             f"an empty registry changed the wire (contest_marks={marks})")
+
+    def test_the_silence_ENDS_the_moment_a_face_exists(self):
+        """The other half, so the control cannot be satisfied by a lane that does nothing."""
+        r = _region()
+        glossed = render_region(r, glosses=glosses_for(r, {"true_kernel_grid_posdef": "a face"}))
+        self.assertIn("a face", glossed)
+        self.assertNotEqual(render_region(r), glossed)
+
+
 if __name__ == "__main__":
     unittest.main()
