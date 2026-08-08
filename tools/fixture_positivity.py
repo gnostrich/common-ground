@@ -137,6 +137,14 @@ def row(out: dict, calls: list[dict], seconds: float) -> dict:
         # answered, and it was 19 of 19 because EVERYTHING was 59 of 59. A boundary crossed at
         # fraction 1.0 was not crossed.
         "discrimination": (att.get("discrimination") or {}),
+        # AND THE ARROWS UNDER IT. The read view is the pickle PLUS the proposer journal, and
+        # the journal is deployment-local: 0 arrows here against 19,385 served, over an
+        # identical 80,566-slot base. Turn 1's system prompt was byte-identical across the two
+        # and its user body was 6,921 characters against 42,235, because with no arrows
+        # `build_region` finds no arrow-rich anchor and falls back to a fixed region with an
+        # empty declared section. Two measurements at different arrow counts are two
+        # measurements of two corpora.
+        "corpus_arrows": ((out.get("corpus_header") or {}).get("arrows")),
         "attached_by_chart": seated,
         "attached": len(attached),
         # THE NUMBER UNDER TEST. Lean objects seated in the region, lean objects the medium

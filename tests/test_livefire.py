@@ -77,6 +77,9 @@ class TheBatteryDoesNotFireOnAHEALTHYRun(unittest.TestCase):
         "compiled": {"scope": "", "attachment": {"labels": ["b0", "e3", "l7"]},
                      "citations": [{"n": "e3", "kind": "attached", "chart": "english"},
                                    {"n": "l7", "kind": "seated", "chart": "lean"}]},
+        # THE ARROW COUNT IS PART OF A HEALTHY RESPONSE, not decoration. A run that cannot say
+        # how many arrows were under it cannot be compared to any other environment's run.
+        "corpus_header": {"slots": 80566, "arrows": 19385},
         "transcript": [],
     }
 
@@ -265,7 +268,7 @@ class TheProbeSetIsTheONeTheOrderNamed(unittest.TestCase):
 
     def test_every_check_is_reachable_from_the_registry(self):
         """A check defined and not registered runs on nothing."""
-        self.assertEqual(len(CHECKS), 11)
+        self.assertEqual(len(CHECKS), 12)
         self.assertEqual(len(CHECKS), len({c.__name__ for c in CHECKS}))
 
     def test_a_degenerate_attachment_is_caught_at_BOTH_poles(self):
@@ -297,6 +300,17 @@ class TheProbeSetIsTheONeTheOrderNamed(unittest.TestCase):
 
         self.assertTrue(chk("planted", {"faithful": {"violations": [{"sentence": "x"}]}}))
         self.assertEqual(chk("planted", {"faithful": {"violations": [{"kind": "welded"}]}}), [])
+
+    def test_a_measurement_without_its_ARROW_COUNT_is_caught(self):
+        """The read view is pickle PLUS journal arrows, and the journal is deployment-local.
+        Measured: 0 arrows locally against 19,385 served over an identical 80,566-slot base,
+        turn 1's system prompt byte-identical and its user body 6,921 chars against 42,235."""
+        from tools.livefire import check_a_fraction_carries_its_ARROW_COUNT as chk
+
+        self.assertTrue(chk("planted", {"corpus_header": {"slots": 80566}}),
+                        "a measurement with no arrow count passed as comparable")
+        self.assertEqual(chk("planted", {"corpus_header": {"slots": 80566, "arrows": 0}}), [],
+                         "zero arrows is a FACT about the read view, not a missing one")
 
     def test_the_baseline_is_declared_in_SEED_not_in_the_tool(self):
         """A baseline a tool could edit is not one."""

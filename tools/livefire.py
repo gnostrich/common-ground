@@ -403,6 +403,30 @@ def baseline() -> dict:
         return {}
 
 
+def check_a_fraction_carries_its_ARROW_COUNT(name: str, run: dict) -> list:
+    """A DISCRIMINATION FRACTION IS NOT COMPARABLE WITHOUT THE ARROWS UNDER IT.
+
+    The read view is not the pickle. `ui.current.corpus_snapshot` returns
+    `with_arrows(base, _journal_arrows())`, and the journal is a separate, deployment-local
+    file the background proposer grows continuously. Measured: the same commit, the same
+    80,566-slot base with an identical per-chart breakdown, and 0 arrows locally against 19,385
+    served — turn 1's SYSTEM prompt byte-identical on both sides, its USER body 6,921 characters
+    against 42,235. With no arrows `build_region` finds no arrow-rich anchor and falls back to a
+    fixed region with an empty declared section, so the medium is shown a different field and
+    behaves like it.
+
+    Two measurements at different arrow counts are two measurements of two corpora. This makes
+    that impossible to overlook rather than something a reader has to remember.
+    """
+    header = run.get("corpus_header") or {}
+    if "arrows" not in header:
+        return [Finding("a-fraction-carries-its-arrow-count", name,
+                        "the response carries no arrow count, so its attachment figures cannot "
+                        "be compared against any other environment's",
+                        {"header_keys": sorted(header)[:8]})]
+    return []
+
+
 def check_discrimination_is_in_the_sane_band(name: str, run: dict) -> list:
     """A DEGENERACY IS NOT A LOW SCORE, and this is the check that says so.
 
@@ -479,6 +503,7 @@ CHECKS = (
     # been reported as progress, turned into checks so it cannot happen twice.
     check_discrimination_is_in_the_sane_band,
     check_a_violation_count_carries_its_composition,
+    check_a_fraction_carries_its_ARROW_COUNT,
 )
 
 
@@ -555,6 +580,9 @@ def run_battery(url: str, token: str, only: str = "") -> dict:
         verdict = got.get("faithful") or {}
         rows.append({
             "probe": name, "text": text, "why": why, "seconds": secs,
+            # THE ARROWS UNDER THE MEASUREMENT. Slots alone do not identify a read view.
+            "corpus_arrows": (got.get("corpus_header") or {}).get("arrows"),
+            "corpus_slots": (got.get("corpus_header") or {}).get("slots"),
             "turns": dlg.get("turn_count"), "stopped": dlg.get("stopped"),
             "arrows": dlg.get("records"), "resolved": dlg.get("resolved_records"),
             "residuals": dlg.get("residuals"),
