@@ -341,6 +341,36 @@ that outranks other work: discrimination outside the band, a finding on any prob
 draw-to-draw shape collapse, a turn without a preceding question, or a change in the walk's
 wire.
 
+### THE DOORLESS ECHO — the baseline defended, three draws, no column earned
+
+The doorless simplification deleted the fourth door's signature apparatus as a gate. It is a
+pipeline change, so it owes the fix-echo table. **It earns no column, because nothing moved.**
+Served build `4d615123c4b4`, three consecutive draws:
+
+| | baseline-1 `73d7706cb397` | draw 1 | draw 2 | draw 3 |
+|---|---|---|---|---|
+| **discrimination** | 0.5763 — 34 of 59 | **0.5763 — 34 of 59** | *(same run)* | *(same run)* |
+| violations | 59 | 59 | 59 | 59 |
+| **composition** | 31 welded / 27 uncontested / 1 unresolved | **identical** | **identical** | **identical** |
+| sentences checked | 58 | 58 | 58 | 58 |
+| turns | 4 | 4 | 4 | 4 |
+| residuals | 3 | 3 — `e18` `e29` `e31` | same 3 | same 3 |
+| answer | 8,871 chars | 8,871 | 8,871 | 8,871 |
+| citable / arrows | — | 64 / 225 | 64 / 225 | 64 / 225 |
+| battery | 5 standing-known over 10 probes | **the same 5, same fractions** | | |
+
+**THE ONLY VARIATION IS WHICH RESIDUALS RESOLVED.** `e18` and `e29` swap between resolved and
+state-undecided across draws while the residual SET, the count and the turn shape hold. That is
+turn-level variation inside an identical structure, not a shape collapse — and it is the
+distinction the (c) checklist item was written to make.
+
+**AND THE MEASUREMENT IS ISOLATED, WHICH IT NEARLY WAS NOT.** The lexicon lane is in this build.
+With tier A empty and tier B withdrawn the lane emits `{}` and the wire is byte-identical to
+lane-off — verified, 487 bytes, marks on and off, and planted as `c13`. So these figures are the
+doorless ruling alone. A TEMP commit had turned the lane off to buy the same isolation by
+subtraction; the byte-identity makes that unnecessary and, unlike the TEMP arm, it is a property
+a control can hold.
+
 ---
 
 ## COLUMN G — THE LEXICON LANE, TIER B MEASURED AND WITHDRAWN

@@ -352,5 +352,77 @@ class TheProbeSetIsTheONeTheOrderNamed(unittest.TestCase):
         self.assertEqual(found[0].seen, 4, "the fold lost the count")
 
 
+class TheArtifactCarriesTheNumberItCONVICTSON(unittest.TestCase):
+    """A DEPLOY'S EVIDENCE MUST BE CHECKABLE BY ITS READER, NOT BELIEVED.
+
+    `runs/livefire/<build>.json` is what a deploy attaches as proof it works. The redaction
+    kept the attachment LABELS — which objects attached — and dropped the DISCRIMINATION
+    BLOCK, so the artifact said `e1, e2, l5 …` and never said whether that was 1 of 59 or 58
+    of 59. Both are findings; they are opposite findings; and the artifact could not tell them
+    apart. A reader could only take the finding text's word for it.
+
+    That is the standing rule failing in the one place it was written for: NO ATTACHMENT
+    FIGURE IS REPORTABLE WITHOUT ITS DISCRIMINATION FRACTION. The live check had the number
+    and used it correctly. The record of the check did not.
+
+    SAFE BY SHAPE. Every field restored here is a count, a fraction or a boolean — the same
+    test the whitelist passes, applied one level down. The control asserts BOTH halves: the
+    numbers arrive, and no corpus prose arrives with them.
+    """
+
+    def _run(self):
+        return {"answer": "a sentence about the operator's corpus [e1].",
+                "compiled": {
+                    "scope": "scope prose",
+                    "citations": [{"n": "e1", "kind": "moved", "chart": "english",
+                                   "group": "g", "contested": True,
+                                   "nu": "\x01en\x01A PRIVATE CLAIM"}],
+                    "attachment": {
+                        "labels": ["e1", "l2"],
+                        "prose": "PRIVATE TURN-ONE PROSE",
+                        "discrimination": {"attached": 34, "shown": 59, "fraction": 0.5763,
+                                           "threshold": 0.9, "red": False, "note": ""},
+                        "arrows": 225, "calls": 1,
+                        "gloss_coverage": {"chart": "lean", "shown": 19, "glossed": 0,
+                                           "authored": 0, "rendered": 0, "fraction": 0.0,
+                                           "authored_fraction": 0.0, "note": "long prose"}}}}
+
+    def test_the_discrimination_fraction_SURVIVES_the_redaction(self):
+        from tools.redact_run import redact
+
+        disc = redact(self._run())["compiled"]["attachment"]["discrimination"]
+        self.assertEqual(disc["fraction"], 0.5763)
+        self.assertEqual((disc["attached"], disc["shown"]), (34, 59))
+        self.assertIs(disc["red"], False)
+        self.assertEqual(disc["threshold"], 0.9,
+                         "the fraction without its threshold is a number with no band")
+
+    def test_the_GLOSS_COVERAGE_survives_split_by_tier(self):
+        """Flat attachment over zero AUTHORED coverage is a fact about the data; over full
+        coverage it is a fact about the mechanism. Only the split tells them apart."""
+        from tools.redact_run import redact
+
+        cov = redact(self._run())["compiled"]["gloss_coverage"]
+        self.assertEqual((cov["shown"], cov["glossed"]), (19, 0))
+        self.assertEqual(cov["authored_fraction"], 0.0)
+
+    def test_NO_corpus_prose_rode_in_with_the_numbers(self):
+        """The reason the block was thrown away wholesale in the first place."""
+        from tools.redact_run import redact
+
+        blob = json.dumps(redact(self._run()))
+        for private in ("PRIVATE CLAIM", "PRIVATE TURN-ONE PROSE", "scope prose",
+                        "long prose", "operator's corpus"):
+            self.assertNotIn(private, blob, f"the redaction leaked: {private}")
+
+    def test_an_absent_block_is_absent_not_a_crash(self):
+        """A run from a build with no lane, or a probe that never attached."""
+        from tools.redact_run import redact
+
+        out = redact({"compiled": {}})["compiled"]
+        self.assertIsNone(out["gloss_coverage"])
+        self.assertEqual(out["attachment"]["discrimination"]["fraction"], None)
+
+
 if __name__ == "__main__":
     unittest.main()

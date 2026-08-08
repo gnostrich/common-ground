@@ -86,7 +86,36 @@ def redact(run: dict) -> dict:
             "scope": "",
             "citations": [{k: c[k] for k in ("n", "kind", "chart", "group", "contested")
                            if k in c} for c in (comp.get("citations") or ())],
-            "attachment": {"labels": (comp.get("attachment") or {}).get("labels", [])}},
+            # THE FRACTION TRAVELS OR THE ARTIFACT IS NOT EVIDENCE. The battery convicts on
+            # discrimination, and this redaction kept the attachment LABELS and dropped the
+            # number — so `runs/livefire/<build>.json`, the thing attached to a deploy as its
+            # proof, said which objects attached and never said whether that was 1 of 59 or
+            # 58 of 59. A reader could not check the finding; they could only believe it. The
+            # standing rule is that no attachment figure is reportable without its
+            # discrimination fraction, and the artifact was the one place it was not.
+            #
+            # SAFE BY SHAPE, not by trust: every field kept here is a COUNT, a FRACTION or a
+            # BOOLEAN. No nu-string, no surface, no answer text — the same test the whitelist
+            # above passes, applied one level down.
+            "attachment": {
+                "labels": (comp.get("attachment") or {}).get("labels", []),
+                "discrimination": {
+                    k: ((comp.get("attachment") or {}).get("discrimination") or {}).get(k)
+                    for k in ("attached", "shown", "fraction", "threshold", "red")},
+                # NOT the arrow count. That lives on the ROW (`arrows`, `corpus_arrows`),
+                # where the battery already writes it, and a second copy here would read None
+                # forever — a field that looks like "no arrows" when the number is one level
+                # up is worse than no field. `calls` is kept because it is the difference
+                # between silence-after-asking and silence-instead-of-asking.
+                "calls": (comp.get("attachment") or {}).get("calls")},
+            # THE LEXICON LANE'S COVERAGE, for the same reason: a flat attachment figure over
+            # zero AUTHORED coverage is a fact about the data, and over full coverage a fact
+            # about the mechanism. Counts and fractions only.
+            "gloss_coverage": {
+                k: ((comp.get("attachment") or {}).get("gloss_coverage") or {}).get(k)
+                for k in ("chart", "shown", "glossed", "authored", "rendered", "fraction",
+                          "authored_fraction")}
+            if (comp.get("attachment") or {}).get("gloss_coverage") else None},
         "transcript": [_call(c) for c in (run.get("transcript") or ())],
     }
 
