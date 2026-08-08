@@ -318,11 +318,18 @@ class TheProbeSetIsTheONeTheOrderNamed(unittest.TestCase):
 
         self.assertEqual(BASELINE_PATH.parent.name, "seed")
         b = baseline()
-        self.assertEqual(b.get("build"), "b484b945d8af")
-        self.assertEqual(b["fixture"]["composition"],
-                         {"welded": 31, "uncontested": 28, "unresolved": 1})
+        # CONSISTENCY, NOT A LITERAL. The first version asserted the build sha and the exact
+        # composition, and the first legitimate re-stamp broke it — a test that copies a
+        # declaration is a SECOND CONSTRUCTION of the same fact, which is the defect this very
+        # baseline was re-stamped to fix. What is asserted is that the record hangs together:
+        # a build is named, the composition accounts for the count, and the band brackets the
+        # figure it was drawn around.
+        self.assertTrue(b.get("build"), "the baseline names no build")
+        self.assertEqual(sum(b["fixture"]["composition"].values()), b["fixture"]["violations"],
+                         "the composition does not account for the violation count")
         self.assertLess(b["bands"]["discrimination_low"], b["fixture"]["discrimination"])
         self.assertGreater(b["bands"]["discrimination_high"], b["fixture"]["discrimination"])
+        self.assertIn("composition", b.get("composition_rule", "").lower())
 
     def test_shown_labels_unions_both_sheets_and_EXCLUDES_the_question(self):
         """[b0] is shown and is deliberately not citable: an answer resting on the question

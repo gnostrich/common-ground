@@ -1,8 +1,8 @@
 {
  "schema": "common-ground/baseline/v0",
  "tag": "baseline-1",
- "build": "b484b945d8af",
- "commit": "3262d3e",
+ "build": "73d7706cb397",
+ "commit": "73d7706",
  "note": "THE CONVERGENCE BASELINE. Frozen figures from the served build, measured against a checklist written before the pass was run. The auditor's job is defending these: any regression is a RED that outranks other work. A number here is not a target to tune toward \u2014 it is a state that was reached and understood, and a DEPARTURE in either direction is the signal.",
  "question": "what does the certified positivity work establish",
  "fixture": {
@@ -12,10 +12,10 @@
   "turns": 4,
   "residuals": 3,
   "checked": 58,
-  "violations": 60,
+  "violations": 59,
   "composition": {
    "welded": 31,
-   "uncontested": 28,
+   "uncontested": 27,
    "unresolved": 1
   },
   "answer_chars": 8871
@@ -75,5 +75,27 @@
  "known_costs": {
   "welded_enumeration": "13 of the 31 welds are enumeration-shaped, the recorded cost of withdrawing the roster clause after two razor-legal wordings both degenerated. See seed/INVENTORY.md row 530 and fixture column F.",
   "uncontested": "The (!) mark reaches turn 1's sheet and both prompts state the rule, so these are compliable-and-uncomplied \u2014 convictions, not traps."
+ },
+ "restamp": {
+  "why": "Row 532 fixed: the checker's contested set is now the shown contested set.",
+  "from": {
+   "build": "b484b945d8af",
+   "violations": 60,
+   "composition": {
+    "welded": 31,
+    "uncontested": 28,
+    "unresolved": 1
+   }
+  },
+  "what_moved": "ONE conviction, and that number understates the change entirely. The fix was SYMMETRIC: three objects the checker held hot without the wire marking them stopped convicting (the trap), and three the wire marked without the checker enforcing started convicting (the useless mark). 28 became 27 because six convictions were replaced by five, not because six were removed.",
+  "what_actually_changed": "EVERY REMAINING CONVICTION IS COMPLIABLE. Measured on the fixed build, three draws, byte-identical: 19 objects marked (!) on the wire, 19 held hot by the checker, and the two sets are IDENTICAL \u2014 hot-not-marked is empty and marked-not-hot is empty. Before the fix they differed by three in each direction. The count barely moved and its meaning changed completely, which is the composition rule arriving one level deeper: a composition can be stable while the thing it is composed of stops being honest.",
+  "unchanged": {
+   "attached": 34,
+   "discrimination": 0.5763,
+   "turns": 4,
+   "checked": 58,
+   "answer_chars": 8871,
+   "welded": 31
+  }
  }
 }
