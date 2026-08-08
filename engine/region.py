@@ -378,7 +378,7 @@ def unescape_nu(text: str) -> str:
     return "".join(out)
 
 
-def render_region(region: Region, contest_marks: bool = False) -> str:
+def render_region(region: Region, contest_marks: bool = False, glosses: dict | None = None) -> str:
     """The partial diagram on the wire: OBJECTS, declared ARROWS, implied ARROWS, task.
 
     `contest_marks` IS OFF BY DEFAULT, AND THAT IS THE WALK'S GUARANTEE. This function is
@@ -404,6 +404,17 @@ def render_region(region: Region, contest_marks: bool = False) -> str:
         # look different or the medium is being shown the answer's syntax in the field's.
         mark = "(!) " if (contest_marks and m.contested) else ""
         lines.append(f"[{label(m.chart, m.index)}] {mark}{escape_nu(m.wire)}")
+        # THE LEXICON HANDLE, on its own continuation line and DEFAULT OFF — the same
+        # presentation discipline the contest mark carries, and for the same reason: this
+        # function is byte-shared with the unattended walk, which has no use for a
+        # dialogue-only reading and must not have its wire changed to serve one.
+        #
+        # IT IS NOT AN OBJECT. No label, never citable, indented under the line it annotates so
+        # nothing can mistake it for a claim of its own. A gloss that could be cited would be a
+        # claim the corpus never ingested.
+        g = (glosses or {}).get(m.slot)
+        if g is not None:
+            lines.append(f"      \u21b3 {g.line}")
 
     # THE LEGAL ARROW FORMS, enumerated. Cross-chart-only stops being an instruction the
     # medium may ignore and becomes the shape of the token itself: with the charts present

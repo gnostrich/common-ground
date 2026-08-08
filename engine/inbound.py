@@ -695,6 +695,21 @@ def group_provenance(rel, snapshot) -> list[dict]:
     return out
 
 
+def lexicon_registry():
+    """The operator's authored lexicon, or an empty one. NEVER a failure.
+
+    An absent or unreadable registry means tier A is empty and the lane runs on tier B alone,
+    which is a COVERAGE fact the measurement reports rather than an error the request dies on.
+    A lane that could take the window down to gloss a Lean line would be worse than no lane.
+    """
+    try:
+        from .lexicon import Registry
+
+        return Registry()
+    except Exception:
+        return None
+
+
 def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
                   index=None, transport=None, on_stage=None) -> CompiledInput:
     """Compile the LM's input FROM WHAT THE FIELD DID, not from what the text resembles.
@@ -763,8 +778,14 @@ def compile_input(text: str, snapshot: CorpusSnapshot, chart: str = "english",
         # THE MARK IS ASKED FOR HERE, at the dialogue's own call, because the grammar rule it
         # serves is the dialogue's. The walk's call passes nothing and gets the bytes it always
         # got.
+        # THE LEXICON LANE'S ONE CALL SITE. The handles are built from the region the sampler
+        # would have produced anyway, so this costs no extra LM call and cannot change which
+        # objects are shown — only what is written beside them. The walk's call passes neither
+        # marks nor glosses and gets the bytes it always got.
+        from .gloss import authored_faces
+
         att = perturb(text, snapshot, transport, chart, system=turn_one_prompt(),
-                      contest_marks=True)
+                      contest_marks=True, gloss_faces=authored_faces(lexicon_registry()))
         labeller = Labeller(att.region) if att.region is not None else Labeller()
         stages["attach"] = round(_time.time() - _t, 3)
         if not att.seeds:

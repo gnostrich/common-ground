@@ -95,6 +95,11 @@ class Perturbation:
     """What one call produced: where the input attached, what else the region yielded, silence."""
 
     typed_slot: str = ""
+    #: THE LEXICON LANE'S COVERAGE, when the lane ran. None means it was off. Carried on the
+    #: perturbation because every figure this lane produces must travel with it: flat
+    #: attachment over zero authored coverage is a fact about the DATA, and flat attachment
+    #: over full coverage is a fact about the MECHANISM.
+    gloss_coverage: dict | None = None
     typed_chart: str = ""
     typed_nu: str = ""
     region: Region | None = None
@@ -208,6 +213,7 @@ class Perturbation:
             "clamp": self.region.clamp[:16] if self.region else "",
             "declared": len(self.region.declared) if self.region else 0,
             "implied": len(self.region.implied) if self.region else 0,
+            "gloss_coverage": self.gloss_coverage,
             "attachment": [a.as_record() for a in self.attachment],
             "attached": len(self.attachment),
             "discrimination": self.discrimination,
@@ -237,7 +243,8 @@ class Perturbation:
 
 def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "english",
             size: int = REGION_SIZE, quarantined: frozenset = frozenset(),
-            system: str = "", contest_marks: bool = False) -> Perturbation:
+            system: str = "", contest_marks: bool = False,
+            gloss_faces: dict | None = None) -> Perturbation:
     """Put the typed text in a diagram and let the medium complete it. Exactly one call.
 
     THE TYPED TEXT GOES TO THE MEDIUM RAW. It used to be segmented by the claim extractor
@@ -306,7 +313,15 @@ def perturb(text: str, snapshot: CorpusSnapshot, transport, chart: str = "englis
         # forever. The interactive path passes the dialogue's prompt, which is the same wire
         # legend plus the citation grammar. Two paths, one call site, and the daemon cannot
         # acquire a dialogue by accident because acquiring one takes an argument.
-        _sys, _user = (system or REGION_SYSTEM), render_region(region, contest_marks)
+        # THE HANDLES ARE BUILT FROM THIS REGION, not handed in — the region is built here and
+        # a caller passing glosses would be keying them on a region it had to guess. `None`
+        # means the lane is OFF and is what the walk passes; a dict means ON, and an EMPTY dict
+        # is meaningful — gloss with no authored faces, which is tier B alone.
+        from .gloss import coverage as _coverage, glosses_for
+        glosses = None if gloss_faces is None else glosses_for(region, gloss_faces)
+        if glosses is not None:
+            out.gloss_coverage = _coverage(region, glosses)
+        _sys, _user = (system or REGION_SYSTEM), render_region(region, contest_marks, glosses)
         _t = _time.time()
         raw, usage = transport(_sys, _user)
         # NO ACT IS READ. The null surface removed the question: every utterance enters the
